@@ -258,7 +258,7 @@ namespace osu.Game.Database
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This adds osu! specific thread and managed state safety checks on top of <see cref="IRealmCollection{T}.SubscribeForNotifications"/>.
+        /// This adds g0v0! specific thread and managed state safety checks on top of <see cref="IRealmCollection{T}.SubscribeForNotifications"/>.
         /// </para>
         /// <para>
         /// The first callback will be invoked with the initial <see cref="IRealmCollection{T}" /> after the asynchronous query completes,
@@ -322,7 +322,7 @@ namespace osu.Game.Database
         /// A convenience method that casts <see cref="IQueryable{T}"/> to <see cref="IRealmCollection{T}"/> and subscribes for change notifications.
         /// </summary>
         /// <remarks>
-        /// This adds osu! specific thread and managed state safety checks on top of <see cref="IRealmCollection{T}.SubscribeForNotifications"/>.
+        /// This adds g0v0! specific thread and managed state safety checks on top of <see cref="IRealmCollection{T}.SubscribeForNotifications"/>.
         /// </remarks>
         /// <param name="list">The <see cref="IQueryable{T}"/> to observe for changes.</param>
         /// <typeparam name="T">Type of the elements in the list.</typeparam>
@@ -349,7 +349,7 @@ namespace osu.Game.Database
         /// A convenience method that casts <see cref="IList{T}"/> to <see cref="IRealmCollection{T}"/> and subscribes for change notifications.
         /// </summary>
         /// <remarks>
-        /// This adds osu! specific thread and managed state safety checks on top of <see cref="IRealmCollection{T}.SubscribeForNotifications"/>.
+        /// This adds g0v0! specific thread and managed state safety checks on top of <see cref="IRealmCollection{T}.SubscribeForNotifications"/>.
         /// </remarks>
         /// <param name="list">The <see cref="IList{T}"/> to observe for changes.</param>
         /// <typeparam name="T">Type of the elements in the list.</typeparam>

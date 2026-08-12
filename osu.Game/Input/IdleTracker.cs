@@ -72,7 +72,7 @@ namespace osu.Game.Input
         {
             // Even when not active, `MouseMoveEvent`s will arrive.
             // We don't want these to trigger a non-idle state as it's quite often the user interacting
-            // with other windows while osu! is in the background.
+            // with other windows while g0v0! is in the background.
             if (!host.IsActive.Value)
                 return base.Handle(e);
 

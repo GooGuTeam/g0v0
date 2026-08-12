@@ -50,9 +50,9 @@ namespace osu.Game.Localisation
         public static LocalisableString InterfaceVoices => new TranslatableString(getKey(@"interface_voices"), @"Interface voices");
 
         /// <summary>
-        /// "osu! music theme"
+        /// "g0v0! music theme"
         /// </summary>
-        public static LocalisableString OsuMusicTheme => new TranslatableString(getKey(@"osu_music_theme"), @"osu! music theme");
+        public static LocalisableString OsuMusicTheme => new TranslatableString(getKey(@"osu_music_theme"), @"g0v0! music theme");
 
         /// <summary>
         /// "Intro sequence"

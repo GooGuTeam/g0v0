@@ -4,10 +4,10 @@
     <OutputType>WinExe</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Description>A free-to-win rhythm game. Rhythm is just a *click* away!</Description>
-    <AssemblyName>osu!</AssemblyName>
-    <AssemblyTitle>osu!(lazer)</AssemblyTitle>
-    <Title>osu!</Title>
-    <Product>osu!(lazer)</Product>
+    <AssemblyName>g0v0!</AssemblyName>
+    <AssemblyTitle>g0v0!</AssemblyTitle>
+    <Title>g0v0!</Title>
+    <Product>g0v0!</Product>
     <ApplicationIcon>lazer.ico</ApplicationIcon>
     <Version>0.0.0</Version>
     <FileVersion>0.0.0</FileVersion>

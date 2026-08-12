@@ -24,13 +24,11 @@ namespace osu.Game.Overlays.FirstRunSetup
     public partial class ScreenBeatmaps : WizardScreen
     {
         private ProgressRoundedButton downloadBundledButton = null!;
-        private ProgressRoundedButton downloadTutorialButton = null!;
 
         private OsuTextFlowContainer downloadInBackgroundText = null!;
 
         private OsuTextFlowContainer currentlyLoadedBeatmaps = null!;
 
-        private BundledBeatmapDownloader? tutorialDownloader;
         private BundledBeatmapDownloader? bundledDownloader;
 
         [Resolved]
@@ -70,22 +68,6 @@ namespace osu.Game.Overlays.FirstRunSetup
                             AutoSizeAxes = Axes.Both,
                         },
                     }
-                },
-                new OsuTextFlowContainer(cp => cp.Font = OsuFont.Default.With(size: CONTENT_FONT_SIZE))
-                {
-                    Colour = OverlayColourProvider.Content1,
-                    Text = FirstRunSetupBeatmapScreenStrings.TutorialDescription,
-                    RelativeSizeAxes = Axes.X,
-                    AutoSizeAxes = Axes.Y
-                },
-                downloadTutorialButton = new ProgressRoundedButton
-                {
-                    Size = buttonSize,
-                    Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopCentre,
-                    BackgroundColour = colours.Pink3,
-                    Text = FirstRunSetupBeatmapScreenStrings.TutorialButton,
-                    Action = downloadTutorial
                 },
                 new OsuTextFlowContainer(cp => cp.Font = OsuFont.Default.With(size: CONTENT_FONT_SIZE))
                 {
@@ -152,29 +134,6 @@ namespace osu.Game.Overlays.FirstRunSetup
                                        .ScaleTo(1, 1500, Easing.OutQuint);
             }
         });
-
-        private void downloadTutorial()
-        {
-            if (tutorialDownloader != null)
-                return;
-
-            tutorialDownloader = new BundledBeatmapDownloader(true);
-
-            AddInternal(tutorialDownloader);
-
-            var downloadTracker = tutorialDownloader.DownloadTrackers.First();
-
-            downloadTracker.State.BindValueChanged(state =>
-            {
-                if (state.NewValue == DownloadState.LocallyAvailable)
-                    downloadTutorialButton.Complete();
-            }, true);
-
-            downloadTracker.Progress.BindValueChanged(progress =>
-            {
-                downloadTutorialButton.SetProgress(progress.NewValue, false);
-            }, true);
-        }
 
         private void downloadBundled()
         {

@@ -71,7 +71,7 @@ using RuntimeInfo = osu.Framework.RuntimeInfo;
 namespace osu.Game
 {
     /// <summary>
-    /// The most basic <see cref="Game"/> that can be used to host osu! components and systems.
+    /// The most basic <see cref="Game"/> that can be used to host g0v0! components and systems.
     /// Unlike <see cref="OsuGame"/>, this class will not load any kind of UI, allowing it to be used
     /// for provide dependencies to test cases without interfering with them.
     /// </summary>
@@ -79,9 +79,9 @@ namespace osu.Game
     public partial class OsuGameBase : Framework.Game, ICanAcceptFiles, IBeatSyncProvider
     {
 #if DEBUG
-        public const string GAME_NAME = "osu! GU (development)";
+        public const string GAME_NAME = "g0v0! (development)";
 #else
-        public const string GAME_NAME = "osu! GU";
+        public const string GAME_NAME = "g0v0!";
 #endif
 
         public const string OSU_PROTOCOL = "osu://";
@@ -620,7 +620,7 @@ namespace osu.Game
         /// <exception cref="TimeoutException"></exception>
         public bool MigrateUserData(string path)
         {
-            Logger.Log($@"Migrating osu! data from ""{Storage.GetFullPath(string.Empty)}"" to ""{path}""...");
+            Logger.Log($@"Migrating g0v0! data from ""{Storage.GetFullPath(string.Empty)}"" to ""{path}""...");
 
             IDisposable realmBlocker = null;
 

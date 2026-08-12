@@ -57,7 +57,7 @@ namespace osu.Game.Utils
             if (DebugUtils.IsNUnitRunning)
                 return;
 
-            if (!game.IsDeployedBuild || !game.CreateEndpoints().WebsiteUrl.EndsWith(@".ppy.sh", StringComparison.Ordinal))
+            if (!game.IsDeployedBuild || !game.CreateEndpoints().WebsiteUrl.EndsWith(@"g0v0.top", StringComparison.Ordinal))
                 return;
 
             string? dsn = getConfiguredDsn();
@@ -73,7 +73,7 @@ namespace osu.Game.Utils
                 options.IsGlobalModeEnabled = true;
                 options.CacheDirectoryPath = storage?.GetFullPath(string.Empty);
                 // The reported release needs to match version as reported to Sentry in .github/workflows/sentry-release.yml
-                options.Release = $"osu@{game.Version.Split('-').First()}";
+                options.Release = $"g0v0@{game.Version.Split('-').First()}";
             });
 
             Logger.NewEntry += processLogEntry;

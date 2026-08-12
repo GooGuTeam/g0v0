@@ -129,7 +129,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                 activated = false;
                 notificationOverlay.Post(notification = new SimpleNotification
                 {
-                    Text = @"Welcome to osu!. Enjoy your stay!",
+                    Text = @"Welcome to g0v0!. Enjoy your stay!",
                     Activated = () => activated = true,
                 });
             });
@@ -166,7 +166,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                 activated = false;
                 notificationOverlay.Post(notification = new SimpleNotification
                 {
-                    Text = @"Welcome to osu!. Enjoy your stay!",
+                    Text = @"Welcome to g0v0!. Enjoy your stay!",
                     Activated = () => activated = true,
                 });
             });
@@ -239,7 +239,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                 activated = false;
                 notificationOverlay.Post(notification = new SimpleNotification
                 {
-                    Text = @"Welcome to osu!. Enjoy your stay!",
+                    Text = @"Welcome to g0v0!. Enjoy your stay!",
                     Activated = () => activated = true,
                 });
             });
@@ -269,7 +269,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                 activated = false;
                 notificationOverlay.Post(notification = new SimpleNotification
                 {
-                    Text = @"Welcome to osu!. Enjoy your stay!",
+                    Text = @"Welcome to g0v0!. Enjoy your stay!",
                     Activated = () => activated = true,
                 });
             });
@@ -296,7 +296,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                 activated = false;
                 notificationOverlay.Post(notification = new SimpleNotification
                 {
-                    Text = @"Welcome to osu!. Enjoy your stay!",
+                    Text = @"Welcome to g0v0!. Enjoy your stay!",
                     Activated = () => activated = true,
                 });
             });
@@ -476,7 +476,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         public void TestReadState()
         {
             SimpleNotification notification = null!;
-            AddStep(@"post", () => notificationOverlay.Post(notification = new BackgroundNotification { Text = @"Welcome to osu!. Enjoy your stay!" }));
+            AddStep(@"post", () => notificationOverlay.Post(notification = new BackgroundNotification { Text = @"Welcome to g0v0!. Enjoy your stay!" }));
             AddUntilStep("check is toast", () => notification.IsInToastTray);
             AddAssert("light is not visible", () => notification.ChildrenOfType<Notification.NotificationLight>().Single().Alpha == 0);
 
@@ -682,12 +682,12 @@ namespace osu.Game.Tests.Visual.UserInterface
 
         private void sendHelloNotification()
         {
-            notificationOverlay.Post(new SimpleNotification { Text = @"Welcome to osu!. Enjoy your stay!" });
+            notificationOverlay.Post(new SimpleNotification { Text = @"Welcome to g0v0!. Enjoy your stay!" });
         }
 
         private void sendBackgroundNotification()
         {
-            notificationOverlay.Post(new BackgroundNotification { Text = @"Welcome to osu!. Enjoy your stay!" });
+            notificationOverlay.Post(new BackgroundNotification { Text = @"Welcome to g0v0!. Enjoy your stay!" });
         }
 
         private void sendErrorNotification()

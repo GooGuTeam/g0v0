@@ -91,7 +91,7 @@ using MatchType = osu.Game.Online.Rooms.MatchType;
 namespace osu.Game
 {
     /// <summary>
-    /// The full osu! experience. Builds on top of <see cref="OsuGameBase"/> to add menus and binding logic
+    /// The full g0v0! experience. Builds on top of <see cref="OsuGameBase"/> to add menus and binding logic
     /// for initial components that are generally retrieved via DI.
     /// </summary>
     [Cached(typeof(OsuGame))]
@@ -1049,7 +1049,7 @@ namespace osu.Game
         {
             return new Dictionary<FrameworkSetting, object>
             {
-                // General expectation that osu! starts in fullscreen by default (also gives the most predictable performance).
+                // General expectation that g0v0! starts in fullscreen by default (also gives the most predictable performance).
                 // However, macOS is bound to have issues when using exclusive fullscreen as it takes full control away from OS, therefore borderless is default there.
                 { FrameworkSetting.WindowMode, RuntimeInfo.OS == RuntimeInfo.Platform.macOS ? WindowMode.Borderless : WindowMode.Fullscreen },
                 { FrameworkSetting.VolumeUniversal, 0.6 },

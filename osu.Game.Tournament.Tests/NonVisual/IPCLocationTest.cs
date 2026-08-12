@@ -19,7 +19,7 @@ namespace osu.Game.Tournament.Tests.NonVisual
         [Test]
         public void CheckIPCLocation()
         {
-            // don't use clean run because files are being written before osu! launches.
+            // don't use clean run because files are being written before g0v0! launches.
             using (var host = new TestRunHeadlessGameHost(nameof(CheckIPCLocation)))
             {
                 string basePath = Path.Combine(host.UserStoragePaths.First(), nameof(CheckIPCLocation));

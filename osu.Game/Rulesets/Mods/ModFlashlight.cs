@@ -97,7 +97,7 @@ namespace osu.Game.Rulesets.Mods
                 Padding = new MarginPadding(-1),
                 Child = flashlight,
                 // Flashlight mods should always draw above any other mod adding overlays.
-                // NegativeInfinity is not used to allow one more thing drawn on top (used in replay analysis overlay in osu!).
+                // NegativeInfinity is not used to allow one more thing drawn on top (used in replay analysis overlay in g0v0!).
                 Depth = float.MinValue,
             });
         }

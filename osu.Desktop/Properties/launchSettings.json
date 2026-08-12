@@ -1,9 +1,9 @@
 {
   "profiles": {
-    "osu! Desktop": {
+    "g0v0! Desktop": {
       "commandName": "Project"
     },
-    "osu! Tournament": {
+    "g0v0! Tournament": {
       "commandName": "Project",
       "commandLineArgs": "--tournament"
     }

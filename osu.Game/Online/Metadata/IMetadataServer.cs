@@ -7,7 +7,7 @@ using osu.Game.Users;
 namespace osu.Game.Online.Metadata
 {
     /// <summary>
-    /// Metadata server is responsible for keeping the osu! client up-to-date with various real-time happenings, such as:
+    /// Metadata server is responsible for keeping the g0v0! client up-to-date with various real-time happenings, such as:
     /// <list type="bullet">
     /// <item>beatmap updates via BSS,</item>
     /// <item>online user activity/status updates,</item>

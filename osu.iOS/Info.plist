@@ -5,9 +5,9 @@
 	<key>CFBundleIdentifier</key>
 	<string>top.g0v0.lazer</string>
 	<key>CFBundleName</key>
-	<string>osu!</string>
+	<string>g0v0!</string>
 	<key>CFBundleDisplayName</key>
-	<string>osu!</string>
+	<string>g0v0!</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>MinimumOSVersion</key>

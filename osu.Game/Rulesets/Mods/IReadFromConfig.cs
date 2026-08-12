@@ -6,7 +6,7 @@ using osu.Game.Configuration;
 namespace osu.Game.Rulesets.Mods
 {
     /// <summary>
-    /// An interface for mods that require reading access to the osu! configuration.
+    /// An interface for mods that require reading access to the g0v0! configuration.
     /// </summary>
     public interface IReadFromConfig
     {

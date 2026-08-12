@@ -36,7 +36,7 @@ namespace osu.Game.Tournament.Screens.Setup
             };
             folderButton.Action = () => storage.PresentExternally();
 
-            ButtonText = "Close osu!";
+            ButtonText = "Close g0v0!";
         }
 
         protected override Drawable CreateComponent()

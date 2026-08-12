@@ -17,7 +17,7 @@ namespace osu.Game.Extensions
     public static class ModelExtensions
     {
         /// <summary>
-        /// Get the relative path in osu! storage for this file.
+        /// Get the relative path in g0v0! storage for this file.
         /// </summary>
         /// <param name="fileInfo">The file info.</param>
         /// <returns>A relative file path.</returns>

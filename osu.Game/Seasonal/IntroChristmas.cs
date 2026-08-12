@@ -159,13 +159,13 @@ namespace osu.Game.Seasonal
                 using (BeginAbsoluteSequence(0))
                 {
                     using (BeginDelayedSequence(getTimeForBeat(-16)))
-                        welcomeText.FadeIn().OnComplete(t => t.Text = "welcome to osu!");
+                        welcomeText.FadeIn().OnComplete(t => t.Text = "welcome to g0v0!");
 
                     using (BeginDelayedSequence(getTimeForBeat(-15)))
                         welcomeText.FadeIn().OnComplete(t => t.Text = "");
 
                     using (BeginDelayedSequence(getTimeForBeat(-14)))
-                        welcomeText.FadeIn().OnComplete(t => t.Text = "welcome to osu!");
+                        welcomeText.FadeIn().OnComplete(t => t.Text = "welcome to g0v0!");
 
                     using (BeginDelayedSequence(getTimeForBeat(-13)))
                         welcomeText.FadeIn().OnComplete(t => t.Text = "");

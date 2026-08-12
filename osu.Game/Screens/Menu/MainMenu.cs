@@ -109,7 +109,6 @@ namespace osu.Game.Screens.Menu
         private OnlineMenuBanner onlineMenuBanner;
         private MenuTipDisplay menuTipDisplay;
         private FillFlowContainer bottomElementsFlow;
-        private SupporterDisplay supporterDisplay;
 
         private Sample reappearSampleSwoosh;
 
@@ -208,12 +207,6 @@ namespace osu.Game.Screens.Menu
                             Origin = Anchor.TopCentre,
                         }
                     }
-                },
-                supporterDisplay = new SupporterDisplay
-                {
-                    Margin = new MarginPadding(5),
-                    Anchor = Anchor.TopLeft,
-                    Origin = Anchor.TopLeft,
                 },
                 holdToExitGameOverlay?.CreateProxy() ?? Empty()
             });
@@ -373,9 +366,6 @@ namespace osu.Game.Screens.Menu
                 .ScaleTo(0.9f, 1000, Easing.OutQuint)
                 .FadeOut(500, Easing.OutQuint);
 
-            supporterDisplay
-                .FadeOut(500, Easing.OutQuint);
-
             samplePlaybackDisabled.Value = true;
         }
 
@@ -444,9 +434,6 @@ namespace osu.Game.Screens.Menu
             this.FadeOut(3000);
 
             bottomElementsFlow
-                .FadeOut(500, Easing.OutQuint);
-
-            supporterDisplay
                 .FadeOut(500, Easing.OutQuint);
 
             return base.OnExiting(e);

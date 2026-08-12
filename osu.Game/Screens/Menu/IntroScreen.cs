@@ -87,7 +87,7 @@ namespace osu.Game.Screens.Menu
         private RulesetStore rulesets { get; set; }
 
         /// <summary>
-        /// Whether the <see cref="Track"/> is provided by osu! resources, rather than a user beatmap.
+        /// Whether the <see cref="Track"/> is provided by g0v0! resources, rather than a user beatmap.
         /// Only valid during or after <see cref="LogoArriving"/>.
         /// </summary>
         protected bool UsingThemedIntro { get; private set; }

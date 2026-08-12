@@ -125,23 +125,23 @@ jobs:
         include:
           - os: windows-latest
             runtime: win-x64
-            artifact-name: osu-gu-windows
-            executable: "osu!.exe"
+            artifact-name: g0v0-windows
+            executable: "g0v0!.exe"
           - os: ubuntu-latest
             runtime: linux-x64
-            artifact-name: osu-gu-linux
-            executable: "osu!"
+            artifact-name: g0v0-linux
+            executable: "g0v0!"
           - os: macos-latest
             runtime: osx-x64
-            artifact-name: osu-gu-macos-intel
-            executable: "osu!"
+            artifact-name: g0v0-macos-intel
+            executable: "g0v0!"
           - os: macos-latest
             runtime: osx-arm64
-            artifact-name: osu-gu-macos-apple-silicon
-            executable: "osu!"
+            artifact-name: g0v0-macos-apple-silicon
+            executable: "g0v0!"
           - os: ubuntu-latest
             runtime: android
-            artifact-name: osu-gu-android
+            artifact-name: g0v0-android
             executable: osu.Android-Signed.apk
     steps:
       - name: Checkout code
@@ -327,7 +327,7 @@ jobs:
               -alias osu \
               -storepass temp123 \
               -keypass temp123 \
-              -dname "CN=osu-gu-temp,OU=osu-gu,O=osu-gu,L=Unknown,S=Unknown,C=Unknown"
+              -dname "CN=g0v0-temp,OU=g0v0,O=g0v0,L=Unknown,S=Unknown,C=Unknown"
             echo "WARNING: Using temporary keystore! Please configure ANDROID_KEYSTORE_BASE64 secret for production builds."
           fi
 
@@ -429,32 +429,32 @@ jobs:
             if [[ "${{ matrix.runtime }}" == "osx-arm64" ]]; then CHANNEL="osx-arm64"; fi
 
             vpk pack \
-              -u "osu-lazer-gu" \
+              -u "g0v0" \
               -v "${{ needs.version.outputs.velopackVersion }}" \
               -p "publish/${{ matrix.runtime }}" \
               -e "${{ matrix.executable }}" \
-              --packAuthors "osu! GooGuTeam" \
-              --packTitle "osu! GU" \
+              --packAuthors "g0v0! GooGuTeam" \
+              --packTitle "g0v0!" \
               -i "$ICON_FILE" \
               -c "$CHANNEL"
           elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             vpk pack \
-              -u "osu-lazer-gu" \
+              -u "g0v0" \
               -v "${{ needs.version.outputs.velopackVersion }}" \
               -p "publish/${{ matrix.runtime }}" \
               -e "${{ matrix.executable }}" \
-              --packAuthors "osu! GooGuTeam" \
-              --packTitle "osu! GU" \
+              --packAuthors "g0v0! GooGuTeam" \
+              --packTitle "g0v0!" \
               -i "osu.Desktop/lazer.ico" \
               -c "win"
           else
             vpk pack \
-              -u "osu-lazer-gu" \
+              -u "g0v0" \
               -v "${{ needs.version.outputs.velopackVersion }}" \
               -p "publish/${{ matrix.runtime }}" \
               -e "${{ matrix.executable }}" \
-              --packAuthors "osu! GooGuTeam" \
-              --packTitle "osu! GU" \
+              --packAuthors "g0v0! GooGuTeam" \
+              --packTitle "g0v0!" \
               -i "osu.Desktop/lazer.ico" \
               -c "linux"
           fi
@@ -466,13 +466,13 @@ jobs:
           # Windows installer rename
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             if [ -f "Releases/Setup.exe" ]; then
-              mv -f Releases/Setup.exe Releases/osu-lazer-gu-win-Setup.exe
+              mv -f Releases/Setup.exe Releases/g0v0-win-Setup.exe
             fi
           fi
           # macOS zip rename
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             if [[ "${{ matrix.runtime }}" == "osx-x64" ]]; then
-              for f in Releases/*osx-x64*.zip; do mv -f "$f" Releases/osu.app.Intel.zip; done
+              for f in Releases/*osx-x64*.zip; do mv -f "$f" Releases/g0v0.app.Intel.zip; done
               for f in Releases/*.nupkg; do
                 if [[ "$f" == *osx*full.nupkg ]] && [[ "$f" != *arm64* ]]; then
                   base=$(basename "$f")
@@ -480,7 +480,7 @@ jobs:
                 fi
               done
             else
-              for f in Releases/*osx-arm64*.zip; do mv -f "$f" Releases/osu.app.Apple.Silicon.zip; done
+              for f in Releases/*osx-arm64*.zip; do mv -f "$f" Releases/g0v0.app.Apple.Silicon.zip; done
               for f in Releases/*.nupkg; do
                 if [[ "$f" == *osx*full.nupkg ]]; then
                   base=$(basename "$f")
@@ -493,13 +493,13 @@ jobs:
           fi
           # Linux AppImage rename
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] && [[ "${{ matrix.runtime }}" == "linux-x64" ]]; then
-            for f in Releases/*.AppImage; do mv -f "$f" Releases/osu.AppImage; done
+            for f in Releases/*.AppImage; do mv -f "$f" Releases/g0v0.AppImage; done
           fi
           # Android APK rename
           if [[ "${{ matrix.runtime }}" == "android" ]]; then
             mkdir -p Releases
             if [ -f "publish/${{ matrix.runtime }}/${{ matrix.executable }}" ]; then
-              cp "publish/${{ matrix.runtime }}/${{ matrix.executable }}" "Releases/osu-gu.apk"
+              cp "publish/${{ matrix.runtime }}/${{ matrix.executable }}" "Releases/g0v0.apk"
             fi
           fi
 
@@ -607,13 +607,13 @@ jobs:
             exit 1
           fi
           echo "Found IPA: $IPA_FILE"
-          cp "$IPA_FILE" "Releases/osu-gu-ios.ipa"
-          echo "Final artifact: Releases/osu-gu-ios.ipa"
+          cp "$IPA_FILE" "Releases/g0v0-ios.ipa"
+          echo "Final artifact: Releases/g0v0-ios.ipa"
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: installer-osu-gu-ios
+          name: installer-g0v0-ios
           path: Releases/*.ipa
           retention-days: 30
   release:
@@ -647,7 +647,7 @@ jobs:
         with:
           tag_name: ${{ needs.version.outputs.version }}
           target_commitish: ${{ github.sha }}
-          name: osu! GU ${{ needs.version.outputs.version }}
+          name: g0v0! ${{ needs.version.outputs.version }}
           files: release-files/**
           draft: false
           prerelease: ${{ contains(needs.version.outputs.version, 'alpha') || contains(needs.version.outputs.version, 'beta') || contains(needs.version.outputs.version, 'rc') }}
