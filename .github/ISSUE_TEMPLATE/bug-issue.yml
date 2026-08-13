@@ -4,22 +4,19 @@ body:
   - type: markdown
     attributes:
       value: |
-        **THIS IS ONLY FOR *ACTUAL BUG REPORTS*.**
-        YOU WILL BE REQUIRED TO **PROVIDE LOGS**.
-        YOU WILL BE REQUIRED TO **SEARCH FOR DUPLICATES**.
+        This is only used for bug reports that are **exclusive** to the g0v0! client.
 
-        ANY ISSUE WHICH IS NOT A VALID BUG REPORT WILL BE CLOSED WITHOUT EXPLANATION.
+        You may need to check for existing [issues](https://github.com/ppy/osu/issues) and [discussions](https://github.com/ppy/osu/discussions) at the upstream repository.
 
-        USE DISCUSSIONS FOR ANYTHING YOU'RE NOT SURE ABOUT SOMETHING.
+        Remember, g0v0!-specific features are **not affiliated** with upstream, neither should you report their bugs there.
 
-        Important to note that your issue may have already been reported before. Please check:
-        - Pinned issues, at the top of https://github.com/ppy/osu/issues.
-        - Current open `priority:0` issues, filterable [here](https://github.com/ppy/osu/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Apriority%3A0).
-        - And most importantly, search for your issue both in the [issue listing](https://github.com/ppy/osu/issues) and the [Q&A discussion listing](https://github.com/ppy/osu/discussions/categories/q-a). If you find that it already exists, respond with a reaction or add any further information that may be helpful.
+        You can always contact the development team via other methods given on our website, especially if:
 
-        # ATTENTION LINUX USERS
+        - You are uncertain whether it's only g0v0's issue or it also exists on lazer.
+        - You are using g0v0! on Linux, Android or iOS.
+        - You are afraid that you cannot describe the problem clearly via this form.
 
-        If you are having an issue and it is hardware related, **please open a [q&a discussion](https://github.com/ppy/osu/discussions/categories/q-a)** instead of an issue. There's a high chance your issue is due to your system configuration, and not our software.
+        And we would be happy to help you out!
 
   - type: dropdown
     attributes:
@@ -62,8 +59,6 @@ body:
           1. Head on to game settings and click on "Export logs"
           2. Click the notification to locate the file
           3. Drag the generated `.zip` files into the github issue window
-
-        ![export logs button](https://github.com/ppy/osu/assets/191335/cbfa5550-b7ed-4c5c-8dd0-8b87cc90ad9b)
 
         ### Mobile platforms
 
