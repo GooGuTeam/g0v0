@@ -261,6 +261,10 @@ namespace osu.Game.Screens.Menu
                 logo.MoveTo(new Vector2(0.5f));
                 logo.ScaleTo(Vector2.One);
                 logo.Hide();
+
+                StartTrack();
+                PrepareMenuLoad();
+                Scheduler.AddDelayed(LoadMenu, 1000);
             }
             else
             {
@@ -276,10 +280,6 @@ namespace osu.Game.Screens.Menu
                     .RotateTo(20, exit_delay * 1.5f)
                     .FadeOut(exit_delay);
             }
-
-            StartTrack();
-            PrepareMenuLoad();
-            Scheduler.AddDelayed(LoadMenu, 1000);
         }
 
         protected void PrepareMenuLoad()
@@ -295,6 +295,9 @@ namespace osu.Game.Screens.Menu
 
         protected void LoadMenu()
         {
+            if (DidLoadMenu)
+                return;
+
             beatmap.Return();
 
             DidLoadMenu = true;
