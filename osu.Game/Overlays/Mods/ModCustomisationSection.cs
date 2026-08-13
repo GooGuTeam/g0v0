@@ -56,7 +56,7 @@ namespace osu.Game.Overlays.Mods
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
                                 Text = Mod.Name,
-                                Font = OsuFont.TorusAlternate.With(size: 20, weight: FontWeight.SemiBold),
+                                Font = OsuFont.MapleMono.With(size: 20, weight: FontWeight.SemiBold),
                             },
                             new ModSwitchTiny(Mod)
                             {

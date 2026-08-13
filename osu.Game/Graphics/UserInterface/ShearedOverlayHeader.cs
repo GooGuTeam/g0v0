@@ -109,7 +109,7 @@ namespace osu.Game.Graphics.UserInterface
                                 {
                                     titleSpriteText = new OsuSpriteText
                                     {
-                                        Font = OsuFont.TorusAlternate.With(size: 20)
+                                        Font = OsuFont.MapleMono.With(size: 20)
                                     },
                                     descriptionText = new OsuTextFlowContainer(t =>
                                     {

@@ -61,7 +61,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
                     Anchor = Anchor.CentreLeft,
                     Origin = Anchor.CentreLeft,
                     Text = "PERFECT",
-                    Font = OsuFont.Torus.With(size: 11, weight: FontWeight.SemiBold),
+                    Font = OsuFont.MapleMono.With(size: 11, weight: FontWeight.SemiBold),
                     Colour = ColourInfo.GradientVertical(Color4Extensions.FromHex("#66FFCC"), Color4Extensions.FromHex("#FF9AD7")),
                     Alpha = 0,
                     UseFullGlyphHeight = false,

@@ -67,7 +67,7 @@ namespace osu.Game.Screens.Play
                                 {
                                     Anchor = Anchor.TopLeft,
                                     Origin = Anchor.TopLeft,
-                                    Font = OsuFont.Torus.With(size: name_font_size * scale_factor, weight: FontWeight.Bold),
+                                    Font = OsuFont.MapleMono.With(size: name_font_size * scale_factor, weight: FontWeight.Bold),
                                     Colour = colours.Blue0,
                                     Text = Trigger.Name
                                 },
@@ -75,7 +75,7 @@ namespace osu.Game.Screens.Play
                                 {
                                     Anchor = Anchor.BottomLeft,
                                     Origin = Anchor.BottomLeft,
-                                    Font = OsuFont.Torus.With(size: count_font_size * scale_factor, weight: FontWeight.Bold),
+                                    Font = OsuFont.MapleMono.With(size: count_font_size * scale_factor, weight: FontWeight.Bold),
                                 },
                             }
                         }

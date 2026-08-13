@@ -54,7 +54,7 @@ namespace osu.Game.Screens.Edit.Components.Menus
                 Text.Anchor = Anchor.CentreLeft;
                 Text.Origin = Anchor.CentreLeft;
 
-                Text.Font = OsuFont.TorusAlternate;
+                Text.Font = OsuFont.MapleMono;
 
                 Add(background = new Box
                 {

@@ -136,7 +136,7 @@ namespace osu.Game.Screens.Select
                                 Origin = Anchor.Centre,
                                 Shear = -OsuGame.SHEAR,
                                 UseFullGlyphHeight = false,
-                                Font = OsuFont.Torus.With(size: 14f, weight: FontWeight.Bold)
+                                Font = OsuFont.MapleMono.With(size: 14f, weight: FontWeight.Bold)
                             }
                         },
                         modContainer = new Container
@@ -317,7 +317,7 @@ namespace osu.Game.Screens.Select
                     {
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
-                        Font = OsuFont.Torus.With(size: 14f, weight: FontWeight.Bold),
+                        Font = OsuFont.MapleMono.With(size: 14f, weight: FontWeight.Bold),
                         Shear = -OsuGame.SHEAR,
                     }
                 };
@@ -426,7 +426,7 @@ namespace osu.Game.Screens.Select
                         Text = ModSelectOverlayStrings.Unranked.ToUpper(),
                         Margin = new MarginPadding { Horizontal = 15 },
                         UseFullGlyphHeight = false,
-                        Font = OsuFont.Torus.With(size: 14f, weight: FontWeight.Bold),
+                        Font = OsuFont.MapleMono.With(size: 14f, weight: FontWeight.Bold),
                         Colour = Color4.Black,
                     }
                 };

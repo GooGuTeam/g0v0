@@ -692,7 +692,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                                 Anchor = Anchor.Centre,
                                 Origin = Anchor.Centre,
                                 Text = "Waiting for opponents...",
-                                Font = OsuFont.GetFont(size: 32, weight: FontWeight.Light, typeface: Typeface.TorusAlternate),
+                                Font = OsuFont.GetFont(size: 32, weight: FontWeight.Light, typeface: Typeface.MapleMono),
                             },
                             new LoadingSpinner
                             {
@@ -720,7 +720,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                                 Anchor = Anchor.Centre,
                                 Origin = Anchor.Centre,
                                 Text = "Good luck!",
-                                Font = OsuFont.GetFont(size: 32, weight: FontWeight.Light, typeface: Typeface.TorusAlternate),
+                                Font = OsuFont.GetFont(size: 32, weight: FontWeight.Light, typeface: Typeface.MapleMono),
                             },
                         }
                     };

@@ -114,7 +114,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                 (winnerText = new OsuSpriteText
                 {
                     Alpha = 0,
-                    Font = OsuFont.Torus.With(size: 80, weight: FontWeight.Bold),
+                    Font = OsuFont.MapleMono.With(size: 80, weight: FontWeight.Bold),
                     Text = winner,
                     Blending = BlendingParameters.Additive
                 }).WithEffect(new GlowEffect

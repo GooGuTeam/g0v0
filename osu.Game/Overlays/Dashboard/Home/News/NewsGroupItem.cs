@@ -87,6 +87,7 @@ namespace osu.Game.Overlays.Dashboard.Home.News
                 Origin = Anchor.TopRight;
                 InternalChild = textFlow = new TextFlowContainer(t =>
                 {
+                    t.AllowMultiline = false;
                     t.Colour = colourProvider.Light1;
                 })
                 {

@@ -70,7 +70,11 @@ namespace osu.Game.Users
 
             var alignment = rightAlignedChildren ? Anchor.CentreRight : Anchor.CentreLeft;
 
-            statusContainer.Add(LastVisitMessage = new TextFlowContainer(t => t.Font = OsuFont.GetFont(size: 12, weight: FontWeight.SemiBold)).With(text =>
+            statusContainer.Add(LastVisitMessage = new TextFlowContainer(t =>
+                {
+                    t.AllowMultiline = false;
+                    t.Font = OsuFont.GetFont(size: 12, weight: FontWeight.SemiBold);
+                }).With(text =>
             {
                 text.Anchor = alignment;
                 text.Origin = alignment;

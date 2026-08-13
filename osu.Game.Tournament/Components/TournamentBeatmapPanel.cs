@@ -72,7 +72,7 @@ namespace osu.Game.Tournament.Components
                         new TournamentSpriteText
                         {
                             Text = Beatmap?.GetDisplayTitleRomanisable(false, false) ?? (LocalisableString)@"unknown",
-                            Font = OsuFont.Torus.With(weight: FontWeight.Bold),
+                            Font = OsuFont.MapleMono.With(weight: FontWeight.Bold),
                         },
                         new FillFlowContainer
                         {
@@ -84,24 +84,24 @@ namespace osu.Game.Tournament.Components
                                 {
                                     Text = "mapper",
                                     Padding = new MarginPadding { Right = 5 },
-                                    Font = OsuFont.Torus.With(weight: FontWeight.Regular, size: 14)
+                                    Font = OsuFont.MapleMono.With(weight: FontWeight.Regular, size: 14)
                                 },
                                 new TournamentSpriteText
                                 {
                                     Text = Beatmap?.Metadata.Author.Username ?? "unknown",
                                     Padding = new MarginPadding { Right = 20 },
-                                    Font = OsuFont.Torus.With(weight: FontWeight.Bold, size: 14)
+                                    Font = OsuFont.MapleMono.With(weight: FontWeight.Bold, size: 14)
                                 },
                                 new TournamentSpriteText
                                 {
                                     Text = "difficulty",
                                     Padding = new MarginPadding { Right = 5 },
-                                    Font = OsuFont.Torus.With(weight: FontWeight.Regular, size: 14)
+                                    Font = OsuFont.MapleMono.With(weight: FontWeight.Regular, size: 14)
                                 },
                                 new TournamentSpriteText
                                 {
                                     Text = Beatmap?.DifficultyName ?? "unknown",
-                                    Font = OsuFont.Torus.With(weight: FontWeight.Bold, size: 14)
+                                    Font = OsuFont.MapleMono.With(weight: FontWeight.Bold, size: 14)
                                 },
                             }
                         }

@@ -52,7 +52,7 @@ namespace osu.Game.Overlays
                             new OsuSpriteText
                             {
                                 Text = this.GetLocalisableDescription(),
-                                Font = OsuFont.TorusAlternate.With(size: HEADER_FONT_SIZE),
+                                Font = OsuFont.MapleMono.With(size: HEADER_FONT_SIZE),
                                 Colour = OverlayColourProvider.Light1,
                             },
                             Content = new FillFlowContainer

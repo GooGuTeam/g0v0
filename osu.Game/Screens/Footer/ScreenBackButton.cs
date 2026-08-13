@@ -56,7 +56,7 @@ namespace osu.Game.Screens.Footer
                     {
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
-                        Font = OsuFont.TorusAlternate.With(size: 17),
+                        Font = OsuFont.MapleMono.With(size: 17),
                         Text = CommonStrings.Back,
                         UseFullGlyphHeight = false,
                     }

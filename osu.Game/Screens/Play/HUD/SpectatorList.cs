@@ -28,7 +28,7 @@ namespace osu.Game.Screens.Play.HUD
     {
         private const int max_spectators_displayed = 10;
 
-        public Bindable<Typeface> HeaderFont { get; } = new Bindable<Typeface>(Typeface.Torus);
+        public Bindable<Typeface> HeaderFont { get; } = new Bindable<Typeface>(Typeface.MapleMono);
         public BindableColour4 HeaderColour { get; } = new BindableColour4(Colour4.White);
 
         private IBindableList<SpectatorUser> watchingUsers { get; } = new BindableList<SpectatorUser>();

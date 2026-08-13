@@ -82,7 +82,7 @@ namespace osu.Game.Tests.Visual.UserInterface
 
             childContainers[0].Add(osuSpriteText);
             childContainers[1].Add(sizePreservingSpriteText);
-            osuSpriteText.Font = sizePreservingSpriteText.Font = OsuFont.GetFont(Typeface.Venera, weight: FontWeight.Bold, size: 20);
+            osuSpriteText.Font = sizePreservingSpriteText.Font = OsuFont.GetFont(Typeface.MapleMono, weight: FontWeight.Bold, size: 20);
         }
 
         protected override void Update()

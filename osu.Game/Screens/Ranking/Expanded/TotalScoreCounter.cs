@@ -64,7 +64,7 @@ namespace osu.Game.Screens.Ranking.Expanded
             s.Anchor = Anchor.TopCentre;
             s.Origin = Anchor.TopCentre;
 
-            s.Font = OsuFont.Torus.With(size: 60, weight: FontWeight.Light, fixedWidth: true);
+            s.Font = OsuFont.MapleMono.With(size: 60, weight: FontWeight.Light, fixedWidth: true);
             s.Spacing = new Vector2(-5, 0);
         });
 

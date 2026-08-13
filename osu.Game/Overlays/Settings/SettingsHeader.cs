@@ -41,7 +41,7 @@ namespace osu.Game.Overlays.Settings
                     }
                 }.With(flow =>
                 {
-                    flow.AddText(heading, header => header.Font = OsuFont.TorusAlternate.With(size: 40));
+                    flow.AddText(heading, header => header.Font = OsuFont.MapleMono.With(size: 40));
                     flow.NewLine();
                     flow.AddText(subheading, subheader =>
                     {

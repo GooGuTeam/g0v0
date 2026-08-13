@@ -138,7 +138,7 @@ namespace osu.Game.Overlays.AccountCreation
             usernameDescription.AddText(AccountCreationStrings.UsernameDescription);
 
             emailAddressDescription.AddText(AccountCreationStrings.EmailDescription1);
-            emailAddressDescription.AddText(AccountCreationStrings.EmailDescription2, cp => cp.Font = cp.Font.With(Typeface.Torus, weight: FontWeight.Bold));
+            emailAddressDescription.AddText(AccountCreationStrings.EmailDescription2, cp => cp.Font = cp.Font.With(Typeface.MapleMono, weight: FontWeight.Bold));
 
             passwordDescription.AddText("At least ");
             characterCheckText = passwordDescription.AddText("8 characters long");

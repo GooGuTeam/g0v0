@@ -103,7 +103,7 @@ namespace osu.Game.Overlays.News
                                 Horizontal = 15,
                                 Vertical = 10
                             },
-                            Child = main = new TextFlowContainer
+                            Child = main = new TextFlowContainer(t => t.AllowMultiline = false)
                             {
                                 RelativeSizeAxes = Axes.X,
                                 AutoSizeAxes = Axes.Y

@@ -71,7 +71,7 @@ namespace osu.Game.Overlays.Mods
                     Origin = Anchor.CentreLeft,
                     Text = ModSelectOverlayStrings.CustomisationPanelHeader,
                     UseFullGlyphHeight = false,
-                    Font = OsuFont.Torus.With(size: 20f, weight: FontWeight.SemiBold),
+                    Font = OsuFont.MapleMono.With(size: 20f, weight: FontWeight.SemiBold),
                     Margin = new MarginPadding { Left = 20f },
                 },
                 new Container

@@ -185,8 +185,8 @@ namespace osu.Game.Screens.Play.HUD
 
             private void updateFont(bool winning)
                 => displayedSpriteText.Font = winning
-                    ? OsuFont.Torus.With(weight: FontWeight.Bold, size: font_size, fixedWidth: true)
-                    : OsuFont.Torus.With(weight: FontWeight.Regular, size: font_size * 0.8f, fixedWidth: true);
+                    ? OsuFont.MapleMono.With(weight: FontWeight.Bold, size: font_size, fixedWidth: true)
+                    : OsuFont.MapleMono.With(weight: FontWeight.Regular, size: font_size * 0.8f, fixedWidth: true);
         }
 
         private partial class MatchScoreDiffCounter : CommaSeparatedScoreCounter
@@ -194,7 +194,7 @@ namespace osu.Game.Screens.Play.HUD
             protected override OsuSpriteText CreateSpriteText() => base.CreateSpriteText().With(s =>
             {
                 s.Spacing = new Vector2(-2);
-                s.Font = OsuFont.Torus.With(weight: FontWeight.Regular, size: bar_height, fixedWidth: true);
+                s.Font = OsuFont.MapleMono.With(weight: FontWeight.Regular, size: bar_height, fixedWidth: true);
             });
         }
     }

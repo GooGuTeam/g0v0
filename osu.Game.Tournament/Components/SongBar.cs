@@ -265,7 +265,7 @@ namespace osu.Game.Tournament.Components
 
                 static void cp(SpriteText s, bool bold)
                 {
-                    s.Font = OsuFont.Torus.With(weight: bold ? FontWeight.Bold : FontWeight.Regular, size: 15);
+                    s.Font = OsuFont.MapleMono.With(weight: bold ? FontWeight.Bold : FontWeight.Regular, size: 15);
                 }
 
                 for (int i = 0; i < tuples.Length; i++)

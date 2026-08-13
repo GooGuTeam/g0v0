@@ -50,7 +50,7 @@ namespace osu.Game.Overlays.Mods
                         {
                             Anchor = Anchor.CentreLeft,
                             Origin = Anchor.CentreLeft,
-                            Font = OsuFont.Torus.With(size: 16f, weight: FontWeight.SemiBold),
+                            Font = OsuFont.MapleMono.With(size: 16f, weight: FontWeight.SemiBold),
                             Colour = colourProvider.Content1,
                             UseFullGlyphHeight = false,
                             Text = mod.Name,
@@ -67,7 +67,8 @@ namespace osu.Game.Overlays.Mods
                     {
                         new TextFlowContainer(t =>
                         {
-                            t.Font = OsuFont.Torus.With(size: 12f, weight: FontWeight.SemiBold);
+                            t.AllowMultiline = false;
+                            t.Font = OsuFont.MapleMono.With(size: 12f, weight: FontWeight.SemiBold);
                         })
                         {
                             AutoSizeAxes = Axes.Both,
@@ -76,7 +77,7 @@ namespace osu.Game.Overlays.Mods
                         },
                         new TextFlowContainer(t =>
                         {
-                            t.Font = OsuFont.Torus.With(size: 12f, weight: FontWeight.SemiBold);
+                            t.Font = OsuFont.MapleMono.With(size: 12f, weight: FontWeight.SemiBold);
                         })
                         {
                             Anchor = Anchor.TopRight,

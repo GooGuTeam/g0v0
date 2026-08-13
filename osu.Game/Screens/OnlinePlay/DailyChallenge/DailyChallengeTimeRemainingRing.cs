@@ -78,7 +78,7 @@ namespace osu.Game.Screens.OnlinePlay.DailyChallenge
                                 timeText = new OsuSpriteText
                                 {
                                     Text = "00:00:00",
-                                    Font = OsuFont.TorusAlternate.With(size: 40),
+                                    Font = OsuFont.MapleMono.With(size: 40),
                                     Anchor = Anchor.Centre,
                                     Origin = Anchor.Centre,
                                 },

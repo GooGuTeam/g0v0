@@ -91,7 +91,7 @@ namespace osu.Game.Screens.Play.HUD
         private void load()
         {
             info.TextColour = Colour4.White;
-            info.Font = OsuFont.Torus.With(size: 18, weight: FontWeight.Bold);
+            info.Font = OsuFont.MapleMono.With(size: 18, weight: FontWeight.Bold);
         }
 
         protected override void LoadComplete()

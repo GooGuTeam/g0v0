@@ -13,7 +13,13 @@ namespace osu.Game.Graphics.Containers
     public partial class OsuTextFlowContainer : TextFlowContainer
     {
         public OsuTextFlowContainer(Action<SpriteText>? defaultCreationParameters = null)
-            : base(defaultCreationParameters)
+            : base(spriteText =>
+            {
+                // words inside a flow are laid out by this container; the multiline text builder
+                // would otherwise throw when a word doesn't fit in a fixed width (LineBaseHeight).
+                spriteText.AllowMultiline = false;
+                defaultCreationParameters?.Invoke(spriteText);
+            })
         {
         }
 

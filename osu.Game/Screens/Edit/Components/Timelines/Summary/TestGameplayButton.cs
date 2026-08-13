@@ -23,7 +23,7 @@ namespace osu.Game.Screens.Edit.Components.Timelines.Summary
             Depth = -1,
             Origin = Anchor.Centre,
             Anchor = Anchor.Centre,
-            Font = OsuFont.TorusAlternate.With(weight: FontWeight.Light, size: 24),
+            Font = OsuFont.MapleMono.With(weight: FontWeight.Light, size: 24),
             Shadow = false
         };
 

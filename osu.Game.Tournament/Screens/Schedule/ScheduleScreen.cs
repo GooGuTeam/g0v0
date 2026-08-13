@@ -199,7 +199,7 @@ namespace osu.Game.Tournament.Screens.Schedule
                             Anchor = Anchor.CentreLeft,
                             Origin = Anchor.CentreLeft,
                             Text = currentMatch.Value.Team1.Value?.FullName + " vs " + currentMatch.Value.Team2.Value?.FullName,
-                            Font = OsuFont.Torus.With(size: 24, weight: FontWeight.SemiBold)
+                            Font = OsuFont.MapleMono.With(size: 24, weight: FontWeight.SemiBold)
                         },
                         new FillFlowContainer
                         {
@@ -211,7 +211,7 @@ namespace osu.Game.Tournament.Screens.Schedule
                             {
                                 new ScheduleMatchDate(currentMatch.Value.Date.Value)
                                 {
-                                    Font = OsuFont.Torus.With(size: 24, weight: FontWeight.Regular)
+                                    Font = OsuFont.MapleMono.With(size: 24, weight: FontWeight.Regular)
                                 }
                             }
                         },
@@ -242,7 +242,7 @@ namespace osu.Game.Tournament.Screens.Schedule
                         Origin = Anchor.TopLeft,
                         Colour = OsuColour.Gray(0.7f),
                         Alpha = conditional ? 0.6f : 1,
-                        Font = OsuFont.Torus,
+                        Font = OsuFont.MapleMono,
                         Margin = new MarginPadding { Horizontal = 10, Vertical = 5 },
                     });
                     AddInternal(new TournamentSpriteText

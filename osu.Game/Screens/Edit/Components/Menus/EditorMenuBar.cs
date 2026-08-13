@@ -66,10 +66,10 @@ namespace osu.Game.Screens.Edit.Components.Menus
                 },
             });
 
-            text.AddText(@"g0v0!", t => t.Font = OsuFont.TorusAlternate);
+            text.AddText(@"g0v0!", t => t.Font = OsuFont.MapleMono);
             text.AddText(@"editor", t =>
             {
-                t.Font = OsuFont.TorusAlternate;
+                t.Font = OsuFont.MapleMono;
                 t.Colour = colourProvider.Highlight1;
             });
         }

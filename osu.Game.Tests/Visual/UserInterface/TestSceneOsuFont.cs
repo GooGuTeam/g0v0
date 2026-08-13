@@ -42,7 +42,7 @@ namespace osu.Game.Tests.Visual.UserInterface
 
         private void updateFont()
         {
-            FontUsage usage = useAlternates.Value ? OsuFont.TorusAlternate : OsuFont.Torus;
+            FontUsage usage = useAlternates.Value ? OsuFont.TorusAlternate : OsuFont.MapleMono;
             spriteText.Font = usage.With(size: 40, weight: weight.Value);
         }
 

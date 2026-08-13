@@ -382,7 +382,7 @@ namespace osu.Game.Screens.Utility
                 (certifiedText = new OsuSpriteText
                 {
                     Alpha = 0,
-                    Font = OsuFont.TorusAlternate.With(size: 80, weight: FontWeight.Bold),
+                    Font = OsuFont.MapleMono.With(size: 80, weight: FontWeight.Bold),
                     Text = "Certified!",
                     Blending = BlendingParameters.Additive,
                 }).WithEffect(new GlowEffect
@@ -399,7 +399,7 @@ namespace osu.Game.Screens.Utility
                     Text = $"You should use a frame limiter with update rate of {mapDifficultyToTargetFrameRate(DifficultyLevel + 1)} Hz (or fps) for best results!",
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
-                    Font = OsuFont.Torus.With(size: 24, weight: FontWeight.SemiBold),
+                    Font = OsuFont.MapleMono.With(size: 24, weight: FontWeight.SemiBold),
                     Y = 80,
                 }
             });

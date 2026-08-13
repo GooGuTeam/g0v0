@@ -22,7 +22,7 @@ namespace osu.Game.Skinning
         public bool UsesFixedAnchor { get; set; }
 
         [SettingSource(typeof(SkinnableComponentStrings), nameof(SkinnableComponentStrings.Font))]
-        public Bindable<Typeface> Font { get; } = new Bindable<Typeface>(Typeface.Torus);
+        public Bindable<Typeface> Font { get; } = new Bindable<Typeface>(Typeface.MapleMono);
 
         [SettingSource(typeof(SkinnableComponentStrings), nameof(SkinnableComponentStrings.TextWeight), SettingControlType = typeof(WeightDropdown))]
         public Bindable<FontWeight> TextWeight { get; } = new Bindable<FontWeight>(FontWeight.Regular);
@@ -79,7 +79,7 @@ namespace osu.Game.Skinning
 
                     switch (font.Value)
                     {
-                        case Typeface.Venera:
+                        case Typeface.MapleMono:
                             AddDropdownItem(FontWeight.Light);
                             AddDropdownItem(FontWeight.Bold);
                             AddDropdownItem(FontWeight.Black);

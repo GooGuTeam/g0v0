@@ -125,7 +125,7 @@ namespace osu.Game.Overlays.Mods
                                 {
                                     titleText = new TruncatingSpriteText
                                     {
-                                        Font = OsuFont.TorusAlternate.With(size: 18, weight: FontWeight.SemiBold),
+                                        Font = OsuFont.MapleMono.With(size: 18, weight: FontWeight.SemiBold),
                                         RelativeSizeAxes = Axes.X,
                                         Shear = -OsuGame.SHEAR,
                                         Margin = new MarginPadding

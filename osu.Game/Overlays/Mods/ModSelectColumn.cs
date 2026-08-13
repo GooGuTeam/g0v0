@@ -102,7 +102,7 @@ namespace osu.Game.Overlays.Mods
                                 },
                                 headerText = new OsuTextFlowContainer(t =>
                                 {
-                                    t.Font = OsuFont.TorusAlternate.With(size: 17);
+                                    t.Font = OsuFont.MapleMono.With(size: 17);
                                     t.Shadow = false;
                                     t.Colour = Colour4.Black;
                                 })

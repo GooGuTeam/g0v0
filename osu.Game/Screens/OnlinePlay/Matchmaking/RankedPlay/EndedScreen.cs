@@ -58,7 +58,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
                         Anchor = Anchor.TopCentre,
                         Origin = Anchor.TopCentre,
                         Text = "VICTORY",
-                        Font = OsuFont.Torus.With(size: 100, weight: FontWeight.SemiBold),
+                        Font = OsuFont.MapleMono.With(size: 100, weight: FontWeight.SemiBold),
                         UseFullGlyphHeight = false,
                         Colour = colours.Green1,
                     },

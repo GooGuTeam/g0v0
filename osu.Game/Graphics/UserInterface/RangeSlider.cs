@@ -194,7 +194,7 @@ namespace osu.Game.Graphics.UserInterface
                     Origin = Anchor.Centre,
                     Y = -0.5f,
                     Colour = Color4.White,
-                    Font = OsuFont.Torus.With(size: 10),
+                    Font = OsuFont.MapleMono.With(size: 10),
                 });
 
                 Current.BindValueChanged(current =>

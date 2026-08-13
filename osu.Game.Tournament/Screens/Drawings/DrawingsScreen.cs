@@ -142,7 +142,7 @@ namespace osu.Game.Tournament.Screens.Drawings
 
                             Alpha = 0,
 
-                            Font = OsuFont.Torus.With(weight: FontWeight.Light, size: 42),
+                            Font = OsuFont.MapleMono.With(weight: FontWeight.Light, size: 42),
                         }
                     }
                 },

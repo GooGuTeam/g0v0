@@ -75,6 +75,7 @@ namespace osu.Game.Graphics.Cursor
                     },
                     text = new TextFlowContainer(f =>
                     {
+                        f.AllowMultiline = false;
                         f.Font = OsuFont.GetFont(weight: FontWeight.Regular);
                     })
                     {

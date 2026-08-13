@@ -29,7 +29,7 @@ namespace osu.Game.Graphics.UserInterface
         public float TextSize
         {
             get => text.Font.Size;
-            set => text.Font = OsuFont.TorusAlternate.With(size: value);
+            set => text.Font = OsuFont.MapleMono.With(size: value);
         }
 
         public Colour4 DarkerColour
@@ -112,7 +112,7 @@ namespace osu.Game.Graphics.UserInterface
                     Shear = -OsuGame.SHEAR,
                     Child = text = new OsuSpriteText
                     {
-                        Font = OsuFont.TorusAlternate.With(size: 17),
+                        Font = OsuFont.MapleMono.With(size: 17),
                         Margin = new MarginPadding { Horizontal = 15 },
                     }
                 },

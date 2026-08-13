@@ -76,11 +76,11 @@ namespace osu.Game.Screens.Menu
                 },
             };
 
-            textFlow.AddText("this is ", t => t.Font = t.Font.With(Typeface.Torus, 30, FontWeight.Regular));
+            textFlow.AddText("this is ", t => t.Font = t.Font.With(Typeface.MapleMono, 30, FontWeight.Regular));
 
             textFlow.AddText("g0v0!", t =>
             {
-                t.Font = t.Font.With(Typeface.Torus, 30, FontWeight.Regular);
+                t.Font = t.Font.With(Typeface.MapleMono, 30, FontWeight.Regular);
                 t.Colour = colours.G0V0ThemeColour;
             });
 
@@ -92,7 +92,7 @@ namespace osu.Game.Screens.Menu
             textFlow.AddText("a free and open rhythm game based on ", formatRegular);
             textFlow.AddText("osu!lazer", t =>
             {
-                t.Font = t.Font.With(Typeface.Torus, 20, FontWeight.SemiBold);
+                t.Font = t.Font.With(Typeface.MapleMono, 20, FontWeight.Bold);
                 t.Colour = colours.Pink;
             });
             textFlow.AddText(" codebase originally developed by ppy Pty Ltd.", formatRegular);
@@ -111,7 +111,7 @@ namespace osu.Game.Screens.Menu
             textFlow.NewLine();
             textFlow.AddText("https://github.com/GooGuTeam/g0v0", t =>
             {
-                t.Font = t.Font.With(Typeface.Torus, 20, FontWeight.SemiBold);
+                t.Font = t.Font.With(Typeface.MapleMono, 20, FontWeight.Bold);
                 t.Colour = colours.Blue;
             });
             iconColour = colours.Yellow;

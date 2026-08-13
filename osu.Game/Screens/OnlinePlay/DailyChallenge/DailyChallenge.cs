@@ -398,7 +398,7 @@ namespace osu.Game.Screens.OnlinePlay.DailyChallenge
                         Action = () => game?.ShowWiki(@"Gameplay/Daily_challenge"),
                         Child = new OsuSpriteText
                         {
-                            Font = OsuFont.TorusAlternate.With(size: 24),
+                            Font = OsuFont.MapleMono.With(size: 24),
                             Text = ButtonSystemStrings.DailyChallenge.ToSentence(),
                         }
                     }
@@ -407,7 +407,7 @@ namespace osu.Game.Screens.OnlinePlay.DailyChallenge
 
             if (!string.IsNullOrEmpty(room.Description))
             {
-                var subtitleFont = OsuFont.TorusAlternate.With(size: 16);
+                var subtitleFont = OsuFont.MapleMono.With(size: 16);
 
                 titleFlow.AddRange(new Drawable[]
                 {

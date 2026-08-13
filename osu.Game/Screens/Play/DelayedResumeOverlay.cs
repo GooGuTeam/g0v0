@@ -102,7 +102,7 @@ namespace osu.Game.Screens.Play
                                 Origin = Anchor.Centre,
                                 UseFullGlyphHeight = false,
                                 AlwaysPresent = true,
-                                Font = OsuFont.Torus.With(size: 70, weight: FontWeight.Light)
+                                Font = OsuFont.MapleMono.With(size: 70, weight: FontWeight.Light)
                             }
                         }
                     }

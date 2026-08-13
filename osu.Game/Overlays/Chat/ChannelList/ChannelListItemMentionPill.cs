@@ -39,7 +39,7 @@ namespace osu.Game.Overlays.Chat.ChannelList
                 {
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
-                    Font = OsuFont.Torus.With(size: 11, weight: FontWeight.Bold),
+                    Font = OsuFont.MapleMono.With(size: 11, weight: FontWeight.Bold),
                     Margin = new MarginPadding { Bottom = 1 },
                     Colour = colourProvider.Background5,
                 },

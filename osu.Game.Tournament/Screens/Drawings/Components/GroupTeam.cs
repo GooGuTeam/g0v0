@@ -26,7 +26,7 @@ namespace osu.Game.Tournament.Screens.Drawings.Components
             AcronymText.Anchor = Anchor.TopCentre;
             AcronymText.Origin = Anchor.TopCentre;
             AcronymText.Text = team.Acronym.Value.ToUpperInvariant();
-            AcronymText.Font = OsuFont.Torus.With(weight: FontWeight.Bold, size: 10);
+            AcronymText.Font = OsuFont.MapleMono.With(weight: FontWeight.Bold, size: 10);
             Flag.Scale = new Vector2(0.48f);
 
             InternalChildren = new Drawable[]

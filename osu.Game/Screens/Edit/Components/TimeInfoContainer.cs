@@ -37,7 +37,7 @@ namespace osu.Game.Screens.Edit.Components
                 bpm = new OsuSpriteText
                 {
                     Colour = colours.Orange1,
-                    Font = OsuFont.Torus.With(size: 14, weight: FontWeight.SemiBold, fixedWidth: true),
+                    Font = OsuFont.MapleMono.With(size: 14, weight: FontWeight.SemiBold, fixedWidth: true),
                     Spacing = new Vector2(-1, 0),
                     Position = new Vector2(0, 4),
                     Anchor = Anchor.CentreRight,
@@ -46,7 +46,7 @@ namespace osu.Game.Screens.Edit.Components
                 progress = new OsuSpriteText
                 {
                     Colour = colours.Purple1,
-                    Font = OsuFont.Torus.With(size: 14, weight: FontWeight.SemiBold, fixedWidth: true),
+                    Font = OsuFont.MapleMono.With(size: 14, weight: FontWeight.SemiBold, fixedWidth: true),
                     Spacing = new Vector2(-1, 0),
                     Anchor = Anchor.CentreLeft,
                     Position = new Vector2(2, 4),
@@ -127,7 +127,7 @@ namespace osu.Game.Screens.Edit.Components
                         Anchor = Anchor.CentreLeft,
                         Origin = Anchor.CentreLeft,
                         Spacing = new Vector2(-2, 0),
-                        Font = OsuFont.Torus.With(size: 32, fixedWidth: true, weight: FontWeight.Light),
+                        Font = OsuFont.MapleMono.With(size: 32, fixedWidth: true, weight: FontWeight.Light),
                     },
                     inputTextBox = new TimestampTextBox
                     {

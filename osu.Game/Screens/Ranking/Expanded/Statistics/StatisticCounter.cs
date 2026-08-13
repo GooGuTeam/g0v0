@@ -18,7 +18,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
 
         protected override OsuSpriteText CreateSpriteText() => base.CreateSpriteText().With(s =>
         {
-            s.Font = OsuFont.Torus.With(size: 20, fixedWidth: true);
+            s.Font = OsuFont.MapleMono.With(size: 20, fixedWidth: true);
             s.Spacing = new Vector2(-2, 0);
         });
     }

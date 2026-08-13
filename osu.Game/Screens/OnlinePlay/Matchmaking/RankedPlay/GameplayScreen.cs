@@ -35,7 +35,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
                             Text = "Gameplay is in progress...",
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
-                            Font = OsuFont.GetFont(typeface: Typeface.TorusAlternate, size: 42, weight: FontWeight.Regular),
+                            Font = OsuFont.GetFont(typeface: Typeface.MapleMono, size: 42, weight: FontWeight.Regular),
                         },
                     ]
                 },

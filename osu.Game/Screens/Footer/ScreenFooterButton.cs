@@ -147,7 +147,7 @@ namespace osu.Game.Screens.Footer
                                     AutoSizeAxes = Axes.Both,
                                     Child = text = new OsuSpriteText
                                     {
-                                        Font = OsuFont.TorusAlternate.With(size: 16),
+                                        Font = OsuFont.MapleMono.With(size: 16),
                                         AlwaysPresent = true
                                     }
                                 },

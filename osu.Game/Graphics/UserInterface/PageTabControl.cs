@@ -85,7 +85,7 @@ namespace osu.Game.Graphics.UserInterface
                     new HoverSounds(HoverSampleSet.TabSelect)
                 };
 
-                Active.BindValueChanged(active => Text.Font = Text.Font.With(Typeface.Torus, weight: active.NewValue ? FontWeight.Bold : FontWeight.Medium), true);
+                Active.BindValueChanged(active => Text.Font = Text.Font.With(Typeface.MapleMono, weight: active.NewValue ? FontWeight.Bold : FontWeight.Medium), true);
             }
 
             [BackgroundDependencyLoader]

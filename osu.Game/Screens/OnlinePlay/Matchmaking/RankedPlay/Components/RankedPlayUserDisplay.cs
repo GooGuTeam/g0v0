@@ -175,7 +175,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
                                 {
                                     Anchor = beatmapStateAnchor,
                                     Origin = beatmapStateAnchor,
-                                    Font = OsuFont.Torus.With(size: 12, weight: FontWeight.SemiBold),
+                                    Font = OsuFont.MapleMono.With(size: 12, weight: FontWeight.SemiBold),
                                 },
                             ],
                         },

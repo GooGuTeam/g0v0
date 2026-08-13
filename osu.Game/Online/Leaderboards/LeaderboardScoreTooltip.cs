@@ -175,7 +175,7 @@ namespace osu.Game.Online.Leaderboards
                     {
                         new OsuSpriteText
                         {
-                            Font = OsuFont.Torus.With(size: 12, weight: FontWeight.SemiBold),
+                            Font = OsuFont.MapleMono.With(size: 12, weight: FontWeight.SemiBold),
                             Text = displayName.ToUpper(),
                             Colour = colours.ForHitResult(result),
                         },

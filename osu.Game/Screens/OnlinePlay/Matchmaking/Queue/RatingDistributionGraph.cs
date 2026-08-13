@@ -599,7 +599,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                         Origin = Anchor.BottomCentre,
                         Y = -4,
                         Text = $"Your rating ({rating})",
-                        Font = OsuFont.Torus.With(size: 12),
+                        Font = OsuFont.MapleMono.With(size: 12),
                     }
                 };
             }
@@ -694,7 +694,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                             {
                                 ratingText = new OsuSpriteText
                                 {
-                                    Font = OsuFont.Torus.With(weight: FontWeight.SemiBold)
+                                    Font = OsuFont.MapleMono.With(weight: FontWeight.SemiBold)
                                 },
                                 new FillFlowContainer
                                 {
@@ -709,7 +709,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                                         },
                                         valueText = new OsuSpriteText
                                         {
-                                            Font = OsuFont.Torus.With(size: 12)
+                                            Font = OsuFont.MapleMono.With(size: 12)
                                         }
                                     }
                                 }

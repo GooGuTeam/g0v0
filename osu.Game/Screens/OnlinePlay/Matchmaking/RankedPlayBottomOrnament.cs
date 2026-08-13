@@ -136,7 +136,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking
                     Y = 4,
                     Anchor = Anchor.TopCentre,
                     Origin = Anchor.TopCentre,
-                    Font = OsuFont.Torus.With(size: 10, weight: FontWeight.Bold),
+                    Font = OsuFont.MapleMono.With(size: 10, weight: FontWeight.Bold),
                     Spacing = new Vector2(3, 0),
                     Text = ButtonSystemStrings.RankedPlay.ToUpper(),
                 },

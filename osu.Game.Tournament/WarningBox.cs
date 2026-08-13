@@ -30,7 +30,7 @@ namespace osu.Game.Tournament
                 new TournamentSpriteText
                 {
                     Text = text,
-                    Font = OsuFont.Torus.With(weight: FontWeight.Bold),
+                    Font = OsuFont.MapleMono.With(weight: FontWeight.Bold),
                     Colour = Color4.White,
                     Padding = new MarginPadding(20)
                 }

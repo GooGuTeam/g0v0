@@ -137,7 +137,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
                         Left = 20,
                     },
                     Text = Heading,
-                    Font = OsuFont.TorusAlternate.With(size: 34),
+                    Font = OsuFont.MapleMono.With(size: 34),
                     Shadow = false,
                 },
                 new Container
@@ -187,7 +187,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
                                 Left = 10
                             },
                             UseFullGlyphHeight = false,
-                            Font = OsuFont.TorusAlternate.With(size: 16, fixedWidth: true, weight: FontWeight.SemiBold)
+                            Font = OsuFont.MapleMono.With(size: 16, fixedWidth: true, weight: FontWeight.SemiBold)
                         }
                     ]
                 },
@@ -199,7 +199,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
                         Left = 20
                     },
                     Text = Caption,
-                    Font = OsuFont.TorusAlternate.With(size: 24, weight: FontWeight.SemiBold)
+                    Font = OsuFont.MapleMono.With(size: 24, weight: FontWeight.SemiBold)
                 }
             };
         }

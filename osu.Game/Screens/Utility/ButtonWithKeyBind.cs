@@ -46,7 +46,7 @@ namespace osu.Game.Screens.Utility
 
             Height = 100;
             SpriteText.Colour = overlayColourProvider.Background6;
-            SpriteText.Font = OsuFont.TorusAlternate.With(size: 34);
+            SpriteText.Font = OsuFont.MapleMono.With(size: 34);
 
             Triangles?.Hide();
         }

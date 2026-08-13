@@ -98,7 +98,7 @@ namespace osu.Game.Graphics.UserInterfaceV2
                             Origin = Anchor.TopCentre,
                             Anchor = Anchor.TopCentre,
                             Text = header,
-                            Font = OsuFont.Torus.With(size: 25),
+                            Font = OsuFont.MapleMono.With(size: 25),
                             Margin = new MarginPadding { Bottom = 10 }
                         },
                         new OsuSpriteText
@@ -255,7 +255,7 @@ namespace osu.Game.Graphics.UserInterfaceV2
                         Origin = Anchor.TopCentre,
                         Anchor = Anchor.TopCentre,
                         Text = UsersStrings.ReportThanks,
-                        Font = OsuFont.Torus.With(size: 25),
+                        Font = OsuFont.MapleMono.With(size: 25),
                         Margin = new MarginPadding { Bottom = 10 }
                     },
                 };

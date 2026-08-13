@@ -3,7 +3,6 @@
 
 #nullable disable
 
-using System.ComponentModel;
 using osu.Framework.Graphics.Sprites;
 
 namespace osu.Game.Graphics
@@ -23,7 +22,7 @@ namespace osu.Game.Graphics
             /// <summary>
             /// Equivalent to Torus with 32px size and semi-bold weight.
             /// </summary>
-            public static FontUsage Title => GetFont(Typeface.TorusAlternate, size: 32, weight: FontWeight.Regular);
+            public static FontUsage Title => GetFont(Typeface.MapleMono, size: 32, weight: FontWeight.Regular);
 
             /// <summary>
             /// Torus with 28px size and semi-bold weight.
@@ -64,17 +63,12 @@ namespace osu.Game.Graphics
         /// <summary>
         /// Font face for numeric display.
         /// </summary>
-        public static FontUsage Numeric => GetFont(Typeface.Venera, weight: FontWeight.Bold);
+        public static FontUsage Numeric => GetFont(Typeface.MapleMono, weight: FontWeight.Bold);
 
         /// <summary>
         /// Default font face for UI and game elements.
         /// </summary>
-        public static FontUsage Torus => GetFont(Typeface.Torus, weight: FontWeight.Regular);
-
-        /// <summary>
-        /// Default font face with alternate character set for headings and flair text.
-        /// </summary>
-        public static FontUsage TorusAlternate => GetFont(Typeface.TorusAlternate, weight: FontWeight.Regular);
+        public static FontUsage MapleMono => GetFont(Typeface.MapleMono, weight: FontWeight.Regular);
 
         public static FontUsage Inter => GetFont(Typeface.Inter, weight: FontWeight.Regular);
 
@@ -87,7 +81,8 @@ namespace osu.Game.Graphics
         /// <param name="italics">Whether the font is italic.</param>
         /// <param name="fixedWidth">Whether all characters should be spaced the same distance apart.</param>
         /// <returns>The <see cref="FontUsage"/>.</returns>
-        public static FontUsage GetFont(Typeface typeface = Typeface.Torus, float size = DEFAULT_FONT_SIZE, FontWeight weight = FontWeight.Medium, bool italics = false, bool fixedWidth = false)
+        public static FontUsage GetFont(Typeface typeface = Typeface.MapleMono, float size = DEFAULT_FONT_SIZE, FontWeight weight = FontWeight.Medium, bool italics = false,
+                                        bool fixedWidth = false)
         {
             string familyString = GetFamilyString(typeface);
             return new FontUsage(familyString, size, GetWeightString(familyString, weight), getItalics(italics), fixedWidth);
@@ -109,14 +104,8 @@ namespace osu.Game.Graphics
         {
             switch (typeface)
             {
-                case Typeface.Venera:
-                    return @"Venera";
-
-                case Typeface.Torus:
-                    return @"Torus";
-
-                case Typeface.TorusAlternate:
-                    return @"Torus-Alternate";
+                case Typeface.MapleMono:
+                    return "MapleMono";
 
                 case Typeface.Inter:
                     return @"Inter";
@@ -133,10 +122,6 @@ namespace osu.Game.Graphics
         /// <returns>The string representation of <paramref name="weight"/> in the specified <paramref name="family"/>.</returns>
         public static string GetWeightString(string family, FontWeight weight)
         {
-            if ((family == GetFamilyString(Typeface.Torus) || family == GetFamilyString(Typeface.TorusAlternate)) && weight == FontWeight.Medium)
-                // torus doesn't have a medium; fallback to regular.
-                weight = FontWeight.Regular;
-
             return weight.ToString();
         }
     }
@@ -164,11 +149,7 @@ namespace osu.Game.Graphics
 
     public enum Typeface
     {
-        Venera,
-        Torus,
-
-        [Description("Torus (alternate)")]
-        TorusAlternate,
+        MapleMono,
         Inter,
     }
 

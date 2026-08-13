@@ -186,7 +186,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
             {
                 return new OsuSpriteText
                 {
-                    Font = OsuFont.Torus.With(size: 60, weight: FontWeight.Light, fixedWidth: true),
+                    Font = OsuFont.MapleMono.With(size: 60, weight: FontWeight.Light, fixedWidth: true),
                     Spacing = new Vector2(-8, 0),
                 };
             }

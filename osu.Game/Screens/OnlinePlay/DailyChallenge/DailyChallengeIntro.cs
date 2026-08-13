@@ -150,7 +150,7 @@ namespace osu.Game.Screens.OnlinePlay.DailyChallenge
                                             Text = DailyChallengeStrings.TodaysChallenge,
                                             Margin = new MarginPadding { Horizontal = 10f, Vertical = 5f },
                                             Shear = -OsuGame.SHEAR,
-                                            Font = OsuFont.GetFont(size: 32, weight: FontWeight.Light, typeface: Typeface.TorusAlternate),
+                                            Font = OsuFont.GetFont(size: 32, weight: FontWeight.Light, typeface: Typeface.MapleMono),
                                         },
                                     }
                                 },
@@ -176,7 +176,7 @@ namespace osu.Game.Screens.OnlinePlay.DailyChallenge
                                             Text = room.Name.Split(':', StringSplitOptions.TrimEntries).Last(),
                                             Margin = new MarginPadding { Horizontal = 10f, Vertical = 5f },
                                             Shear = -OsuGame.SHEAR,
-                                            Font = OsuFont.GetFont(size: 32, weight: FontWeight.Light, typeface: Typeface.TorusAlternate),
+                                            Font = OsuFont.GetFont(size: 32, weight: FontWeight.Light, typeface: Typeface.MapleMono),
                                         },
                                     }
                                 },

@@ -81,7 +81,7 @@ namespace osu.Game.Overlays.Chat
                                         Anchor = Anchor.CentreRight,
                                         Origin = Anchor.CentreRight,
                                         Text = Date.ToLocalTime().ToLocalisableString(@"dd MMMM yyyy").ToUpper(),
-                                        Font = OsuFont.Torus.With(size: TextSize, weight: FontWeight.SemiBold),
+                                        Font = OsuFont.MapleMono.With(size: TextSize, weight: FontWeight.SemiBold),
                                         Colour = colourProvider?.Content1 ?? Colour4.White,
                                     },
                                 }

@@ -158,7 +158,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
                                 Text = $"Round {matchInfo.CurrentRound}",
                                 Anchor = Anchor.Centre,
                                 Origin = Anchor.Centre,
-                                Font = OsuFont.GetFont(size: 36, weight: FontWeight.Bold, typeface: Typeface.TorusAlternate),
+                                Font = OsuFont.GetFont(size: 36, weight: FontWeight.Bold, typeface: Typeface.MapleMono),
                                 Alpha = 0,
                             },
                         },

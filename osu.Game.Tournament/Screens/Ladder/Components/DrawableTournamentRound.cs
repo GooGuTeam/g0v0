@@ -38,7 +38,7 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
                     },
                     textName = new TournamentSpriteText
                     {
-                        Font = OsuFont.Torus.With(weight: FontWeight.Bold),
+                        Font = OsuFont.MapleMono.With(weight: FontWeight.Bold),
                         Colour = TournamentGame.TEXT_COLOUR,
                         Origin = Anchor.TopCentre,
                         Anchor = Anchor.TopCentre

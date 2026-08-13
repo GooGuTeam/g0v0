@@ -91,7 +91,7 @@ namespace osu.Game.Screens.Menu
 
             void formatSemiBold(SpriteText t)
             {
-                t.Font = OsuFont.GetFont(Typeface.TorusAlternate, 16, weight: FontWeight.SemiBold);
+                t.Font = OsuFont.GetFont(Typeface.MapleMono, 16, weight: FontWeight.SemiBold);
                 t.Colour = colours.Pink0;
             }
 

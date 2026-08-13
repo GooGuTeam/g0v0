@@ -86,7 +86,7 @@ namespace osu.Game.Screens.OnlinePlay
                     {
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
-                        Font = OsuFont.Torus.With(size: 14f, weight: FontWeight.Bold),
+                        Font = OsuFont.MapleMono.With(size: 14f, weight: FontWeight.Bold),
                         Shear = -OsuGame.SHEAR,
                     },
                 },

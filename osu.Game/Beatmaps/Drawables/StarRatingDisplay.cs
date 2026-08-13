@@ -130,7 +130,7 @@ namespace osu.Game.Beatmaps.Drawables
                                     Origin = Anchor.Centre,
                                     Margin = new MarginPadding { Bottom = 1.5f },
                                     Spacing = new Vector2(-1.4f),
-                                    Font = OsuFont.Torus.With(size: 14.4f, weight: FontWeight.Bold, fixedWidth: true),
+                                    Font = OsuFont.MapleMono.With(size: 14.4f, weight: FontWeight.Bold, fixedWidth: true),
                                     Shadow = false,
                                 },
                             }

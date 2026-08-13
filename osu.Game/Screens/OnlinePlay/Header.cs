@@ -89,14 +89,14 @@ namespace osu.Game.Screens.OnlinePlay
                             {
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
-                                Font = OsuFont.TorusAlternate.With(size: 24),
+                                Font = OsuFont.MapleMono.With(size: 24),
                                 Text = mainTitle
                             },
                             dot = new OsuSpriteText
                             {
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
-                                Font = OsuFont.TorusAlternate.With(size: 24),
+                                Font = OsuFont.MapleMono.With(size: 24),
                                 Text = "·",
                                 Alpha = 0,
                             },
@@ -104,7 +104,7 @@ namespace osu.Game.Screens.OnlinePlay
                             {
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
-                                Font = OsuFont.TorusAlternate.With(size: 24),
+                                Font = OsuFont.MapleMono.With(size: 24),
                             }
                         }
                     },

@@ -154,7 +154,7 @@ namespace osu.Game.Screens.Edit.Timing
                                 {
                                     new OsuSpriteText
                                     {
-                                        Font = OsuFont.Torus.With(size: 34, weight: FontWeight.SemiBold),
+                                        Font = OsuFont.MapleMono.With(size: 34, weight: FontWeight.SemiBold),
                                         Anchor = Anchor.Centre,
                                         Origin = Anchor.BottomCentre,
                                         Y = 5,
@@ -162,7 +162,7 @@ namespace osu.Game.Screens.Edit.Timing
                                     },
                                     bpmText = new OsuSpriteText
                                     {
-                                        Font = OsuFont.Torus.With(size: 23, weight: FontWeight.Regular),
+                                        Font = OsuFont.MapleMono.With(size: 23, weight: FontWeight.Regular),
                                         Anchor = Anchor.Centre,
                                         Origin = Anchor.TopCentre,
                                         Y = -1,

@@ -27,7 +27,7 @@ namespace osu.Game.Tournament.Components
             Flag = new DrawableTeamFlag(team);
             AcronymText = new TournamentSpriteText
             {
-                Font = OsuFont.Torus.With(weight: FontWeight.Regular),
+                Font = OsuFont.MapleMono.With(weight: FontWeight.Regular),
             };
         }
 

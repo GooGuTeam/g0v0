@@ -24,6 +24,14 @@ namespace osu.Game.Graphics.Containers.Markdown
 {
     public partial class OsuMarkdownTextFlowContainer : MarkdownTextFlowContainer
     {
+        protected override SpriteText CreateSpriteText()
+        {
+            // same as OsuTextFlowContainer: words must not wrap on their own.
+            var spriteText = base.CreateSpriteText();
+            spriteText.AllowMultiline = false;
+            return spriteText;
+        }
+
         protected override void AddLinkText(string text, LinkInline linkInline)
             => AddDrawable(new OsuMarkdownLinkText(text, linkInline));
 

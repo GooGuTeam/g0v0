@@ -498,16 +498,6 @@ namespace osu.Game
 
         protected virtual void InitialiseFonts()
         {
-            AddFont(Resources, @"Fonts/Torus/Torus-Regular");
-            AddFont(Resources, @"Fonts/Torus/Torus-Light");
-            AddFont(Resources, @"Fonts/Torus/Torus-SemiBold");
-            AddFont(Resources, @"Fonts/Torus/Torus-Bold");
-
-            AddFont(Resources, @"Fonts/Torus-Alternate/Torus-Alternate-Regular");
-            AddFont(Resources, @"Fonts/Torus-Alternate/Torus-Alternate-Light");
-            AddFont(Resources, @"Fonts/Torus-Alternate/Torus-Alternate-SemiBold");
-            AddFont(Resources, @"Fonts/Torus-Alternate/Torus-Alternate-Bold");
-
             AddFont(Resources, @"Fonts/Inter/Inter-Regular");
             AddFont(Resources, @"Fonts/Inter/Inter-RegularItalic");
             AddFont(Resources, @"Fonts/Inter/Inter-Light");
@@ -517,16 +507,22 @@ namespace osu.Game
             AddFont(Resources, @"Fonts/Inter/Inter-Bold");
             AddFont(Resources, @"Fonts/Inter/Inter-BoldItalic");
 
+            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Light");
+            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Regular");
+            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Medium");
+            AddFont(Resources, @"Fonts/MapleMono/MapleMono-SemiBold");
+            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Bold");
+            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Black");
+
+            AddFont(Resources, @"Fonts/KTXPYingRound/KTXPYingRound");
+            AddFont(Resources, @"Fonts/MgenPlus/MgenPlus");
+
             AddFont(Resources, @"Fonts/Noto/Noto-Basic");
             AddFont(Resources, @"Fonts/Noto/Noto-Bopomofo");
             AddFont(Resources, @"Fonts/Noto/Noto-CJK-Basic");
             AddFont(Resources, @"Fonts/Noto/Noto-CJK-Compatibility");
             AddFont(Resources, @"Fonts/Noto/Noto-Hangul");
             AddFont(Resources, @"Fonts/Noto/Noto-Thai");
-
-            AddFont(Resources, @"Fonts/Venera/Venera-Light");
-            AddFont(Resources, @"Fonts/Venera/Venera-Bold");
-            AddFont(Resources, @"Fonts/Venera/Venera-Black");
 
             Fonts.AddStore(new OsuIcon.OsuIconStore(Textures));
         }

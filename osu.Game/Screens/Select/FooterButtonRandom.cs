@@ -43,7 +43,7 @@ namespace osu.Game.Screens.Select
                 {
                     randomSpriteText = new OsuSpriteText
                     {
-                        Font = OsuFont.TorusAlternate.With(size: 16),
+                        Font = OsuFont.MapleMono.With(size: 16),
                         AlwaysPresent = true,
                         Anchor = Anchor.TopCentre,
                         Origin = Anchor.TopCentre,
@@ -51,7 +51,7 @@ namespace osu.Game.Screens.Select
                     },
                     rewindSpriteText = new OsuSpriteText
                     {
-                        Font = OsuFont.TorusAlternate.With(size: 16),
+                        Font = OsuFont.MapleMono.With(size: 16),
                         AlwaysPresent = true,
                         Anchor = Anchor.TopCentre,
                         Origin = Anchor.TopCentre,
@@ -76,7 +76,7 @@ namespace osu.Game.Screens.Select
                         AlwaysPresent = true, // make sure the button is sized large enough to always show this
                         Anchor = Anchor.BottomCentre,
                         Origin = Anchor.BottomCentre,
-                        Font = OsuFont.TorusAlternate.With(size: 16),
+                        Font = OsuFont.MapleMono.With(size: 16),
                     });
 
                     fallingRewind.FadeOutFromOne(fade_time, Easing.In);

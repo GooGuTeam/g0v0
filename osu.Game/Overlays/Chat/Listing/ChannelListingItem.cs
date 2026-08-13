@@ -114,10 +114,10 @@ namespace osu.Game.Overlays.Chat.Listing
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
                                 Text = Channel.Name,
-                                Font = OsuFont.Torus.With(size: text_size, weight: FontWeight.SemiBold),
+                                Font = OsuFont.MapleMono.With(size: text_size, weight: FontWeight.SemiBold),
                                 Margin = new MarginPadding { Bottom = 2 },
                             },
-                            topicText = new OsuTextFlowContainer(t => t.Font = OsuFont.Torus.With(size: text_size))
+                            topicText = new OsuTextFlowContainer(t => t.Font = OsuFont.MapleMono.With(size: text_size))
                             {
                                 RelativeSizeAxes = Axes.X,
                                 AutoSizeAxes = Axes.Y,
@@ -140,7 +140,7 @@ namespace osu.Game.Overlays.Chat.Listing
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
                                 Text = "0",
-                                Font = OsuFont.Torus.With(size: text_size),
+                                Font = OsuFont.MapleMono.With(size: text_size),
                                 Margin = new MarginPadding { Bottom = 2 },
                                 Colour = colourProvider.Light3,
                             },

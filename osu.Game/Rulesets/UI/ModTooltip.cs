@@ -72,13 +72,14 @@ namespace osu.Game.Rulesets.UI
                             {
                                 nameText = new OsuSpriteText
                                 {
-                                    Font = OsuFont.Torus.With(size: 16f, weight: FontWeight.SemiBold),
+                                    Font = OsuFont.MapleMono.With(size: 16f, weight: FontWeight.SemiBold),
                                     Colour = colourProvider.Content1,
                                     UseFullGlyphHeight = false,
                                 },
                                 settingsLabelsFlow = new TextFlowContainer(t =>
                                 {
-                                    t.Font = OsuFont.Torus.With(size: 12f, weight: FontWeight.SemiBold);
+                                    t.AllowMultiline = false;
+                                    t.Font = OsuFont.MapleMono.With(size: 12f, weight: FontWeight.SemiBold);
                                 })
                                 {
                                     AutoSizeAxes = Axes.Both,
@@ -88,7 +89,8 @@ namespace osu.Game.Rulesets.UI
                         },
                         settingsValuesFlow = new TextFlowContainer(t =>
                         {
-                            t.Font = OsuFont.Torus.With(size: 12f, weight: FontWeight.SemiBold);
+                            t.AllowMultiline = false;
+                            t.Font = OsuFont.MapleMono.With(size: 12f, weight: FontWeight.SemiBold);
                         })
                         {
                             Anchor = Anchor.BottomLeft,
