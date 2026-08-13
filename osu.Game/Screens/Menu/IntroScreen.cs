@@ -23,7 +23,6 @@ using osu.Game.Online.API;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Overlays.Volume;
-using osu.Game.Rulesets;
 using osu.Game.Screens.Backgrounds;
 using osuTK;
 using osuTK.Graphics;
@@ -55,16 +54,10 @@ namespace osu.Game.Screens.Menu
         private OsuScreen nextScreen;
 
         [Resolved]
-        private AudioManager audio { get; set; }
-
-        [Resolved]
         private MusicController musicController { get; set; }
 
         [CanBeNull]
         private readonly Func<OsuScreen> createNextScreen;
-
-        [Resolved]
-        private RulesetStore rulesets { get; set; }
 
         protected override BackgroundScreen CreateBackground() => new BackgroundScreenDefault
         {
@@ -75,7 +68,7 @@ namespace osu.Game.Screens.Menu
 
         public IntroScreen(MainMenu mainMenu = null)
         {
-            this.createNextScreen = () => mainMenu;
+            createNextScreen = () => mainMenu;
         }
 
         [Resolved]
