@@ -324,11 +324,12 @@ namespace osu.Game.Screens.Menu
         {
             if (loginDisplayed.Value) return;
 
-            if (!api.IsLoggedIn || api.State.Value == APIState.RequiresSecondFactorAuth)
-            {
-                Scheduler.AddDelayed(() => login?.Show(), 500);
-                loginDisplayed.Value = true;
-            }
+            // Only pop in when further auth is required to reduce user annoyance.
+            if (api.State.Value != APIState.RequiresSecondFactorAuth)
+                return;
+
+            Scheduler.AddDelayed(() => login?.Show(), 500);
+            loginDisplayed.Value = true;
         }
 
         protected override void LogoSuspending(OsuLogo logo)
