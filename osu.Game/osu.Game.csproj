@@ -58,7 +58,6 @@ Modified by GooGuTeam</PackageReleaseNotes>
     </PackageReference>
     <PackageReference Include="Realm" Version="20.1.0" />
     <PackageReference Include="ppy.osu.Framework" Version="2026.807.0" />
-    <PackageReference Include="ppy.osu.Game.Resources" Version="2026.710.0" />
     <PackageReference Include="Sentry" Version="6.6.0" />
     <PackageReference Include="SharpCompress" Version="0.49.1" />
     <PackageReference Include="NUnit" Version="4.5.1" />
@@ -70,5 +69,8 @@ Modified by GooGuTeam</PackageReleaseNotes>
     <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0" />
     <PackageReference Include="System.Runtime.InteropServices" Version="4.3.0" />
     <PackageReference Include="System.Runtime.Handles" Version="4.3.0" />
+  </ItemGroup>
+  <ItemGroup Label="Project References">
+    <ProjectReference Include="..\osu.Game.Resources\osu.Game.Resources\osu.Game.Resources.csproj" />
   </ItemGroup>
 </Project>

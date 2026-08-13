@@ -46,13 +46,6 @@ namespace osu.Game.Overlays.Settings.Sections.General
                 },
                 new SettingsButtonV2
                 {
-                    Text = GeneralSettingsStrings.LearnMoreAboutLazer,
-                    TooltipText = GeneralSettingsStrings.LearnMoreAboutLazerTooltip,
-                    BackgroundColour = colours.YellowDark,
-                    Action = () => game?.ShowWiki(@"Help_centre/Upgrading_to_lazer")
-                },
-                new SettingsButtonV2
-                {
                     Text = GeneralSettingsStrings.ReportIssue,
                     TooltipText = GeneralSettingsStrings.ReportIssueTooltip,
                     BackgroundColour = colours.YellowDarker,

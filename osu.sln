@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.29424.173
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "osu.Game", "osu.Game\osu.Game.csproj", "{2A66DD92-ADB1-4994-89E2-C94E04ACDA0D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "osu.Game.Resources", "osu.Game.Resources\osu.Game.Resources\osu.Game.Resources.csproj", "{F3EC7BC4-F433-42E7-A9EE-71897DB2184F}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "osu.Game.Rulesets.Osu", "osu.Game.Rulesets.Osu\osu.Game.Rulesets.Osu.csproj", "{C92A607B-1FDD-4954-9F92-03FF547D9080}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "osu.Game.Rulesets.Catch", "osu.Game.Rulesets.Catch\osu.Game.Rulesets.Catch.csproj", "{58F6C80C-1253-4A0E-A465-B8C85EBEADF3}"
@@ -110,6 +112,10 @@ Global
 		{2A66DD92-ADB1-4994-89E2-C94E04ACDA0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2A66DD92-ADB1-4994-89E2-C94E04ACDA0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2A66DD92-ADB1-4994-89E2-C94E04ACDA0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3EC7BC4-F433-42E7-A9EE-71897DB2184F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3EC7BC4-F433-42E7-A9EE-71897DB2184F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3EC7BC4-F433-42E7-A9EE-71897DB2184F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3EC7BC4-F433-42E7-A9EE-71897DB2184F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C92A607B-1FDD-4954-9F92-03FF547D9080}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C92A607B-1FDD-4954-9F92-03FF547D9080}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C92A607B-1FDD-4954-9F92-03FF547D9080}.Release|Any CPU.ActiveCfg = Release|Any CPU

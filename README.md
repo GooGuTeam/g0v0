@@ -50,8 +50,14 @@ GooGuTeam has made modifications, additions, and removals to the original codeba
 All original osu! code and framework remain licensed under the MIT License.
 See [LICENSE-OSU](./LICENSE-OSU) for details.
 
-All modifications and original contributions made by GooGuTeam are licensed under the MIT License.
+All modifications and original contributions made by GooGuTeam to the codebase are licensed under the MIT License.
 See [LICENSE](./LICENSE) for details.
+
+Game resources (textures, fonts, skins, samples, tracks, shaders, localisation and other asset content)
+are derived from ppy/osu-resources and remain licensed under CC-BY-NC 4.0.
+Original resource content © ppy Pty Ltd; fork modifications © GooGuTeam, both under CC-BY-NC 4.0.
+See [LICENSE in g0v0-resources](https://github.com/GooGuTeam/g0v0-resources/blob/master/LICENCE.md) for details.
+Use of the resources is restricted to non-commercial purposes.
 
 The "osu!" or "ppy" name, trademarks, logos, and other brand assets remain the property of ppy Pty Ltd.
 This project is not affiliated with, endorsed by, or sponsored by ppy Pty Ltd.

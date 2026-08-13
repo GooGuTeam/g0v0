@@ -6,17 +6,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
-using osu.Framework.Development;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shaders;
-using osu.Framework.Utils;
 using osu.Game.Screens.Menu;
 using osu.Framework.Screens;
 using osu.Framework.Threading;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
-using osu.Game.Seasonal;
 using IntroSequence = osu.Game.Configuration.IntroSequence;
 
 namespace osu.Game.Screens
@@ -35,32 +32,7 @@ namespace osu.Game.Screens
         private LoadingSpinner spinner;
         private ScheduledDelegate spinnerShow;
 
-        protected virtual OsuScreen CreateLoadableScreen() => getIntroSequence();
-
-        private IntroScreen getIntroSequence()
-        {
-            // Headless tests run too fast to load non-circles intros correctly.
-            // They will hit the "audio can't play" notification and cause random test failures.
-            if (SeasonalUIConfig.ENABLED && !DebugUtils.IsNUnitRunning)
-                return new IntroChristmas(createMainMenu);
-
-            if (introSequence == IntroSequence.Random)
-                introSequence = (IntroSequence)RNG.Next(0, (int)IntroSequence.Random);
-
-            switch (introSequence)
-            {
-                case IntroSequence.Circles:
-                    return new IntroCircles(createMainMenu);
-
-                case IntroSequence.Welcome:
-                    return new IntroWelcome(createMainMenu);
-
-                default:
-                    return new IntroTriangles(createMainMenu);
-            }
-
-            MainMenu createMainMenu() => new MainMenu();
-        }
+        protected virtual OsuScreen CreateLoadableScreen() => new Disclaimer(new IntroScreen(new MainMenu()));
 
         protected virtual ShaderPrecompiler CreateShaderPrecompiler() => new ShaderPrecompiler();
 

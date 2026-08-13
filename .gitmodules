@@ -1,0 +1,3 @@
+[submodule "osu.Game.Resources"]
+	path = osu.Game.Resources
+	url = https://github.com/GooGuTeam/g0v0-resources.git
