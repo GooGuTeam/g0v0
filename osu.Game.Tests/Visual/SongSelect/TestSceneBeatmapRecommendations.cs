@@ -202,15 +202,15 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             checkRecommendedDifficulty(2);
 
-            AddStep("change mode filter to osu!taiko", () => Game.ChildrenOfType<BeatmapSearchRulesetFilterRow>().Single().ChildrenOfType<FilterTabItem<RulesetInfo>>().ElementAt(2).TriggerClick());
+            AddStep("change mode filter to taiko", () => Game.ChildrenOfType<BeatmapSearchRulesetFilterRow>().Single().ChildrenOfType<FilterTabItem<RulesetInfo>>().ElementAt(2).TriggerClick());
 
             checkRecommendedDifficulty(3);
 
-            AddStep("change mode filter to osu!catch", () => Game.ChildrenOfType<BeatmapSearchRulesetFilterRow>().Single().ChildrenOfType<FilterTabItem<RulesetInfo>>().ElementAt(3).TriggerClick());
+            AddStep("change mode filter to catch", () => Game.ChildrenOfType<BeatmapSearchRulesetFilterRow>().Single().ChildrenOfType<FilterTabItem<RulesetInfo>>().ElementAt(3).TriggerClick());
 
             checkRecommendedDifficulty(4);
 
-            AddStep("change mode filter to osu!mania", () => Game.ChildrenOfType<BeatmapSearchRulesetFilterRow>().Single().ChildrenOfType<FilterTabItem<RulesetInfo>>().ElementAt(4).TriggerClick());
+            AddStep("change mode filter to mania", () => Game.ChildrenOfType<BeatmapSearchRulesetFilterRow>().Single().ChildrenOfType<FilterTabItem<RulesetInfo>>().ElementAt(4).TriggerClick());
 
             checkRecommendedDifficulty(5);
 

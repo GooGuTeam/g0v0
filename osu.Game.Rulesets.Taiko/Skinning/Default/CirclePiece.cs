@@ -20,7 +20,7 @@ using osuTK.Graphics;
 namespace osu.Game.Rulesets.Taiko.Skinning.Default
 {
     /// <summary>
-    /// A circle piece which is used uniformly through osu!taiko to visualise hitobjects.
+    /// A circle piece which is used uniformly through taiko to visualise hitobjects.
     /// <para>
     /// Note that this can actually be non-circle if the width is changed. See <see cref="ElongatedCirclePiece"/>
     /// for a usage example.

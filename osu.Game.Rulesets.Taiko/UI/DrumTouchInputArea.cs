@@ -20,7 +20,7 @@ using osuTK.Graphics;
 namespace osu.Game.Rulesets.Taiko.UI
 {
     /// <summary>
-    /// An overlay that captures and displays osu!taiko mouse and touch input.
+    /// An overlay that captures and displays taiko mouse and touch input.
     /// </summary>
     public partial class DrumTouchInputArea : VisibilityContainer
     {

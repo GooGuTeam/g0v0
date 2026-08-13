@@ -11,7 +11,7 @@ namespace osu.Game.Rulesets.Taiko.Difficulty
     public class TaikoDifficultyAttributes : DifficultyAttributes
     {
         /// <summary>
-        /// The difficulty corresponding to the mechanical skills in osu!taiko.
+        /// The difficulty corresponding to the mechanical skills in taiko.
         /// This includes colour and stamina combined.
         /// </summary>
         public double MechanicalDifficulty { get; set; }

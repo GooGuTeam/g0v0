@@ -72,7 +72,7 @@ namespace osu.Game.Extensions
         }
 
         /// <summary>
-        /// Check whether this <see cref="IRulesetInfo"/>'s online ID is within the range that defines it as a legacy ruleset (ie. either osu!, osu!taiko, osu!catch or osu!mania).
+        /// Check whether this <see cref="IRulesetInfo"/>'s online ID is within the range that defines it as a legacy ruleset (ie. either osu!, taiko, catch or mania).
         /// </summary>
         public static bool IsLegacyRuleset(this IRulesetInfo ruleset) => ruleset.OnlineID >= 0 && ruleset.OnlineID <= ILegacyRuleset.MAX_LEGACY_RULESET_ID;
 
@@ -83,7 +83,7 @@ namespace osu.Game.Extensions
             or RulesetInfo.TAIKO_RELAX_MODE_SHORTNAME or RulesetInfo.CATCH_RELAX_MODE_SHORTNAME;
 
         /// <summary>
-        /// Check whether this <see cref="IRulesetInfo"/> has special rulesets associated with it (ie. is either osu!, osu!taiko, or osu!catch).
+        /// Check whether this <see cref="IRulesetInfo"/> has special rulesets associated with it (ie. is either osu!, taiko, or catch).
         /// </summary>
         public static bool HasSpecialRuleset(this IRulesetInfo ruleset) => ruleset.ShortName is RulesetInfo.OSU_MODE_SHORTNAME or RulesetInfo.TAIKO_MODE_SHORTNAME or RulesetInfo.CATCH_MODE_SHORTNAME;
 

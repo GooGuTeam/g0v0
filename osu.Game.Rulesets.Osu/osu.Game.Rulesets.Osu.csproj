@@ -14,7 +14,7 @@ Full license text: see LICENSE file</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Label="Nuget">
-    <Title>osu! (ruleset)</Title>
+    <Title>standard (ruleset)</Title>
     <PackageId>g0v0.osu.Game.Rulesets.Osu</PackageId>
     <IsPackable>true</IsPackable>
   </PropertyGroup>

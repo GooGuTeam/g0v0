@@ -554,7 +554,7 @@ namespace osu.Game.Beatmaps.Formats
                 KiaiMode = kiaiMode,
             };
 
-            // osu!taiko and osu!mania use effect points rather than difficulty points for scroll speed adjustments.
+            // taiko and mania use effect points rather than difficulty points for scroll speed adjustments.
             if (onlineRulesetID == 1 || onlineRulesetID == 3)
                 effectPoint.ScrollSpeed = speedMultiplier;
 

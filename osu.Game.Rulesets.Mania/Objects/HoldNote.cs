@@ -133,7 +133,7 @@ namespace osu.Game.Rulesets.Mania.Objects
         /// Create the default note samples for a hold note, based off their main sample.
         /// </summary>
         /// <remarks>
-        /// By default, osu!mania beatmaps in only play samples at the start of the hold note.
+        /// By default, mania beatmaps in only play samples at the start of the hold note.
         /// </remarks>
         /// <param name="obj">The object to use as a basis for the head sample.</param>
         /// <returns>Defaults for assigning to <see cref="HoldNote.NodeSamples"/>.</returns>

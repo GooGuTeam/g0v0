@@ -12,7 +12,7 @@ namespace osu.Game.Rulesets.Catch.Edit
     {
         public override double ReadCurrentDistanceSnap(HitObject before, HitObject after)
         {
-            // osu!catch's distance snap implementation is limited, in that a custom spacing cannot be specified.
+            // catch's distance snap implementation is limited, in that a custom spacing cannot be specified.
             // Therefore this functionality is not currently used.
             //
             // The implementation below is probably correct but should be checked if/when exposed via controls.

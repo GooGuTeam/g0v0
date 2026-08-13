@@ -73,7 +73,7 @@ namespace osu.Game.Screens.Edit
                 var nextObject = Beatmap.HitObjects[i];
 
                 // Keep track of the maximum end time encountered thus far.
-                // This handles cases like osu!mania's hold notes, which could have concurrent other objects after their start time.
+                // This handles cases like mania's hold notes, which could have concurrent other objects after their start time.
                 // Note that we're relying on the implicit assumption that objects are sorted by start time,
                 // which is why similar tracking is not done for start time.
                 currentMaxEndTime = Math.Max(currentMaxEndTime, previousObject.GetEndTime());

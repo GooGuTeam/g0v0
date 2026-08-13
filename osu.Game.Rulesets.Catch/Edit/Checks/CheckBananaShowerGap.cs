@@ -12,7 +12,7 @@ using osu.Game.Rulesets.Objects;
 namespace osu.Game.Rulesets.Catch.Edit.Checks
 {
     /// <summary>
-    /// Check the spinner/banana shower gaps specified in the osu!catch difficulty specific ranking criteria.
+    /// Check the spinner/banana shower gaps specified in the catch difficulty specific ranking criteria.
     /// </summary>
     public class CheckBananaShowerGap : ICheck
     {

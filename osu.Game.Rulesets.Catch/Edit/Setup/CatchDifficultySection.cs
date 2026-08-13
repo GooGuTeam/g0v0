@@ -121,7 +121,7 @@ namespace osu.Game.Rulesets.Catch.Edit.Setup
             // in stable, it does *one extremely specific thing* which is influence the infamous `difficultyPeppyStars`
             // which in turn affects score V1 (see `LegacyRulesetExtensions.CalculateDifficultyPeppyStars()`).
             // there is a Ranking Criteria rule saying that Overall Difficulty and Approach Rate should match:
-            // https://osu.ppy.sh/wiki/en/Ranking_criteria/osu!catch
+            // https://osu.ppy.sh/wiki/en/Ranking_criteria/catch
             // the one case wherein that breaks stable is on some marathon maps;
             // on those setting Overall Difficulty too high can lead to score V1 exceeding 32 bits ("score overflow").
             // that case can be manually handled by mappers.

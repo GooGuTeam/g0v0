@@ -184,7 +184,7 @@ namespace osu.Game.Rulesets.Osu.Objects
 
         public void UpdateComboInformation(IHasComboInformation? lastObj)
         {
-            // Note that this implementation is shared with the osu!catch ruleset's implementation.
+            // Note that this implementation is shared with the catch ruleset's implementation.
             // If a change is made here, CatchHitObject.cs should also be updated.
             int index = lastObj?.ComboIndex ?? 0;
             int indexWithOffsets = lastObj?.ComboIndexWithOffsets ?? 0;

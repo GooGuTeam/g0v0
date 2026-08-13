@@ -206,7 +206,7 @@ namespace osu.Game.Rulesets.Catch.Objects
         public static readonly DifficultyRange PREEMPT_RANGE = new DifficultyRange(PREEMPT_MAX, PREEMPT_MID, PREEMPT_MIN);
 
         /// <summary>
-        /// The Y position of the hit object is not used in the normal osu!catch gameplay.
+        /// The Y position of the hit object is not used in the normal catch gameplay.
         /// It is preserved to maximize the backward compatibility with the legacy editor, in which the mappers use the Y position to organize the patterns.
         /// </summary>
         public float LegacyConvertedY { get; set; } = DEFAULT_LEGACY_CONVERT_Y;

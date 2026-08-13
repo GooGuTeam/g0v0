@@ -139,7 +139,7 @@ namespace osu.Game.Screens.Play.HUD
 
         private void onNewJudgement(JudgementResult result)
         {
-            // Check the health increase because cases like osu!catch bananas fire `IgnoreMiss`,
+            // Check the health increase because cases like catch bananas fire `IgnoreMiss`,
             // which counts as a miss but doesn't actually subtract any health.
             pendingMissAnimation |= !result.IsHit && result.HealthIncrease < 0;
         }

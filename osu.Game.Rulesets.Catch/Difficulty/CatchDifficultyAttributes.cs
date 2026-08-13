@@ -14,7 +14,7 @@ namespace osu.Game.Rulesets.Catch.Difficulty
             foreach (var v in base.ToDatabaseAttributes())
                 yield return v;
 
-            // Todo: osu!catch should not output star rating in the 'aim' attribute.
+            // Todo: catch should not output star rating in the 'aim' attribute.
             yield return (ATTRIB_ID_AIM, StarRating);
         }
 

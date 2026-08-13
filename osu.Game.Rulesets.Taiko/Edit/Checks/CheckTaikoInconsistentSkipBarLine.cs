@@ -22,7 +22,7 @@ namespace osu.Game.Rulesets.Taiko.Edit.Checks
             if (context.AllDifficulties.Count() <= 1)
                 yield break;
 
-            // Inconsistent bar line omission only matters for osu!taiko difficulties, so only check those
+            // Inconsistent bar line omission only matters for taiko difficulties, so only check those
             var taikoBeatmaps = context.AllDifficulties.Where(b => b.Playable.BeatmapInfo.Ruleset.ShortName == "taiko").ToList();
 
             if (taikoBeatmaps.Count <= 1)

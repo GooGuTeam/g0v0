@@ -14,7 +14,7 @@ using osuTK;
 namespace osu.Game.Rulesets.Mania.UI
 {
     /// <summary>
-    /// An overlay that captures and displays osu!mania mouse and touch input.
+    /// An overlay that captures and displays mania mouse and touch input.
     /// </summary>
     public partial class ManiaTouchInputArea : VisibilityContainer
     {

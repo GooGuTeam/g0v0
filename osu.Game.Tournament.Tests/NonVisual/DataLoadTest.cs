@@ -35,7 +35,7 @@ namespace osu.Game.Tournament.Tests.NonVisual
                         ""Ruleset"": {
                             ""ShortName"": ""taiko"",
                             ""OnlineID"": -1,
-                            ""Name"": ""osu!taiko"",
+                            ""Name"": ""taiko"",
                             ""InstantiationInfo"": ""osu.Game.Rulesets.OsuTaiko.TaikoRuleset, osu.Game.Rulesets.Taiko"",
                             ""Available"": true
                         } }");

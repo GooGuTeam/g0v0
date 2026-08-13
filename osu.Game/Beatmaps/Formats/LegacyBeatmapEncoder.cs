@@ -191,7 +191,7 @@ namespace osu.Game.Beatmaps.Formats
             SampleControlPoint? lastRelevantSamplePoint = null;
             DifficultyControlPoint? lastRelevantDifficultyPoint = null;
 
-            // In osu!taiko and osu!mania, a scroll speed is stored as "slider velocity" in legacy formats.
+            // In taiko and mania, a scroll speed is stored as "slider velocity" in legacy formats.
             // In that case, a scrolling speed change is a global effect and per-hit object difficulty control points are ignored.
             bool scrollSpeedEncodedAsSliderVelocity = onlineRulesetID == 1 || onlineRulesetID == 3;
 

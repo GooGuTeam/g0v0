@@ -355,7 +355,7 @@ namespace osu.Game.Tests.Visual.Navigation
             });
             AddStep("click on catch", () =>
             {
-                var item = getEditor().ChildrenOfType<Menu.DrawableMenuItem>().Single(i => i.Item.Text.Value.ToString() == "osu!catch");
+                var item = getEditor().ChildrenOfType<Menu.DrawableMenuItem>().Single(i => i.Item.Text.Value.ToString() == "catch");
                 item.TriggerClick();
             });
             AddAssert("save dialog displayed", () => Game.ChildrenOfType<DialogOverlay>().Single().CurrentDialog is SaveRequiredPopupDialog);

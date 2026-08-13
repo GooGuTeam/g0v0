@@ -12,7 +12,7 @@ using osuTK.Graphics;
 namespace osu.Game.Rulesets.Catch.Skinning.Legacy
 {
     /// <summary>
-    /// A combo counter implementation that visually behaves almost similar to stable's osu!catch combo counter.
+    /// A combo counter implementation that visually behaves almost similar to stable's catch combo counter.
     /// </summary>
     public partial class LegacyCatchComboCounter : UprightAspectMaintainingContainer, ICatchComboCounter
     {

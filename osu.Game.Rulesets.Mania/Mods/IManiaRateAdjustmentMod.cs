@@ -13,7 +13,7 @@ namespace osu.Game.Rulesets.Mania.Mods
     /// May be attached to rate-adjustment mods to adjust hit windows adjust relative to gameplay rate.
     /// </summary>
     /// <remarks>
-    /// Historically, in osu!mania, hit windows are expected to adjust relative to the gameplay rate such that the real-world hit window remains the same.
+    /// Historically, in mania, hit windows are expected to adjust relative to the gameplay rate such that the real-world hit window remains the same.
     /// </remarks>
     public interface IManiaRateAdjustmentMod : IApplicableToHitObject
     {

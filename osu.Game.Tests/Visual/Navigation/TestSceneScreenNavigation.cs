@@ -817,14 +817,14 @@ namespace osu.Game.Tests.Visual.Navigation
 
             AddStep("Show mods overlay", () => modSelect.Show());
 
-            AddStep("Change ruleset to osu!taiko", () =>
+            AddStep("Change ruleset to taiko", () =>
             {
                 InputManager.PressKey(Key.ControlLeft);
                 InputManager.Key(Key.Number2);
                 InputManager.ReleaseKey(Key.ControlLeft);
             });
 
-            AddAssert("Ruleset changed to osu!taiko", () => Game.Toolbar.ChildrenOfType<ToolbarRulesetSelector>().Single().Current.Value.OnlineID == 1);
+            AddAssert("Ruleset changed to taiko", () => Game.Toolbar.ChildrenOfType<ToolbarRulesetSelector>().Single().Current.Value.OnlineID == 1);
 
             AddAssert("Mods overlay still visible", () => modSelect.State.Value == Visibility.Visible);
         }
@@ -843,14 +843,14 @@ namespace osu.Game.Tests.Visual.Navigation
             AddStep("Show options overlay", () => InputManager.Key(Key.F3));
             AddUntilStep("Options overlay visible", () => this.ChildrenOfType<FooterButtonOptions.Popover>().SingleOrDefault()?.State.Value == Visibility.Visible);
 
-            AddStep("Change ruleset to osu!taiko", () =>
+            AddStep("Change ruleset to taiko", () =>
             {
                 InputManager.PressKey(Key.ControlLeft);
                 InputManager.Key(Key.Number2);
                 InputManager.ReleaseKey(Key.ControlLeft);
             });
 
-            AddAssert("Ruleset changed to osu!taiko", () => Game.Toolbar.ChildrenOfType<ToolbarRulesetSelector>().Single().Current.Value.OnlineID == 1);
+            AddAssert("Ruleset changed to taiko", () => Game.Toolbar.ChildrenOfType<ToolbarRulesetSelector>().Single().Current.Value.OnlineID == 1);
 
             AddAssert("Options overlay still visible", () => this.ChildrenOfType<FooterButtonOptions.Popover>().Single().State.Value == Visibility.Visible);
         }

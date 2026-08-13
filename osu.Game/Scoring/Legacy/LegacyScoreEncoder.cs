@@ -48,7 +48,7 @@ namespace osu.Game.Scoring.Legacy
         /// <item><description>30000004: Fixed mod multipliers during legacy score conversion. Reconvert all scores.</description></item>
         /// <item><description>30000005: Introduce combo exponent in the osu! gamemode. Reconvert all scores.</description></item>
         /// <item><description>30000006: Fix edge cases in conversion after combo exponent introduction that lead to NaNs. Reconvert all scores.</description></item>
-        /// <item><description>30000007: Adjust osu!mania combo and accuracy portions and judgement scoring values. Reconvert all scores.</description></item>
+        /// <item><description>30000007: Adjust mania combo and accuracy portions and judgement scoring values. Reconvert all scores.</description></item>
         /// <item><description>30000008: Add accuracy conversion. Reconvert all scores.</description></item>
         /// <item><description>30000009: Fix edge cases in conversion for scores which have 0.0x mod multiplier on stable. Reconvert all scores.</description></item>
         /// <item><description>30000010: Fix mania score V1 conversion using score V1 accuracy rather than V2 accuracy. Reconvert all scores.</description></item>

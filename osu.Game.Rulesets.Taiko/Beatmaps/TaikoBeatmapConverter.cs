@@ -19,7 +19,7 @@ namespace osu.Game.Rulesets.Taiko.Beatmaps
     internal class TaikoBeatmapConverter : BeatmapConverter<TaikoHitObject>
     {
         /// <summary>
-        /// A speed multiplier applied globally to osu!taiko.
+        /// A speed multiplier applied globally to taiko.
         /// </summary>
         /// <remarks>
         /// osu! is generally slower than taiko, so a factor was historically added to increase speed for converts.

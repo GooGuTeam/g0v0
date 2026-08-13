@@ -622,7 +622,7 @@ namespace osu.Game.Rulesets.Objects.Legacy
             /// Whether this hit sample is layered.
             /// </summary>
             /// <remarks>
-            /// Layered hit samples are automatically added in all modes (except osu!mania), but can be disabled
+            /// Layered hit samples are automatically added in all modes (except mania), but can be disabled
             /// using the <see cref="SkinConfiguration.LegacySetting.LayeredHitSounds"/> skin config option.
             /// </remarks>
             public readonly bool IsLayered;
