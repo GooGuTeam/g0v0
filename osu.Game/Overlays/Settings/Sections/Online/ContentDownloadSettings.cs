@@ -122,6 +122,13 @@ namespace osu.Game.Overlays.Settings.Sections.Online
                     return;
                 }
 
+                // This is troublesome and hence not allowed.
+                if (hostPort.Contains(@"ppy.sh"))
+                {
+                    customApiNote.Value = new SettingsNote.Data(OnlineSettingsStrings.CustomApiRiskyWarning, SettingsNote.Type.Critical);
+                    return;
+                }
+
                 string normalised = "https://" + hostPort;
                 customApiNote.Value = null;
                 maybeShowRestartIfChanged(normalised);

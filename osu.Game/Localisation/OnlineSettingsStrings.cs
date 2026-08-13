@@ -106,6 +106,12 @@ namespace osu.Game.Localisation
         public static LocalisableString CustomApiUrlRestartRequired => new TranslatableString(getKey(@"custom_api_url_restart_required"), @"A restart is required for this setting to take effect.");
 
         /// <summary>
+        /// "You are attempting to connect to ppy's official server. This is not recommended and would result in an account ban."
+        /// </summary>
+        public static LocalisableString CustomApiRiskyWarning => new TranslatableString(getKey(@"custom_api_risky_warning"),
+            @"You are attempting to connect to ppy's official server. This is not recommended and would result in an account ban.");
+
+        /// <summary>
         /// "Invalid custom API server address. Enter only a hostname, optionally with a port. Paths are not allowed."
         /// </summary>
         public static LocalisableString CustomApiUrlInvalid => new TranslatableString(
