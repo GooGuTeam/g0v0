@@ -106,11 +106,6 @@ namespace osu.Game.Localisation
         public static LocalisableString CustomApiUrlRestartRequired => new TranslatableString(getKey(@"custom_api_url_restart_required"), @"A restart is required for this setting to take effect.");
 
         /// <summary>
-        /// "The game will be restarted to apply the new API server settings."
-        /// </summary>
-        public static LocalisableString CustomApiUrlRestartMessage => new TranslatableString(getKey(@"custom_api_url_restart_message"), @"The game will be restarted to apply the new API server settings.");
-
-        /// <summary>
         /// "Invalid custom API server address. Enter only a hostname, optionally with a port. Paths are not allowed."
         /// </summary>
         public static LocalisableString CustomApiUrlInvalid => new TranslatableString(
@@ -124,19 +119,19 @@ namespace osu.Game.Localisation
         public static LocalisableString ConnectedToDefaultServer => new TranslatableString(getKey(@"connected_to_default_server"), @"Connected to default server");
 
         /// <summary>
+        /// "Server Information"
+        /// </summary>
+        public static LocalisableString ServerInformation => new TranslatableString(getKey(@"server_information"), @"Server Information");
+
+        /// <summary>
         /// "Current server: {0}"
         /// </summary>
-        public static LocalisableString CurrentServer(string serverName) => new TranslatableString(getKey(@"current_server"), @"Current server: {0}", serverName);
+        public static LocalisableString CurrentServer(LocalisableString serverName) => new TranslatableString(getKey(@"current_server"), @"Current server: {0}", serverName);
 
         /// <summary>
-        /// "Official server (osu.ppy.sh)"
+        /// "g0v0! Official server (g0v0.top)"
         /// </summary>
-        public static LocalisableString OfficialServer => new TranslatableString(getKey(@"official_server"), @"Official server (osu.ppy.sh)");
-
-        /// <summary>
-        /// "Development server (dev.ppy.sh)"
-        /// </summary>
-        public static LocalisableString DevelopmentServer => new TranslatableString(getKey(@"development_server"), @"Development server (dev.ppy.sh)");
+        public static LocalisableString OfficialServer => new TranslatableString(getKey(@"official_server"), @"g0v0! Official server (g0v0.top)");
 
         /// <summary>
         /// "Default server"

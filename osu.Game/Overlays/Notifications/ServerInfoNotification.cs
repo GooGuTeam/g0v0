@@ -1,6 +1,7 @@
 // This file is originally created by GooGuTeam.
 
 using osu.Framework.Allocation;
+using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
@@ -25,7 +26,14 @@ namespace osu.Game.Overlays.Notifications
         {
             Icon = FontAwesome.Solid.Server;
             IconContent.Colour = colours.BlueLight;
-            Text = getServerDisplayText(serverUrl);
+
+            TextFlow.AddText(OnlineSettingsStrings.ServerInformation.ToUpper(), s =>
+            {
+                s.Font = OsuFont.Style.Caption2.With(weight: FontWeight.Bold);
+                s.Colour = colours.BlueLight;
+            });
+            TextFlow.NewLine();
+            TextFlow.AddText(getServerDisplayText(serverUrl));
         }
 
         private static LocalisableString getServerDisplayText(string serverUrl)
@@ -33,18 +41,18 @@ namespace osu.Game.Overlays.Notifications
             if (string.IsNullOrEmpty(serverUrl))
                 return OnlineSettingsStrings.ConnectedToDefaultServer;
 
-            string displayName = extractDisplayName(serverUrl);
+            var displayName = extractDisplayName(serverUrl);
             return OnlineSettingsStrings.CurrentServer(displayName);
         }
 
-        private static string extractDisplayName(string url)
+        private static LocalisableString extractDisplayName(string url)
         {
             if (string.IsNullOrEmpty(url))
                 return OnlineSettingsStrings.DefaultServer.ToString();
 
             try
             {
-                string cleanUrl = url.Replace("https://", "").Replace("http://", "");
+                string cleanUrl = url.Replace(@"https://", "").Replace(@"http://", "");
 
                 int pathIndex = cleanUrl.IndexOf('/');
                 if (pathIndex > 0)
@@ -52,8 +60,7 @@ namespace osu.Game.Overlays.Notifications
 
                 return cleanUrl.ToLowerInvariant() switch
                 {
-                    "osu.ppy.sh" => OnlineSettingsStrings.OfficialServer.ToString(),
-                    "dev.ppy.sh" => OnlineSettingsStrings.DevelopmentServer.ToString(),
+                    @"lazer-api.g0v0.top" => OnlineSettingsStrings.OfficialServer,
                     _ => cleanUrl
                 };
             }
