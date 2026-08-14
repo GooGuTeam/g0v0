@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using osu.Framework.Localisation;
+using osu.Game.Localisation.Taiko;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Taiko.Objects.Drawables;
@@ -12,7 +13,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
 {
     public class TaikoModRelax : ModRelax, IApplicableToDrawableHitObject
     {
-        public override LocalisableString Description => @"No need to remember which key is correct anymore!";
+        public override LocalisableString Description => ModsStrings.RelaxDescription;
 
         public override Type[] IncompatibleMods => base.IncompatibleMods.Concat(new[] { typeof(TaikoModSingleTap) }).ToArray();
 
