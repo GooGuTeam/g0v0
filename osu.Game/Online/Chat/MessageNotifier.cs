@@ -154,9 +154,11 @@ namespace osu.Game.Online.Chat
         /// </summary>
         public static Match MatchUsername(string message, string username)
         {
+            // Use Unicode-aware word boundaries instead of \W, which only recognizes ASCII word characters.
+            // This ensures correct mention matching for CJK and other non-ASCII usernames.
             string fullName = Regex.Escape(username);
             string underscoreName = Regex.Escape(username.Replace(' ', '_'));
-            return Regex.Match(message, $@"(^|\W)({fullName}|{underscoreName})($|\W)", RegexOptions.IgnoreCase);
+            return Regex.Match(message, $@"(?<![\p{{L}}\p{{N}}_])({fullName}|{underscoreName})(?![\p{{L}}\p{{N}}_])", RegexOptions.IgnoreCase);
         }
 
         private const int truncate_length = 60;
