@@ -7,6 +7,8 @@ using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Extensions;
+using osu.Game.Localisation.Catch;
+using osu.Game.Localisation;
 using osu.Game.Rulesets.Catch.Beatmaps;
 using osu.Game.Rulesets.Mods;
 
@@ -14,7 +16,7 @@ namespace osu.Game.Rulesets.Catch.Mods
 {
     public class CatchModDifficultyAdjust : ModDifficultyAdjust, IApplicableToBeatmapProcessor
     {
-        [SettingSource("Circle Size", "Override a beatmap's set CS.", FIRST_SETTING_ORDER - 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.CircleSizeLabel), nameof(CommonModsStrings.CircleSizeDescription), FIRST_SETTING_ORDER - 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public DifficultyBindable CircleSize { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -24,7 +26,7 @@ namespace osu.Game.Rulesets.Catch.Mods
             ReadCurrentFromDifficulty = diff => diff.CircleSize,
         };
 
-        [SettingSource("Approach Rate", "Override a beatmap's set AR.", LAST_SETTING_ORDER + 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.ApproachRateLabel), nameof(CommonModsStrings.ApproachRateDescription), LAST_SETTING_ORDER + 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public DifficultyBindable ApproachRate { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -34,7 +36,7 @@ namespace osu.Game.Rulesets.Catch.Mods
             ReadCurrentFromDifficulty = diff => diff.ApproachRate,
         };
 
-        [SettingSource("Spicy Patterns", "Adjust the patterns as if Hard Rock is enabled.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.DifficultyAdjustSpicyPatternsLabel), nameof(ModsStrings.DifficultyAdjustSpicyPatternsDescription))]
         public BindableBool HardRockOffsets { get; } = new BindableBool();
 
         public override string ExtendedIconInformation
@@ -61,16 +63,16 @@ namespace osu.Game.Rulesets.Catch.Mods
             get
             {
                 if (!CircleSize.IsDefault)
-                    yield return ("Circle size", $"{CircleSize.Value:N1}");
+                    yield return (CommonModsStrings.CircleSizeLabel, $"{CircleSize.Value:N1}");
 
                 foreach (var setting in base.SettingDescription)
                     yield return setting;
 
                 if (!ApproachRate.IsDefault)
-                    yield return ("Approach rate", $"{ApproachRate.Value:N1}");
+                    yield return (CommonModsStrings.ApproachRateLabel, $"{ApproachRate.Value:N1}");
 
                 if (!HardRockOffsets.IsDefault)
-                    yield return ("Spicy patterns", "On");
+                    yield return (ModsStrings.DifficultyAdjustSpicyPatternsLabel, CommonModsStrings.OnStateLabel);
             }
         }
 

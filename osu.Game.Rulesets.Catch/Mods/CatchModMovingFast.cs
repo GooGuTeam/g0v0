@@ -8,6 +8,7 @@ using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Catch;
 using osu.Game.Rulesets.Catch.Objects;
 using osu.Game.Rulesets.Catch.UI;
 using osu.Game.Rulesets.Mods;
@@ -21,7 +22,7 @@ namespace osu.Game.Rulesets.Catch.Mods
     {
         public override string Name => "Moving Fast";
         public override string Acronym => "MF";
-        public override LocalisableString Description => "Dashing by default, slow down!";
+        public override LocalisableString Description => ModsStrings.MovingFastDescription;
         public override ModType Type => ModType.Fun;
         public override IconUsage? Icon => OsuIcon.ModMovingFast;
         public override Type[] IncompatibleMods => new[] { typeof(ModAutoplay), typeof(ModRelax) };
