@@ -21,14 +21,9 @@ namespace osu.Game.Online
         protected override string GetLookupUrl(string url)
         {
             string? customApiUrl = configManager?.Get<string>(OsuSetting.CustomApiUrl);
-            if (!string.IsNullOrWhiteSpace(customApiUrl))
+            if (!string.IsNullOrWhiteSpace(customApiUrl) || (Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+                                                             (uri.Host.EndsWith(".ppy.sh", StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith(".g0v0.top", StringComparison.OrdinalIgnoreCase))))
                 return url;
-
-            if (Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
-                uri.Host.EndsWith(".ppy.sh", StringComparison.OrdinalIgnoreCase))
-            {
-                return url;
-            }
 
             Logger.Log(
                 $"[TrustedDomainOnlineStore] Blocked external resource lookup: {url}",
