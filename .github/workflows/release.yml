@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*-lazer'
+      - 'v*-g0v0'
   workflow_dispatch:
 
 env:
@@ -37,7 +37,7 @@ jobs:
           VERSION_NUMBERS=$(echo "$SEMVER" | sed 's/-.*$//' | tr -d '.')
           ANDROID_VERSION_CODE="$VERSION_NUMBERS"
 
-          # nugetVersion uses 3-part version from the tag date (e.g. v2026.321.1-lazer -> 2026.321.1)
+          # nugetVersion uses 3-part version from the tag date (e.g. v2026.321.1-g0v0 -> 2026.321.1)
           NUGET_VERSION=$(echo "${SEMVER%%-*}" | awk -F. '{print $1"."$2"."$3}')
           # Velopack requires 3-part semver without pre-release
           VELOPACK_VERSION=$(echo "$NUMERIC" | awk -F. '{print $1"."$2"."$3}')
@@ -61,6 +61,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -127,9 +129,17 @@ jobs:
             runtime: win-x64
             artifact-name: g0v0-windows
             executable: "g0v0!.exe"
+          - os: windows-latest
+            runtime: win-arm64
+            artifact-name: g0v0-windows-arm64
+            executable: "g0v0!.exe"
           - os: ubuntu-latest
             runtime: linux-x64
             artifact-name: g0v0-linux
+            executable: "g0v0!"
+          - os: ubuntu-latest
+            runtime: linux-arm64
+            artifact-name: g0v0-linux-arm64
             executable: "g0v0!"
           - os: macos-latest
             runtime: osx-x64
@@ -148,6 +158,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -438,6 +449,9 @@ jobs:
               -i "$ICON_FILE" \
               -c "$CHANNEL"
           elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            CHANNEL="win"
+            if [[ "${{ matrix.runtime }}" == "win-arm64" ]]; then CHANNEL="win-arm64"; fi
+
             vpk pack \
               -u "g0v0" \
               -v "${{ needs.version.outputs.velopackVersion }}" \
@@ -446,8 +460,11 @@ jobs:
               --packAuthors "g0v0! GooGuTeam" \
               --packTitle "g0v0!" \
               -i "osu.Desktop/lazer.ico" \
-              -c "win"
+              -c "$CHANNEL"
           else
+            CHANNEL="linux"
+            if [[ "${{ matrix.runtime }}" == "linux-arm64" ]]; then CHANNEL="linux-arm64"; fi
+
             vpk pack \
               -u "g0v0" \
               -v "${{ needs.version.outputs.velopackVersion }}" \
@@ -456,7 +473,7 @@ jobs:
               --packAuthors "g0v0! GooGuTeam" \
               --packTitle "g0v0!" \
               -i "osu.Desktop/lazer.ico" \
-              -c "linux"
+              -c "$CHANNEL"
           fi
 
       - name: Normalize asset names
@@ -465,8 +482,14 @@ jobs:
           shopt -s nullglob
           # Windows installer rename
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            if [ -f "Releases/Setup.exe" ]; then
-              mv -f Releases/Setup.exe Releases/g0v0-win-Setup.exe
+            if [[ "${{ matrix.runtime }}" == "win-arm64" ]]; then
+              if [ -f "Releases/Setup.exe" ]; then
+                mv -f Releases/Setup.exe Releases/g0v0-win-arm64-Setup.exe
+              fi
+            else
+              if [ -f "Releases/Setup.exe" ]; then
+                mv -f Releases/Setup.exe Releases/g0v0-win-Setup.exe
+              fi
             fi
           fi
           # macOS zip rename
@@ -492,8 +515,12 @@ jobs:
             fi
           fi
           # Linux AppImage rename
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]] && [[ "${{ matrix.runtime }}" == "linux-x64" ]]; then
-            for f in Releases/*.AppImage; do mv -f "$f" Releases/g0v0.AppImage; done
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            if [[ "${{ matrix.runtime }}" == "linux-x64" ]]; then
+              for f in Releases/*.AppImage; do mv -f "$f" Releases/g0v0.AppImage; done
+            elif [[ "${{ matrix.runtime }}" == "linux-arm64" ]]; then
+              for f in Releases/*.AppImage; do mv -f "$f" Releases/g0v0-arm64.AppImage; done
+            fi
           fi
           # Android APK rename
           if [[ "${{ matrix.runtime }}" == "android" ]]; then
@@ -532,6 +559,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
