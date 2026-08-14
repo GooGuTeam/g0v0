@@ -49,11 +49,6 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
                 {
                     Keywords = new[] { "intro", "welcome" },
                 },
-                new SettingsItemV2(new FormEnumDropdown<IntroSequence>
-                {
-                    Caption = UserInterfaceStrings.IntroSequence,
-                    Current = config.GetBindable<IntroSequence>(OsuSetting.IntroSequence),
-                }),
                 new SettingsItemV2(new FormEnumDropdown<BackgroundSource>
                 {
                     Caption = UserInterfaceStrings.BackgroundSource,

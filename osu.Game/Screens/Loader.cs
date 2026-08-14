@@ -12,9 +12,7 @@ using osu.Framework.Graphics.Shaders;
 using osu.Game.Screens.Menu;
 using osu.Framework.Screens;
 using osu.Framework.Threading;
-using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
-using IntroSequence = osu.Game.Configuration.IntroSequence;
 
 namespace osu.Game.Screens
 {
@@ -28,7 +26,6 @@ namespace osu.Game.Screens
         private OsuScreen loadableScreen;
         private ShaderPrecompiler precompiler;
 
-        private IntroSequence introSequence;
         private LoadingSpinner spinner;
         private ScheduledDelegate spinnerShow;
 
@@ -75,12 +72,6 @@ namespace osu.Game.Screens
             }
             else
                 this.Push(loadableScreen);
-        }
-
-        [BackgroundDependencyLoader]
-        private void load(OsuConfigManager config)
-        {
-            introSequence = config.Get<IntroSequence>(OsuSetting.IntroSequence);
         }
 
         /// <summary>

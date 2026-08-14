@@ -31,7 +31,6 @@ namespace osu.Game.Screens.Backgrounds
         private IBindable<APIUser> user;
         private Bindable<Skin> skin;
         private Bindable<BackgroundSource> source;
-        private Bindable<IntroSequence> introSequence;
         private readonly SeasonalBackgroundLoader seasonalBackgroundLoader = new SeasonalBackgroundLoader();
 
         [Resolved]
@@ -48,7 +47,6 @@ namespace osu.Game.Screens.Backgrounds
             user = api.LocalUser.GetBoundCopy();
             skin = skinManager.CurrentSkin.GetBoundCopy();
             source = config.GetBindable<BackgroundSource>(OsuSetting.MenuBackgroundSource);
-            introSequence = config.GetBindable<IntroSequence>(OsuSetting.IntroSequence);
 
             AddInternal(seasonalBackgroundLoader);
         }
@@ -61,7 +59,6 @@ namespace osu.Game.Screens.Backgrounds
             skin.ValueChanged += _ => Scheduler.AddOnce(next);
             source.ValueChanged += _ => Scheduler.AddOnce(next);
             beatmap.ValueChanged += _ => Scheduler.AddOnce(next);
-            introSequence.ValueChanged += _ => Scheduler.AddOnce(next);
             seasonalBackgroundLoader.SeasonalBackgroundChanged += () => Scheduler.AddOnce(next);
 
             currentDisplay = RNG.Next(0, background_count);
@@ -186,16 +183,6 @@ namespace osu.Game.Screens.Backgrounds
             return newBackground;
         }
 
-        private string getBackgroundTextureName()
-        {
-            switch (introSequence.Value)
-            {
-                case IntroSequence.Welcome:
-                    return @"Intro/Welcome/menu-background";
-
-                default:
-                    return $@"Menu/menu-background-{currentDisplay % background_count + 1}";
-            }
-        }
+        private string getBackgroundTextureName() => $@"Menu/menu-background-{currentDisplay % background_count + 1}";
     }
 }

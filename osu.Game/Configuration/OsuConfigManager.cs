@@ -196,8 +196,6 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.UIHoldActivationDelay, 200.0, 0.0, 500.0, 50.0);
 
-            SetDefault(OsuSetting.IntroSequence, IntroSequence.Triangles);
-
             SetDefault(OsuSetting.MenuBackgroundSource, BackgroundSource.Skin);
             SetDefault(OsuSetting.SeasonalBackgroundMode, SeasonalBackgroundMode.Sometimes);
 
