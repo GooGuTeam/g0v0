@@ -9,6 +9,7 @@ using osu.Framework.Utils;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Localisation.Osu;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.UI.Cursor;
@@ -25,7 +26,7 @@ namespace osu.Game.Rulesets.Osu.Mods
         public override string Acronym => "BM";
         public override IconUsage? Icon => OsuIcon.ModBloom;
         public override ModType Type => ModType.Fun;
-        public override LocalisableString Description => "The cursor blooms into.. a larger cursor!";
+        public override LocalisableString Description => ModsStrings.BloomDescription;
         protected const float MIN_SIZE = 1;
         protected const float TRANSITION_DURATION = 100;
         public override Type[] IncompatibleMods => new[] { typeof(OsuModFlashlight), typeof(OsuModNoScope), typeof(ModTouchDevice) };
@@ -36,8 +37,9 @@ namespace osu.Game.Rulesets.Osu.Mods
         private float currentSize;
 
         [SettingSource(
-            "Max size at combo",
-            "The combo count at which the cursor reaches its maximum size",
+            typeof(ModsStrings),
+            nameof(ModsStrings.BloomMaxSizeAtComboLabel),
+            nameof(ModsStrings.BloomMaxSizeAtComboDescription),
             SettingControlType = typeof(SettingsSlider<int, MaxSizeComboSlider>)
         )]
         public BindableInt MaxSizeComboCount { get; } = new BindableInt(50)
@@ -47,8 +49,9 @@ namespace osu.Game.Rulesets.Osu.Mods
         };
 
         [SettingSource(
-            "Final size multiplier",
-            "The multiplier applied to cursor size when combo reaches maximum",
+            typeof(ModsStrings),
+            nameof(ModsStrings.BloomFinalSizeMultiplierLabel),
+            nameof(ModsStrings.BloomFinalSizeMultiplierDescription),
             SettingControlType = typeof(SettingsSlider<float, RoundedSliderBar<float>>)
         )]
         public BindableFloat MaxCursorSize { get; } = new BindableFloat(10f)

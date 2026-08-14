@@ -6,6 +6,7 @@ using System.Linq;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Game.Configuration;
+using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
@@ -22,19 +23,19 @@ namespace osu.Game.Rulesets.Osu.Mods
     {
         public override Type[] IncompatibleMods => base.IncompatibleMods.Append(typeof(OsuModStrictTracking)).ToArray();
 
-        [SettingSource("No slider head accuracy requirement", "Scores sliders proportionally to the number of ticks hit.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.ClassicNoSliderHeadAccuracyLabel), nameof(ModsStrings.ClassicNoSliderHeadAccuracyDescription))]
         public Bindable<bool> NoSliderHeadAccuracy { get; } = new BindableBool(true);
 
-        [SettingSource("Apply classic note lock", "Applies note lock to the full hit window.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.ClassicApplyNoteLockLabel), nameof(ModsStrings.ClassicApplyNoteLockDescription))]
         public Bindable<bool> ClassicNoteLock { get; } = new BindableBool(true);
 
-        [SettingSource("Always play a slider's tail sample", "Always plays a slider's tail sample regardless of whether it was hit or not.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.ClassicAlwaysPlayTailSampleLabel), nameof(ModsStrings.ClassicAlwaysPlayTailSampleDescription))]
         public Bindable<bool> AlwaysPlayTailSample { get; } = new BindableBool(true);
 
-        [SettingSource("Fade out hit circles earlier", "Make hit circles fade out into a miss, rather than after it.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.ClassicFadeOutHitCirclesEarlierLabel), nameof(ModsStrings.ClassicFadeOutHitCirclesEarlierDescription))]
         public Bindable<bool> FadeHitCircleEarly { get; } = new Bindable<bool>(true);
 
-        [SettingSource("Classic health", "More closely resembles the original HP drain mechanics.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.ClassicHealthLabel), nameof(ModsStrings.ClassicHealthDescription))]
         public Bindable<bool> ClassicHealth { get; } = new Bindable<bool>(true);
 
         private bool usingHiddenFading;
