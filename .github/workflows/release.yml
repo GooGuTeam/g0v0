@@ -524,9 +524,17 @@ jobs:
           # Linux AppImage rename
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
             if [[ "${{ matrix.runtime }}" == "linux-x64" ]]; then
-              for f in Releases/*.AppImage; do mv -f "$f" Releases/g0v0.AppImage; done
+              for f in Releases/*.AppImage; do
+                if [[ "$f" != "Releases/g0v0.AppImage" ]]; then
+                  mv -f "$f" Releases/g0v0.AppImage
+                fi
+              done
             elif [[ "${{ matrix.runtime }}" == "linux-arm64" ]]; then
-              for f in Releases/*.AppImage; do mv -f "$f" Releases/g0v0-arm64.AppImage; done
+              for f in Releases/*.AppImage; do
+                if [[ "$f" != "Releases/g0v0-arm64.AppImage" ]]; then
+                  mv -f "$f" Releases/g0v0-arm64.AppImage
+                fi
+              done
             fi
           fi
           # Android APK rename
@@ -610,7 +618,8 @@ jobs:
         timeout-minutes: 15
         shell: bash
         run: |
-          dotnet restore osu.iOS.slnf \
+          dotnet restore osu.iOS/osu.iOS.csproj \
+            --runtime ios-arm64 \
             --verbosity normal \
             --no-cache \
             --force
@@ -620,17 +629,17 @@ jobs:
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
-          dotnet build -c Release \
+          dotnet build osu.iOS/osu.iOS.csproj \
+            --configuration Release \
+            --runtime ios-arm64 \
             -p:BuildIpa=true \
-            -p:RuntimeIdentifier=ios-arm64 \
             -p:CodesignKey="-" \
             --no-restore \
             -p:Version=${{ needs.version.outputs.semver }} \
             -p:FileVersion=${{ needs.version.outputs.fileVersion }} \
             -p:AssemblyVersion=${{ needs.version.outputs.assemblyVersion }} \
             -p:SentryDsn="$SENTRY_DSN" \
-            -p:InformationalVersion=${{ needs.version.outputs.version }} \
-            osu.iOS.slnf
+            -p:InformationalVersion=${{ needs.version.outputs.version }}
 
       - name: Collect IPA
         shell: bash
