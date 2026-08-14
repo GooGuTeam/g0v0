@@ -10,6 +10,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Screens;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
+using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osuTK;
@@ -76,9 +77,9 @@ namespace osu.Game.Screens.Menu
                 },
             };
 
-            textFlow.AddText("this is ", t => t.Font = t.Font.With(Typeface.MapleMono, 30, FontWeight.Regular));
+            textFlow.AddText(DisclaimerStrings.TitlePart, t => t.Font = t.Font.With(Typeface.MapleMono, 30, FontWeight.Regular));
 
-            textFlow.AddText("g0v0!", t =>
+            textFlow.AddText(@" g0v0!", t =>
             {
                 t.Font = t.Font.With(Typeface.MapleMono, 30, FontWeight.Regular);
                 t.Colour = colours.G0V0ThemeColour;
@@ -89,27 +90,26 @@ namespace osu.Game.Screens.Menu
 
             textFlow.NewParagraph();
 
-            textFlow.AddText("a free and open rhythm game based on ", formatRegular);
-            textFlow.AddText("osu!lazer", t =>
+            textFlow.AddText(DisclaimerStrings.BasedOnParagraph, formatRegular);
+            textFlow.AddText(@"osu!lazer", t =>
             {
                 t.Font = t.Font.With(Typeface.MapleMono, 20, FontWeight.Bold);
                 t.Colour = colours.Pink;
             });
-            textFlow.AddText(" codebase originally developed by ppy Pty Ltd.", formatRegular);
+            textFlow.AddText(DisclaimerStrings.OriginalCodeParagraph, formatRegular);
 
             textFlow.NewParagraph();
             textFlow.NewParagraph();
 
             textFlow.NewParagraph();
 
-            textFlow.AddText("this is a community project and is not affiliated with ppy Pty Ltd or osu! in any way.", formatBold);
+            textFlow.AddText(DisclaimerStrings.CommunityProjectParagraph, formatBold);
 
             textFlow.NewParagraph();
 
-            textFlow.AddText("if you have any issue please report at ", formatRegular);
-            textFlow.AddText("our GitHub: ", formatRegular);
+            textFlow.AddText(DisclaimerStrings.ReportGitHubParagraph, formatRegular);
             textFlow.NewLine();
-            textFlow.AddText("https://github.com/GooGuTeam/g0v0", t =>
+            textFlow.AddText(@"https://github.com/GooGuTeam/g0v0", t =>
             {
                 t.Font = t.Font.With(Typeface.MapleMono, 20, FontWeight.Bold);
                 t.Colour = colours.Blue;
