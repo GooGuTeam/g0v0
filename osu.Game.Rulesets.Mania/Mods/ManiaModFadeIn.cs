@@ -6,6 +6,7 @@ using System.Linq;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Mania;
 using osu.Game.Rulesets.Mania.UI;
 
 namespace osu.Game.Rulesets.Mania.Mods
@@ -15,7 +16,7 @@ namespace osu.Game.Rulesets.Mania.Mods
         public override string Name => "Fade In";
         public override string Acronym => "FI";
         public override IconUsage? Icon => OsuIcon.ModFadeIn;
-        public override LocalisableString Description => @"Keys appear out of nowhere!";
+        public override LocalisableString Description => ModsStrings.FadeInDescription;
         public override bool ValidForFreestyleAsRequiredMod => false;
 
         public override Type[] IncompatibleMods => base.IncompatibleMods.Concat(new[]

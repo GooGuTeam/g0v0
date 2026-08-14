@@ -4,6 +4,7 @@
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Mania;
 
 namespace osu.Game.Rulesets.Mania.Mods
 {
@@ -13,7 +14,7 @@ namespace osu.Game.Rulesets.Mania.Mods
         public override string Name => "Ten Keys";
         public override string Acronym => "10K";
         public override IconUsage? Icon => OsuIcon.ModTenKeys;
-        public override LocalisableString Description => @"Play with ten keys.";
+        public override LocalisableString Description => ModsStrings.KeyModDescription(10);
         public override bool Ranked => false;
     }
 }

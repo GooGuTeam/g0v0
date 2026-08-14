@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Localisation;
+using osu.Game.Localisation.Mania;
 using osu.Game.Rulesets.Mania.UI;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.ObjectExtensions;
@@ -29,7 +30,7 @@ namespace osu.Game.Rulesets.Mania.Mods
         public const float MAX_COVERAGE = 400f;
         private const float coverage_increase_per_combo = 0.5f;
 
-        public override LocalisableString Description => @"Keys fade out before you hit them!";
+        public override LocalisableString Description => ModsStrings.HiddenDescription;
 
         public override Type[] IncompatibleMods => base.IncompatibleMods.Concat(new[]
         {
