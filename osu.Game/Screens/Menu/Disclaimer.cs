@@ -79,7 +79,7 @@ namespace osu.Game.Screens.Menu
 
             textFlow.AddText(DisclaimerStrings.TitlePart, t => t.Font = t.Font.With(Typeface.MapleMono, 30, FontWeight.Regular));
 
-            textFlow.AddText(@" g0v0!", t =>
+            textFlow.AddText(@"g0v0!", t =>
             {
                 t.Font = t.Font.With(Typeface.MapleMono, 30, FontWeight.Regular);
                 t.Colour = colours.G0V0ThemeColour;
