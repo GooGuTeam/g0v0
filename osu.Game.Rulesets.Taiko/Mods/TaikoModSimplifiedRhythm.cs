@@ -11,6 +11,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Taiko;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Taiko.Beatmaps;
 using osu.Game.Rulesets.Taiko.Objects;
@@ -21,17 +22,17 @@ namespace osu.Game.Rulesets.Taiko.Mods
     {
         public override string Name => "Simplified Rhythm";
         public override string Acronym => "SR";
-        public override LocalisableString Description => "Simplify tricky rhythms!";
+        public override LocalisableString Description => ModsStrings.SimplifiedRhythmDescription;
         public override IconUsage? Icon => OsuIcon.ModSimplifiedRhythm;
         public override ModType Type => ModType.DifficultyReduction;
 
-        [SettingSource("1/3 to 1/2 conversion", "Converts 1/3 patterns to 1/2 rhythm.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.SimplifiedRhythm13To12ConversionLabel), nameof(ModsStrings.SimplifiedRhythm13To12ConversionDescription))]
         public Bindable<bool> OneThirdConversion { get; } = new BindableBool();
 
-        [SettingSource("1/6 to 1/4 conversion", "Converts 1/6 patterns to 1/4 rhythm.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.SimplifiedRhythm16To14ConversionLabel), nameof(ModsStrings.SimplifiedRhythm16To14ConversionDescription))]
         public Bindable<bool> OneSixthConversion { get; } = new BindableBool(true);
 
-        [SettingSource("1/8 to 1/4 conversion", "Converts 1/8 patterns to 1/4 rhythm.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.SimplifiedRhythm18To14ConversionLabel), nameof(ModsStrings.SimplifiedRhythm18To14ConversionDescription))]
         public Bindable<bool> OneEighthConversion { get; } = new BindableBool();
 
         public void ApplyToBeatmap(IBeatmap beatmap)

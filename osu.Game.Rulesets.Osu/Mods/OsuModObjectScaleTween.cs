@@ -5,6 +5,7 @@ using System;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Game.Configuration;
+using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Objects;
@@ -19,7 +20,7 @@ namespace osu.Game.Rulesets.Osu.Mods
     {
         public override ModType Type => ModType.Fun;
 
-        [SettingSource("Starting Size", "The initial size multiplier applied to all objects.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.ObjectScaleTweenStartingSizeLabel), nameof(ModsStrings.ObjectScaleTweenStartingSizeDescription))]
         public abstract BindableNumber<float> StartScale { get; }
 
         protected virtual float EndScale => 1;

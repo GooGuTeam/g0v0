@@ -4,6 +4,7 @@
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation;
 
 namespace osu.Game.Rulesets.Mods
 {
@@ -14,7 +15,7 @@ namespace osu.Game.Rulesets.Mods
     {
         public override string Name => "No Mod";
         public override string Acronym => "NM";
-        public override LocalisableString Description => "No mods applied.";
+        public override LocalisableString Description => CommonModsStrings.NoModDescription;
         public override IconUsage? Icon => OsuIcon.ModNoMod;
         public override ModType Type => ModType.System;
     }

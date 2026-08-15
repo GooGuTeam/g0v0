@@ -10,6 +10,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
+using osu.Game.Localisation;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.UI;
 using osuTK;
@@ -25,7 +26,7 @@ namespace osu.Game.Rulesets.Mods
         /// </summary>
         protected float CurrentRotation { get; private set; }
 
-        [SettingSource("Roll speed", "Rotations per minute")]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.RollSpeedLabel), nameof(CommonModsStrings.RollSpeedDescription))]
         public BindableNumber<double> SpinSpeed { get; } = new BindableDouble(0.5)
         {
             MinValue = 0.02,
@@ -33,22 +34,22 @@ namespace osu.Game.Rulesets.Mods
             Precision = 0.01,
         };
 
-        [SettingSource("Direction", "The direction of rotation")]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.DirectionLabel), nameof(CommonModsStrings.DirectionDescription))]
         public Bindable<RotationDirection> Direction { get; } = new Bindable<RotationDirection>();
 
         public override string Name => "Barrel Roll";
         public override string Acronym => "BR";
         public override IconUsage? Icon => OsuIcon.ModBarrelRoll;
-        public override LocalisableString Description => "The whole playfield is on a wheel!";
+        public override LocalisableString Description => CommonModsStrings.BarrelRollDescription;
 
         public override IEnumerable<(LocalisableString setting, LocalisableString value)> SettingDescription
         {
             get
             {
                 if (!SpinSpeed.IsDefault)
-                    yield return ("Roll speed", $"{SpinSpeed.Value:N2} rpm");
+                    yield return (CommonModsStrings.RollSpeedLabel, $"{SpinSpeed.Value:N2} rpm");
                 if (!Direction.IsDefault)
-                    yield return ("Direction", Direction.Value.GetDescription());
+                    yield return (CommonModsStrings.DirectionLabel, Direction.Value.GetDescription());
             }
         }
 

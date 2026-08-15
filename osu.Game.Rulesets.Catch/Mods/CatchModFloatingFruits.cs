@@ -4,6 +4,7 @@
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Catch;
 using osu.Game.Rulesets.Catch.Objects;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.UI;
@@ -15,7 +16,7 @@ namespace osu.Game.Rulesets.Catch.Mods
     {
         public override string Name => "Floating Fruits";
         public override string Acronym => "FF";
-        public override LocalisableString Description => "The fruits are... floating?";
+        public override LocalisableString Description => ModsStrings.FloatingFruitsDescription;
         public override IconUsage? Icon => OsuIcon.ModFloatingFruits;
 
         public void ApplyToDrawableRuleset(DrawableRuleset<CatchHitObject> drawableRuleset)

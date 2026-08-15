@@ -5,6 +5,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Mania;
 using osu.Game.Rulesets.Mania.Beatmaps;
 using osu.Game.Rulesets.Mods;
 
@@ -14,7 +15,7 @@ namespace osu.Game.Rulesets.Mania.Mods
     {
         public override string Name => "Dual Stages";
         public override string Acronym => "DS";
-        public override LocalisableString Description => @"Double the stages, double the fun!";
+        public override LocalisableString Description => ModsStrings.DualStagesDescription;
         public override IconUsage? Icon => OsuIcon.ModDualStages;
         public override ModType Type => ModType.Conversion;
 

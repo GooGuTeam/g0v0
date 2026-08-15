@@ -11,6 +11,7 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Localisation.HUD;
+using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Judgements;
@@ -24,7 +25,7 @@ namespace osu.Game.Rulesets.Mods
 
         public override string Acronym => "AC";
 
-        public override LocalisableString Description => "Fail if your accuracy drops too low!";
+        public override LocalisableString Description => CommonModsStrings.AccuracyChallengeDescription;
 
         public override IconUsage? Icon => OsuIcon.ModAccuracyChallenge;
 
@@ -41,17 +42,17 @@ namespace osu.Game.Rulesets.Mods
             get
             {
                 if (!MinimumAccuracy.IsDefault)
-                    yield return ("Minimum accuracy", MinimumAccuracy.Value.ToLocalisableString(@"P1"));
+                    yield return (CommonModsStrings.MinimumAccuracyLabel, MinimumAccuracy.Value.ToLocalisableString(@"P1"));
 
                 if (!AccuracyJudgeMode.IsDefault)
-                    yield return ("Accuracy mode", AccuracyJudgeMode.Value.ToLocalisableString());
+                    yield return (CommonModsStrings.AccuracyModeLabel, AccuracyJudgeMode.Value.ToLocalisableString());
 
                 if (!Restart.IsDefault)
-                    yield return ("Restart on fail", "On");
+                    yield return (CommonModsStrings.RestartOnFailLabel, CommonModsStrings.OnStateLabel);
             }
         }
 
-        [SettingSource("Minimum accuracy", "Trigger a failure if your accuracy goes below this value.", SettingControlType = typeof(MinimumAccuracySlider))]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.MinimumAccuracyLabel), nameof(CommonModsStrings.MinimumAccuracyDescription), SettingControlType = typeof(MinimumAccuracySlider))]
         public BindableNumber<double> MinimumAccuracy { get; } = new BindableDouble
         {
             MinValue = 0.60,
@@ -61,7 +62,7 @@ namespace osu.Game.Rulesets.Mods
             Value = 0.9,
         };
 
-        [SettingSource("Accuracy mode", "The mode of accuracy that will trigger failure.")]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.AccuracyModeLabel), nameof(CommonModsStrings.AccuracyModeDescription))]
         public Bindable<AccuracyMode> AccuracyJudgeMode { get; } = new Bindable<AccuracyMode>();
 
         private readonly Bindable<double> currentAccuracy = new Bindable<double>();

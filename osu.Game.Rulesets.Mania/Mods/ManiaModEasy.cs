@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
+using osu.Game.Localisation.Mania;
 using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mania.Scoring;
 using osu.Game.Rulesets.Mods;
@@ -11,7 +12,7 @@ namespace osu.Game.Rulesets.Mania.Mods
 {
     public class ManiaModEasy : ModEasyWithExtraLives, IApplicableToHitObject
     {
-        public override LocalisableString Description => @"More forgiving HP drain, less accuracy required, and extra lives!";
+        public override LocalisableString Description => ModsStrings.EasyDescription;
 
         public const double HIT_WINDOW_DIFFICULTY_MULTIPLIER = 1 / 1.4;
 

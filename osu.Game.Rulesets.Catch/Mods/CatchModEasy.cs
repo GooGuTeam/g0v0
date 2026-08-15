@@ -3,13 +3,14 @@
 
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
+using osu.Game.Localisation.Catch;
 using osu.Game.Rulesets.Mods;
 
 namespace osu.Game.Rulesets.Catch.Mods
 {
     public class CatchModEasy : ModEasyWithExtraLives
     {
-        public override LocalisableString Description => @"Larger fruits, more forgiving HP drain, less accuracy required, and extra lives!";
+        public override LocalisableString Description => ModsStrings.EasyDescription;
 
         public override void ApplyToDifficulty(BeatmapDifficulty difficulty)
         {

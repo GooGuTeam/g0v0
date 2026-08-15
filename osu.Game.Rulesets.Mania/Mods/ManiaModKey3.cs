@@ -4,6 +4,7 @@
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Mania;
 
 namespace osu.Game.Rulesets.Mania.Mods
 {
@@ -13,7 +14,7 @@ namespace osu.Game.Rulesets.Mania.Mods
         public override string Name => "Three Keys";
         public override string Acronym => "3K";
         public override IconUsage? Icon => OsuIcon.ModThreeKeys;
-        public override LocalisableString Description => @"Play with three keys.";
+        public override LocalisableString Description => ModsStrings.KeyModDescription(3);
         public override bool Ranked => false;
     }
 }

@@ -9,6 +9,7 @@ using osu.Framework.Input;
 using osu.Framework.Input.Events;
 using osu.Framework.Utils;
 using osu.Game.Configuration;
+using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Objects;
@@ -23,7 +24,7 @@ namespace osu.Game.Rulesets.Osu.Mods
 
         private const double default_follow_delay = 120;
 
-        [SettingSource("Follow delay", "Milliseconds until the flashlight reaches the cursor")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.FlashlightFollowDelayLabel), nameof(ModsStrings.FlashlightFollowDelayDescription))]
         public BindableNumber<double> FollowDelay { get; } = new BindableDouble(default_follow_delay)
         {
             MinValue = default_follow_delay,

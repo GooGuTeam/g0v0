@@ -4,6 +4,7 @@
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Mania;
 
 namespace osu.Game.Rulesets.Mania.Mods
 {
@@ -13,6 +14,6 @@ namespace osu.Game.Rulesets.Mania.Mods
         public override string Name => "Seven Keys";
         public override string Acronym => "7K";
         public override IconUsage? Icon => OsuIcon.ModSevenKeys;
-        public override LocalisableString Description => @"Play with seven keys.";
+        public override LocalisableString Description => ModsStrings.KeyModDescription(7);
     }
 }

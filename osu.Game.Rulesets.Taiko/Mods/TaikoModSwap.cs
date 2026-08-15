@@ -7,6 +7,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Taiko;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Taiko.Beatmaps;
 using osu.Game.Rulesets.Taiko.Objects;
@@ -17,7 +18,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
     {
         public override string Name => "Swap";
         public override string Acronym => "SW";
-        public override LocalisableString Description => @"Dons become kats, kats become dons";
+        public override LocalisableString Description => ModsStrings.SwapDescription;
         public override IconUsage? Icon => OsuIcon.ModSwap;
         public override ModType Type => ModType.Conversion;
         public override Type[] IncompatibleMods => base.IncompatibleMods.Append(typeof(ModRandom)).ToArray();

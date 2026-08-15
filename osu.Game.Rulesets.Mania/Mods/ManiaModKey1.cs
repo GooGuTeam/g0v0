@@ -4,6 +4,7 @@
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Mania;
 
 namespace osu.Game.Rulesets.Mania.Mods
 {
@@ -13,7 +14,7 @@ namespace osu.Game.Rulesets.Mania.Mods
         public override string Name => "One Key";
         public override string Acronym => "1K";
         public override IconUsage? Icon => OsuIcon.ModOneKey;
-        public override LocalisableString Description => @"Play with one key.";
+        public override LocalisableString Description => ModsStrings.KeyModDescription(1);
         public override bool Ranked => false;
     }
 }
