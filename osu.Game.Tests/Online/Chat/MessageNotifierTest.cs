@@ -87,5 +87,12 @@ namespace osu.Game.Tests.Online.Chat
         {
             ClassicAssert.True(MessageNotifier.MatchUsername("username: hi", "username").Success);
         }
+
+        [Test]
+        public void TestContainsUsernameWithBoundary()
+        {
+            ClassicAssert.True(MessageNotifier.MatchUsername("张雪峰你跑不过我你信吗", "张雪峰").Success);
+            ClassicAssert.True(MessageNotifier.MatchUsername("张雪峰：你跑不过我你信吗", "张雪峰").Success);
+        }
     }
 }
