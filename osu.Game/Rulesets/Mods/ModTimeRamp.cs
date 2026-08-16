@@ -12,6 +12,7 @@ using osu.Game.Configuration;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.UI;
+using osu.Game.Utils;
 
 namespace osu.Game.Rulesets.Mods
 {
@@ -44,7 +45,7 @@ namespace osu.Game.Rulesets.Mods
                     yield return (CommonModsStrings.SpeedChangeLabel, $"{InitialRate.Value:N2}x => {FinalRate.Value:N2}x");
 
                 if (!AdjustPitch.IsDefault)
-                    yield return (CommonModsStrings.AdjustPitchLabel, CommonModsStrings.BooleanStateLabel(AdjustPitch.Value));
+                    yield return (CommonModsStrings.AdjustPitchLabel, LocalisationUtils.BooleanStateLabel(AdjustPitch.Value));
             }
         }
 

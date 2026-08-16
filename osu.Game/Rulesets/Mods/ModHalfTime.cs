@@ -10,6 +10,7 @@ using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
+using osu.Game.Utils;
 
 namespace osu.Game.Rulesets.Mods
 {
@@ -41,7 +42,7 @@ namespace osu.Game.Rulesets.Mods
                     yield return description;
 
                 if (!AdjustPitch.IsDefault)
-                    yield return (CommonModsStrings.AdjustPitchLabel, CommonModsStrings.BooleanStateLabel(AdjustPitch.Value));
+                    yield return (CommonModsStrings.AdjustPitchLabel, LocalisationUtils.BooleanStateLabel(AdjustPitch.Value));
             }
         }
 

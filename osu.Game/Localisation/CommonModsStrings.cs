@@ -350,13 +350,6 @@ namespace osu.Game.Localisation
         public static LocalisableString FinalRateDescription => new TranslatableString(getKey(@"final_rate_description"), @"The final speed to ramp to");
 
         /// <summary>
-        /// "Override a beatmap's set AR."
-        /// </summary>
-        public static LocalisableString ApproachRateDescription => new TranslatableString(getKey(@"approach_rate_description"), @"Override a beatmap's set AR.");
-
-        public static LocalisableString BooleanStateLabel(bool state) => state ? OnStateLabel : OffStateLabel;
-
-        /// <summary>
         /// "On"
         /// </summary>
         public static LocalisableString OnStateLabel => new TranslatableString(getKey(@"on_state_label"), @"On");
