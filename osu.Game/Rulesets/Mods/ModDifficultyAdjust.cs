@@ -36,7 +36,7 @@ namespace osu.Game.Rulesets.Mods
 
         protected const int LAST_SETTING_ORDER = 2;
 
-        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.HpDrainLabel), nameof(CommonModsStrings.HpDrainDescription), FIRST_SETTING_ORDER, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(SongSelectStrings), nameof(SongSelectStrings.HPDrain), null, FIRST_SETTING_ORDER, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public DifficultyBindable DrainRate { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -46,7 +46,7 @@ namespace osu.Game.Rulesets.Mods
             ReadCurrentFromDifficulty = diff => diff.DrainRate,
         };
 
-        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.AccuracyLabel), nameof(CommonModsStrings.AccuracyDescription), LAST_SETTING_ORDER, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(SongSelectStrings), nameof(SongSelectStrings.Accuracy), null, LAST_SETTING_ORDER, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public virtual DifficultyBindable OverallDifficulty { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -107,10 +107,10 @@ namespace osu.Game.Rulesets.Mods
             get
             {
                 if (!DrainRate.IsDefault)
-                    yield return (CommonModsStrings.HpDrainLabel, $"{DrainRate.Value:N1}");
+                    yield return (SongSelectStrings.HPDrain, $"{DrainRate.Value:N1}");
 
                 if (!OverallDifficulty.IsDefault)
-                    yield return (CommonModsStrings.AccuracyLabel, $"{OverallDifficulty.Value:N1}");
+                    yield return (SongSelectStrings.Accuracy, $"{OverallDifficulty.Value:N1}");
             }
         }
 

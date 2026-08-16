@@ -16,7 +16,7 @@ namespace osu.Game.Rulesets.Catch.Mods
 {
     public class CatchModDifficultyAdjust : ModDifficultyAdjust, IApplicableToBeatmapProcessor
     {
-        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.CircleSizeLabel), nameof(CommonModsStrings.CircleSizeDescription), FIRST_SETTING_ORDER - 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(SongSelectStrings), nameof(SongSelectStrings.CircleSize), null, FIRST_SETTING_ORDER - 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public DifficultyBindable CircleSize { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -26,7 +26,7 @@ namespace osu.Game.Rulesets.Catch.Mods
             ReadCurrentFromDifficulty = diff => diff.CircleSize,
         };
 
-        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.ApproachRateLabel), nameof(CommonModsStrings.ApproachRateDescription), LAST_SETTING_ORDER + 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(SongSelectStrings), nameof(SongSelectStrings.ApproachRate), null, LAST_SETTING_ORDER + 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public DifficultyBindable ApproachRate { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -63,13 +63,13 @@ namespace osu.Game.Rulesets.Catch.Mods
             get
             {
                 if (!CircleSize.IsDefault)
-                    yield return (CommonModsStrings.CircleSizeLabel, $"{CircleSize.Value:N1}");
+                    yield return (SongSelectStrings.CircleSize, $"{CircleSize.Value:N1}");
 
                 foreach (var setting in base.SettingDescription)
                     yield return setting;
 
                 if (!ApproachRate.IsDefault)
-                    yield return (CommonModsStrings.ApproachRateLabel, $"{ApproachRate.Value:N1}");
+                    yield return (SongSelectStrings.ApproachRate, $"{ApproachRate.Value:N1}");
 
                 if (!HardRockOffsets.IsDefault)
                     yield return (ModsStrings.DifficultyAdjustSpicyPatternsLabel, CommonModsStrings.OnStateLabel);

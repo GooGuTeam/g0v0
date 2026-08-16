@@ -204,20 +204,6 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString SpeedDecreaseDescription => new TranslatableString(getKey(@"speed_decrease_description"), @"The actual decrease to apply");
 
-        public static LocalisableString HpDrainLabel => SongSelectStrings.HPDrain;
-
-        /// <summary>
-        /// "Override a beatmap's set HP."
-        /// </summary>
-        public static LocalisableString HpDrainDescription => new TranslatableString(getKey(@"hp_drain_description"), @"Override a beatmap's set HP.");
-
-        public static LocalisableString AccuracyLabel => SongSelectStrings.Accuracy;
-
-        /// <summary>
-        /// "Override a beatmap's set OD."
-        /// </summary>
-        public static LocalisableString AccuracyDescription => new TranslatableString(getKey(@"accuracy_description"), @"Override a beatmap's set OD.");
-
         /// <summary>
         /// "Extended Limits"
         /// </summary>
@@ -362,15 +348,6 @@ namespace osu.Game.Localisation
         /// "The final speed to ramp to"
         /// </summary>
         public static LocalisableString FinalRateDescription => new TranslatableString(getKey(@"final_rate_description"), @"The final speed to ramp to");
-
-        public static LocalisableString CircleSizeLabel => SongSelectStrings.CircleSize;
-
-        /// <summary>
-        /// "Override a beatmap's set CS."
-        /// </summary>
-        public static LocalisableString CircleSizeDescription => new TranslatableString(getKey(@"circle_size_description"), @"Override a beatmap's set CS.");
-
-        public static LocalisableString ApproachRateLabel => SongSelectStrings.ApproachRate;
 
         /// <summary>
         /// "Override a beatmap's set AR."
