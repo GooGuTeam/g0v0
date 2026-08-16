@@ -3,6 +3,7 @@
 
 #nullable disable
 
+using System.ComponentModel;
 using osu.Framework.Graphics.Sprites;
 
 namespace osu.Game.Graphics
@@ -66,6 +67,16 @@ namespace osu.Game.Graphics
         public static FontUsage Numeric => GetFont(Typeface.MapleMono, weight: FontWeight.Bold);
 
         /// <summary>
+        /// Default font face for UI and game elements. (Compatibility with rulesets)
+        /// </summary>
+        public static FontUsage Torus => GetFont(Typeface.Torus, weight: FontWeight.Regular);
+
+        /// <summary>
+        /// Default font face with alternate character set for headings and flair text. (Compatibility with rulesets)
+        /// </summary>
+        public static FontUsage TorusAlternate => GetFont(Typeface.TorusAlternate, weight: FontWeight.Regular);
+
+        /// <summary>
         /// Default font face for UI and game elements.
         /// </summary>
         public static FontUsage MapleMono => GetFont(Typeface.MapleMono, weight: FontWeight.Regular);
@@ -104,6 +115,9 @@ namespace osu.Game.Graphics
         {
             switch (typeface)
             {
+                case Typeface.Venera:
+                case Typeface.Torus:
+                case Typeface.TorusAlternate:
                 case Typeface.MapleMono:
                     return "MapleMono";
 
@@ -149,6 +163,15 @@ namespace osu.Game.Graphics
 
     public enum Typeface
     {
+        [Description("Venera (Compatibility mode)")]
+        Venera,
+
+        [Description("Torus (Compatibility mode)")]
+        Torus,
+
+        [Description("Torus (alternate) (Compatibility mode)")]
+        TorusAlternate,
+
         MapleMono,
         Inter,
     }
