@@ -80,9 +80,9 @@ function CheckFile {
 
     $baseName = [System.IO.Path]::GetFileNameWithoutExtension($FilePath).Split('.')[0]
     $escapedBaseName = [regex]::Escape($baseName)
-    $pattern = "\b(enum|struct|class|interface|record)\s+$escapedBaseName\b"
-    $results = Find-MatchingLines $text $pattern
-    if ($results.Count -eq 0) {
+    $pattern = "\b(enum|struct|class|interface|record)\s+$escapedBaseName"
+    $matches = Find-MatchingLines $text $pattern
+    if ($matches.Count -eq 0) {
         Report $DisplayPath "Filename does not match contained type."
     }
 }

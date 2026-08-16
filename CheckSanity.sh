@@ -92,7 +92,7 @@ check_file() {
         }
 
         my $escaped = quotemeta($basename);
-        if ($text !~ /\b(enum|struct|class|interface|record)\s+$escaped\b/) {
+        if ($text !~ /\b(enum|struct|class|interface|record)\s+$escaped/) {
             print "$file:0: Filename does not match contained type.\n";
             $has_errors = 1;
         }
