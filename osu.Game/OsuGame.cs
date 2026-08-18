@@ -121,6 +121,7 @@ namespace osu.Game
         public const float SCREEN_EDGE_MARGIN = 12f;
 
         private const double general_log_debounce = 60000;
+        private const string ruleset_log_prefix = @"[Ruleset] ";
         private const string tablet_log_prefix = @"[Tablet] ";
 
         public Toolbar Toolbar { get; private set; }
@@ -1044,6 +1045,7 @@ namespace osu.Game
 
             Logger.NewEntry -= forwardGeneralLogToNotifications;
             Logger.NewEntry -= forwardTabletLogToNotifications;
+            RulesetStore.OnError -= forwardRulesetErrorToNotifications;
         }
 
         protected override IDictionary<FrameworkSetting, object> GetFrameworkConfigDefaults()
@@ -1319,6 +1321,9 @@ namespace osu.Game
                 Notifications.Post(new RulesetLoadErrorNotification(rulesetErrorEvents.Select(e => e.RulesetInfo!.Name)));
             }
 
+            // Late subscription here to avoid posting notifications during ruleset loading.
+            RulesetStore.OnError += forwardRulesetErrorToNotifications;
+
             // Show server information notification on startup
             showServerInfoNotification();
 
@@ -1464,6 +1469,10 @@ namespace osu.Game
         {
             if (entry.Level < LogLevel.Important || entry.Target > LoggingTarget.Database || entry.Target == null) return;
 
+            // Ruleset logs are handled by events.
+            if (entry.Message.StartsWith(ruleset_log_prefix, StringComparison.OrdinalIgnoreCase))
+                return;
+
             if (entry.Exception is SentryOnlyDiagnosticsException)
                 return;
 
@@ -1551,6 +1560,15 @@ namespace osu.Game
 
                 tabletLogNotifyOnWarning = false;
             }
+        }
+
+        private void forwardRulesetErrorToNotifications(RulesetErrorEvent e)
+        {
+            // To reduce annoyance for users.
+            if (e.Exception == null || e.RulesetInfo == null)
+                return;
+
+            Schedule(() => Notifications.Post(new RulesetErrorNotification(e.RulesetInfo, e.Exception)));
         }
 
         private Task asyncLoadStream;

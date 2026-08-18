@@ -289,6 +289,12 @@ Click to see what's new!", version);
         public static LocalisableString RulesetLoadSuggestion =>
             new TranslatableString(getKey(@"ruleset_load_suggestion"), @"You may ask for updates from their developers, or report issues to them.");
 
+        /// <summary>
+        /// "Something went wrong with the ruleset &quot;{0}&quot;."
+        /// </summary>
+        public static LocalisableString RulesetException(string name) =>
+            new TranslatableString(getKey(@"ruleset_exception"), @"Something went wrong with the ruleset ""{0}"".", name);
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }
