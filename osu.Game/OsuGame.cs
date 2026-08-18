@@ -62,6 +62,7 @@ using osu.Game.Overlays.Notifications;
 using osu.Game.Overlays.OSD;
 using osu.Game.Overlays.SkinEditor;
 using osu.Game.Overlays.Toolbar;
+using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
@@ -1308,6 +1309,15 @@ namespace osu.Game
 
             // Importantly, this should be run after binding PostNotification to the import handlers so they can present the import after game startup.
             handleStartupImport();
+
+            var rulesetErrorEvents = RulesetStore.Events.OfType<RulesetErrorEvent>()
+                                                 .Where(e => e.RulesetInfo != null)
+                                                 .ToList();
+
+            if (rulesetErrorEvents.Count != 0)
+            {
+                Notifications.Post(new RulesetLoadErrorNotification(rulesetErrorEvents.Select(e => e.RulesetInfo!.Name)));
+            }
 
             // Show server information notification on startup
             showServerInfoNotification();

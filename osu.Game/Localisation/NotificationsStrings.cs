@@ -272,6 +272,23 @@ Click to see what's new!", version);
         /// </summary>
         public static LocalisableString CollectionBeatmapsAdded(string name, int beatmapsCount) => new TranslatableString(getKey(@"collection_beatmaps_added"), @"Added {0} beatmaps to collection ""{1}"".", beatmapsCount, name);
 
+        /// <summary>
+        /// "Ruleset error"
+        /// </summary>
+        public static LocalisableString RulesetError => new TranslatableString(getKey(@"ruleset_error"), @"Ruleset error");
+
+        /// <summary>
+        /// "The following rulesets could not be loaded:"
+        /// </summary>
+        public static LocalisableString RulesetUnableToLoad =>
+            new TranslatableString(getKey(@"ruleset_unable_to_load"), @"The following rulesets could not be loaded:");
+
+        /// <summary>
+        /// "You may ask for updates from their developers, or report issues to them."
+        /// </summary>
+        public static LocalisableString RulesetLoadSuggestion =>
+            new TranslatableString(getKey(@"ruleset_load_suggestion"), @"You may ask for updates from their developers, or report issues to them.");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }
