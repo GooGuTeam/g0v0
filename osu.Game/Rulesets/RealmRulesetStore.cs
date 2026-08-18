@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
@@ -72,6 +73,8 @@ namespace osu.Game.Rulesets
                 // perform a consistency check and detach final rulesets from realm for cross-thread runtime usage.
                 foreach (var r in rulesets.OrderBy(r => r.OnlineID))
                 {
+                    Assembly? rulesetAssembly = null;
+
                     try
                     {
                         var resolvedType = Type.GetType(r.InstantiationInfo);
@@ -82,6 +85,8 @@ namespace osu.Game.Rulesets
                             r.Available = false;
                             continue;
                         }
+
+                        rulesetAssembly = resolvedType.Assembly;
 
                         var instance = (Activator.CreateInstance(resolvedType) as Ruleset);
                         var instanceInfo = instance?.RulesetInfo
@@ -110,12 +115,17 @@ namespace osu.Game.Rulesets
 
                         testRulesetCompatibility(r);
 
-                        detachedRulesets.Add(r.Clone());
+                        var detached = r.Clone();
+                        detachedRulesets.Add(detached);
+                        SetRulesetInfo(resolvedType.Assembly, detached);
                     }
                     catch (Exception ex)
                     {
                         r.Available = false;
-                        LogRulesetFailure(r, ex);
+                        AddEvent(new RulesetErrorEvent(rulesetAssembly, ex, rulesetAssembly?.Location ?? string.Empty)
+                        {
+                            RulesetInfo = r.Clone()
+                        });
                     }
                 }
 

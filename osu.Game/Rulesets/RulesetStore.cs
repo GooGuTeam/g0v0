@@ -74,6 +74,49 @@ namespace osu.Game.Rulesets
         /// <returns>A ruleset, if available, else null.</returns>
         public RulesetInfo? GetRuleset(string shortName) => AvailableRulesets.FirstOrDefault(r => r.ShortName == shortName);
 
+        /// <summary>
+        /// Records a ruleset loading event and raises the corresponding event handler.
+        /// </summary>
+        /// <param name="e">The event to record.</param>
+        protected void AddEvent(RulesetEvent e)
+        {
+            events.Add(e);
+
+            switch (e)
+            {
+                case RulesetLoadEvent loadEvent:
+                    Logger.Log($"[Ruleset] Loaded new ruleset from {loadEvent.Location}.");
+                    OnLoaded?.Invoke(loadEvent);
+                    break;
+
+                case RulesetErrorEvent errorEvent:
+                    string finalName = errorEvent.RulesetInfo?.Name
+                                       ?? errorEvent.Assembly?.GetName().Name!.Split('.').Last()
+                                       ?? @"<unknown>";
+
+                    Logger.Log($"[Ruleset] An issue with ruleset \"{finalName}\" occurred.", level: LogLevel.Error);
+                    if (errorEvent.Exception != null)
+                        Logger.Log(errorEvent.Exception.ToString());
+
+                    OnError?.Invoke(errorEvent);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Associates any recorded events for the specified assembly with the given <see cref="RulesetInfo"/>.
+        /// </summary>
+        /// <param name="assembly">The assembly whose events should be associated.</param>
+        /// <param name="rulesetInfo">The loaded ruleset info to attach.</param>
+        protected void SetRulesetInfo(Assembly assembly, RulesetInfo rulesetInfo)
+        {
+            foreach (RulesetEvent evt in events.Where(evt => evt.Assembly == assembly && evt.RulesetInfo == null))
+            {
+                evt.RulesetInfo = rulesetInfo;
+                Logger.Log($@"Updating ruleset event entry: {evt.Location} <=> {rulesetInfo.Name}");
+            }
+        }
+
         private Assembly? resolveRulesetDependencyAssembly(object? sender, ResolveEventArgs args)
         {
             var asm = new AssemblyName(args.Name);
@@ -110,7 +153,7 @@ namespace osu.Game.Rulesets
                 if (!rulesetName.StartsWith(ruleset_library_prefix, StringComparison.InvariantCultureIgnoreCase) || rulesetName.Contains(@"Tests"))
                     continue;
 
-                addRuleset(ruleset);
+                addRuleset(ruleset, RulesetSource.Builtin, ruleset.Location);
             }
         }
 
@@ -120,7 +163,7 @@ namespace osu.Game.Rulesets
 
             foreach (string? ruleset in rulesets.Where(f => !f.Contains(@"Tests")))
             {
-                var assembly = loadRulesetFromFile(rulesetStorage.GetFullPath(ruleset));
+                var assembly = loadRulesetFromFile(rulesetStorage.GetFullPath(ruleset), RulesetSource.User);
                 if (assembly != null)
                     UserRulesetAssemblies.Add(assembly);
             }
@@ -133,7 +176,7 @@ namespace osu.Game.Rulesets
                 string[] files = Directory.GetFiles(RuntimeInfo.StartupDirectory, @$"{ruleset_library_prefix}.*.dll");
 
                 foreach (string file in files.Where(f => !Path.GetFileName(f).Contains("Tests")))
-                    loadRulesetFromFile(file);
+                    loadRulesetFromFile(file, RulesetSource.Builtin);
             }
             catch (Exception e)
             {
@@ -141,7 +184,7 @@ namespace osu.Game.Rulesets
             }
         }
 
-        private Assembly? loadRulesetFromFile(string file)
+        private Assembly? loadRulesetFromFile(string file, RulesetSource source)
         {
             string filename = Path.GetFileNameWithoutExtension(file);
 
@@ -151,18 +194,18 @@ namespace osu.Game.Rulesets
             try
             {
                 var assembly = Assembly.LoadFrom(file);
-                addRuleset(assembly);
+                addRuleset(assembly, source, file);
                 return assembly;
             }
             catch (Exception e)
             {
-                logRulesetFailure(filename, e);
+                AddEvent(new RulesetErrorEvent(null, e, file));
             }
 
             return null;
         }
 
-        private void addRuleset(Assembly assembly)
+        private void addRuleset(Assembly assembly, RulesetSource source, string location)
         {
             if (LoadedAssemblies.ContainsKey(assembly))
                 return;
@@ -175,10 +218,11 @@ namespace osu.Game.Rulesets
             try
             {
                 LoadedAssemblies[assembly] = assembly.GetTypes().First(t => t.IsPublic && t.IsSubclassOf(typeof(Ruleset)));
+                AddEvent(new RulesetLoadEvent(assembly, source, location));
             }
             catch (Exception e)
             {
-                logRulesetFailure(assembly.GetName().Name!.Split('.').Last(), e);
+                AddEvent(new RulesetErrorEvent(assembly, e, location));
             }
         }
 
