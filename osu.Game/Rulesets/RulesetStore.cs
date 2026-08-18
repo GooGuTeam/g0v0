@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
@@ -21,10 +21,22 @@ namespace osu.Game.Rulesets
         protected readonly HashSet<Assembly> UserRulesetAssemblies = new HashSet<Assembly>();
         protected readonly Storage? RulesetStorage;
 
+        private readonly List<RulesetEvent> events = new List<RulesetEvent>();
+
         /// <summary>
         /// All available rulesets.
         /// </summary>
         public abstract IEnumerable<RulesetInfo> AvailableRulesets { get; }
+
+        /// <inheritdoc />
+        /// <summary>
+        /// A chronological list of ruleset loading events.
+        /// </summary>
+        public virtual IEnumerable<RulesetEvent> Events => events;
+
+        public event Action<RulesetLoadEvent>? OnLoaded;
+
+        public event Action<RulesetErrorEvent>? OnError;
 
         protected RulesetStore(Storage? storage = null)
         {
@@ -196,5 +208,74 @@ namespace osu.Game.Rulesets
         IEnumerable<IRulesetInfo> IRulesetStore.AvailableRulesets => AvailableRulesets;
 
         #endregion
+    }
+
+    /// <summary>
+    /// Represents an event entry during ruleset setup.
+    /// </summary>
+    public class RulesetEvent
+    {
+        /// <summary>
+        /// The assembly that produced this event, if any.
+        /// </summary>
+        public Assembly? Assembly { get; init; }
+
+        /// <summary>
+        /// The ruleset info associated with this event. Populated after a ruleset is successfully resolved.
+        /// </summary>
+        public RulesetInfo? RulesetInfo { get; set; }
+
+        /// <summary>
+        /// The file system location relevant to this event (e.g. the loaded DLL path).
+        /// </summary>
+        public string Location { get; set; } = string.Empty;
+    }
+
+    /// <inheritdoc />
+    /// <summary>
+    /// A new ruleset was loaded into the ruleset store.
+    /// </summary>
+    public class RulesetLoadEvent : RulesetEvent
+    {
+        /// <summary>
+        /// The location of the ruleset (builtin or user provided).
+        /// </summary>
+        public RulesetSource Source { get; init; }
+
+        public RulesetLoadEvent(Assembly assembly, RulesetSource source, string location)
+        {
+            Assembly = assembly;
+            Source = source;
+            Location = location;
+        }
+    }
+
+    /// <inheritdoc />
+    /// <summary>
+    /// An error was occured while loading the ruleset assembly.
+    /// </summary>
+    public class RulesetErrorEvent : RulesetEvent
+    {
+        public Exception? Exception { get; init; }
+
+        public RulesetErrorEvent(Assembly? assembly, Exception? exception, string location)
+        {
+            Assembly = assembly;
+            Exception = exception;
+            Location = location;
+        }
+    }
+
+    public enum RulesetSource
+    {
+        /// <summary>
+        /// The ruleset is loaded from the installation directory or AppDomain.
+        /// </summary>
+        Builtin,
+
+        /// <summary>
+        /// The ruleset is loaded from the "rulesets" directory.
+        /// </summary>
+        User,
     }
 }

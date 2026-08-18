@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 
 namespace osu.Game.Rulesets
@@ -25,5 +26,20 @@ namespace osu.Game.Rulesets
         /// All available rulesets.
         /// </summary>
         IEnumerable<IRulesetInfo> AvailableRulesets { get; }
+
+        /// <summary>
+        /// A chronological list of ruleset loading events.
+        /// </summary>
+        IEnumerable<RulesetEvent> Events { get; }
+
+        /// <summary>
+        /// Invoked when a ruleset is successfully loaded.
+        /// </summary>
+        event Action<RulesetLoadEvent>? OnLoaded;
+
+        /// <summary>
+        /// Invoked when a ruleset fails to load.
+        /// </summary>
+        event Action<RulesetErrorEvent>? OnError;
     }
 }
