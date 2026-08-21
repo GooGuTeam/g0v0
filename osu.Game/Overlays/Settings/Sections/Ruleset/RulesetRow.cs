@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using osu.Framework.Allocation;
-using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
@@ -25,6 +24,9 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
         private OsuTextFlowContainer titleFlow = null!;
         private SwitchButton enabledSwitch = null!;
 
+        [Resolved]
+        private RulesetStore rulesets { get; set; } = null!;
+
         private const float spacing = 15;
 
         public RulesetRow(RulesetInfo ruleset)
@@ -45,7 +47,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
         }
 
         [BackgroundDependencyLoader]
-        private void load(RulesetStore rulesets, OverlayColourProvider colours)
+        private void load(OverlayColourProvider colours)
         {
             string name = ruleset.Name;
             string shortName = ruleset.ShortName;
@@ -58,6 +60,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
 
             string? version = assembly?.GetName().Version?.ToString();
             bool allowManageActions = sourceEvent?.Source is RulesetSource.User;
+            bool isDisabled = rulesets.DisabledRulesets.Contains(ruleset);
 
             string description = version ?? "<unknown version>";
             var icon = instance?.CreateIcon()
@@ -177,7 +180,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
                                                 Alpha = allowManageActions ? 1 : 0,
                                                 Current =
                                                 {
-                                                    Value = true,
+                                                    Value = !isDisabled,
                                                     Disabled = !allowManageActions,
                                                 },
                                             },
@@ -205,19 +208,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
         {
             base.LoadComplete();
 
-            enabledSwitch.Current.BindValueChanged(onEnabledChange);
-        }
-
-        private void onEnabledChange(ValueChangedEvent<bool> e)
-        {
-            if (e.NewValue)
-            {
-                // TODO: After enabling the ruleset, try loading it instantly.
-            }
-            else
-            {
-                // TODO: Disable the ruleset by renaming it to "disabled".
-            }
+            enabledSwitch.Current.BindValueChanged(e => rulesets.SetRulesetEnabled(ruleset, e.NewValue));
         }
 
         protected override bool OnHover(HoverEvent e)
