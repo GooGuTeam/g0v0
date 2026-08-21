@@ -5,6 +5,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation;
 using osu.Game.Rulesets;
 using osuTK;
 
@@ -12,7 +13,8 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
 {
     public partial class RulesetManagementPanel : SettingsSubPanel
     {
-        protected override Drawable CreateHeader() => new SettingsHeader("Ruleset management", "Manage loaded rulesets!");
+        protected override Drawable CreateHeader()
+            => new SettingsHeader(RulesetSettingsStrings.RulesetManagement, RulesetSettingsStrings.RulesetManagementSubheading);
 
         [BackgroundDependencyLoader]
         private void load()
@@ -28,7 +30,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
             Icon = OsuIcon.Rulesets,
         };
 
-        public override LocalisableString Header => "Local Rulesets";
+        public override LocalisableString Header => RulesetSettingsStrings.LocalRulesets;
 
         [BackgroundDependencyLoader(permitNulls: true)]
         private void load(RulesetStore rulesets)

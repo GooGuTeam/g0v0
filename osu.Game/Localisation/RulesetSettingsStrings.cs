@@ -1,6 +1,3 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
-
 using osu.Framework.Localisation;
 
 namespace osu.Game.Localisation
@@ -138,6 +135,36 @@ namespace osu.Game.Localisation
         /// "Touch overlay"
         /// </summary>
         public static LocalisableString TouchOverlay => new TranslatableString(getKey(@"touch_overlay"), @"Touch overlay");
+
+        /// <summary>
+        /// "Ruleset management"
+        /// </summary>
+        public static LocalisableString RulesetManagement => new TranslatableString(getKey(@"ruleset_management"), @"Ruleset management");
+
+        /// <summary>
+        /// "Manage supported game modes!"
+        /// </summary>
+        public static LocalisableString RulesetManagementSubheading => new TranslatableString(getKey(@"ruleset_management_subheading"), @"Manage supported game modes!");
+
+        /// <summary>
+        /// "Local rulesets"
+        /// </summary>
+        public static LocalisableString LocalRulesets => new TranslatableString(getKey(@"local_rulesets"), @"Local rulesets");
+
+        /// <summary>
+        /// "&lt;unknown version&gt;"
+        /// </summary>
+        public static LocalisableString UnknownVersionPlaceholder => new TranslatableString(getKey(@"unknown_version_placeholder"), @"<unknown version>");
+
+        /// <summary>
+        /// "(Builtin)"
+        /// </summary>
+        public static LocalisableString BuiltinPrefix => new TranslatableString(getKey(@"builtin_prefix"), @"(Builtin)");
+
+        /// <summary>
+        /// "Show source assembly in file manager"
+        /// </summary>
+        public static LocalisableString ShowAssemblyInFileManager => new TranslatableString(getKey(@"show_assembly_in_file_manager"), @"Show source assembly in file manager");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

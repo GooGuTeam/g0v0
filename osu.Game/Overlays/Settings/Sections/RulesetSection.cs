@@ -61,9 +61,9 @@ namespace osu.Game.Overlays.Settings.Sections
 
     public partial class RulesetManagementSettings : SettingsSubsection
     {
-        protected override LocalisableString Header => BindingSettingsStrings.ShortcutAndGameplayBindings;
+        protected override LocalisableString Header => RulesetSettingsStrings.RulesetManagement;
 
-        public override IEnumerable<LocalisableString> FilterTerms => base.FilterTerms.Concat(new LocalisableString[] { @"ruleset", @"manage" });
+        public override IEnumerable<LocalisableString> FilterTerms => base.FilterTerms.Concat(new LocalisableString[] { @"rulesets", @"manage" });
 
         public RulesetManagementSettings(RulesetManagementPanel panel)
         {
@@ -72,7 +72,6 @@ namespace osu.Game.Overlays.Settings.Sections
                 new SettingsButtonV2
                 {
                     Text = BindingSettingsStrings.Configure,
-                    TooltipText = BindingSettingsStrings.ChangeBindingsButton,
                     Action = panel.ToggleVisibility,
                     Height = 60
                 },

@@ -10,6 +10,7 @@ using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.Localisation;
 using osu.Game.Rulesets;
 using osuTK;
 
@@ -62,7 +63,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
             bool allowManageActions = sourceEvent?.Source is RulesetSource.User;
             bool isDisabled = rulesets.DisabledRulesets.Contains(ruleset);
 
-            string description = version ?? "<unknown version>";
+            var description = version ?? RulesetSettingsStrings.UnknownVersionPlaceholder;
             var icon = instance?.CreateIcon()
                        ?? new SpriteIcon
                        {
@@ -169,7 +170,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
                                                 Icon = FontAwesome.Solid.Folder,
                                                 Alpha = allowManageActions ? 1 : 0,
                                                 Action = () => rulesets.PresentRulesetExternally(ruleset),
-                                                TooltipText = "Open source assembly in file viewer",
+                                                TooltipText = RulesetSettingsStrings.ShowAssemblyInFileManager,
                                             },
                                             enabledSwitch = new SwitchButton
                                             {
@@ -194,10 +195,13 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
             };
 
             if (sourceEvent?.Source is RulesetSource.Builtin)
-                titleFlow.AddText("(Builtin) ", t => t.Colour = colours.Colour0);
+            {
+                titleFlow.AddText(RulesetSettingsStrings.BuiltinPrefix, t => t.Colour = colours.Colour0);
+                titleFlow.AddText(@" ");
+            }
 
-            titleFlow.AddText(name, t => t.Font = OsuFont.Style.Heading2);
-            titleFlow.AddText($" [{shortName}]", t =>
+            titleFlow.AddText($"{name} ", t => t.Font = OsuFont.Style.Heading2);
+            titleFlow.AddText($"[{shortName}]", t =>
             {
                 t.Font = OsuFont.Style.Caption1;
                 t.Colour = colours.Colour0;
