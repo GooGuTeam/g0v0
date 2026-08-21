@@ -186,10 +186,11 @@ namespace osu.Game.Rulesets
                     {
                         string sourceLocation = declaringAssembly.Location;
                         string destinationLocation = Path.ChangeExtension(sourceLocation, @".dll.broken");
+                        string sourceName = Path.GetFileNameWithoutExtension(sourceLocation);
 
                         if (File.Exists(sourceLocation))
                         {
-                            Logger.Log($"Unhandled exception traced back to custom ruleset {Path.GetFileNameWithoutExtension(sourceLocation)}. Marking as broken.");
+                            Logger.Log($"Unhandled exception traced back to custom ruleset {sourceName}. Marking as broken.");
                             File.Move(sourceLocation, destinationLocation);
                         }
 
@@ -198,7 +199,11 @@ namespace osu.Game.Rulesets
                                               .FirstOrDefault(e => e.Assembly == declaringAssembly);
 
                         if (loadEvent?.RulesetInfo != null)
+                        {
                             MarkRulesetAsBroken(loadEvent.RulesetInfo, exception, declaringAssembly, sourceLocation);
+                            Config.RulesetCausedCrashLastTime = sourceName;
+                            SaveConfiguration();
+                        }
                         else
                             Logger.Log($"Could not find ruleset info for assembly {declaringAssembly.GetName().Name} to mark as broken in config.");
                     }

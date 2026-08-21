@@ -126,6 +126,20 @@ namespace osu.Game.Rulesets
         }
 
         /// <summary>
+        /// Tells if custom rulesets make the game crash and which one (namely <see cref="RulesetManagementConfig.RulesetCausedCrashLastTime"/>),
+        /// then reset it.
+        /// </summary>
+        /// <returns>The name of the disabled ruleset file.</returns>
+        public string? FireAndForgetLastCrash()
+        {
+            string? lastName = Config.RulesetCausedCrashLastTime;
+
+            Config.RulesetCausedCrashLastTime = null;
+            SaveConfiguration();
+            return lastName;
+        }
+
+        /// <summary>
         /// Enable or disable a ruleset in the store config, then persist.
         /// Enabling a ruleset also marks it as trusted (adds to <see cref="RulesetManagementConfig.KnownRulesets"/>).
         /// </summary>

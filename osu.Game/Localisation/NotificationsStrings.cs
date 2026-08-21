@@ -302,6 +302,23 @@ Click to see what's new!", version);
         public static LocalisableString RulesetException(string name) =>
             new TranslatableString(getKey(@"ruleset_exception"), @"Something went wrong with the ruleset ""{0}"".", name);
 
+        /// <summary>
+        /// "It seems that the ruleset &quot;{0}&quot; caused the game to crash, and we have temporarily disabled it to avoid further problems."
+        /// </summary>
+        public static LocalisableString RulesetCausedCrash(string name)
+            => new TranslatableString(getKey(@"ruleset_caused_crash"), @"It seems that the ruleset ""{0}"" caused the game to crash, and we have temporarily disabled it to avoid further problems.", name);
+
+        /// <summary>
+        /// "You can restore it anytime from the settings, but it's suggested to report this issue to the ruleset's developer first."
+        /// </summary>
+        public static LocalisableString RulesetCrashSuggestion
+            => new TranslatableString(getKey(@"ruleset_crash_suggestion"), @"You can restore it anytime from the settings, but it's suggested to report this issue to the ruleset's developer first.");
+
+        /// <summary>
+        /// "Boom!"
+        /// </summary>
+        public static LocalisableString ExceptionTitle => new TranslatableString(getKey(@"exception_title"), @"Boom!");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

@@ -28,6 +28,11 @@ namespace osu.Game.Rulesets.Configuration
         public List<string> BrokenRulesetFilenames { get; } = [];
 
         /// <summary>
+        /// The filename of the ruleset causing the game's crash, if exists.
+        /// </summary>
+        public string? RulesetCausedCrashLastTime { get; set; }
+
+        /// <summary>
         /// Is the specified ruleset trusted, i.e. formly enabled by the user (or <see cref="BlockUnseenRulesets"/> is disabled).
         /// </summary>
         /// <param name="ruleset"></param>

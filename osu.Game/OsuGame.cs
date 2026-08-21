@@ -1319,6 +1319,15 @@ namespace osu.Game
                 Notifications.Post(new RulesetLoadErrorNotification(rulesetErrorEvents));
             }
 
+#nullable enable
+            string? rulesetName = RulesetStore.FireAndForgetLastCrash();
+
+            if (rulesetName != null)
+            {
+                Notifications.Post(new LastRulesetCrashNotification(rulesetName));
+            }
+#nullable disable
+
             // Late subscription here to avoid posting notifications during ruleset loading.
             RulesetStore.OnError += forwardRulesetErrorToNotifications;
 
