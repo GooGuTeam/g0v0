@@ -43,7 +43,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
                     AutoSizeAxes = Axes.Y,
                     Direction = FillDirection.Vertical,
                     Spacing = new Vector2(5),
-                    ChildrenEnumerable = rulesets.AvailableRulesets.Select(r => new RulesetRow(r)),
+                    ChildrenEnumerable = rulesets.AllRulesets.Select(r => new RulesetRow(r)),
                 }
             };
         }
