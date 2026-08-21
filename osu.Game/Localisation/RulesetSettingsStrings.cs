@@ -152,6 +152,22 @@ namespace osu.Game.Localisation
         public static LocalisableString LocalRulesets => new TranslatableString(getKey(@"local_rulesets"), @"Local rulesets");
 
         /// <summary>
+        /// "Loaded rulesets"
+        /// </summary>
+        public static LocalisableString LoadedRulesets => new TranslatableString(getKey(@"loaded_rulesets"), @"Loaded rulesets");
+
+        /// <summary>
+        /// "Broken rulesets"
+        /// </summary>
+        public static LocalisableString BrokenRulesets => new TranslatableString(getKey(@"broken_rulesets"), @"Broken rulesets");
+
+        /// <summary>
+        /// "The following rulesets caused the game to crash, hence being disabled temporarily."
+        /// </summary>
+        public static LocalisableString BrokenRulesetsNote
+            => new TranslatableString(getKey(@"broken_rulesets_note"), @"The following rulesets caused the game to crash, hence being disabled temporarily.");
+
+        /// <summary>
         /// "&lt;unknown version&gt;"
         /// </summary>
         public static LocalisableString UnknownVersionPlaceholder => new TranslatableString(getKey(@"unknown_version_placeholder"), @"<unknown version>");
@@ -182,6 +198,11 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString LocalRulesetRestartNote
             => new TranslatableString(getKey(@"local_ruleset_restart_note"), @"Changes to local rulesets would take effect after a restart of the game client.");
+
+        /// <summary>
+        /// "Restore"
+        /// </summary>
+        public static LocalisableString Restore => new TranslatableString(getKey(@"restore"), @"Restore");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

@@ -7,7 +7,6 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
-using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
@@ -23,6 +22,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
 
         private FormControlBackground background = null!;
         private OsuTextFlowContainer titleFlow = null!;
+        private OsuTextFlowContainer descriptionFlow = null!;
         private SwitchButton enabledSwitch = null!;
 
         [Resolved]
@@ -48,22 +48,24 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
         }
 
         [BackgroundDependencyLoader]
-        private void load(OverlayColourProvider colours)
+        private void load(OsuColour osuColour, OverlayColourProvider colours)
         {
             string name = ruleset.Name;
             string shortName = ruleset.ShortName;
 
-            var sourceEvent = rulesets.Events
-                                      .OfType<RulesetLoadEvent>()
-                                      .FirstOrDefault(e => ruleset.Equals(e.RulesetInfo));
+            var sourceEvents = rulesets.Events.Where(e => ruleset.Equals(e.RulesetInfo)).ToList();
 
-            var assembly = sourceEvent?.Assembly;
+            var loadEvent = sourceEvents.OfType<RulesetLoadEvent>().FirstOrDefault();
+            var errorEvent = sourceEvents.OfType<RulesetErrorEvent>().FirstOrDefault();
+
+            var assembly = loadEvent?.Assembly ?? errorEvent?.Assembly;
 
             string? version = assembly?.GetName().Version?.ToString();
-            bool allowManageActions = sourceEvent?.Source is RulesetSource.User;
+            bool allowManageActions = loadEvent?.Source is RulesetSource.User || errorEvent != null;
             bool isDisabled = rulesets.DisabledRulesets.Contains(ruleset);
 
             var description = version ?? RulesetSettingsStrings.UnknownVersionPlaceholder;
+
             var icon = instance?.CreateIcon()
                        ?? new SpriteIcon
                        {
@@ -139,12 +141,10 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
                                                 RelativeSizeAxes = Axes.X,
                                                 AutoSizeAxes = Axes.Y,
                                             },
-                                            new OsuSpriteText
+                                            descriptionFlow = new OsuTextFlowContainer
                                             {
                                                 Anchor = Anchor.CentreLeft,
                                                 Origin = Anchor.CentreLeft,
-                                                Text = description,
-                                                Font = OsuFont.Style.Caption1,
                                             },
                                         },
                                     },
@@ -193,7 +193,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
                 },
             };
 
-            if (sourceEvent?.Source is RulesetSource.Builtin)
+            if (loadEvent?.Source is RulesetSource.Builtin)
             {
                 titleFlow.AddText(RulesetSettingsStrings.BuiltinPrefix, t => t.Colour = colours.Colour0);
                 titleFlow.AddText(@" ");
@@ -205,6 +205,8 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
                 t.Font = OsuFont.Style.Caption1;
                 t.Colour = colours.Colour0;
             });
+
+            descriptionFlow.AddText(description, t => t.Font = OsuFont.Style.Caption1);
         }
 
         protected override void LoadComplete()

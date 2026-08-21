@@ -27,7 +27,7 @@ namespace osu.Game.Rulesets
         {
             this.realmAccess = realmAccess;
             prepareDetachedRulesets();
-            informUserAboutBrokenRulesets();
+            SaveConfiguration();
         }
 
         private void prepareDetachedRulesets()
@@ -126,7 +126,6 @@ namespace osu.Game.Rulesets
                     catch (Exception ex)
                     {
                         r.Available = false;
-                        BrokenRulesets.Add(r.Clone());
                         AddEvent(new RulesetErrorEvent(rulesetAssembly, ex, rulesetAssembly?.Location ?? string.Empty)
                         {
                             RulesetInfo = r.Clone()
@@ -171,18 +170,6 @@ namespace osu.Game.Rulesets
             instance.CreateBeatmapProcessor(converter.Convert());
         }
 
-        private void informUserAboutBrokenRulesets()
-        {
-            if (RulesetStorage == null)
-                return;
-
-            foreach (string brokenRulesetDll in RulesetStorage.GetFiles(@".", @"*.dll.broken"))
-            {
-                Logger.Log($"Ruleset '{Path.GetFileNameWithoutExtension(brokenRulesetDll)}' has been disabled due to causing a crash.\n\n"
-                           + "Please update the ruleset or report the issue to the developers of the ruleset if no updates are available.", level: LogLevel.Important);
-            }
-        }
-
         internal void TryDisableCustomRulesetsCausing(Exception exception)
         {
             try
@@ -205,6 +192,15 @@ namespace osu.Game.Rulesets
                             Logger.Log($"Unhandled exception traced back to custom ruleset {Path.GetFileNameWithoutExtension(sourceLocation)}. Marking as broken.");
                             File.Move(sourceLocation, destinationLocation);
                         }
+
+                        // Sync to config so the ruleset appears in BrokenRulesets for UI display.
+                        var loadEvent = Events.OfType<RulesetLoadEvent>()
+                                              .FirstOrDefault(e => e.Assembly == declaringAssembly);
+
+                        if (loadEvent?.RulesetInfo != null)
+                            MarkRulesetAsBroken(loadEvent.RulesetInfo, exception, declaringAssembly, sourceLocation);
+                        else
+                            Logger.Log($"Could not find ruleset info for assembly {declaringAssembly.GetName().Name} to mark as broken in config.");
                     }
                 }
             }

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
 using osu.Framework;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
@@ -32,7 +33,8 @@ namespace osu.Game.Rulesets
         /// <summary>
         /// Loaded rulesets of all states.
         /// </summary>
-        public IEnumerable<RulesetInfo> AllRulesets => AvailableRulesets.Concat(DisabledRulesets).Concat(BrokenRulesets);
+        /// <remarks>Note: This doesn't include broken rulesets.</remarks>
+        public IEnumerable<RulesetInfo> AllRulesets => AvailableRulesets.Concat(DisabledRulesets);
 
         /// <summary>
         /// All available rulesets.
@@ -45,9 +47,9 @@ namespace osu.Game.Rulesets
         public virtual List<RulesetInfo> DisabledRulesets => Config.DisabledRulesets;
 
         /// <summary>
-        /// Rulesets that threw exceptions on load or caused the game to crash.
+        /// (Filenames of) rulesets that threw exceptions on load or caused the game to crash.
         /// </summary>
-        public virtual List<RulesetInfo> BrokenRulesets => Config.BrokenRulesets;
+        public virtual List<string> BrokenRulesetFilenames => Config.BrokenRulesetFilenames;
 
         /// <inheritdoc />
         /// <summary>
@@ -164,6 +166,51 @@ namespace osu.Game.Rulesets
             else
             {
                 Config.DisabledRulesets.Add(ruleset.Clone());
+            }
+        }
+
+        /// <summary>
+        /// Marks a ruleset as broken by adding its filename to the configuration,
+        /// records an error event, and persists the configuration.
+        /// </summary>
+        protected void MarkRulesetAsBroken(RulesetInfo rulesetInfo, Exception? exception, Assembly? assembly, string location)
+        {
+            if (!BrokenRulesetFilenames.Contains(location))
+                BrokenRulesetFilenames.Add(location);
+
+            if (exception != null)
+                AddEvent(new RulesetErrorEvent(assembly, exception, location) { RulesetInfo = rulesetInfo.Clone() });
+
+            SaveConfiguration();
+        }
+
+        /// <summary>
+        /// Restores a previously broken ruleset: moves the <c>.dll.broken</c> file back
+        /// to its original location and removes it from <see cref="BrokenRulesetFilenames"/>.
+        /// </summary>
+        public void TryRestoreBrokenRuleset(string location)
+        {
+            BrokenRulesetFilenames.Remove(location);
+
+            SaveConfiguration();
+
+            if (RulesetStorage == null)
+                return;
+
+            string brokenPath = Path.ChangeExtension(location, @".dll.broken");
+
+            // A ruleset file with the same name exists or the "broken" file has gone.
+            // We'd better not mess with them.
+            if (RulesetStorage.Exists(location) || !RulesetStorage.Exists(brokenPath))
+                return;
+
+            try
+            {
+                RulesetStorage.Move(brokenPath, location);
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, @"Failed to rename the broken ruleset file.");
             }
         }
 

@@ -23,9 +23,9 @@ namespace osu.Game.Rulesets.Configuration
         public List<RulesetInfo> DisabledRulesets { get; } = [];
 
         /// <summary>
-        /// Rulesets that caused the game to crash.
+        /// Filenames of broken rulesets assemblies.
         /// </summary>
-        public List<RulesetInfo> BrokenRulesets { get; } = [];
+        public List<string> BrokenRulesetFilenames { get; } = [];
 
         /// <summary>
         /// Is the specified ruleset trusted, i.e. formly enabled by the user (or <see cref="BlockUnseenRulesets"/> is disabled).
