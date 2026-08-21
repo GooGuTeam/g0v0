@@ -116,12 +116,17 @@ namespace osu.Game.Rulesets
                         testRulesetCompatibility(r);
 
                         var detached = r.Clone();
-                        detachedRulesets.Add(detached);
                         SetRulesetInfo(resolvedType.Assembly, detached);
+
+                        if (Config.ShouldBeLoaded(detached))
+                            detachedRulesets.Add(detached);
+                        else
+                            AddOrUpdateDisabledRuleset(detached);
                     }
                     catch (Exception ex)
                     {
                         r.Available = false;
+                        BrokenRulesets.Add(r.Clone());
                         AddEvent(new RulesetErrorEvent(rulesetAssembly, ex, rulesetAssembly?.Location ?? string.Empty)
                         {
                             RulesetInfo = r.Clone()

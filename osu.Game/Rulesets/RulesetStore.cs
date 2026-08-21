@@ -6,27 +6,46 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Newtonsoft.Json;
 using osu.Framework;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
+using osu.Game.Rulesets.Configuration;
 
 namespace osu.Game.Rulesets
 {
     public abstract class RulesetStore : IDisposable, IRulesetStore
     {
         private const string ruleset_library_prefix = @"osu.Game.Rulesets";
+        private const string config_filename = @"rulesets.json";
 
         protected readonly Dictionary<Assembly, Type> LoadedAssemblies = new Dictionary<Assembly, Type>();
         protected readonly HashSet<Assembly> UserRulesetAssemblies = new HashSet<Assembly>();
         protected readonly Storage? RulesetStorage;
+        protected readonly RulesetManagementConfig Config = new RulesetManagementConfig();
 
         private readonly List<RulesetEvent> events = new List<RulesetEvent>();
+
+        /// <summary>
+        /// Loaded rulesets of all states.
+        /// </summary>
+        public IEnumerable<RulesetInfo> AllRulesets => AvailableRulesets.Concat(DisabledRulesets).Concat(BrokenRulesets);
 
         /// <summary>
         /// All available rulesets.
         /// </summary>
         public abstract IEnumerable<RulesetInfo> AvailableRulesets { get; }
+
+        /// <summary>
+        /// Rulesets that are disabled.
+        /// </summary>
+        public virtual List<RulesetInfo> DisabledRulesets => Config.DisabledRulesets;
+
+        /// <summary>
+        /// Rulesets that threw exceptions on load or caused the game to crash.
+        /// </summary>
+        public virtual List<RulesetInfo> BrokenRulesets => Config.BrokenRulesets;
 
         /// <inheritdoc />
         /// <summary>
@@ -56,8 +75,94 @@ namespace osu.Game.Rulesets
             AppDomain.CurrentDomain.AssemblyResolve += resolveRulesetDependencyAssembly;
 
             RulesetStorage = storage?.GetStorageForDirectory(@"rulesets");
-            if (RulesetStorage != null)
-                loadUserRulesets(RulesetStorage);
+
+            if (RulesetStorage == null)
+                return;
+
+            if (RulesetStorage.Exists(config_filename))
+            {
+                using var configStream = RulesetStorage.GetStream(config_filename);
+                using var sr = new StreamReader(configStream);
+
+                try
+                {
+                    Config = JsonConvert.DeserializeObject<RulesetManagementConfig>(sr.ReadToEnd()) ?? new RulesetManagementConfig();
+                }
+                catch (Exception e)
+                {
+                    Logger.Error(e, @"An error occurred while deserializing the ruleset config.");
+                }
+            }
+            else
+            {
+                Logger.Log(@"The ruleset configuration file doesn't exist, creating.");
+            }
+
+            loadUserRulesets(RulesetStorage);
+        }
+
+        /// <summary>
+        /// Write the ruleset configuration into the external storage.
+        /// </summary>
+        public void SaveConfiguration()
+        {
+            if (RulesetStorage == null)
+                return;
+
+            try
+            {
+                using var configStream = RulesetStorage.GetStream(config_filename, FileAccess.Write, FileMode.Create);
+                using var sw = new StreamWriter(configStream);
+                sw.Write(JsonConvert.SerializeObject(Config, Formatting.Indented));
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, @"Failed to save ruleset configuration.");
+            }
+        }
+
+        /// <summary>
+        /// Enable or disable a ruleset in the store config, then persist.
+        /// Enabling a ruleset also marks it as trusted (adds to <see cref="RulesetManagementConfig.KnownRulesets"/>).
+        /// </summary>
+        public void SetRulesetEnabled(RulesetInfo ruleset, bool enabled)
+        {
+            if (enabled)
+            {
+                Config.DisabledRulesets.RemoveAll(r => r.Equals(ruleset));
+
+                if (!Config.KnownRulesets.Any(r => r.Equals(ruleset)))
+                    Config.KnownRulesets.Add(ruleset.Clone());
+            }
+            else
+            {
+                if (!Config.DisabledRulesets.Any(r => r.Equals(ruleset)))
+                    Config.DisabledRulesets.Add(ruleset.Clone());
+            }
+
+            SaveConfiguration();
+        }
+
+        /// <summary>
+        /// Adds the ruleset to <see cref="DisabledRulesets"/> if not already present,
+        /// or updates the existing entry with fresh metadata. Used during loading to
+        /// ensure disabled/untrusted rulesets appear in <see cref="AllRulesets"/> for display.
+        /// </summary>
+        protected void AddOrUpdateDisabledRuleset(RulesetInfo ruleset)
+        {
+            var existing = Config.DisabledRulesets.FirstOrDefault(r => r.Equals(ruleset));
+
+            if (existing != null)
+            {
+                existing.Name = ruleset.Name;
+                existing.InstantiationInfo = ruleset.InstantiationInfo;
+                existing.OnlineID = ruleset.OnlineID;
+                existing.Available = ruleset.Available;
+            }
+            else
+            {
+                Config.DisabledRulesets.Add(ruleset.Clone());
+            }
         }
 
         /// <summary>
@@ -73,6 +178,11 @@ namespace osu.Game.Rulesets
         /// <param name="shortName">The ruleset's short name.</param>
         /// <returns>A ruleset, if available, else null.</returns>
         public RulesetInfo? GetRuleset(string shortName) => AvailableRulesets.FirstOrDefault(r => r.ShortName == shortName);
+
+        protected Assembly? GetUnderlyingAssembly(RulesetInfo ruleset)
+            => Events.OfType<RulesetLoadEvent>()
+                     .FirstOrDefault(r => ruleset.Equals(r.RulesetInfo))?
+                     .Assembly;
 
         public bool PresentRulesetExternally(RulesetInfo ruleset)
         {

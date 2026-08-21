@@ -49,8 +49,12 @@ namespace osu.Game.Rulesets
                     Available = true
                 };
 
-                availableRulesets.Add(info);
                 SetRulesetInfo(r.GetType().Assembly, info);
+
+                if (Config.ShouldBeLoaded(info))
+                    availableRulesets.Add(info);
+                else
+                    AddOrUpdateDisabledRuleset(info);
             }
 
             // add any other rulesets which have assemblies present but are not yet in the database.
@@ -61,8 +65,12 @@ namespace osu.Game.Rulesets
                     Available = true
                 };
 
-                availableRulesets.Add(info);
                 SetRulesetInfo(r.GetType().Assembly, info);
+
+                if (Config.ShouldBeLoaded(info))
+                    availableRulesets.Add(info);
+                else
+                    AddOrUpdateDisabledRuleset(info);
             }
         }
     }
