@@ -74,7 +74,6 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
 
             RelativeSizeAxes = Axes.X;
             AutoSizeAxes = Axes.Y;
-            Padding = SettingsPanel.CONTENT_PADDING;
 
             InternalChildren = new Drawable[]
             {

@@ -27,6 +27,8 @@ namespace osu.Game.Rulesets
 
         private readonly List<RulesetEvent> events = new List<RulesetEvent>();
 
+        public BindableBool BlockUnseenRulesets => Config.BlockUnseenRulesets;
+
         /// <summary>
         /// Loaded rulesets of all states.
         /// </summary>

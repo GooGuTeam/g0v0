@@ -166,6 +166,23 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString ShowAssemblyInFileManager => new TranslatableString(getKey(@"show_assembly_in_file_manager"), @"Show source assembly in file manager");
 
+        /// <summary>
+        /// "Trusted mode"
+        /// </summary>
+        public static LocalisableString TrustedMode => new TranslatableString(getKey(@"trusted_mode"), @"Trusted mode");
+
+        /// <summary>
+        /// "Newly added rulesets won't be enabled by default."
+        /// </summary>
+        public static LocalisableString TrustedModeTooltip
+            => new TranslatableString(getKey(@"trusted_mode_tooltip"), @"Newly added rulesets won't be enabled by default.");
+
+        /// <summary>
+        /// "Changes to local rulesets would take effect after a restart of the game client."
+        /// </summary>
+        public static LocalisableString LocalRulesetRestartNote
+            => new TranslatableString(getKey(@"local_ruleset_restart_note"), @"Changes to local rulesets would take effect after a restart of the game client.");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }
