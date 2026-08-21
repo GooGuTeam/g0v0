@@ -1312,13 +1312,11 @@ namespace osu.Game
             // Importantly, this should be run after binding PostNotification to the import handlers so they can present the import after game startup.
             handleStartupImport();
 
-            var rulesetErrorEvents = RulesetStore.Events.OfType<RulesetErrorEvent>()
-                                                 .Where(e => e.RulesetInfo != null)
-                                                 .ToList();
+            var rulesetErrorEvents = RulesetStore.Events.OfType<RulesetErrorEvent>().ToList();
 
             if (rulesetErrorEvents.Count != 0)
             {
-                Notifications.Post(new RulesetLoadErrorNotification(rulesetErrorEvents.Select(e => e.RulesetInfo!.Name)));
+                Notifications.Post(new RulesetLoadErrorNotification(rulesetErrorEvents));
             }
 
             // Late subscription here to avoid posting notifications during ruleset loading.

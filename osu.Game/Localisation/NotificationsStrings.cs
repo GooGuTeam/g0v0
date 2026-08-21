@@ -284,6 +284,13 @@ Click to see what's new!", version);
             new TranslatableString(getKey(@"ruleset_unable_to_load"), @"The following rulesets could not be loaded:");
 
         /// <summary>
+        /// "There are other exceptions caused by unknown sources. View the log for details."
+        /// </summary>
+        public static LocalisableString RulesetUnknownException =>
+            new TranslatableString(getKey(@"ruleset_unknown_exception"),
+                @"There are other exceptions caused by unknown sources. View the log for details.");
+
+        /// <summary>
         /// "You may ask for updates from their developers, or report issues to them."
         /// </summary>
         public static LocalisableString RulesetLoadSuggestion =>
