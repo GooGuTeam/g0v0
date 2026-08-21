@@ -19,6 +19,7 @@ using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Overlays.Settings.Sections;
 using osu.Game.Overlays.Settings.Sections.Input;
+using osu.Game.Overlays.Settings.Sections.Ruleset;
 using osuTK.Graphics;
 
 namespace osu.Game.Overlays
@@ -39,7 +40,7 @@ namespace osu.Game.Overlays
                 new InputSection(createSubPanel(new KeyBindingPanel())),
                 new UserInterfaceSection(),
                 new GameplaySection(),
-                new RulesetSection(),
+                new RulesetSection(createSubPanel(new RulesetManagementPanel())),
                 new AudioSection(),
                 new GraphicsSection(),
                 new OnlineSection(),

@@ -74,6 +74,16 @@ namespace osu.Game.Rulesets
         /// <returns>A ruleset, if available, else null.</returns>
         public RulesetInfo? GetRuleset(string shortName) => AvailableRulesets.FirstOrDefault(r => r.ShortName == shortName);
 
+        public bool PresentRulesetExternally(RulesetInfo ruleset)
+        {
+            var sourceEvent = Events.OfType<RulesetLoadEvent>()
+                                    .FirstOrDefault(r => ruleset.Equals(r.RulesetInfo));
+            string? location = sourceEvent?.Location;
+            if (location == null) return false;
+
+            return RulesetStorage?.PresentFileExternally(location) ?? false;
+        }
+
         /// <summary>
         /// Records a ruleset loading event and raises the corresponding event handler.
         /// </summary>
