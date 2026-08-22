@@ -63,7 +63,7 @@ namespace osu.Game.Online.API
     }
 
     /// <summary>
-    /// AN API request with no specified response type.
+    /// An API request with no specified response type.
     /// </summary>
     public abstract class APIRequest
     {
@@ -71,7 +71,14 @@ namespace osu.Game.Online.API
 
         protected virtual WebRequest CreateWebRequest() => new OsuWebRequest(Uri);
 
-        protected virtual string Uri => $@"{API!.Endpoints.APIUrl}/api/v2/{Target}";
+        /// <summary>
+        /// The route segment used when constructing <see cref="Uri"/>.
+        /// Defaults to the route configured in <see cref="EndpointConfiguration"/>.
+        /// Can be overridden by derived classes to target alternate routes.
+        /// </summary>
+        protected virtual string Route => API!.Endpoints.APIRequestRoute;
+
+        protected virtual string Uri => $@"{API!.Endpoints.APIUrl}/api/{Route}/{Target}";
 
         protected IAPIProvider? API;
 
