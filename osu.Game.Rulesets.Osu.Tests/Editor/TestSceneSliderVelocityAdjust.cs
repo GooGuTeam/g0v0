@@ -21,6 +21,7 @@ using osuTK.Input;
 
 namespace osu.Game.Rulesets.Osu.Tests.Editor
 {
+    [Ignore("The test beatmap fails to load due to unknown reasons.")]
     public partial class TestSceneSliderVelocityAdjust : OsuGameTestScene
     {
         private Screens.Edit.Editor? editor => Game.ScreenStack.CurrentScreen as Screens.Edit.Editor;

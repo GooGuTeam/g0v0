@@ -699,6 +699,7 @@ namespace osu.Game.Tests.Visual.Navigation
         }
 
         [Test]
+        [Ignore("No theme music makes this test unable to work properly.")]
         public void TestMenuMakesMusic()
         {
             SoloSongSelect songSelect = null;
@@ -785,6 +786,7 @@ namespace osu.Game.Tests.Visual.Navigation
         }
 
         [Test]
+        [Ignore("No theme music makes this test unable to work properly.")]
         public void TestWaitForNextTrackInMenu()
         {
             bool trackCompleted = false;

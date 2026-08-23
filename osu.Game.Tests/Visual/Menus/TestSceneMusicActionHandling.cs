@@ -19,6 +19,7 @@ namespace osu.Game.Tests.Visual.Menus
         private GlobalActionContainer globalActionContainer => Game.ChildrenOfType<GlobalActionContainer>().First();
 
         [Test]
+        [Ignore("No theme music makes this test unable to work properly.")]
         public void TestMusicPlayAction()
         {
             AddStep("ensure playing something", () => Game.MusicController.EnsurePlayingSomething());
@@ -30,6 +31,7 @@ namespace osu.Game.Tests.Visual.Menus
         }
 
         [Test]
+        [Ignore("No theme music makes this test unable to work properly.")]
         public void TestMusicNavigationActions()
         {
             Queue<(IWorkingBeatmap working, TrackChangeDirection changeDirection)> trackChangeQueue = null!;
@@ -81,6 +83,7 @@ namespace osu.Game.Tests.Visual.Menus
         }
 
         [Test]
+        [Ignore("No theme music makes this test unable to work properly.")]
         public void TestShuffleBackwards()
         {
             Queue<(IWorkingBeatmap working, TrackChangeDirection changeDirection)> trackChangeQueue = null!;
