@@ -10,10 +10,12 @@ using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Localisation;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Localisation;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Mods;
 using osuTK;
@@ -61,13 +63,13 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             setBeatmapWithDifficultyParameters(5);
 
-            checkSliderAtValue("Circle Size", 5);
-            checkBindableAtValue("Circle Size", null);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 5);
+            checkBindableAtValue(SongSelectStrings.CircleSize, null);
 
             setBeatmapWithDifficultyParameters(8);
 
-            checkSliderAtValue("Circle Size", 8);
-            checkBindableAtValue("Circle Size", null);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 8);
+            checkBindableAtValue(SongSelectStrings.CircleSize, null);
         }
 
         [Test]
@@ -75,21 +77,21 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             AddStep("set override cs to 11", () => modDifficultyAdjust.CircleSize.Value = 11);
 
-            checkSliderAtValue("Circle Size", 11);
-            checkBindableAtValue("Circle Size", 11);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 11);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 11);
 
             // this is a no-op, just showing that it won't reset the value during deserialisation.
             setExtendedLimits(false);
 
-            checkSliderAtValue("Circle Size", 11);
-            checkBindableAtValue("Circle Size", 11);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 11);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 11);
 
             // setting extended limits will reset the serialisation exception.
             // this should be fine as the goal is to allow, at most, the value of extended limits.
             setExtendedLimits(true);
 
-            checkSliderAtValue("Circle Size", 11);
-            checkBindableAtValue("Circle Size", 11);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 11);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 11);
         }
 
         [Test]
@@ -97,76 +99,76 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             AddStep("set override cs to -5", () => modDifficultyAdjust.ApproachRate.Value = -5);
 
-            checkSliderAtValue("Approach Rate", -5);
-            checkBindableAtValue("Approach Rate", -5);
+            checkSliderAtValue(SongSelectStrings.ApproachRate, -5);
+            checkBindableAtValue(SongSelectStrings.ApproachRate, -5);
 
             // this is a no-op, just showing that it won't reset the value during deserialisation.
             setExtendedLimits(false);
 
-            checkSliderAtValue("Approach Rate", -5);
-            checkBindableAtValue("Approach Rate", -5);
+            checkSliderAtValue(SongSelectStrings.ApproachRate, -5);
+            checkBindableAtValue(SongSelectStrings.ApproachRate, -5);
 
             // setting extended limits will reset the serialisation exception.
             // this should be fine as the goal is to allow, at most, the value of extended limits.
             setExtendedLimits(true);
 
-            checkSliderAtValue("Approach Rate", -5);
-            checkBindableAtValue("Approach Rate", -5);
+            checkSliderAtValue(SongSelectStrings.ApproachRate, -5);
+            checkBindableAtValue(SongSelectStrings.ApproachRate, -5);
         }
 
         [Test]
         public void TestExtendedLimits()
         {
-            setSliderValue("Circle Size", 99);
+            setSliderValue(SongSelectStrings.CircleSize, 99);
 
-            checkSliderAtValue("Circle Size", 10);
-            checkBindableAtValue("Circle Size", 10);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 10);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 10);
 
             setExtendedLimits(true);
 
-            checkSliderAtValue("Circle Size", 10);
-            checkBindableAtValue("Circle Size", 10);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 10);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 10);
 
-            setSliderValue("Circle Size", 99);
+            setSliderValue(SongSelectStrings.CircleSize, 99);
 
-            checkSliderAtValue("Circle Size", 11);
-            checkBindableAtValue("Circle Size", 11);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 11);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 11);
 
-            setSliderValue("Approach Rate", -5);
+            setSliderValue(SongSelectStrings.ApproachRate, -5);
 
-            checkSliderAtValue("Approach Rate", -5);
-            checkBindableAtValue("Approach Rate", -5);
+            checkSliderAtValue(SongSelectStrings.ApproachRate, -5);
+            checkBindableAtValue(SongSelectStrings.ApproachRate, -5);
 
             setExtendedLimits(false);
 
-            checkSliderAtValue("Circle Size", 10);
-            checkBindableAtValue("Circle Size", 10);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 10);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 10);
         }
 
         [Test]
         public void TestUserOverrideMaintainedOnBeatmapChange()
         {
-            setSliderValue("Circle Size", 9);
+            setSliderValue(SongSelectStrings.CircleSize, 9);
 
             setBeatmapWithDifficultyParameters(2);
 
-            checkSliderAtValue("Circle Size", 9);
-            checkBindableAtValue("Circle Size", 9);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 9);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 9);
         }
 
         [Test]
         public void TestExtendedLimitsRetainedAfterBoundCopyCreation()
         {
             setExtendedLimits(true);
-            setSliderValue("Circle Size", 11);
+            setSliderValue(SongSelectStrings.CircleSize, 11);
 
-            checkSliderAtValue("Circle Size", 11);
-            checkBindableAtValue("Circle Size", 11);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 11);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 11);
 
             AddStep("create bound copy", () => _ = modDifficultyAdjust.CircleSize.GetBoundCopy());
 
-            checkSliderAtValue("Circle Size", 11);
-            checkBindableAtValue("Circle Size", 11);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 11);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 11);
         }
 
         [Test]
@@ -174,13 +176,13 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             setBeatmapWithDifficultyParameters(2);
 
-            setSliderValue("Circle Size", 9);
-            checkSliderAtValue("Circle Size", 9);
-            checkBindableAtValue("Circle Size", 9);
+            setSliderValue(SongSelectStrings.CircleSize, 9);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 9);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 9);
 
-            resetToDefault("Circle Size");
-            checkSliderAtValue("Circle Size", 2);
-            checkBindableAtValue("Circle Size", null);
+            resetToDefault(SongSelectStrings.CircleSize);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 2);
+            checkBindableAtValue(SongSelectStrings.CircleSize, null);
         }
 
         [Test]
@@ -188,20 +190,20 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             setBeatmapWithDifficultyParameters(3);
 
-            checkSliderAtValue("Circle Size", 3);
-            checkBindableAtValue("Circle Size", null);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 3);
+            checkBindableAtValue(SongSelectStrings.CircleSize, null);
 
             // need to initially change it away from the current beatmap value to trigger an override.
-            setSliderValue("Circle Size", 4);
-            setSliderValue("Circle Size", 3);
+            setSliderValue(SongSelectStrings.CircleSize, 4);
+            setSliderValue(SongSelectStrings.CircleSize, 3);
 
-            checkSliderAtValue("Circle Size", 3);
-            checkBindableAtValue("Circle Size", 3);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 3);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 3);
 
             setBeatmapWithDifficultyParameters(4);
 
-            checkSliderAtValue("Circle Size", 3);
-            checkBindableAtValue("Circle Size", 3);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 3);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 3);
         }
 
         [Test]
@@ -209,16 +211,16 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             setBeatmapWithDifficultyParameters(5);
 
-            setSliderValue("Circle Size", 3);
+            setSliderValue(SongSelectStrings.CircleSize, 3);
             setExtendedLimits(true);
 
-            checkSliderAtValue("Circle Size", 3);
-            checkBindableAtValue("Circle Size", 3);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 3);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 3);
 
             AddStep("reset mod settings", () => modDifficultyAdjust.ResetSettingsToDefaults());
 
-            checkSliderAtValue("Circle Size", 5);
-            checkBindableAtValue("Circle Size", null);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 5);
+            checkBindableAtValue(SongSelectStrings.CircleSize, null);
         }
 
         [Test]
@@ -226,11 +228,11 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             setBeatmapWithDifficultyParameters(5);
 
-            setSliderValue("Circle Size", 3);
+            setSliderValue(SongSelectStrings.CircleSize, 3);
             setExtendedLimits(true);
 
-            checkSliderAtValue("Circle Size", 3);
-            checkBindableAtValue("Circle Size", 3);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 3);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 3);
 
             AddStep("double click circle size nub", () =>
             {
@@ -240,8 +242,8 @@ namespace osu.Game.Tests.Visual.UserInterface
                 InputManager.Click(MouseButton.Left);
             });
 
-            checkSliderAtValue("Circle Size", 5);
-            checkBindableAtValue("Circle Size", null);
+            checkSliderAtValue(SongSelectStrings.CircleSize, 5);
+            checkBindableAtValue(SongSelectStrings.CircleSize, null);
         }
 
         [Test]
@@ -264,17 +266,17 @@ namespace osu.Game.Tests.Visual.UserInterface
 
             AddAssert("no settings changed", () => settingsChangedQueue.Count == 0);
 
-            setSliderValue("Circle Size", 3);
+            setSliderValue(SongSelectStrings.CircleSize, 3);
 
             settingsChangedFired();
 
-            setSliderValue("Circle Size", 5);
-            checkBindableAtValue("Circle Size", 5);
+            setSliderValue(SongSelectStrings.CircleSize, 5);
+            checkBindableAtValue(SongSelectStrings.CircleSize, 5);
 
             settingsChangedFired();
 
             AddStep("reset mod settings", () => modDifficultyAdjust.CircleSize.SetDefault());
-            checkBindableAtValue("Circle Size", null);
+            checkBindableAtValue(SongSelectStrings.CircleSize, null);
 
             settingsChangedFired();
 
@@ -298,7 +300,7 @@ namespace osu.Game.Tests.Visual.UserInterface
             }
         }
 
-        private void resetToDefault(string name)
+        private void resetToDefault(LocalisableString name)
         {
             AddStep($"Reset {name} to default", () =>
                 this.ChildrenOfType<DifficultyAdjustSettingsControl>().First(c => c.LabelText == name)
@@ -308,21 +310,21 @@ namespace osu.Game.Tests.Visual.UserInterface
         private void setExtendedLimits(bool status) =>
             AddStep($"Set extended limits {status}", () => modDifficultyAdjust.ExtendedLimits.Value = status);
 
-        private void setSliderValue(string name, float value)
+        private void setSliderValue(LocalisableString name, float value)
         {
             AddStep($"Set {name} slider to {value}", () =>
                 this.ChildrenOfType<DifficultyAdjustSettingsControl>().First(c => c.LabelText == name)
                     .ChildrenOfType<RoundedSliderBar<float>>().First().Current.Value = value);
         }
 
-        private void checkBindableAtValue(string name, float? expectedValue)
+        private void checkBindableAtValue(LocalisableString name, float? expectedValue)
         {
             AddAssert($"Bindable {name} is {(expectedValue?.ToString() ?? "null")}", () =>
                 this.ChildrenOfType<DifficultyAdjustSettingsControl>().First(c => c.LabelText == name)
                     .Current.Value == expectedValue);
         }
 
-        private void checkSliderAtValue(string name, float expectedValue)
+        private void checkSliderAtValue(LocalisableString name, float expectedValue)
         {
             AddAssert($"Slider {name} at {expectedValue}", () =>
                 this.ChildrenOfType<DifficultyAdjustSettingsControl>().First(c => c.LabelText == name)
