@@ -10,7 +10,7 @@ using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Rulesets;
 
-namespace osu.Game.Overlays.Settings.Sections.Ruleset
+namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 {
     public partial class BrokenRulesetRow : Container
     {

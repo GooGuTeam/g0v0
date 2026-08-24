@@ -11,7 +11,7 @@ using osu.Game.Localisation;
 using osu.Game.Rulesets;
 using osuTK;
 
-namespace osu.Game.Overlays.Settings.Sections.Ruleset
+namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 {
     public partial class LocalRulesetsSection : SettingsSection
     {

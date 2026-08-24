@@ -2,7 +2,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Game.Localisation;
 
-namespace osu.Game.Overlays.Settings.Sections.Ruleset
+namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 {
     public partial class RulesetManagementPanel : SettingsSubPanel
     {

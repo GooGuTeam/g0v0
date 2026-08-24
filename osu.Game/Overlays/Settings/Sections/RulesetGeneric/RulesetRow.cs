@@ -13,12 +13,12 @@ using osu.Game.Localisation;
 using osu.Game.Rulesets;
 using osuTK;
 
-namespace osu.Game.Overlays.Settings.Sections.Ruleset
+namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 {
     public partial class RulesetRow : Container
     {
         private readonly RulesetInfo ruleset;
-        private readonly Rulesets.Ruleset? instance;
+        private readonly Ruleset? instance;
 
         private FormControlBackground background = null!;
         private OsuTextFlowContainer titleFlow = null!;
@@ -48,7 +48,7 @@ namespace osu.Game.Overlays.Settings.Sections.Ruleset
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour osuColour, OverlayColourProvider colours)
+        private void load(OverlayColourProvider colours)
         {
             string name = ruleset.Name;
             string shortName = ruleset.ShortName;
