@@ -71,6 +71,7 @@ namespace osu.Game.Rulesets.Taiko.Tests.Skinning
         }
 
         [Test]
+        [Ignore("Bundled animated mascots are no longer available.")]
         public void TestClearStateTransition()
         {
             AddStep("set beatmap", () => setBeatmap());

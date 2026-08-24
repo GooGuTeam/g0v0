@@ -9,11 +9,13 @@ using System.Linq;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
+using osu.Framework.Audio.Sample;
 using osu.Framework.Audio.Track;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Screens;
 using osu.Framework.Utils;
+using osu.Game.Audio;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Database;
@@ -24,6 +26,7 @@ using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Overlays.Volume;
 using osu.Game.Screens.Backgrounds;
+using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
 using Realms;
@@ -47,11 +50,19 @@ namespace osu.Game.Screens.Menu
 
         private const int exit_delay = 3000;
 
+        private SkinnableSound skinnableSeeya;
+        private ISample seeya;
+
+        protected virtual string SeeyaSampleName => "Intro/seeya";
+
         protected override bool PlayExitSound => false;
 
         private LeasedBindable<WorkingBeatmap> beatmap;
 
         private OsuScreen nextScreen;
+
+        [Resolved]
+        private AudioManager audio { get; set; }
 
         [Resolved]
         private MusicController musicController { get; set; }
@@ -66,9 +77,9 @@ namespace osu.Game.Screens.Menu
 
         public override bool? AllowGlobalTrackControl => false;
 
-        public IntroScreen(MainMenu mainMenu = null)
+        protected IntroScreen([CanBeNull] Func<MainMenu> createNextScreen = null)
         {
-            createNextScreen = () => mainMenu;
+            this.createNextScreen = createNextScreen;
         }
 
         [Resolved]
@@ -82,6 +93,11 @@ namespace osu.Game.Screens.Menu
 
             MenuVoice = config.GetBindable<bool>(OsuSetting.MenuVoice);
             MenuMusic = config.GetBindable<bool>(OsuSetting.MenuMusic);
+
+            if (api.LocalUser.Value.IsSupporter)
+                AddInternal(skinnableSeeya = new SkinnableSound(new SampleInfo(SeeyaSampleName)));
+            else
+                seeya = audio.Samples.Get(SeeyaSampleName);
 
             // if the user has requested not to play theme music, we should attempt to find a random beatmap from their collection.
             if (!MenuMusic.Value)
@@ -183,6 +199,16 @@ namespace osu.Game.Screens.Menu
             // we also handle the exit transition.
             if (MenuVoice.Value)
             {
+                if (skinnableSeeya != null)
+                {
+                    // resuming a screen (i.e. calling OnResume) happens before the screen itself becomes alive,
+                    // therefore skinnable samples may not be updated yet with the recently selected skin.
+                    // schedule after children to ensure skinnable samples have processed skin changes before playing.
+                    ScheduleAfterChildren(() => skinnableSeeya.Play());
+                }
+                else
+                    seeya.Play();
+
                 // if playing the outro voice, we have more time to have fun with the background track.
                 // initially fade to almost silent then ramp out over the remaining time.
                 const double initial_fade = 200;
@@ -261,10 +287,6 @@ namespace osu.Game.Screens.Menu
                 logo.MoveTo(new Vector2(0.5f));
                 logo.ScaleTo(Vector2.One);
                 logo.Hide();
-
-                StartTrack();
-                PrepareMenuLoad();
-                Scheduler.AddDelayed(LoadMenu, 1000);
             }
             else
             {

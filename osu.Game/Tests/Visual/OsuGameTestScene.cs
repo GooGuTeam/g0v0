@@ -198,6 +198,8 @@ namespace osu.Game.Tests.Visual
 
         public partial class TestLoader : Loader
         {
+            protected override OsuScreen CreateLoadableScreen() => new IntroSimple(() => new MainMenu());
+
             protected override ShaderPrecompiler CreateShaderPrecompiler() => new TestShaderPrecompiler();
 
             private partial class TestShaderPrecompiler : ShaderPrecompiler

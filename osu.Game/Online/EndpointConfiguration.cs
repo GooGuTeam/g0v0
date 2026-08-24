@@ -29,6 +29,12 @@ namespace osu.Game.Online
         public string APIUrl { get; set; } = string.Empty;
 
         /// <summary>
+        /// The route segment appended to <see cref="APIUrl"/> when constructing API request URLs.
+        /// Private endpoints may use alternate routes (e.g. "private").
+        /// </summary>
+        public string APIRequestRoute { get; set; } = @"v2";
+
+        /// <summary>
         /// The root URL for the service handling beatmap submission. Does not include a trailing slash.
         /// </summary>
         public string? BeatmapSubmissionServiceUrl { get; set; }

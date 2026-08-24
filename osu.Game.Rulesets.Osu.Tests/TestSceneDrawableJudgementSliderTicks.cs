@@ -124,6 +124,9 @@ namespace osu.Game.Rulesets.Osu.Tests
 
                 var containers = Cell(cellIndex).ChildrenOfType<Container<DrawableOsuJudgement>>().ToArray();
 
+                if (containers.Length == 0)
+                    continue;
+
                 for (int i = 0; i < drawableHitObjects.Length; i++)
                 {
                     createJudgement(judgementPools[cellIndex], containers[i * 2], drawableHitObjects[i], true);

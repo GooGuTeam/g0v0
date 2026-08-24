@@ -21,7 +21,6 @@ using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Rulesets.Mods;
-using osu.Game.Seasonal;
 
 namespace osu.Game.Overlays
 {
@@ -460,8 +459,7 @@ namespace osu.Game.Overlays
             realm.Realm.All<BeatmapSetInfo>().Where(s => !s.DeletePending)
                  .AsEnumerable()
                  .Select(s => new RealmLive<BeatmapSetInfo>(s, realm))
-                 .Where(i => (allowProtectedTracks || !i.Value.Protected)
-                             && (SeasonalUIConfig.ENABLED));
+                 .Where(i => allowProtectedTracks || !i.Value.Protected);
 
         private void changeBeatmap(WorkingBeatmap newWorking)
         {

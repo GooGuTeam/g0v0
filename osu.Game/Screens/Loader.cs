@@ -29,7 +29,7 @@ namespace osu.Game.Screens
         private LoadingSpinner spinner;
         private ScheduledDelegate spinnerShow;
 
-        protected virtual OsuScreen CreateLoadableScreen() => new Disclaimer(new IntroScreen(new MainMenu()));
+        protected virtual OsuScreen CreateLoadableScreen() => new Disclaimer(new IntroSimple(() => new MainMenu()));
 
         protected virtual ShaderPrecompiler CreateShaderPrecompiler() => new ShaderPrecompiler();
 
@@ -97,6 +97,8 @@ namespace osu.Game.Screens
                 loadTargets.Add(manager.Load(VertexShaderDescriptor.TEXTURE_2, @"ArgonBarPathBackground"));
                 loadTargets.Add(manager.Load(VertexShaderDescriptor.TEXTURE_2, @"SaturationSelectorBackground"));
                 loadTargets.Add(manager.Load(VertexShaderDescriptor.TEXTURE_2, @"HueSelectorBackground"));
+                loadTargets.Add(manager.Load(VertexShaderDescriptor.TEXTURE_2, "Path"));
+                loadTargets.Add(manager.Load("PathPrepass", "PathPrepass"));
                 loadTargets.Add(manager.Load(@"LogoAnimation", @"LogoAnimation"));
 
                 // Ruleset local shader usage (should probably move somewhere else).
