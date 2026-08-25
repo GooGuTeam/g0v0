@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -8,7 +7,6 @@ using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Settings.Sections.RulesetGeneric;
-using osu.Game.Rulesets;
 
 namespace osu.Game.Overlays.Settings
 {
@@ -29,7 +27,7 @@ namespace osu.Game.Overlays.Settings
         };
 
         [BackgroundDependencyLoader]
-        private void load(RulesetStore rulesets)
+        private void load()
         {
             if (managementPanel != null)
             {
@@ -37,21 +35,6 @@ namespace osu.Game.Overlays.Settings
                 {
                     new RulesetManagementSettings(managementPanel),
                 };
-            }
-
-            foreach (Ruleset ruleset in rulesets.AvailableRulesets.Select(info => info.CreateInstance()))
-            {
-                try
-                {
-                    SettingsSubsection? section = ruleset.CreateSettings();
-
-                    if (section != null)
-                        Add(section);
-                }
-                catch (Exception e)
-                {
-                    RulesetStore.LogRulesetFailure(ruleset.RulesetInfo, e);
-                }
             }
         }
     }
