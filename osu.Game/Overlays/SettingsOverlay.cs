@@ -17,6 +17,7 @@ using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Overlays.Settings.Sections;
 using osu.Game.Overlays.Settings.Sections.Input;
+using osu.Game.Overlays.Settings.Sections.RulesetGeneric;
 using osu.Game.Rulesets;
 using osuTK.Graphics;
 
@@ -77,7 +78,8 @@ namespace osu.Game.Overlays
                 new SkinSection(),
                 new InputSection(createSubPanel(new KeyBindingPanel())),
                 new UserInterfaceSection(),
-                new GameplaySection()
+                new GameplaySection(),
+                new RulesetGenericSection(createSubPanel(new RulesetManagementPanel())),
             };
 
             foreach (Ruleset ruleset in rulesets.AvailableRulesets.Select(info => info.CreateInstance()))

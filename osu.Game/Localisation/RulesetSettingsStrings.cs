@@ -1,6 +1,3 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
-
 using osu.Framework.Localisation;
 
 namespace osu.Game.Localisation
@@ -138,6 +135,74 @@ namespace osu.Game.Localisation
         /// "Touch overlay"
         /// </summary>
         public static LocalisableString TouchOverlay => new TranslatableString(getKey(@"touch_overlay"), @"Touch overlay");
+
+        /// <summary>
+        /// "Ruleset management"
+        /// </summary>
+        public static LocalisableString RulesetManagement => new TranslatableString(getKey(@"ruleset_management"), @"Ruleset management");
+
+        /// <summary>
+        /// "Manage supported game modes!"
+        /// </summary>
+        public static LocalisableString RulesetManagementSubheading => new TranslatableString(getKey(@"ruleset_management_subheading"), @"Manage supported game modes!");
+
+        /// <summary>
+        /// "Local rulesets"
+        /// </summary>
+        public static LocalisableString LocalRulesets => new TranslatableString(getKey(@"local_rulesets"), @"Local rulesets");
+
+        /// <summary>
+        /// "Loaded rulesets"
+        /// </summary>
+        public static LocalisableString LoadedRulesets => new TranslatableString(getKey(@"loaded_rulesets"), @"Loaded rulesets");
+
+        /// <summary>
+        /// "Broken rulesets"
+        /// </summary>
+        public static LocalisableString BrokenRulesets => new TranslatableString(getKey(@"broken_rulesets"), @"Broken rulesets");
+
+        /// <summary>
+        /// "The following rulesets caused the game to crash, hence being disabled temporarily."
+        /// </summary>
+        public static LocalisableString BrokenRulesetsNote
+            => new TranslatableString(getKey(@"broken_rulesets_note"), @"The following rulesets caused the game to crash, hence being disabled temporarily.");
+
+        /// <summary>
+        /// "&lt;unknown version&gt;"
+        /// </summary>
+        public static LocalisableString UnknownVersionPlaceholder => new TranslatableString(getKey(@"unknown_version_placeholder"), @"<unknown version>");
+
+        /// <summary>
+        /// "(Builtin)"
+        /// </summary>
+        public static LocalisableString BuiltinPrefix => new TranslatableString(getKey(@"builtin_prefix"), @"(Builtin)");
+
+        /// <summary>
+        /// "Show source assembly in file manager"
+        /// </summary>
+        public static LocalisableString ShowAssemblyInFileManager => new TranslatableString(getKey(@"show_assembly_in_file_manager"), @"Show source assembly in file manager");
+
+        /// <summary>
+        /// "Trusted mode"
+        /// </summary>
+        public static LocalisableString TrustedMode => new TranslatableString(getKey(@"trusted_mode"), @"Trusted mode");
+
+        /// <summary>
+        /// "Newly added rulesets won't be enabled by default."
+        /// </summary>
+        public static LocalisableString TrustedModeTooltip
+            => new TranslatableString(getKey(@"trusted_mode_tooltip"), @"Newly added rulesets won't be enabled by default.");
+
+        /// <summary>
+        /// "Changes to local rulesets would take effect after a restart of the game client."
+        /// </summary>
+        public static LocalisableString LocalRulesetRestartNote
+            => new TranslatableString(getKey(@"local_ruleset_restart_note"), @"Changes to local rulesets would take effect after a restart of the game client.");
+
+        /// <summary>
+        /// "Restore"
+        /// </summary>
+        public static LocalisableString Restore => new TranslatableString(getKey(@"restore"), @"Restore");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

@@ -62,6 +62,7 @@ using osu.Game.Overlays.Notifications;
 using osu.Game.Overlays.OSD;
 using osu.Game.Overlays.SkinEditor;
 using osu.Game.Overlays.Toolbar;
+using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
@@ -120,6 +121,7 @@ namespace osu.Game
         public const float SCREEN_EDGE_MARGIN = 12f;
 
         private const double general_log_debounce = 60000;
+        private const string ruleset_log_prefix = @"[Ruleset] ";
         private const string tablet_log_prefix = @"[Tablet] ";
 
         public Toolbar Toolbar { get; private set; }
@@ -1045,6 +1047,7 @@ namespace osu.Game
 
             Logger.NewEntry -= forwardGeneralLogToNotifications;
             Logger.NewEntry -= forwardTabletLogToNotifications;
+            RulesetStore.OnError -= forwardRulesetErrorToNotifications;
         }
 
         protected override IDictionary<FrameworkSetting, object> GetFrameworkConfigDefaults()
@@ -1311,6 +1314,25 @@ namespace osu.Game
             // Importantly, this should be run after binding PostNotification to the import handlers so they can present the import after game startup.
             handleStartupImport();
 
+            var rulesetErrorEvents = RulesetStore.Events.OfType<RulesetErrorEvent>().ToList();
+
+            if (rulesetErrorEvents.Count != 0)
+            {
+                Notifications.Post(new RulesetLoadErrorNotification(rulesetErrorEvents));
+            }
+
+#nullable enable
+            string? rulesetName = RulesetStore.FireAndForgetLastCrash();
+
+            if (rulesetName != null)
+            {
+                Notifications.Post(new LastRulesetCrashNotification(rulesetName));
+            }
+#nullable disable
+
+            // Late subscription here to avoid posting notifications during ruleset loading.
+            RulesetStore.OnError += forwardRulesetErrorToNotifications;
+
             // Show server information notification on startup
             showServerInfoNotification();
 
@@ -1456,6 +1478,10 @@ namespace osu.Game
         {
             if (entry.Level < LogLevel.Important || entry.Target > LoggingTarget.Database || entry.Target == null) return;
 
+            // Ruleset logs are handled by events.
+            if (entry.Message.StartsWith(ruleset_log_prefix, StringComparison.OrdinalIgnoreCase))
+                return;
+
             if (entry.Exception is SentryOnlyDiagnosticsException)
                 return;
 
@@ -1543,6 +1569,15 @@ namespace osu.Game
 
                 tabletLogNotifyOnWarning = false;
             }
+        }
+
+        private void forwardRulesetErrorToNotifications(RulesetErrorEvent e)
+        {
+            // To reduce annoyance for users.
+            if (e.Exception == null || e.RulesetInfo == null)
+                return;
+
+            Schedule(() => Notifications.Post(new RulesetErrorNotification(e.RulesetInfo, e.Exception)));
         }
 
         private Task asyncLoadStream;

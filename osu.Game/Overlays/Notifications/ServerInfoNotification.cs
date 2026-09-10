@@ -32,8 +32,7 @@ namespace osu.Game.Overlays.Notifications
                 s.Font = OsuFont.Style.Caption2.With(weight: FontWeight.Bold);
                 s.Colour = colours.BlueLight;
             });
-            TextFlow.NewLine();
-            TextFlow.AddText(getServerDisplayText(serverUrl));
+            TextFlow.AddParagraph(getServerDisplayText(serverUrl));
         }
 
         private static LocalisableString getServerDisplayText(string serverUrl)
