@@ -377,7 +377,7 @@ jobs:
 
             dotnet publish osu.Android/osu.Android.csproj \
               --configuration Release \
-              --framework net8.0-android \
+              --framework net10.0-android \
               --verbosity normal \
               --no-restore \
               --self-contained \
