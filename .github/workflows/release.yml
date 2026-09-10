@@ -582,7 +582,9 @@ jobs:
     name: Build g0v0-ios
     needs: version
     runs-on: macos-26
-    timeout-minutes: 60
+    # Release iOS builds AOT compile (see osu.iOS.props), which takes far longer
+    # than the Debug compile done by the CI workflow.
+    timeout-minutes: 180
     concurrency:
       group: build-ios
       cancel-in-progress: false
@@ -619,11 +621,10 @@ jobs:
         with:
           path: |
             ~/.nuget/packages
-          key: macOS-ios-nuget-${{ hashFiles('**/*.csproj', '**/packages.lock.json') }}
+          key: iOS-ios-arm64-nuget-${{ hashFiles('**/*.csproj', '**/packages.lock.json') }}
           restore-keys: |
-            macOS-ios-nuget-${{ hashFiles('**/*.csproj') }}
-            macOS-ios-nuget-
-            macOS-nuget-
+            iOS-ios-arm64-nuget-${{ hashFiles('**/*.csproj') }}
+            iOS-ios-arm64-nuget-
 
       - name: Clean previous build artifacts
         shell: bash
