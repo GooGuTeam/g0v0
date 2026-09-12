@@ -10,3 +10,5 @@
 0ab0c52ad577b3e7b406d09fa6056a56ff997c3e
 # Rework copyright headers and align licence file naming
 fd090e3254a87a566c78662a29985261f9427800
+# Point unmodified upstream headers at LICENCE-OSU
+cea88efc1f845737a8f22efb4e9560bba16991d7
