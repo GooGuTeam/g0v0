@@ -47,16 +47,16 @@
 This project is based on the open-source codebase originally developed by ppy Pty Ltd.
 
 GooGuTeam has made modifications, additions, and removals to the original codebase.
-All original osu! code and framework remain licensed under the MIT License.
-See [LICENSE-OSU](./LICENSE-OSU) for details.
+All original osu! code and framework remain licensed under the MIT Licence.
+See [LICENCE-OSU](./LICENCE-OSU) for details.
 
-All modifications and original contributions made by GooGuTeam to the codebase are licensed under the MIT License.
-See [LICENSE](./LICENSE) for details.
+All modifications and original contributions made by GooGuTeam to the codebase are licensed under the MIT Licence.
+See [LICENCE](./LICENCE) for details.
 
 Game resources (textures, fonts, skins, samples, tracks, shaders, localisation and other asset content)
 are derived from ppy/osu-resources and remain licensed under CC-BY-NC 4.0.
 Original resource content © ppy Pty Ltd; fork modifications © GooGuTeam, both under CC-BY-NC 4.0.
-See [LICENSE in g0v0-resources](https://github.com/GooGuTeam/g0v0-resources/blob/master/LICENCE.md) for details.
+See [LICENCE in g0v0-resources](https://github.com/GooGuTeam/g0v0-resources/blob/master/LICENCE.md) for details.
 Use of the resources is restricted to non-commercial purposes.
 
 The "osu!" or "ppy" name, trademarks, logos, and other brand assets remain the property of ppy Pty Ltd.

@@ -69,7 +69,7 @@ function CheckFile {
     foreach ($line in $lines) { Report $DisplayPath "Incorrect line endings" $line }
 
     if ($LicenseHeader -and -not $text.StartsWith($LicenseHeader)) {
-        Report $DisplayPath "License header missing"
+        Report $DisplayPath "Licence header missing"
     }
 
     $lines = Find-MatchingLines $text "^((?!///).)* \r\n" ([System.Text.RegularExpressions.RegexOptions]::Multiline)

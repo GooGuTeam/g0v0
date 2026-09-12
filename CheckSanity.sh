@@ -75,7 +75,7 @@ check_file() {
         }
 
         if (length($license) > 0 && index($text, $license) != 0) {
-            print "$file:0: License header missing\n";
+            print "$file:0: Licence header missing\n";
             $has_errors = 1;
         }
 
