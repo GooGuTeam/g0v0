@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -15,9 +15,9 @@ namespace osu.Game.Localisation.Osu
         public static LocalisableString StackLeniency => new TranslatableString(getKey(@"stack_leniency"), @"Stack Leniency");
 
         /// <summary>
-        /// "In play mode, osu! automatically stacks notes which occur at the same location. Increasing this value means it is more likely to snap notes of further time-distance."
+        /// "In play mode, g0v0! automatically stacks notes which occur at the same location. Increasing this value means it is more likely to snap notes of further time-distance."
         /// </summary>
-        public static LocalisableString StackLeniencyDescription => new TranslatableString(getKey(@"stack_leniency_description"), @"In play mode, osu! automatically stacks notes which occur at the same location. Increasing this value means it is more likely to snap notes of further time-distance.");
+        public static LocalisableString StackLeniencyDescription => new TranslatableString(getKey(@"stack_leniency_description"), @"In play mode, g0v0! automatically stacks notes which occur at the same location. Increasing this value means it is more likely to snap notes of further time-distance.");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
