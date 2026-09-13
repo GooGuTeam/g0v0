@@ -1,4 +1,4 @@
-{
+﻿{
   "solution": {
     "path": "osu.sln",
     "projects": [
@@ -13,7 +13,6 @@
       "osu.Game.Tests.iOS\\osu.Game.Tests.iOS.csproj",
       "osu.Game.Tests\\osu.Game.Tests.csproj",
       "osu.Game\\osu.Game.csproj",
-      "osu.Game.Resources\\osu.Game.Resources\\osu.Game.Resources.csproj",
       "osu.iOS\\osu.iOS.csproj"
     ]
   }

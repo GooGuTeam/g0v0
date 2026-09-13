@@ -1,4 +1,4 @@
-{
+﻿{
   "solution": {
     "path": "osu.sln",
     "projects": [
@@ -13,8 +13,7 @@
       "osu.Game.Rulesets.Taiko\\osu.Game.Rulesets.Taiko.csproj",
       "osu.Game.Tests.Android\\osu.Game.Tests.Android.csproj",
       "osu.Game.Tests\\osu.Game.Tests.csproj",
-      "osu.Game\\osu.Game.csproj",
-      "osu.Game.Resources\\osu.Game.Resources\\osu.Game.Resources.csproj"
+      "osu.Game\\osu.Game.csproj"
     ]
   }
 }

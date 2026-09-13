@@ -3,22 +3,28 @@
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Authors>ppy Pty Ltd, GooGuTeam</Authors>
-    <Description>Orginal Copyright: Copyright (c) 2026 ppy Pty Ltd
-Orginal code from: https://github.com/ppy/osu
-Modified by GooGuTeam</Description>
+    <Authors>ppy Pty Ltd &amp; GooGuTeam</Authors>
+    <Company>GooGuTeam</Company>
+    <Description>g0v0! -- free and open rhythm experience!
+
+A community project based on the osu!lazer codebase, originally developed by ppy Pty Ltd and modified/maintained by GooGuTeam.
+
+Resources are distributed via the g0v0.osu.Game.Resources package.</Description>
     <Copyright>Copyright (c) 2026 ppy Pty Ltd, GooGuTeam</Copyright>
     <PackageProjectUrl>https://github.com/GooGuTeam/g0v0</PackageProjectUrl>
     <RepositoryUrl>https://github.com/GooGuTeam/g0v0</RepositoryUrl>
-    <PackageReleaseNotes>Orginal Copyright: Copyright (c) 2026 ppy Pty Ltd
-Modified by GooGuTeam</PackageReleaseNotes>
+    <PackageReleaseNotes>g0v0! is a community project based on the osu!lazer codebase.
+Original code from https://github.com/ppy/osu (Copyright (c) ppy Pty Ltd), modified by GooGuTeam.
+Full licence text: see LICENCE and LICENCE-OSU.</PackageReleaseNotes>
   </PropertyGroup>
   <PropertyGroup Label="Nuget">
     <Title>g0v0!</Title>
     <PackageId>g0v0.osu.Game</PackageId>
-    <Version>0.0.0</Version>
+    <Version>2026.913.0</Version>
+    <G0V0ResourcesVersion Condition="'$(G0V0ResourcesVersion)' == ''">2026.913.0</G0V0ResourcesVersion>
     <PackageIcon>icon.png</PackageIcon>
     <IsPackable>true</IsPackable>
+    <PackageTags>g0v0 osu game rhythm</PackageTags>
   </PropertyGroup>
   <PropertyGroup Label="Build Configuration">
     <SentryDsn Condition="'$(SentryDsn)' == ''"></SentryDsn>
@@ -36,6 +42,8 @@ Modified by GooGuTeam</PackageReleaseNotes>
     </AssemblyAttribute>
   </ItemGroup>
   <ItemGroup Label="Package References">
+    <!-- Resources are released separately from GooGuTeam/g0v0-resources and must stay aligned with the game package version. -->
+    <PackageReference Include="g0v0.osu.Game.Resources" Version="$(G0V0ResourcesVersion)" />
     <!-- Held back due to licencing change stupidness. Silenced vulnerability does not affect us. -->
     <PackageReference Include="AutoMapper" Version="13.0.1">
       <NoWarn>NU1903</NoWarn>
@@ -64,8 +72,5 @@ Modified by GooGuTeam</PackageReleaseNotes>
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
-  </ItemGroup>
-  <ItemGroup Label="Project References">
-    <ProjectReference Include="..\osu.Game.Resources\osu.Game.Resources\osu.Game.Resources.csproj" />
   </ItemGroup>
 </Project>
