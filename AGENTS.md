@@ -20,7 +20,7 @@
 | **`v2`** | **默认开发分支**，日常改动都落在这里；与上游的差距用 `git rev-list --left-right --count upstream/master...v2` 自查 |
 | ~~`master`~~ | 已删除：GitHub 上该分支早已不存在，本地分支也已清理；仅剩失效的 `origin/master` 跟踪引用，**不要基于它开发** |
 | 标签 | 发布标签形如 `v2026.910.2-g0v0`；同步前自行打基线标签（历史遗留的 `backup/*` 系列已于 2026-09 清理） |
-| 子模块 | `osu.Game.Resources` → `GooGuTeam/g0v0-resources`，**独立仓库**，有独立历史与自己的 `upstream` 远端 |
+| 资源仓库 | 资源已拆到独立仓库 `GooGuTeam/g0v0-resources`，以 NuGet 包 `g0v0.osu.Game.Resources` 被本仓库引用；主仓库用 `G0V0ResourcesVersion` 锁定版本 |
 
 ---
 
@@ -29,9 +29,7 @@
 需要 .NET SDK **10.0.100+**（`global.json` 固定 10.0.100，`rollForward: latestFeature`）；C# 12、`Nullable` 已开启。
 
 ```bash
-git submodule update --init --recursive      # 必须，否则构建找不到资源
-
-dotnet restore osu.Desktop.slnf
+dotnet restore osu.Desktop.slnf      # 自动从 nuget.org 还原 g0v0.osu.Game.Resources
 dotnet build -c Debug -warnaserror osu.Desktop.slnf                                   # 与 CI 一致
 dotnet build -c Debug -warnaserror osu.Desktop.slnf -p:EnforceCodeStyleInBuild=true   # 额外开启代码风格分析器
 
@@ -64,7 +62,7 @@ OSU_EXECUTION_MODE=SingleThread dotnet test osu.Game.Tests/bin/Debug/**/osu.Game
 3. 不允许行尾空格（`///` 文档注释行豁免）；
 4. **文件名必须与文件内定义的类型名一致**（`Foo.cs` 中需有 `class/struct/record/interface/enum Foo`）。
 
-`*.designer.cs` 与 `AssemblyInfo.cs` 跳过；扫描忽略 `.git`、`bin`、`obj`、`Migrations`、`packages`、`osu.Game.Resources`。
+`*.designer.cs` 与 `AssemblyInfo.cs` 跳过；扫描忽略 `.git`、`bin`、`obj`、`Migrations`、`packages`、`osu.Game.Resources`（本地独立资源仓库 clone，可选）。
 
 ### 版权头（按文件来源三种）
 
@@ -107,9 +105,9 @@ bash InspectCode.sh               # ReSharper 静态检查；Windows: ./InspectC
 ### 用户可见字符串（本地化）
 
 1. 在 `osu.Game/Localisation/<X>Strings.cs` 里按现有模式加 `getKey(@"snake_case_key")` + 英文原文；
-2. 同时在资源子模块 `osu.Game.Resources/osu.Game.Resources/Localisation/<X>.resx`（英文源文件，无 locale 后缀）补上同名 `<data name="...">` 条目 —— 缺了这个 key，翻译管线拿不到它；
+2. 同时在资源仓库 `g0v0-resources` 的 `osu.Game.Resources/Localisation/<X>.resx`（英文源文件，无 locale 后缀）补上同名 `<data name="...">` 条目 —— 缺了这个 key，翻译管线拿不到它；
 3. `<X>.<locale>.resx` 由 Crowdin 生成，**不要手写**；
-4. 子模块的改动要在子模块内单独提交并推送，再回父仓库提交新的指针。
+4. 资源改动在 `g0v0-resources` 仓库提交、打 tag、发布新的 `g0v0.osu.Game.Resources` 包；主仓库再把 `G0V0ResourcesVersion` 更新到该版本。
 
 ### 测试
 
@@ -120,9 +118,9 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 ## 4. 同步上游（例行操作，最容易踩坑）
 
 1. `git fetch upstream`，把 `upstream/master` 合并进 `v2`；解冲突时**顺手丢弃品牌字符串**比事后清理省事。
-2. 资源子模块单独同步：进入 `osu.Game.Resources`，确认其 `upstream` 远端为 `https://github.com/ppy/osu-resources`，同样合并 `upstream/master`。
+2. 资源仓库单独同步：进入独立的 `g0v0-resources` clone，确认其 `upstream` 远端为 `https://github.com/ppy/osu-resources`，同样合并 `upstream/master`；如有资源变更，发新包并同步更新主仓库 `G0V0ResourcesVersion`。
 3. 合并后检查 `.github/workflows/*.yml` 与 `.github/actions/*.sh` 中的 `dotnet-version` / `--framework`（例如 `net8.0-*` → `net10.0-*`）是否与 `global.json`、csproj 对齐 —— 不对齐会直接让 CI 构建失败（历史上发生过）。
-4. 确认父仓库记录的子模块指针真的前进了：`git ls-tree HEAD osu.Game.Resources` 应与子模块内 `git rev-parse HEAD` 一致。
+4. 确认主仓库 `G0V0ResourcesVersion` 指向的 `g0v0.osu.Game.Resources` 包已经在 nuget.org 上存在，且与本次发布 tag 版本一致。
 5. 同步**前**先打一个基线标签（如 `sync-baseline-YYYYMMDD`）再动手，方便 diff 与商标扫描；历史遗留的 `backup/*` 标签已在 2026-09 清理，`trademark-check` 会退回到 `git merge-base HEAD upstream/master`。
 
 ---
@@ -137,8 +135,8 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
   - `SKILL.md` —— 何时使用、clean/keep 对照表、报告格式；
   - `scripts/detect.sh` —— 只读检测，支持 `--base <ref>`、`--incoming`；
   - `references/known-outstanding.md` —— 已分类的既有项，避免重复上报。
-- 触发时机：从上游同步后、更新资源子模块后、打 `v*-g0v0` 发布标签前、新增用户可见字符串或图片素材时。
-- 口径速记 —— **要清理**：用户可见的 `osu!` 字样、吉祥物 / logo / 宣传素材、商业字体、上游推广与联系链接；**要保留**：MIT 版权头、NuGet 包名 `ppy.osu.Framework` / `ppy.osu.Game.Resources`、`osu.Game.*` 命名空间与类型名、`.osu` 格式以及 `osu!stable` / `osu!direct` 这类 nominative 用法。
+- 触发时机：从上游同步后、更新并发布资源包后、打 `v*-g0v0` 发布标签前、新增用户可见字符串或图片素材时。
+- 口径速记 —— **要清理**：用户可见的 `osu!` 字样、吉祥物 / logo / 宣传素材、商业字体、上游推广与联系链接；**要保留**：MIT 版权头、NuGet 包名 `ppy.osu.Framework` / 本 fork 自己的 `g0v0.osu.Game.Resources`（上游对应包 `ppy.osu.Game.Resources` 仅作来源说明）、`osu.Game.*` 命名空间与类型名、`.osu` 格式以及 `osu!stable` / `osu!direct` 这类 nominative 用法。
 - 产出永远是「清单 + 建议 + 提问」，拿到明确范围后才动文件。
 
 ---
@@ -156,14 +154,15 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 | 程序名 / 图标 | `osu.Desktop/osu.Desktop.csproj`（`AssemblyName` = `g0v0!`） |
 | 奖章素材与新增奖章 | `osu.Game/Users/Medal.cs`（`lazer-data.g0v0.top`）、`osu.Game/Medals/Awarders/` |
 
-改到 `osu.Game.Resources` 子模块里的素材或 `.resx` 时，记住它是要单独提交推送的另一个仓库。
+改到 `g0v0-resources` 仓库里的素材或 `.resx` 时，记住它是要单独提交推送、单独打 tag 发布 NuGet 的另一个仓库；主仓库只通过 `G0V0ResourcesVersion` 引用发布后的包。
 
 ---
 
 ## 7. CI 与发布
 
 - `.github/workflows/ci.yml`：`inspect-code`（构建 + CheckSanity + InspectCode）、`test`（Windows/Linux × 两种线程模型，120 分钟超时）、`build-only-android` 等。
-- `.github/workflows/release.yml`：由 **`v*-g0v0`** 标签触发，各平台构建脚本在 `.github/actions/*.sh`。
+- 主仓库 `.github/workflows/release.yml`：由 **`v*-g0v0`** 标签触发；NuGet 任务会先校验 `g0v0.osu.Game.Resources` 同版本包已发布，再发 `g0v0.osu.Game` / `g0v0.osu.Game.Rulesets.Osu`；各平台构建脚本在 `.github/actions/*.sh`。
+- 资源仓库 `GooGuTeam/g0v0-resources` 的 `.github/workflows/release.yml`：同样由 **`v*-g0v0`** 标签触发，使用 NuGet trusted publisher 发布 `g0v0.osu.Game.Resources`。**先发资源包，再发主仓库包。**
 - **推送标签时只推 `-g0v0` 的发布标签。** 绝不要用 `git push --tags`：本地约 930 个标签里绝大多数是随 `upstream` 一起 fetch 下来的上游历史标签，一条命令就会把它们全部推到 `origin`。始终用显式标签名：
   ```bash
   git tag -l 'v*-g0v0'                 # 本仓库自己的发布标签

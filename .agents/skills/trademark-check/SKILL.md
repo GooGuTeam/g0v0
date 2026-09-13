@@ -1,6 +1,6 @@
 ---
 name: trademark-check
-description: Detect osu!/ppy trademark and brand content that a sync from ppy/osu or ppy/osu-resources introduced into the g0v0 fork, report it as an inventory, and remove nothing before the human confirms. Use when syncing from upstream ppy/osu, after syncing the osu.Game.Resources submodule, before cutting a v*-g0v0 release tag, when adding user-visible strings or image assets, or when auditing existing trademark leakage.
+description: Detect osu!/ppy trademark and brand content that a sync from ppy/osu or ppy/osu-resources introduced into the g0v0 fork, report it as an inventory, and remove nothing before the human confirms. Use when syncing from upstream ppy/osu, after syncing/releasing the separate GooGuTeam/g0v0-resources repository, before cutting a v*-g0v0 release tag, when adding user-visible strings or image assets, or when auditing existing trademark leakage.
 ---
 
 # Trademark change detection (g0v0 fork)
@@ -27,7 +27,7 @@ there. Report pre-existing leakage separately and never present it as a new find
 | Clean (branding) | Keep (attribution / nominative / internal) |
 |---|---|
 | `osu!` in user-visible strings → `g0v0!` (ruleset display name: `osu!` → `standard`) | MIT file headers `Copyright (c) ppy Pty Ltd <contact@ppy.sh>` — required attribution |
-| Mascots: pippi, pippidon, comboburst, fruit-catcher art | NuGet package ids `ppy.osu.Framework`, `ppy.osu.Game.Resources` — upstream identity, used as-is |
+| Mascots: pippi, pippidon, comboburst, fruit-catcher art | NuGet package ids `ppy.osu.Framework` (upstream identity, used as-is) and `g0v0.osu.Game.Resources` (fork identity, published separately) |
 | osu! logo / wordmark, online promo art (`supporter-*`, `not-found`, `RankedPlay`) | Namespaces, type names, file names such as `osu.Game.*` — code identity, not branding |
 | Intro tracks, intro backgrounds, seasonal intros, retro skin | `.osu` file format, `osu!stable`, `osu!direct`, `osu!supporter`, `osu! wiki`, game mode names — nominative references |
 | Commercial fonts (Venera etc.) | Internal asset ids such as `assets/medals/*/osu-*.svg`; `LICENCE.md` / `README.md` attribution and the "not affiliated with ppy Pty Ltd" notice |
@@ -59,13 +59,14 @@ Then:
    merge rather than re-added and then cleaned.
 3. **Scan after merging.** Only *added* lines matter (`^+`, excluding `+++`), and comment-only lines
    are attribution noise. The script filters both.
-4. **Inventory brand assets in both repos.** The resources submodule is a separate repository with
-   its own `upstream` remote; brand assets live there (mascots, logo, intro, fonts, retro skin).
-   Compare its tree against its `upstream/master`, not against the parent repo.
+4. **Inventory brand assets in the separate resources repo.** Assets live in a separate clone of
+   `GooGuTeam/g0v0-resources` (with its own `upstream` remote `ppy/osu-resources`), not in this
+   repository. Compare that tree against its `upstream/master`; `detect.sh` reads it from
+   `../g0v0-resources` or a local `osu.Game.Resources` clone when present.
 5. **Check for resurrections.** A sync can re-add files the fork deliberately deleted, or revert
-   replaced art. `--diff-filter=A` over the change range, plus comparing the submodule tree, catches
-   this. Also verify the submodule pointer actually advanced (a sync that forgets to bump it silently
-   keeps old assets).
+   replaced art. `--diff-filter=A` over the change range, plus comparing the resources tree, catches
+   this. Also verify `G0V0ResourcesVersion` actually points at the newly published resources package
+   (a sync that forgets to bump it silently keeps old assets).
 6. **Compare against the known-outstanding list** in `references/known-outstanding.md` so
    long-standing, already-triaged items are not reported as new.
 7. **Report and ask.** Group findings as: *introduced by this change* / *pre-existing* /
@@ -87,7 +88,7 @@ Then:
 ...
 
 ### 不算问题（署名 / nominative）
-- N 个新增 .cs 的 MIT 版权头；NuGet 包名 ppy.osu.Framework ...
+- N 个新增 .cs 的 MIT 版权头；NuGet 包名 ppy.osu.Framework / g0v0.osu.Game.Resources ...
 
 需要我处理哪些？（全部 / 仅本次引入 / 指定条目 / 先不动）
 ```
@@ -100,11 +101,11 @@ explicitly when a scan produced zero. "0 introduced" is a valid and useful resul
 - `git rev-list --left-right --count A...B` prints `<left-only> <right-only>`; misreading it inverts
   which side is ahead. It counts commits, not files — pair it with `git log --oneline A..B`.
 - Grepping the whole tree for `osu` is useless here: namespaces, assembly names and 7000+ localisation
-  files match. Always scope to a diff range, and exclude `bin`, `obj`, `.git` and the submodule.
-- The resources submodule needs its own `upstream` remote added
+  files match. Always scope to a diff range, and exclude `bin`, `obj`, `.git` and any local resources checkout.
+- The separate `g0v0-resources` clone needs its own `upstream` remote
   (`https://github.com/ppy/osu-resources`) before it can be compared or synced.
-- A merge can silently keep the old submodule pointer. Confirm
-  `git ls-tree HEAD osu.Game.Resources` equals the submodule's `rev-parse HEAD` after syncing.
+- A release can silently ship old assets if `G0V0ResourcesVersion` is not bumped after publishing a
+  new `g0v0.osu.Game.Resources` package. Confirm the main-repo value matches the package version.
 - Brand-file names can be legitimate internal ids (`osu-combo-2000.svg`). Check content/purpose before
   proposing removal.
 - Keyword scans over translated `.resx` files produce hundreds of legitimate hits (the game *is*

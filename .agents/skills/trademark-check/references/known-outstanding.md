@@ -8,14 +8,14 @@ was reviewed once already; the human decided what to do (or to leave it).
 | Item | Why it stays |
 |---|---|
 | MIT headers: `Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.` on unmodified upstream files, `Copyright (c) GooGuTeam.` on fork-created files, `Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam.` on fork-modified files | Required attribution; British-spelled (`Licence`). Upstream files' second line points at `LICENCE-OSU`, the ppy licence in this fork. |
-| `PackageReference Include="ppy.osu.Framework"` / `ppy.osu.Game.Resources` | Upstream NuGet identity; the fork consumes them as-is. |
+| `PackageReference Include="ppy.osu.Framework"` / NuGet package id `g0v0.osu.Game.Resources` | 上游 framework 身份保留；资源包是 fork 自己发布的 NuGet 身份（上游对应包 `ppy.osu.Game.Resources` 仅作来源说明）。 |
 | NuGet `PackageId` such as `g0v0.osu.Game`, `PackageProjectUrl` → GooGuTeam | Already rebranded; the `osu` inside is the codebase identity. |
 | Namespaces, type and file names `osu.Game.*`, `OsuMod*`, `osu.iOS`, `osu.Android` | Code identity, not branding. Renaming them is a breaking change nobody asked for. |
 | `.osu` file format, `osu!stable`, `osu!direct`, `osu!supporter`, `osu! wiki`, game mode names in comments and docs | Nominative references to the original game, explicitly allowed by `README.md`. |
 | Medal asset ids `assets/medals/**/osu-*.svg`, `all-intro-*.svg` | Internal file ids, not displayed branding. |
 | `LICENCE.md`, `LICENCE-OSU`, `README.md` attribution and the "not affiliated with / endorsed by ppy Pty Ltd" notice | Deliberate legal notices. |
 | `Copyright`/`Authors`/`Company` fields crediting ppy Pty Ltd alongside GooGuTeam | Attribution in package metadata. |
-| Translated strings in `osu.Game.Resources/Localisation/*.resx` mentioning osu! (hundreds, e.g. `BeatmapOverlayStrings.*.resx` "Featured Artists … osu!") | Community translations of upstream text; the game *is* about osu! beatmaps. Low priority, never bulk-rewrite. |
+| Translated strings in `g0v0-resources/osu.Game.Resources/Localisation/*.resx` mentioning osu! (hundreds, e.g. `BeatmapOverlayStrings.*.resx` "Featured Artists … osu!") | Community translations of upstream text; the game *is* about osu! beatmaps. Low priority, never bulk-rewrite. |
 
 ## Pre-existing leakage, reviewed and deliberately left (as of 2026-09-10)
 
@@ -23,9 +23,9 @@ was reviewed once already; the human decided what to do (or to leave it).
 |---|---|---|
 | `assets/lazer.png`, `assets/lazer-nuget.png` | Upstream osu! logo (byte-identical, same md5) used as NuGet `PackageIcon` in `osu.Game/osu.Game.csproj` | Commit `5a37771179` updated Desktop/Android/iOS icons but missed these two. Human deferred. |
 | `Templates/Rulesets/ruleset-example/**`, `Templates/Rulesets/ruleset-scrolling-example/**` | `Pippidon` sample ruleset, incl. `Resources/Textures/character.png` (pippi art) | Upstream template content; human deferred. |
-| `osu.Game.Resources/Skins/Legacy/pippidonclear.png` | Filename still pippi-branded; content already replaced by a placeholder | Content clean, name retained. |
-| `osu.Game.Resources/Textures/Online/supporter-pippi.png` | Filename still pippi-branded; content already replaced with g0v0 art | Content clean, name retained. |
-| `osu.Game.Resources/Samples/Intro/Welcome/*.mp3`, `Samples/Intro/*.mp3` | Intro stingers kept while intro tracks/backgrounds were removed | Human deferred. |
+| `g0v0-resources/osu.Game.Resources/Skins/Legacy/pippidonclear.png` | Filename still pippi-branded; content already replaced by a placeholder | Content clean, name retained. |
+| `g0v0-resources/osu.Game.Resources/Textures/Online/supporter-pippi.png` | Filename still pippi-branded; content already replaced with g0v0 art | Content clean, name retained. |
+| `g0v0-resources/osu.Game.Resources/Samples/Intro/Welcome/*.mp3`, `Samples/Intro/*.mp3` | Intro stingers kept while intro tracks/backgrounds were removed | Human deferred. |
 
 ## Cleanup already completed — do not redo
 
@@ -40,7 +40,7 @@ Parent repo (precedent diffs worth reading before doing similar work):
 - `0e39dcb4f4`/`c0981a376d` Remove intro settings and Retro skin
 - `705965928c` Change settings header from "osu!" to "standard"
 
-`osu.Game.Resources` submodule:
+`g0v0-resources` repository（独立 clone）:
 
 - Mascot art replaced: `Skins/Legacy/comboburst@2x.png`, `fruit-catcher-*@2x.png`
 - Logo/wordmark replaced: `Textures/Icons/Logo.png`, `Textures/Menu/logo.png`

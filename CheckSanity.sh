@@ -6,7 +6,7 @@ set -uo pipefail
 root="${1:-.}"
 has_errors=0
 
-# Directories skipped during recursion. osu.Game.Resources is not part of the project.
+# Directories skipped during recursion. osu.Game.Resources is the optional local checkout of the separate g0v0-resources repository.
 ignore_paths=(".git" "bin" "obj" "Migrations" "packages" "osu.Game.Resources")
 
 if [[ -f "$root/.cfsignore" ]]; then

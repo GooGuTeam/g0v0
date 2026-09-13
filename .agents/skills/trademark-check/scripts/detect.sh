@@ -10,6 +10,7 @@
 #   detect.sh --base <ref>        explicit pre-change base
 #   detect.sh --incoming          also scan upstream/master that is not merged yet
 #   detect.sh --base <ref> --incoming
+#   G0V0_RESOURCES_DIR=<path> detect.sh   # asset inventory for a separate g0v0-resources clone
 #
 set -uo pipefail
 
@@ -26,7 +27,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --base) BASE="${2:-}"; shift 2 ;;
     --incoming) INCOMING=1; shift ;;
-    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -121,24 +122,30 @@ if [ "$INCOMING" -eq 1 ]; then
   fi
 fi
 
-hr "3. osu.Game.Resources submodule brand inventory"
-SUB="$ROOT/osu.Game.Resources"
-if [ -e "$SUB/.git" ] || [ -f "$SUB/.git" ]; then
-  ptr="$(git ls-tree HEAD osu.Game.Resources | awk '{print $3}')"
-  sub_head="$(git -C "$SUB" rev-parse HEAD 2>/dev/null)"
-  echo "submodule pointer in HEAD: ${ptr:0:12}"
-  echo "submodule working HEAD:     ${sub_head:0:12}"
-  if [ "$ptr" != "$sub_head" ]; then
-    echo "!! pointer mismatch: the parent commit does not reference the checked-out submodule commit"
-  fi
+hr "3. g0v0-resources asset brand inventory (separate repository)"
 
-  if git -C "$SUB" rev-parse --verify -q upstream/master >/dev/null; then
+RES_DIR="${G0V0_RESOURCES_DIR:-}"
+if [ -z "$RES_DIR" ]; then
+  for candidate in "$ROOT/../g0v0-resources" "$ROOT/osu.Game.Resources"; do
+    if [ -d "$candidate/.git" ] || [ -f "$candidate/.git" ]; then
+      RES_DIR="$candidate"
+      break
+    fi
+  done
+fi
+
+if [ -n "$RES_DIR" ] && git -C "$RES_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  RES_HEAD="$(git -C "$RES_DIR" rev-parse --short HEAD 2>/dev/null || echo '?')"
+  echo "resources repo:              $RES_DIR @ $RES_HEAD"
+  echo "main-repo resources version: $(grep -o '<G0V0ResourcesVersion[^>]*>[^<]*' "$ROOT/osu.Game/osu.Game.csproj" 2>/dev/null | sed 's/.*>//')"
+
+  if git -C "$RES_DIR" rev-parse --verify -q upstream/master >/dev/null; then
     printf '%-30s %-6s %-9s %-8s %-8s %s\n' "path group" "same" "modified" "deleted" "renamed" "fork-added"
     # NB: git pathspecs match literally unless they contain a glob, so a group that is
     # a filename prefix needs an explicit '*'.
     for g in "Skins/Legacy/pippi*" "Skins/Retro" "Textures/Online" "Textures/Menu" "Textures/Icons" \
              "Textures/Intro" "Textures/Backgrounds" "Tracks" "Fonts" "Samples/Intro"; do
-      out="$(git -C "$SUB" diff --name-status -M --no-color upstream/master HEAD -- "osu.Game.Resources/$g" 2>/dev/null)"
+      out="$(git -C "$RES_DIR" diff --name-status -M --no-color upstream/master HEAD -- "osu.Game.Resources/$g" 2>/dev/null)"
       a="$(printf '%s\n' "$out" | grep -c '^A' || true)"
       m="$(printf '%s\n' "$out" | grep -c '^M' || true)"
       d="$(printf '%s\n' "$out" | grep -c '^D' || true)"
@@ -146,8 +153,8 @@ if [ -e "$SUB/.git" ] || [ -f "$SUB/.git" ]; then
       # Files whose content is byte-identical on both sides: upstream art the fork
       # has not touched at all, i.e. the real candidate list for review.
       same="$(comm -12 \
-        <(git -C "$SUB" ls-tree -r upstream/master -- "osu.Game.Resources/$g" 2>/dev/null | sort) \
-        <(git -C "$SUB" ls-tree -r HEAD -- "osu.Game.Resources/$g" 2>/dev/null | sort) | wc -l)"
+        <(git -C "$RES_DIR" ls-tree -r upstream/master -- "osu.Game.Resources/$g" 2>/dev/null | sort) \
+        <(git -C "$RES_DIR" ls-tree -r HEAD -- "osu.Game.Resources/$g" 2>/dev/null | sort) | wc -l)"
       printf '%-30s %-6s %-9s %-8s %-8s %s\n' "$g" "$same" "$m" "$d" "$r" "$a"
     done
     echo
@@ -158,16 +165,20 @@ if [ -e "$SUB/.git" ] || [ -f "$SUB/.git" ]; then
     echo "  renamed    = the fork renamed/consolidated it (already handled)"
     echo "  fork-added = the fork's own replacement art (not upstream leakage)"
     echo "Cross-check anything in 'same' against references/known-outstanding.md."
+    echo "Also confirm the published g0v0.osu.Game.Resources version matches" \
+         "G0V0ResourcesVersion in the main repo."
   else
-    echo "skipped: submodule has no upstream/master ref"
-    echo "  git -C osu.Game.Resources remote add upstream https://github.com/ppy/osu-resources.git && git -C osu.Game.Resources fetch upstream"
+    echo "skipped: g0v0-resources clone has no upstream/master ref"
+    echo "  git -C \"$RES_DIR\" remote add upstream https://github.com/ppy/osu-resources.git && git -C \"$RES_DIR\" fetch upstream"
   fi
 
   echo
   echo "-- pippi-branded files still in the tree:"
-  git -C "$SUB" ls-files | grep -i pippi | sed 's/^/   /' || echo "   (none)"
+  git -C "$RES_DIR" ls-files | grep -i pippi | sed 's/^/   /' || echo "   (none)"
 else
-  echo "skipped: submodule not checked out"
+  echo "skipped: no g0v0-resources checkout found"
+  echo "  clone it next to this repo (../g0v0-resources), keep a local osu.Game.Resources clone,"
+  echo "  or set G0V0_RESOURCES_DIR=<path>; asset branding lives in the separate resources repository."
 fi
 
 hr "4. already-triaged items (do not report as new)"
