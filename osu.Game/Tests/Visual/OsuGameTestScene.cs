@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -198,6 +198,8 @@ namespace osu.Game.Tests.Visual
 
         public partial class TestLoader : Loader
         {
+            protected override OsuScreen CreateLoadableScreen() => new IntroSimple(() => new MainMenu());
+
             protected override ShaderPrecompiler CreateShaderPrecompiler() => new TestShaderPrecompiler();
 
             private partial class TestShaderPrecompiler : ShaderPrecompiler

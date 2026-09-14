@@ -1,9 +1,10 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation;
 
 namespace osu.Game.Rulesets.Mods
 {
@@ -15,7 +16,7 @@ namespace osu.Game.Rulesets.Mods
 
         public override IconUsage? Icon => OsuIcon.ModClassic;
 
-        public override LocalisableString Description => "Feeling nostalgic?";
+        public override LocalisableString Description => CommonModsStrings.ClassicDescription;
 
         public override ModType Type => ModType.Conversion;
 

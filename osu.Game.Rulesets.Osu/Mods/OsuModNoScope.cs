@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -8,6 +8,7 @@ using osu.Framework.Bindables;
 using osu.Framework.Localisation;
 using osu.Framework.Utils;
 using osu.Game.Beatmaps;
+using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.UI;
@@ -18,7 +19,7 @@ namespace osu.Game.Rulesets.Osu.Mods
 {
     public class OsuModNoScope : ModNoScope, IUpdatableByPlayfield, IApplicableToBeatmap
     {
-        public override LocalisableString Description => "Where's the cursor?";
+        public override LocalisableString Description => ModsStrings.NoScopeDescription;
 
         public override Type[] IncompatibleMods => new[] { typeof(OsuModBloom) };
 

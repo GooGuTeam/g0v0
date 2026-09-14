@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -8,6 +8,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.StateChanges;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Replays;
@@ -22,7 +23,7 @@ namespace osu.Game.Rulesets.Osu.Mods
         public override string Acronym => "AP";
         public override IconUsage? Icon => OsuIcon.ModAutopilot;
         public override ModType Type => ModType.Automation;
-        public override LocalisableString Description => @"Automatic cursor movement - just follow the rhythm.";
+        public override LocalisableString Description => ModsStrings.AutopilotDescription;
 
         public override Type[] IncompatibleMods => new[]
         {

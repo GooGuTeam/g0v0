@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osuTK;
 using osu.Framework.Graphics;
@@ -66,7 +66,7 @@ namespace osu.Game.Overlays.Settings
             {
                 Text = Header,
                 Font = OsuFont.GetFont(size: header_font_size),
-                Margin = new MarginPadding { Vertical = VERTICAL_PADDING },
+                Margin = new MarginPadding { Vertical = VERTICAL_PADDING, Horizontal = 5 },
                 Padding = SettingsPanel.CONTENT_PADDING,
             };
         }

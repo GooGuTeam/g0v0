@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using osu.Framework.Allocation;
@@ -83,7 +83,6 @@ namespace osu.Game.Overlays.FirstRunSetup
                         // InputSection is intentionally omitted for now due to its sub-panel being a pain to set up.
                         new UserInterfaceSection(),
                         new GameplaySection(),
-                        new RulesetSection(),
                         new AudioSection(),
                         new GraphicsSection(),
                         new OnlineSection(),

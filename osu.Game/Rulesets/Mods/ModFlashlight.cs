@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Runtime.InteropServices;
@@ -18,6 +18,7 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.OpenGL.Vertices;
+using osu.Game.Localisation;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.UI;
@@ -34,13 +35,13 @@ namespace osu.Game.Rulesets.Mods
         public override string Acronym => "FL";
         public override IconUsage? Icon => OsuIcon.ModFlashlight;
         public override ModType Type => ModType.DifficultyIncrease;
-        public override LocalisableString Description => "Restricted view area.";
+        public override LocalisableString Description => CommonModsStrings.FlashlightDescription;
         public override bool Ranked => UsesDefaultConfiguration;
 
-        [SettingSource("Flashlight size", "Multiplier applied to the default flashlight size.")]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.FlashlightSizeLabel), nameof(CommonModsStrings.FlashlightSizeDescription))]
         public abstract BindableFloat SizeMultiplier { get; }
 
-        [SettingSource("Change size based on combo", "Decrease the flashlight size as combo increases.")]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.FlashlightChangeSizeBasedOnComboLabel), nameof(CommonModsStrings.FlashlightChangeSizeBasedOnComboDescription))]
         public abstract BindableBool ComboBasedSize { get; }
 
         /// <summary>

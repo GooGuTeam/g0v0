@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 namespace osu.Game.Online
 {
@@ -27,6 +27,12 @@ namespace osu.Game.Online
         /// The endpoint for the main (osu-web) API. Does not include a trailing slash.
         /// </summary>
         public string APIUrl { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The route segment appended to <see cref="APIUrl"/> when constructing API request URLs.
+        /// Private endpoints may use alternate routes (e.g. "private").
+        /// </summary>
+        public string APIRequestRoute { get; set; } = @"v2";
 
         /// <summary>
         /// The root URL for the service handling beatmap submission. Does not include a trailing slash.

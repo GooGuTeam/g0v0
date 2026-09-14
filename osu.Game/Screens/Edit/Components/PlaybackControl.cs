@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using osuTK;
@@ -21,7 +21,6 @@ using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
 using osu.Game.Overlays;
-using osuTK.Input;
 
 namespace osu.Game.Screens.Edit.Components
 {
@@ -110,21 +109,6 @@ namespace osu.Game.Screens.Edit.Components
                 editorClock.AudioAdjustments.RemoveAdjustment(AdjustableProperty.Tempo, tempoAdjustment);
 
             base.Dispose(isDisposing);
-        }
-
-        protected override bool OnKeyDown(KeyDownEvent e)
-        {
-            if (e.Repeat)
-                return false;
-
-            switch (e.Key)
-            {
-                case Key.Space:
-                    togglePause();
-                    return true;
-            }
-
-            return base.OnKeyDown(e);
         }
 
         private void togglePause()

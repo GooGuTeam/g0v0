@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Concurrent;
@@ -79,7 +79,7 @@ namespace osu.Game.Configuration
             Description = description ?? string.Empty;
         }
 
-        public SettingSourceAttribute(Type declaringType, string label, string description, int orderPosition)
+        public SettingSourceAttribute(Type declaringType, string label, string? description, int orderPosition)
             : this(declaringType, label, description)
         {
             OrderPosition = orderPosition;

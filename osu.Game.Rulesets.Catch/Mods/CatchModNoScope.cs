@@ -1,9 +1,10 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Bindables;
 using osu.Framework.Localisation;
+using osu.Game.Localisation.Catch;
 using osu.Game.Rulesets.Mods;
 using osu.Framework.Utils;
 using osu.Game.Rulesets.Catch.UI;
@@ -13,7 +14,7 @@ namespace osu.Game.Rulesets.Catch.Mods
 {
     public class CatchModNoScope : ModNoScope, IUpdatableByPlayfield
     {
-        public override LocalisableString Description => "Where's the catcher?";
+        public override LocalisableString Description => ModsStrings.NoScopeDescription;
 
         public override BindableInt HiddenComboCount { get; } = new BindableInt(10)
         {

@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -11,6 +11,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Testing;
 using osu.Framework.Utils;
+using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Mania.Beatmaps;
 using osu.Game.Rulesets.Mania.Edit;
@@ -38,6 +39,7 @@ namespace osu.Game.Rulesets.Mania.Tests.Editor
             EditorClock.Seek(0);
 
             Child = composer = new TestComposer { RelativeSizeAxes = Axes.Both };
+            composer.EditorBeatmap.ControlPointInfo.Add(0, new TimingControlPoint());
         });
 
         [Test]

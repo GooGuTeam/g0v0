@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -85,13 +85,13 @@ namespace osu.Game.Screens.Select
             else
                 yield return new OsuMenuItem(SongSelectStrings.RemoveFromPlayed, MenuItemType.Standard, () => beatmaps.MarkNotPlayed(beatmap)) { Icon = FontAwesome.Solid.TimesCircle };
 
-            yield return new OsuMenuItem(SongSelectStrings.ClearAllLocalScores, MenuItemType.Standard, () => dialogOverlay?.Push(new BeatmapClearScoresDialog(beatmap)))
+            yield return new OsuMenuItem(SongSelectStrings.ClearAllLocalScores, MenuItemType.Destructive, () => dialogOverlay?.Push(new BeatmapClearScoresDialog(beatmap)))
             {
                 Icon = FontAwesome.Solid.Eraser
             };
 
             if (beatmaps.CanHide(beatmap))
-                yield return new OsuMenuItem(WebCommonStrings.ButtonsHide.ToSentence(), MenuItemType.Destructive, () => beatmaps.Hide(beatmap));
+                yield return new OsuMenuItem(WebCommonStrings.ButtonsHide.ToSentence(), MenuItemType.Standard, () => beatmaps.Hide(beatmap));
         }
 
         protected override void OnStart()

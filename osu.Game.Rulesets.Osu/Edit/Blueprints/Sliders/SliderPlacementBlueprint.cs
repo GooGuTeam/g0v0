@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -75,7 +75,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
         [BackgroundDependencyLoader]
         private void load(OsuConfigManager config)
         {
-            InternalChildren = new Drawable[]
+            Children = new Drawable[]
             {
                 bodyPiece = new SliderBodyPiece(),
                 headCirclePiece = new HitCirclePiece(),

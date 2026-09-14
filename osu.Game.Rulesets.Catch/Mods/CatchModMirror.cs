@@ -1,9 +1,10 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
+using osu.Game.Localisation.Catch;
 using osu.Game.Rulesets.Catch.Beatmaps;
 using osu.Game.Rulesets.Catch.Objects;
 using osu.Game.Rulesets.Mods;
@@ -15,7 +16,7 @@ namespace osu.Game.Rulesets.Catch.Mods
 {
     public class CatchModMirror : ModMirror, IApplicableToBeatmap
     {
-        public override LocalisableString Description => "Fruits are flipped horizontally.";
+        public override LocalisableString Description => ModsStrings.MirrorDescription;
 
         /// <remarks>
         /// <see cref="IApplicableToBeatmap"/> is used instead of <see cref="IApplicableToHitObject"/>,

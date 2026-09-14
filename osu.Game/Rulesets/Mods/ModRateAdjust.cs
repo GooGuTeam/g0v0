@@ -1,11 +1,12 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using osu.Framework.Audio;
 using osu.Framework.Bindables;
 using osu.Framework.Localisation;
+using osu.Game.Localisation;
 
 namespace osu.Game.Rulesets.Mods
 {
@@ -32,7 +33,7 @@ namespace osu.Game.Rulesets.Mods
             get
             {
                 if (!SpeedChange.IsDefault)
-                    yield return ("Speed change", FormattableString.Invariant($@"{SpeedChange.Value:N2}x"));
+                    yield return (CommonModsStrings.SpeedChangeLabel, FormattableString.Invariant($@"{SpeedChange.Value:N2}x"));
             }
         }
 

@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -180,6 +180,7 @@ namespace osu.Game.Database
             c.CreateMap<RealmUser, RealmUser>();
             c.CreateMap<RealmFile, RealmFile>();
             c.CreateMap<RealmNamedFileUsage, RealmNamedFileUsage>();
+            c.CreateMap<RealmOnlineAsset, RealmOnlineAsset>();
             c.CreateMap<SkinInfo, SkinInfo>();
         }
 

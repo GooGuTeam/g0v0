@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Audio;
 using osu.Framework.Bindables;
@@ -7,6 +7,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
+using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 
 namespace osu.Game.Rulesets.Mods
@@ -17,10 +18,10 @@ namespace osu.Game.Rulesets.Mods
         public override string Acronym => "DC";
         public override IconUsage? Icon => OsuIcon.ModDaycore;
         public override ModType Type => ModType.DifficultyReduction;
-        public override LocalisableString Description => "Whoaaaaa...";
+        public override LocalisableString Description => CommonModsStrings.DaycoreDescription;
         public override bool Ranked => UsesDefaultConfiguration;
 
-        [SettingSource("Speed decrease", "The actual decrease to apply", SettingControlType = typeof(MultiplierSettingsSlider))]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.SpeedDecreaseLabel), nameof(CommonModsStrings.SpeedDecreaseDescription), SettingControlType = typeof(MultiplierSettingsSlider))]
         public override BindableNumber<double> SpeedChange { get; } = new BindableDouble(0.75)
         {
             MinValue = 0.5,

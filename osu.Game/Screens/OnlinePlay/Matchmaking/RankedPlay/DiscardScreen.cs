@@ -1,9 +1,8 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using Humanizer;
 using osu.Framework.Allocation;
@@ -71,10 +70,6 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
         [BackgroundDependencyLoader]
         private void load(AudioManager audio)
         {
-            var matchState = Client.Room?.MatchState as RankedPlayRoomState;
-
-            Debug.Assert(matchState != null);
-
             Children =
             [
                 CenterRow = new CardFlow

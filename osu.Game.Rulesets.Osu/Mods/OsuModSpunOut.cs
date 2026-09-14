@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Graphics;
@@ -7,6 +7,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Framework.Utils;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
@@ -19,7 +20,7 @@ namespace osu.Game.Rulesets.Osu.Mods
         public override string Acronym => "SO";
         public override IconUsage? Icon => OsuIcon.ModSpunOut;
         public override ModType Type => ModType.Automation;
-        public override LocalisableString Description => @"Spinners will be automatically completed.";
+        public override LocalisableString Description => ModsStrings.SpunOutDescription;
         public override Type[] IncompatibleMods => new[] { typeof(ModAutoplay), typeof(OsuModAutopilot), typeof(OsuModTargetPractice) };
         public override bool Ranked => UsesDefaultConfiguration;
 

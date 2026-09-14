@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -37,7 +37,6 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
 
             AutoSizeAxes = Axes.X;
             Height = (bar_height * 4) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
-            Origin = Anchor.Centre;
             InternalChildren = new Drawable[]
             {
                 new Box

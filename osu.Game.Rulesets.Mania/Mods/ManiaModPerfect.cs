@@ -1,8 +1,9 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Bindables;
 using osu.Game.Configuration;
+using osu.Game.Localisation.Mania;
 using osu.Game.Rulesets.Judgements;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
@@ -11,7 +12,7 @@ namespace osu.Game.Rulesets.Mania.Mods
 {
     public class ManiaModPerfect : ModPerfect
     {
-        [SettingSource("Require perfect hits")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.PerfectRequirePerfectHitsLabel))]
         public BindableBool RequirePerfectHits { get; } = new BindableBool();
 
         protected override bool FailCondition(HealthProcessor healthProcessor, JudgementResult result)

@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -11,7 +11,6 @@ using osuTK;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
-using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
@@ -81,8 +80,6 @@ namespace osu.Game.Overlays
             RelativeSizeAxes = Axes.Y;
             AutoSizeAxes = Axes.X;
         }
-
-        protected virtual IEnumerable<SettingsSection> CreateSections() => null;
 
         [BackgroundDependencyLoader]
         private void load()
@@ -155,8 +152,6 @@ namespace osu.Game.Overlays
                 BackButtonAction = Hide,
                 Width = sidebar_width
             });
-
-            CreateSections()?.ForEach(AddSection);
         }
 
         protected void AddSection(SettingsSection section)

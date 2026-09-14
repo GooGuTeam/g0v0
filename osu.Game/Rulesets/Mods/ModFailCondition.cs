@@ -1,9 +1,10 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Bindables;
 using osu.Game.Configuration;
+using osu.Game.Localisation;
 using osu.Game.Rulesets.Judgements;
 using osu.Game.Rulesets.Scoring;
 
@@ -13,7 +14,7 @@ namespace osu.Game.Rulesets.Mods
     {
         public override Type[] IncompatibleMods => new[] { typeof(ModNoFail), typeof(ModCinema) };
 
-        [SettingSource("Restart on fail", "Automatically restarts when failed.")]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.RestartOnFailLabel), nameof(CommonModsStrings.RestartOnFailDescription))]
         public BindableBool Restart { get; } = new BindableBool();
 
         public virtual bool PerformFail() => true;

@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
@@ -29,7 +29,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Speed
             var osuCurrObj = (OsuDifficultyHitObject)current;
 
             double strainTime = osuCurrObj.AdjustedDeltaTime;
-            double doubleTapFeasibility = 1.0 - osuCurrObj.CalculateDoubleTapFeasibility((OsuDifficultyHitObject?)osuCurrObj.Next(0));
+            double doubleTapFeasibility = 1.0 - osuCurrObj.CalculateDoubleTapFeasibility((OsuDifficultyHitObject?)osuCurrObj.Next());
 
             // Cap deltatime to the OD 300 hitwindow.
             // 0.93 is derived from making sure 260bpm OD8 streams aren't nerfed harshly, whilst 0.92 limits the effect of the cap.

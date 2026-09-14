@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -74,8 +74,8 @@ namespace osu.Game.Screens.OnlinePlay.Lounge
         [BackgroundDependencyLoader]
         private void load(AudioManager audio)
         {
-            sampleSelect = audio.Samples.Get($@"UI/{HoverSampleSet.Default.GetDescription()}-select");
-            sampleJoin = audio.Samples.Get($@"UI/{HoverSampleSet.Button.GetDescription()}-select");
+            sampleSelect = audio.Samples.Get($@"UI/{HoverSampleSet.Default.GetResourceName()}-select");
+            sampleJoin = audio.Samples.Get($@"UI/{HoverSampleSet.Button.GetResourceName()}-select");
 
             AddRangeInternal(new Drawable[]
             {

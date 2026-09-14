@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
@@ -14,6 +14,7 @@ using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
+using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.UI;
@@ -27,10 +28,10 @@ namespace osu.Game.Rulesets.Mods
         public override string Acronym => "NC";
         public override IconUsage? Icon => OsuIcon.ModNightcore;
         public override ModType Type => ModType.DifficultyIncrease;
-        public override LocalisableString Description => "Uguuuuuuuu...";
+        public override LocalisableString Description => CommonModsStrings.NightcoreDescription;
         public override bool Ranked => UsesDefaultConfiguration;
 
-        [SettingSource("Speed increase", "The actual increase to apply", SettingControlType = typeof(MultiplierSettingsSlider))]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.SpeedIncreaseLabel), nameof(CommonModsStrings.SpeedIncreaseDescription), SettingControlType = typeof(MultiplierSettingsSlider))]
         public override BindableNumber<double> SpeedChange { get; } = new BindableDouble(1.5)
         {
             MinValue = 1.01,

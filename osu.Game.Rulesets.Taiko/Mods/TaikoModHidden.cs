@@ -1,8 +1,9 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Graphics;
 using osu.Framework.Localisation;
+using osu.Game.Localisation.Taiko;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
@@ -16,7 +17,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
 {
     public class TaikoModHidden : ModHidden, IApplicableToDrawableRuleset<TaikoHitObject>
     {
-        public override LocalisableString Description => @"Beats fade out before you hit them!";
+        public override LocalisableString Description => ModsStrings.HiddenDescription;
 
         /// <summary>
         /// How far away from the hit target should hitobjects start to fade out.

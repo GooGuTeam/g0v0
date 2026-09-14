@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -8,6 +8,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Mania;
 using osu.Game.Rulesets.Mania.Beatmaps;
 using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mania.Objects.Drawables;
@@ -24,7 +25,7 @@ namespace osu.Game.Rulesets.Mania.Mods
 
         public override string Acronym => "NR";
 
-        public override LocalisableString Description => "No more timing the end of hold notes.";
+        public override LocalisableString Description => ModsStrings.NoReleaseDescription;
 
         public override IconUsage? Icon => OsuIcon.ModNoRelease;
 

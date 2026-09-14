@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -205,7 +205,7 @@ namespace osu.Game.Overlays.Chat.ChannelList
                             new OsuSpriteText
                             {
                                 Text = label,
-                                Margin = new MarginPadding { Left = 18, Bottom = 5 },
+                                Margin = new MarginPadding { Left = 10, Bottom = 5 },
                                 Font = OsuFont.MapleMono.With(size: 12, weight: FontWeight.SemiBold),
                             },
                             new SpriteIcon

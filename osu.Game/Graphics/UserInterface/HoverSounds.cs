@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -7,7 +7,6 @@ using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Sample;
 using osu.Framework.Bindables;
-using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Game.Audio;
 
@@ -34,8 +33,8 @@ namespace osu.Game.Graphics.UserInterface
         [BackgroundDependencyLoader]
         private void load(AudioManager audio)
         {
-            sampleHover = audio.Samples.Get($@"UI/{SampleSet.GetDescription()}-hover")
-                          ?? audio.Samples.Get($@"UI/{HoverSampleSet.Default.GetDescription()}-hover");
+            sampleHover = audio.Samples.Get($@"UI/{SampleSet.GetResourceName()}-hover")
+                          ?? audio.Samples.Get($@"UI/{HoverSampleSet.Default.GetResourceName()}-hover");
         }
 
         public override void PlayHoverSample()

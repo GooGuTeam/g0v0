@@ -1,6 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// This file is partly modified by GooGuTeam.
-// See the LICENCE file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -140,6 +139,8 @@ namespace osu.Game
         private UserProfileOverlay userProfile;
 
         private LoginOverlay loginOverlay;
+
+        private NowPlayingOverlay nowPlayingOverlay;
 
         private BeatmapSetOverlay beatmapSetOverlay;
 
@@ -1241,7 +1242,7 @@ namespace osu.Game
                 Origin = Anchor.TopRight,
             }, rightFloatingOverlayContent.Add, true);
 
-            loadComponentSingleFile(new NowPlayingOverlay
+            loadComponentSingleFile(nowPlayingOverlay = new NowPlayingOverlay
             {
                 Anchor = Anchor.TopRight,
                 Origin = Anchor.TopRight,
@@ -1262,7 +1263,7 @@ namespace osu.Game
             Add(new FriendPresenceNotifier());
 
             // side overlays which cancel each other.
-            var singleDisplaySideOverlays = new OverlayContainer[] { Settings, Notifications, FirstRunOverlay, loginOverlay };
+            var singleDisplaySideOverlays = new OverlayContainer[] { Settings, Notifications, FirstRunOverlay, loginOverlay, nowPlayingOverlay };
 
             foreach (var overlay in singleDisplaySideOverlays)
             {

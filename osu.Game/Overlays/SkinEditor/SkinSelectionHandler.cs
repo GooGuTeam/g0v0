@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -58,7 +58,7 @@ namespace osu.Game.Overlays.SkinEditor
 
         private void updateTernaryStates()
         {
-            var usingClosestAnchor = GetStateFromSelection(SelectedBlueprints, c => !c.Item.UsesFixedAnchor);
+            var usingClosestAnchor = SelectedBlueprints.GetTernaryState(c => !c.Item.UsesFixedAnchor);
 
             if (closestAnchor != null)
                 closestAnchor.State.Value = usingClosestAnchor;
@@ -66,14 +66,14 @@ namespace osu.Game.Overlays.SkinEditor
             if (fixedAnchors != null)
             {
                 foreach (var fixedAnchor in fixedAnchors)
-                    fixedAnchor.State.Value = GetStateFromSelection(SelectedBlueprints, c => c.Item.UsesFixedAnchor && ((Drawable)c.Item).Anchor == fixedAnchor.Anchor);
+                    fixedAnchor.State.Value = SelectedBlueprints.GetTernaryState(c => c.Item.UsesFixedAnchor && ((Drawable)c.Item).Anchor == fixedAnchor.Anchor);
             }
 
             if (originMenu != null)
             {
                 foreach (var origin in originMenu.Items.OfType<AnchorMenuItem>())
                 {
-                    origin.State.Value = GetStateFromSelection(SelectedBlueprints, c => ((Drawable)c.Item).Origin == origin.Anchor);
+                    origin.State.Value = SelectedBlueprints.GetTernaryState(c => ((Drawable)c.Item).Origin == origin.Anchor);
                     origin.Action.Disabled = usingClosestAnchor == TernaryState.True;
                 }
             }

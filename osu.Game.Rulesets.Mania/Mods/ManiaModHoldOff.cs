@@ -1,9 +1,10 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
 using osu.Game.Beatmaps;
+using osu.Game.Localisation.Mania;
 using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mods;
 using osu.Framework.Graphics.Sprites;
@@ -21,7 +22,7 @@ namespace osu.Game.Rulesets.Mania.Mods
 
         public override string Acronym => "HO";
 
-        public override LocalisableString Description => @"Replaces all hold notes with normal notes.";
+        public override LocalisableString Description => ModsStrings.HoldOffDescription;
 
         public override IconUsage? Icon => OsuIcon.ModHoldOff;
 

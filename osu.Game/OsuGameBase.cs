@@ -1,6 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// This file is partly modified by GooGuTeam.
-// See the LICENCE file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -233,6 +232,7 @@ namespace osu.Game
 
         private BeatmapDifficultyCache difficultyCache;
         private IBeatmapUpdater beatmapUpdater;
+        private OnlineAssetCachingStore onlineAssetStore;
 
         private UserLookupCache userCache;
         private BeatmapLookupCache beatmapCache;
@@ -318,6 +318,8 @@ namespace osu.Game
             var largeStore = new LargeTextureStore(Host.Renderer, Host.CreateTextureLoaderStore(new NamespacedResourceStore<byte[]>(Resources, @"Textures")));
             largeStore.AddTextureSource(Host.CreateTextureLoaderStore(CreateOnlineStore()));
             dependencies.Cache(largeStore);
+
+            dependencies.Cache(onlineAssetStore = new OnlineAssetCachingStore(Host, realm));
 
             dependencies.CacheAs(LocalConfig);
             dependencies.CacheAs<IGameplaySettings>(LocalConfig);
@@ -812,6 +814,8 @@ namespace osu.Game
             LocalConfig?.Dispose();
 
             beatmapUpdater?.Dispose();
+
+            onlineAssetStore?.Dispose();
 
             realm?.Dispose();
 

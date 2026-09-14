@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -55,19 +55,10 @@ namespace osu.Game.Rulesets.Osu.UI.ReplayAnalysis
         {
             ClearVertices();
 
-            Vector2 min = Vector2.Zero;
-
             foreach (var entry in aliveEntries)
-            {
                 AddVertex(entry.Position);
-                if (entry.Position.X < min.X)
-                    min.X = entry.Position.X;
 
-                if (entry.Position.Y < min.Y)
-                    min.Y = entry.Position.Y;
-            }
-
-            Position = min;
+            OriginPosition = PositionInBoundingBox(Vector2.Zero);
         }
 
         private sealed class AimLinePointComparator : IComparer<AnalysisFrameEntry>

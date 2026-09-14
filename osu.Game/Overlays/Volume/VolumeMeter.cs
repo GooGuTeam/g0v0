@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -11,7 +11,6 @@ using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Sample;
 using osu.Framework.Bindables;
-using osu.Framework.Extensions;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -88,7 +87,7 @@ namespace osu.Game.Overlays.Volume
         [BackgroundDependencyLoader]
         private void load(OsuColour colours, AudioManager audio)
         {
-            hoverSample = audio.Samples.Get($@"UI/{HoverSampleSet.Button.GetDescription()}-hover");
+            hoverSample = audio.Samples.Get($@"UI/{HoverSampleSet.Button.GetResourceName()}-hover");
             notchSample = audio.Samples.Get(@"UI/notch-tick");
             sampleLastPlaybackTime = Time.Current;
 

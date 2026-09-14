@@ -1,9 +1,10 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation;
 
 namespace osu.Game.Rulesets.Mods
 {
@@ -14,7 +15,7 @@ namespace osu.Game.Rulesets.Mods
     {
         public override string Name => "Synesthesia";
         public override string Acronym => "SY";
-        public override LocalisableString Description => "Colours hit objects based on the rhythm.";
+        public override LocalisableString Description => CommonModsStrings.SynesthesiaDescription;
         public override IconUsage? Icon => OsuIcon.ModSynesthesia;
         public override ModType Type => ModType.Fun;
     }

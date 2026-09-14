@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -699,6 +699,7 @@ namespace osu.Game.Tests.Visual.Navigation
         }
 
         [Test]
+        [Ignore("No theme music makes this test unable to work properly.")]
         public void TestMenuMakesMusic()
         {
             SoloSongSelect songSelect = null;
@@ -785,6 +786,7 @@ namespace osu.Game.Tests.Visual.Navigation
         }
 
         [Test]
+        [Ignore("No theme music makes this test unable to work properly.")]
         public void TestWaitForNextTrackInMenu()
         {
             bool trackCompleted = false;

@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Input.Bindings;
@@ -79,6 +79,12 @@ namespace osu.Game.Rulesets.Mania
 
         [LocalisableDescription(typeof(ActionStringsHelper), nameof(ActionStringsHelper.Key20))]
         Key20,
+
+        [LocalisableDescription(typeof(ManiaEditorStrings), nameof(ManiaEditorStrings.NoteTool))]
+        EditorNoteTool = 10000,
+
+        [LocalisableDescription(typeof(ManiaEditorStrings), nameof(ManiaEditorStrings.HoldNoteTool))]
+        EditorHoldNoteTool,
     }
 
     // Workaround for the inability to pass arguments to `LocalisableDescription`.

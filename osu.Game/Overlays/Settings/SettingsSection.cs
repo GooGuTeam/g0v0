@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -32,12 +32,14 @@ namespace osu.Game.Overlays.Settings
         public abstract Drawable CreateIcon();
         public abstract LocalisableString Header { get; }
 
+        public bool UseSmallerSidebarButton { get; init; }
+
         public virtual IEnumerable<LocalisableString> FilterTerms => new[] { Header };
 
         public const int ITEM_SPACING = 14;
         public const int ITEM_SPACING_V2 = 4;
 
-        private const int header_size = 24;
+        private const int header_size = 30;
         private const int border_size = 2;
 
         private bool matchingFilter = true;
@@ -72,7 +74,7 @@ namespace osu.Game.Overlays.Settings
             {
                 Margin = new MarginPadding
                 {
-                    Top = 36
+                    Top = header_size + 6,
                 },
                 Spacing = new Vector2(0, ITEM_SPACING_V2),
                 Direction = FillDirection.Vertical,

@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -64,7 +64,7 @@ namespace osu.Game.Rulesets.Osu.Edit
         /// <summary>
         /// Rotation of the grid lines in degrees.
         /// </summary>
-        public BindableFloat GridLinesRotation { get; } = new BindableFloat(0f)
+        public BindableFloat GridLinesRotation { get; } = new BindableFloat
         {
             MinValue = -180f,
             MaxValue = 180f,
@@ -167,22 +167,20 @@ namespace osu.Game.Rulesets.Osu.Edit
                         gridTypeButtons = new EditorRadioButtonCollection
                         {
                             RelativeSizeAxes = Axes.X,
-                            Items = new[]
-                            {
-                                new RadioButton("Square",
-                                    () => GridType.Value = PositionSnapGridType.Square,
-                                    () => new SpriteIcon { Icon = FontAwesome.Regular.Square }),
-                                new RadioButton("Triangle",
-                                    () => GridType.Value = PositionSnapGridType.Triangle,
-                                    () => new OutlineTriangle(true, 20)),
-                                new RadioButton("Circle",
-                                    () => GridType.Value = PositionSnapGridType.Circle,
-                                    () => new SpriteIcon { Icon = FontAwesome.Regular.Circle }),
-                            }
                         },
                     }
                 },
             };
+
+            gridTypeButtons.AddButton(new EditorRadioButton("Square",
+                () => GridType.Value = PositionSnapGridType.Square,
+                () => new SpriteIcon { Icon = FontAwesome.Regular.Square }));
+            gridTypeButtons.AddButton(new EditorRadioButton("Triangle",
+                () => GridType.Value = PositionSnapGridType.Triangle,
+                () => new OutlineTriangle(true, 20)));
+            gridTypeButtons.AddButton(new EditorRadioButton("Circle",
+                () => GridType.Value = PositionSnapGridType.Circle,
+                () => new SpriteIcon { Icon = FontAwesome.Regular.Circle }));
 
             GridLineSpacing.Value = editorBeatmap.GridSize;
         }
@@ -239,7 +237,7 @@ namespace osu.Game.Rulesets.Osu.Edit
             {
                 GridLinesRotation.Disabled = v.NewValue == PositionSnapGridType.Circle;
 
-                gridTypeButtons.Items[(int)v.NewValue].Select();
+                gridTypeButtons.Items.ElementAt((int)v.NewValue).Select();
 
                 switch (v.NewValue)
                 {

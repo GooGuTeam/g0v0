@@ -1,10 +1,11 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Bindables;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Osu;
 
 namespace osu.Game.Rulesets.Osu.Mods
 {
@@ -16,7 +17,7 @@ namespace osu.Game.Rulesets.Osu.Mods
 
         public override IconUsage? Icon => OsuIcon.ModDeflate;
 
-        public override LocalisableString Description => "Hit them at the right size!";
+        public override LocalisableString Description => ModsStrings.ObjectScaleTweenDescription;
 
         public override BindableNumber<float> StartScale { get; } = new BindableFloat(2)
         {

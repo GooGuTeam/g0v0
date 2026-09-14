@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -307,17 +307,6 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 DeleteItems(new[] { blueprint.Item });
             else
                 DeleteSelected();
-        }
-
-        /// <summary>
-        /// Given a selection target and a function of truth, retrieve the correct ternary state for display.
-        /// </summary>
-        public static TernaryState GetStateFromSelection<TObject>(IEnumerable<TObject> selection, Func<TObject, bool> func)
-        {
-            if (selection.Any(func))
-                return selection.All(func) ? TernaryState.True : TernaryState.Indeterminate;
-
-            return TernaryState.False;
         }
 
         /// <summary>

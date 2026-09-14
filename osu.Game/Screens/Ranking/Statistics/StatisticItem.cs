@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Graphics;
@@ -32,16 +32,20 @@ namespace osu.Game.Screens.Ranking.Statistics
         /// </summary>
         public readonly bool RequiresHitEvents;
 
+        public readonly bool FullWidth;
+
         /// <summary>
         /// Creates a new <see cref="StatisticItem"/>, to be displayed in the results screen.
         /// </summary>
         /// <param name="name">The name of the item. Can be <see langword="null"/> to hide the item header.</param>
         /// <param name="createContent">A function returning the <see cref="Drawable"/> content to be displayed.</param>
         /// <param name="requiresHitEvents">Whether this item requires hit events. If true, <see cref="CreateContent"/> will not be called if no hit events are available.</param>
-        public StatisticItem(LocalisableString name, Func<Drawable> createContent, bool requiresHitEvents = false)
+        /// <param name="fullWidth">Whether the statistic should take full width, instead of half.</param>
+        public StatisticItem(LocalisableString name, Func<Drawable> createContent, bool requiresHitEvents = false, bool fullWidth = true)
         {
             Name = name;
             RequiresHitEvents = requiresHitEvents;
+            FullWidth = fullWidth;
             CreateContent = createContent;
         }
     }

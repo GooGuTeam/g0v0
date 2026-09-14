@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -495,9 +495,9 @@ namespace osu.Game.Localisation
         public static LocalisableString EditorToggleMoveControl => new TranslatableString(getKey(@"editor_toggle_move_control"), @"Toggle movement control");
 
         /// <summary>
-        /// "Discard unsaved changes"
+        /// "Discard unsaved changes..."
         /// </summary>
-        public static LocalisableString EditorDiscardUnsavedChanges => new TranslatableString(getKey(@"editor_discard_unsaved_changes"), @"Discard unsaved changes");
+        public static LocalisableString EditorDiscardUnsavedChanges => new TranslatableString(getKey(@"editor_discard_unsaved_changes"), @"Discard unsaved changes...");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

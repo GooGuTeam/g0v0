@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using NUnit.Framework;
+using osu.Framework.Extensions;
+using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps;
@@ -216,8 +218,8 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             void checkRecommendedDifficulty(double starRating)
                 => AddAssert($"recommended difficulty is {starRating}",
-                    () => Game.ChildrenOfType<BeatmapSearchGeneralFilterRow>().Single().ChildrenOfType<OsuSpriteText>().ElementAt(1).Text.ToString(),
-                    () => Is.EqualTo($"Recommended difficulty ({starRating.FormatStarRating()})"));
+                    () => Game.ChildrenOfType<BeatmapSearchGeneralFilterRow>().Single().ChildrenOfType<OsuSpriteText>()
+                              .Any(t => t.Text == LocalisableString.Interpolate($"{SearchGeneral.Recommended.GetLocalisableDescription()} ({starRating.FormatStarRating()})")));
         }
 
         private BeatmapSetInfo importBeatmapSet(IEnumerable<RulesetInfo> difficultyRulesets)

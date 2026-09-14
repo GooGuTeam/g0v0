@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using osu.Framework.Allocation;
@@ -157,8 +157,9 @@ namespace osu.Game.Screens.Edit.Verify
                                     Left = 2 * (COLUMN_GAP + COLUMN_WIDTH),
                                     Right = COLUMN_GAP + COLUMN_WIDTH,
                                 },
-                                Child = issueDetailText = new OsuSpriteText
+                                Child = issueDetailText = new TruncatingSpriteText
                                 {
+                                    RelativeSizeAxes = Axes.X,
                                     Anchor = Anchor.CentreLeft,
                                     Origin = Anchor.CentreLeft,
                                     Font = OsuFont.GetFont(size: TEXT_SIZE, weight: FontWeight.Medium)

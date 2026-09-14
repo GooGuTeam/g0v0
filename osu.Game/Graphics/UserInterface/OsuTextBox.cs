@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -279,8 +279,10 @@ namespace osu.Game.Graphics.UserInterface
         protected override Drawable GetDrawableCharacter(char c) => new FallingDownContainer
         {
             AutoSizeAxes = Axes.Both,
-            Child = new OsuSpriteText { Text = c.ToString(), Font = OsuFont.GetFont(size: FontSize) },
+            Child = new OsuSpriteText { Text = c.ToString(), Font = Font },
         };
+
+        protected virtual FontUsage Font => OsuFont.GetFont(size: FontSize);
 
         protected override Caret CreateCaret() => caret = new OsuCaret
         {

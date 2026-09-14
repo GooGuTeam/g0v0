@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -7,6 +7,7 @@ using osu.Framework.Bindables;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Localisation;
 
 namespace osu.Game.Rulesets.Mods
 {
@@ -14,7 +15,7 @@ namespace osu.Game.Rulesets.Mods
     {
         public override string Name => "Wind Up";
         public override string Acronym => "WU";
-        public override LocalisableString Description => "Can you keep up?";
+        public override LocalisableString Description => CommonModsStrings.WindUpDescription;
         public override IconUsage? Icon => OsuIcon.ModWindUp;
 
         public override BindableNumber<double> InitialRate { get; } = new BindableDouble(1)

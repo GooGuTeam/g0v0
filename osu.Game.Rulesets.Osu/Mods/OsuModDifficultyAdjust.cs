@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -11,6 +11,7 @@ using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Configuration;
 using osu.Game.Extensions;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Localisation;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 
@@ -18,7 +19,7 @@ namespace osu.Game.Rulesets.Osu.Mods
 {
     public partial class OsuModDifficultyAdjust : ModDifficultyAdjust
     {
-        [SettingSource("Circle Size", "Override a beatmap's set CS.", FIRST_SETTING_ORDER - 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(SongSelectStrings), nameof(SongSelectStrings.CircleSize), null, FIRST_SETTING_ORDER - 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public DifficultyBindable CircleSize { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -28,7 +29,7 @@ namespace osu.Game.Rulesets.Osu.Mods
             ReadCurrentFromDifficulty = diff => diff.CircleSize,
         };
 
-        [SettingSource("Approach Rate", "Override a beatmap's set AR.", LAST_SETTING_ORDER + 1, SettingControlType = typeof(ApproachRateSettingsControl))]
+        [SettingSource(typeof(SongSelectStrings), nameof(SongSelectStrings.ApproachRate), null, LAST_SETTING_ORDER + 1, SettingControlType = typeof(ApproachRateSettingsControl))]
         public DifficultyBindable ApproachRate { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -63,13 +64,13 @@ namespace osu.Game.Rulesets.Osu.Mods
             get
             {
                 if (!CircleSize.IsDefault)
-                    yield return ("Circle size", $"{CircleSize.Value:N1}");
+                    yield return (SongSelectStrings.CircleSize, $"{CircleSize.Value:N1}");
 
                 foreach (var setting in base.SettingDescription)
                     yield return setting;
 
                 if (!ApproachRate.IsDefault)
-                    yield return ("Approach rate", $"{ApproachRate.Value:N1}");
+                    yield return (SongSelectStrings.ApproachRate, $"{ApproachRate.Value:N1}");
             }
         }
 

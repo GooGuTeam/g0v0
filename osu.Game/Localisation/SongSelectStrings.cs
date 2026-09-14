@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -150,9 +150,9 @@ namespace osu.Game.Localisation
         public static LocalisableString RemoveFromPlayed => new TranslatableString(getKey(@"remove_from_played"), @"Remove from played");
 
         /// <summary>
-        /// "Clear all local scores"
+        /// "Clear all local scores..."
         /// </summary>
-        public static LocalisableString ClearAllLocalScores => new TranslatableString(getKey(@"clear_all_local_scores"), @"Clear all local scores");
+        public static LocalisableString ClearAllLocalScores => new TranslatableString(getKey(@"clear_all_local_scores"), @"Clear all local scores...");
 
         /// <summary>
         /// "Restore all hidden"

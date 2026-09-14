@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Bindables;
@@ -8,6 +8,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Objects.Types;
@@ -22,12 +23,12 @@ namespace osu.Game.Rulesets.Osu.Mods
         public override string Acronym => "WG";
         public override IconUsage? Icon => OsuIcon.ModWiggle;
         public override ModType Type => ModType.Fun;
-        public override LocalisableString Description => "They just won't stay still...";
-        public override Type[] IncompatibleMods => new[] { typeof(OsuModTransform), typeof(OsuModMagnetised), typeof(OsuModRepel), typeof(OsuModDepth) };
+        public override LocalisableString Description => ModsStrings.WiggleDescription;
+        public override Type[] IncompatibleMods => new[] { typeof(OsuModAutoplay), typeof(OsuModTransform), typeof(OsuModMagnetised), typeof(OsuModRepel), typeof(OsuModDepth) };
 
         private const int wiggle_duration = 100; // (ms) Higher = fewer wiggles
 
-        [SettingSource("Strength", "Multiplier applied to the wiggling strength.")]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.WiggleStrengthLabel), nameof(ModsStrings.WiggleStrengthDescription))]
         public BindableDouble Strength { get; } = new BindableDouble(1)
         {
             MinValue = 0.1f,

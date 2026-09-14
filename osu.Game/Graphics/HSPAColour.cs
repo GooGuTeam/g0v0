@@ -1,11 +1,12 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osuTK.Graphics;
 
 namespace osu.Game.Graphics
 {
+    /// <seealso href="https://alienryderflex.com/hsp.html"/>
     public struct HSPAColour
     {
         private const float p_r = 0.299f;
@@ -44,7 +45,7 @@ namespace osu.Game.Graphics
         {
             H = 0;
             S = 0;
-            P = MathF.Sqrt(colour.R * colour.R * p_r + colour.G * colour.G * p_g + colour.B + colour.B * p_b);
+            P = MathF.Sqrt(colour.R * colour.R * p_r + colour.G * colour.G * p_g + colour.B * colour.B * p_b);
             A = colour.A;
 
             if (colour.R == colour.G && colour.R == colour.B)

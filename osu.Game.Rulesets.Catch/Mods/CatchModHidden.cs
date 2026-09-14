@@ -1,9 +1,10 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using osu.Framework.Graphics;
 using osu.Framework.Localisation;
+using osu.Game.Localisation.Catch;
 using osu.Game.Rulesets.Catch.Objects;
 using osu.Game.Rulesets.Catch.Objects.Drawables;
 using osu.Game.Rulesets.Catch.UI;
@@ -15,7 +16,7 @@ namespace osu.Game.Rulesets.Catch.Mods
 {
     public class CatchModHidden : ModHidden, IApplicableToDrawableRuleset<CatchHitObject>
     {
-        public override LocalisableString Description => @"Play with fading fruits.";
+        public override LocalisableString Description => ModsStrings.HiddenDescription;
 
         private const double fade_out_offset_multiplier = 0.6;
         private const double fade_out_duration_multiplier = 0.44;

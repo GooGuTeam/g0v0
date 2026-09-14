@@ -1,9 +1,11 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
 using osu.Framework.Allocation;
+using osu.Framework.Graphics;
+using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Configuration;
@@ -37,5 +39,8 @@ namespace osu.Game.Overlays.Settings
 
             return dependencies;
         }
+
+        protected sealed override LocalisableString Header => string.Empty;
+        protected sealed override Drawable CreateHeader() => Empty();
     }
 }

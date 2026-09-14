@@ -1,18 +1,20 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System.Collections.Generic;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Extensions;
+using osu.Game.Localisation;
+using osu.Game.Localisation.Taiko;
 using osu.Game.Rulesets.Mods;
 
 namespace osu.Game.Rulesets.Taiko.Mods
 {
     public class TaikoModDifficultyAdjust : ModDifficultyAdjust
     {
-        [SettingSource("Scroll Speed", "Adjust a beatmap's set scroll speed", LAST_SETTING_ORDER + 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.DifficultyAdjustScrollSpeedLabel), nameof(ModsStrings.DifficultyAdjustScrollSpeedDescription), LAST_SETTING_ORDER + 1, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public DifficultyBindable ScrollSpeed { get; } = new DifficultyBindable
         {
             Precision = 0.05f,
@@ -47,7 +49,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
                     yield return setting;
 
                 if (!ScrollSpeed.IsDefault)
-                    yield return ("Scroll speed", $"x{ScrollSpeed.Value:N2}");
+                    yield return (SongSelectStrings.ScrollSpeed, $"x{ScrollSpeed.Value:N2}");
             }
         }
 

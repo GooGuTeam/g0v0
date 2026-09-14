@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -9,12 +9,10 @@ using osu.Framework.Bindables;
 using osu.Framework.Extensions;
 using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Framework.Utils;
-using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Input;
 using osu.Game.Input.Bindings;
@@ -193,15 +191,7 @@ namespace osu.Game.Rulesets.Edit
             }
         }
 
-        public IEnumerable<DrawableTernaryButton> CreateTernaryButtons() => new[]
-        {
-            new DrawableTernaryButton
-            {
-                Current = DistanceSnapToggle,
-                Description = "Distance Snap",
-                CreateIcon = () => new SpriteIcon { Icon = OsuIcon.EditorDistanceSnap },
-            }
-        };
+        public abstract IEnumerable<DrawableTernaryButton> CreateTernaryButtons();
 
         public void HandleToggleViaKey(KeyboardEvent key)
         {

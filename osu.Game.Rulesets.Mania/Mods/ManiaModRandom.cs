@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -7,6 +7,7 @@ using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Localisation;
 using osu.Framework.Utils;
 using osu.Game.Beatmaps;
+using osu.Game.Localisation.Mania;
 using osu.Game.Rulesets.Mania.Beatmaps;
 using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mods;
@@ -15,7 +16,7 @@ namespace osu.Game.Rulesets.Mania.Mods
 {
     public class ManiaModRandom : ModRandom, IApplicableToBeatmap
     {
-        public override LocalisableString Description => @"Shuffle around the keys!";
+        public override LocalisableString Description => ModsStrings.RandomDescription;
 
         public void ApplyToBeatmap(IBeatmap beatmap)
         {

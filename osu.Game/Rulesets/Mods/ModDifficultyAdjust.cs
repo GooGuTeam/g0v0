@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -10,6 +10,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Extensions;
 using osu.Game.Graphics;
+using osu.Game.Localisation;
 
 namespace osu.Game.Rulesets.Mods
 {
@@ -17,7 +18,7 @@ namespace osu.Game.Rulesets.Mods
     {
         public override string Name => @"Difficulty Adjust";
 
-        public override LocalisableString Description => @"Override a beatmap's difficulty settings.";
+        public override LocalisableString Description => CommonModsStrings.DifficultyAdjustDescription;
 
         public override string Acronym => "DA";
 
@@ -35,7 +36,7 @@ namespace osu.Game.Rulesets.Mods
 
         protected const int LAST_SETTING_ORDER = 2;
 
-        [SettingSource("HP Drain", "Override a beatmap's set HP.", FIRST_SETTING_ORDER, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(SongSelectStrings), nameof(SongSelectStrings.HPDrain), null, FIRST_SETTING_ORDER, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public DifficultyBindable DrainRate { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -45,7 +46,7 @@ namespace osu.Game.Rulesets.Mods
             ReadCurrentFromDifficulty = diff => diff.DrainRate,
         };
 
-        [SettingSource("Accuracy", "Override a beatmap's set OD.", LAST_SETTING_ORDER, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
+        [SettingSource(typeof(SongSelectStrings), nameof(SongSelectStrings.Accuracy), null, LAST_SETTING_ORDER, SettingControlType = typeof(DifficultyAdjustSettingsControl))]
         public virtual DifficultyBindable OverallDifficulty { get; } = new DifficultyBindable
         {
             Precision = 0.1f,
@@ -55,7 +56,7 @@ namespace osu.Game.Rulesets.Mods
             ReadCurrentFromDifficulty = diff => diff.OverallDifficulty,
         };
 
-        [SettingSource("Extended Limits", "Adjust difficulty beyond sane limits.")]
+        [SettingSource(typeof(CommonModsStrings), nameof(CommonModsStrings.ExtendedLimitsLabel), nameof(CommonModsStrings.ExtendedLimitsDescription))]
         public BindableBool ExtendedLimits { get; } = new BindableBool();
 
         protected ModDifficultyAdjust()
@@ -106,10 +107,10 @@ namespace osu.Game.Rulesets.Mods
             get
             {
                 if (!DrainRate.IsDefault)
-                    yield return ("HP drain", $"{DrainRate.Value:N1}");
+                    yield return (SongSelectStrings.HPDrain, $"{DrainRate.Value:N1}");
 
                 if (!OverallDifficulty.IsDefault)
-                    yield return ("Accuracy", $"{OverallDifficulty.Value:N1}");
+                    yield return (SongSelectStrings.Accuracy, $"{OverallDifficulty.Value:N1}");
             }
         }
 

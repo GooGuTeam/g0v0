@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -9,6 +9,7 @@ using osu.Framework.Localisation;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
+using osu.Game.Localisation.Mania;
 using osu.Game.Rulesets.Mania.Beatmaps;
 using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mods;
@@ -21,7 +22,7 @@ namespace osu.Game.Rulesets.Mania.Mods
 
         public override string Acronym => "IN";
 
-        public override LocalisableString Description => "Hold the keys. To the beat.";
+        public override LocalisableString Description => ModsStrings.InvertDescription;
 
         public override IconUsage? Icon => OsuIcon.ModInvert;
 

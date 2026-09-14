@@ -1,6 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// This file is partly modified by GooGuTeam.
-// See the LICENCE file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework;
@@ -52,6 +51,7 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.SongSelectGroupMode, GroupMode.None);
             SetDefault(OsuSetting.SongSelectSortingMode, SortMode.Title);
+            SetDefault(OsuSetting.SongSelectCollectionFilter, string.Empty);
 
             SetDefault(OsuSetting.RandomSelectAlgorithm, RandomSelectAlgorithm.RandomPermutation);
             SetDefault(OsuSetting.ModSelectHotkeyStyle, ModSelectHotkeyStyle.Sequential);
@@ -389,6 +389,7 @@ namespace osu.Game.Configuration
         DisplayStarsMaximum,
         SongSelectGroupMode,
         SongSelectSortingMode,
+        SongSelectCollectionFilter,
         RandomSelectAlgorithm,
         ModSelectHotkeyStyle,
         ShowFpsDisplay,
