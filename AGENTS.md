@@ -120,7 +120,7 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 1. `git fetch upstream`，把 `upstream/master` 合并进 `v2`；解冲突时**顺手丢弃品牌字符串**比事后清理省事。
 2. 资源仓库单独同步：进入独立的 `g0v0-resources` clone，确认其 `upstream` 远端为 `https://github.com/ppy/osu-resources`，同样合并 `upstream/master`；如有资源变更，发新包并同步更新主仓库 `G0V0ResourcesVersion`。
 3. 合并后检查 `.github/workflows/*.yml` 与 `.github/actions/*.sh` 中的 `dotnet-version` / `--framework`（例如 `net8.0-*` → `net10.0-*`）是否与 `global.json`、csproj 对齐 —— 不对齐会直接让 CI 构建失败（历史上发生过）。
-4. 确认主仓库 `G0V0ResourcesVersion` 指向的 `g0v0.osu.Game.Resources` 包已经在 nuget.org 上存在，且与本次发布 tag 版本一致。
+4. 确认主仓库 `G0V0ResourcesVersion` 指向的 `g0v0.osu.Game.Resources` 固定版本包已经在 nuget.org 上存在；它不必与本次发布 tag 的版本号相同。
 5. 同步**前**先打一个基线标签（如 `sync-baseline-YYYYMMDD`）再动手，方便 diff 与商标扫描；历史遗留的 `backup/*` 标签已在 2026-09 清理，`trademark-check` 会退回到 `git merge-base HEAD upstream/master`。
 
 ---
@@ -162,9 +162,9 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 
 - `.github/workflows/ci.yml`：`inspect-code`（构建 + CheckSanity + InspectCode）、`test`（Windows/Linux × 两种线程模型，120 分钟超时）、`build-only-android` 等。
 - 主仓库 `.github/workflows/release.yml`：
-  - **完整发布**：`v*-g0v0` 标签（如 `v2026.913.1-g0v0`）触发全平台构建 + NuGet + GitHub Release。NuGet 任务会先校验 `g0v0.osu.Game.Resources` 同版本包已发布，再发 `g0v0.osu.Game` 和全部 ruleset（`Osu` / `Catch` / `Mania` / `Taiko`）。
-  - **仅 NuGet / 不重跑平台构建**：`v*-g0v0-nuget-only` 标签（如 `v2026.913.2-g0v0-nuget-only`）只跑 `version` 和 `nuget` 两个 job，**不跑平台构建、不创建 GitHub Release**。版本号同样取 tag 中的数字（仍要取下一个可用版本号，且 `g0v0.osu.Game.Resources` 必须已发布同版本）。
-- 资源仓库 `GooGuTeam/g0v0-resources` 的 `.github/workflows/release.yml`：同样由 **`v*-g0v0`** 标签触发（发布资源包时也手动 dispatch 版本），使用 NuGet trusted publisher 发布 `g0v0.osu.Game.Resources`。**先发资源包，再发主仓库包。**
+  - **完整发布**：`v*-g0v0` 标签（如 `v2026.913.1-g0v0`）触发全平台构建 + NuGet + GitHub Release。NuGet 任务会先校验 `g0v0.osu.Game.Resources` 的 `G0V0ResourcesVersion` 固定版本包已发布，再发 `g0v0.osu.Game` 和全部 ruleset（`Osu` / `Catch` / `Mania` / `Taiko`）。
+  - **仅 NuGet / 不重跑平台构建**：`v*-g0v0-nuget-only` 标签（如 `v2026.913.2-g0v0-nuget-only`）只跑 `version` 和 `nuget` 两个 job，**不跑平台构建、不创建 GitHub Release**。版本号同样取 tag 中的数字（仍要取下一个可用版本号；`g0v0.osu.Game.Resources` 的 `G0V0ResourcesVersion` 固定版本必须已发布，可与本 tag 版本不同）。
+- 资源仓库 `GooGuTeam/g0v0-resources` 的 `.github/workflows/release.yml`：同样由 **`v*-g0v0`** 标签触发（发布资源包时也手动 dispatch 版本），使用 NuGet trusted publisher 发布 `g0v0.osu.Game.Resources`。**固定版本资源包首次使用时先发资源包；之后的规则集/主包发布无需每次重新发资源包。**
 - **推送标签时只推 `-g0v0` 的发布标签。** 绝不要用 `git push --tags`：本地约 930 个标签里绝大多数是随 `upstream` 一起 fetch 下来的上游历史标签，一条命令就会把它们全部推到 `origin`。始终用显式标签名：
   ```bash
   git tag -l 'v*-g0v0*'                 # 本仓库自己的发布标签（含 -nuget-only）
