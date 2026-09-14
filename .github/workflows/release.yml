@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*-g0v0'
+      - 'v*-g0v0-nuget-only'
   workflow_dispatch:
 
 env:
