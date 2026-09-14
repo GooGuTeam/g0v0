@@ -4,11 +4,20 @@
     <OutputType>Library</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Description>bash the drum. to the beat.</Description>
+    <Authors>ppy Pty Ltd &amp; GooGuTeam</Authors>
+    <Copyright>Copyright (c) 2026 ppy Pty Ltd, GooGuTeam</Copyright>
+    <PackageProjectUrl>https://github.com/GooGuTeam/g0v0</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/GooGuTeam/g0v0</RepositoryUrl>
+    <PackageReleaseNotes>osu! (ruleset) modified by GooGuTeam.
+
+Original copyright: Copyright (c) 2026 ppy Pty Ltd
+
+Full licence text: see LICENCE file</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Label="Nuget">
     <Title>taiko (ruleset)</Title>
-    <PackageId>ppy.osu.Game.Rulesets.Taiko</PackageId>
+    <PackageId>g0v0.osu.Game.Rulesets.Taiko</PackageId>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
