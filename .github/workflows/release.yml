@@ -21,6 +21,7 @@ jobs:
       assemblyVersion: ${{ steps.version.outputs.assemblyVersion }}
       fileVersion: ${{ steps.version.outputs.fileVersion }}
       androidVersionCode: ${{ steps.version.outputs.androidVersionCode }}
+      nugetOnly: ${{ steps.version.outputs.nugetOnly }}
     steps:
       - name: Determine version
         id: version
@@ -29,6 +30,9 @@ jobs:
           VERSION="${{ github.ref_name }}"
           SEMVER=${VERSION#v}
           NUMERIC=${SEMVER%%-*}
+
+          NUGET_ONLY="false"
+          if [[ "$VERSION" == *-nuget-only ]]; then NUGET_ONLY="true"; fi
           PARTS=$(echo "$NUMERIC" | awk -F. '{print NF}')
           if [[ $PARTS -eq 1 ]]; then NUMERIC="$NUMERIC.0.0.0"; fi
           if [[ $PARTS -eq 2 ]]; then NUMERIC="$NUMERIC.0.0"; fi
@@ -49,6 +53,7 @@ jobs:
           echo "assemblyVersion=$NUMERIC" >> $GITHUB_OUTPUT
           echo "fileVersion=$NUMERIC" >> $GITHUB_OUTPUT
           echo "androidVersionCode=$ANDROID_VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "nugetOnly=$NUGET_ONLY" >> $GITHUB_OUTPUT
           echo "Computed version: $VERSION (semver: $SEMVER, nuget: $NUGET_VERSION, velopack: $VELOPACK_VERSION, assembly/file: $NUMERIC, android: $ANDROID_VERSION_CODE)"
 
   nuget:
@@ -101,14 +106,16 @@ jobs:
             /p:SymbolPackageFormat=snupkg \
             -o artifacts
 
-          dotnet pack -c Release osu.Game.Rulesets.Osu \
-            /p:SentryDsn="$SENTRY_DSN" \
-            /p:Version=${{ needs.version.outputs.nugetVersion }} \
-            /p:G0V0ResourcesVersion=${{ needs.version.outputs.nugetVersion }} \
-            /p:GenerateDocumentationFile=true \
-            /p:IncludeSymbols=true \
-            /p:SymbolPackageFormat=snupkg \
-            -o artifacts
+          for ruleset in Osu Catch Mania Taiko; do
+            dotnet pack -c Release "osu.Game.Rulesets.${ruleset}" \
+              /p:SentryDsn="$SENTRY_DSN" \
+              /p:Version=${{ needs.version.outputs.nugetVersion }} \
+              /p:G0V0ResourcesVersion=${{ needs.version.outputs.nugetVersion }} \
+              /p:GenerateDocumentationFile=true \
+              /p:IncludeSymbols=true \
+              /p:SymbolPackageFormat=snupkg \
+              -o artifacts
+          done
 
       - name: Upload NuGet artifacts
         uses: actions/upload-artifact@v7
@@ -133,6 +140,8 @@ jobs:
   build-windows:
     name: Build ${{ matrix.artifact-name }}
     needs: version
+
+    if: needs.version.outputs.nugetOnly != 'true'
     runs-on: windows-latest
     timeout-minutes: 60
     concurrency:
@@ -244,6 +253,8 @@ jobs:
   build-linux:
     name: Build ${{ matrix.artifact-name }}
     needs: version
+
+    if: needs.version.outputs.nugetOnly != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
@@ -355,6 +366,8 @@ jobs:
   build-macos:
     name: Build ${{ matrix.artifact-name }}
     needs: version
+
+    if: needs.version.outputs.nugetOnly != 'true'
     runs-on: macos-26
     timeout-minutes: 60
     concurrency:
@@ -471,6 +484,8 @@ jobs:
   build-android:
     name: Build g0v0-android
     needs: version
+
+    if: needs.version.outputs.nugetOnly != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
@@ -587,6 +602,8 @@ jobs:
   build-ios:
     name: Build g0v0-ios
     needs: version
+
+    if: needs.version.outputs.nugetOnly != 'true'
     runs-on: macos-26
     # Release iOS builds AOT compile (see osu.iOS.props), which takes far longer
     # than the Debug compile done by the CI workflow.
@@ -665,6 +682,8 @@ jobs:
   release:
     name: Create GitHub Release
     needs: [version, nuget, build-windows, build-linux, build-macos, build-android, build-ios]
+
+    if: needs.version.outputs.nugetOnly != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
