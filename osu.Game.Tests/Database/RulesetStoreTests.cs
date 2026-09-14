@@ -181,6 +181,26 @@ namespace osu.Game.Tests.Database
             });
         }
 
+        [Test]
+        public void TestEventsRecordedForLoadedRulesets()
+        {
+            RunTestWithRealm((realm, storage) =>
+            {
+                using var rulesets = new RealmRulesetStore(realm, storage);
+
+                var loadEvents = rulesets.Events.OfType<RulesetLoadEvent>().ToList();
+
+                ClassicAssert.IsNotEmpty(loadEvents);
+
+                foreach (var ev in loadEvents)
+                {
+                    ClassicAssert.IsNotNull(ev.Assembly);
+                    ClassicAssert.IsNotNull(ev.RulesetInfo);
+                    ClassicAssert.IsNotNull(ev.Location);
+                }
+            });
+        }
+
         private class LoadTestRuleset : Ruleset
         {
             public override string RulesetAPIVersionSupported => Version;
