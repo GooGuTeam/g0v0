@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -61,7 +61,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
 
         protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
         {
-            return dependencies = new DependencyContainer(parent);
+            return dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
         }
 
         [BackgroundDependencyLoader]

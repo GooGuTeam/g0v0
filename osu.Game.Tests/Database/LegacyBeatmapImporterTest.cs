@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -84,7 +84,7 @@ namespace osu.Game.Tests.Database
                     var stableStorage = new StableStorage(tmpStorage.GetFullPath(""), host);
                     var songsStorage = stableStorage.GetStorageForDirectory(StableStorage.STABLE_DEFAULT_SONGS_PATH);
 
-                    ZipFile.ExtractToDirectory(TestResources.GetQuickTestBeatmapForImport(), songsStorage.GetFullPath("renatus"));
+                    await ZipFile.ExtractToDirectoryAsync(TestResources.GetQuickTestBeatmapForImport(), songsStorage.GetFullPath("renatus"));
 
                     string[] beatmaps = Directory.GetFiles(songsStorage.GetFullPath("renatus"), "*.osu", SearchOption.TopDirectoryOnly);
 

@@ -1,9 +1,9 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 // Based on code from the Humanizer library (https://github.com/Humanizr/Humanizer/blob/606e958cb83afc9be5b36716ac40d4daa9fa73a7/src/Humanizer/InflectorExtensions.cs)
 //
-// Humanizer is licenced under the MIT License (MIT)
+// Humanizer is licenced under the MIT Licence (MIT)
 //
 // Copyright (c) .NET Foundation and Contributors
 //

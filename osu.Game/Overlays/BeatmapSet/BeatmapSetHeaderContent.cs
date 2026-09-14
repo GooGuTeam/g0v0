@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -263,9 +263,6 @@ namespace osu.Game.Overlays.BeatmapSet
                 }
                 else
                 {
-                    foreach (var beatmap in newBeatmapSet.Beatmaps)
-                        beatmap.BeatmapSet = newBeatmapSet;
-
                     downloadTracker = new BeatmapDownloadTracker(newBeatmapSet);
                     downloadTracker.State.BindValueChanged(_ => updateDownloadButtons());
                     AddInternal(downloadTracker);

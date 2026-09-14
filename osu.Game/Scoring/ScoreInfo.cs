@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -96,6 +96,7 @@ namespace osu.Game.Scoring
         /// </summary>
         /// <remarks>
         /// Not populated if <see cref="IsLegacyScore"/> is <c>false</c>.
+        /// Always 0 on scores set in lazer.
         /// </remarks>
         public long? LegacyTotalScore { get; set; }
 

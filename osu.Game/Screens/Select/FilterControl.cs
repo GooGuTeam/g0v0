@@ -1,5 +1,5 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -358,7 +358,9 @@ namespace osu.Game.Screens.Select
             if (existingQuery.Contains(query))
                 return;
 
-            searchTextBox.Current.Value = string.Join(' ', existingQuery.Trim(), query);
+            searchTextBox.Current.Value = string.IsNullOrWhiteSpace(existingQuery)
+                ? query
+                : string.Join(' ', existingQuery.Trim(), query);
         }
 
         protected override void PopIn()

@@ -2,7 +2,7 @@ param([string]$Root = ".")
 
 # Validates C# source files for code-sanity issues.
 
-# Directories skipped during recursion. osu.Game.Resources is not part of the project.
+# Directories skipped during recursion. osu.Game.Resources is the optional local checkout of the separate g0v0-resources repository.
 $ignorePaths = @(".git", "bin", "obj", "Migrations", "packages", "osu.Game.Resources")
 $script:hasErrors = $false
 
@@ -69,7 +69,7 @@ function CheckFile {
     foreach ($line in $lines) { Report $DisplayPath "Incorrect line endings" $line }
 
     if ($LicenseHeader -and -not $text.StartsWith($LicenseHeader)) {
-        Report $DisplayPath "License header missing"
+        Report $DisplayPath "Licence header missing"
     }
 
     $lines = Find-MatchingLines $text "^((?!///).)* \r\n" ([System.Text.RegularExpressions.RegexOptions]::Multiline)

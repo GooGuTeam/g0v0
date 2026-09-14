@@ -6,7 +6,7 @@ set -uo pipefail
 root="${1:-.}"
 has_errors=0
 
-# Directories skipped during recursion. osu.Game.Resources is not part of the project.
+# Directories skipped during recursion. osu.Game.Resources is the optional local checkout of the separate g0v0-resources repository.
 ignore_paths=(".git" "bin" "obj" "Migrations" "packages" "osu.Game.Resources")
 
 if [[ -f "$root/.cfsignore" ]]; then
@@ -75,7 +75,7 @@ check_file() {
         }
 
         if (length($license) > 0 && index($text, $license) != 0) {
-            print "$file:0: License header missing\n";
+            print "$file:0: Licence header missing\n";
             $has_errors = 1;
         }
 

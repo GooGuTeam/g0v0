@@ -1,5 +1,5 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -23,6 +23,7 @@ namespace osu.Game.Overlays.BeatmapSet
 
         private readonly Box successRateBackground;
         private readonly Box background;
+        private readonly MetadataSectionUserTags userTags;
 
         public readonly Bindable<APIBeatmapSet> BeatmapSet = new Bindable<APIBeatmapSet>();
         public readonly Bindable<APIBeatmap> Beatmap = new Bindable<APIBeatmap>();
@@ -33,7 +34,6 @@ namespace osu.Game.Overlays.BeatmapSet
             MetadataSectionSource source;
             MetadataSectionGenre genre;
             MetadataSectionLanguage language;
-            MetadataSectionUserTags userTags;
             MetadataSectionMapperTags mapperTags;
             SuccessRate successRate;
 
@@ -118,13 +118,19 @@ namespace osu.Game.Overlays.BeatmapSet
                 source.Metadata = b.NewValue?.Source ?? string.Empty;
                 genre.Metadata = b.NewValue?.Genre ?? new BeatmapSetOnlineGenre { Id = (int)SearchGenre.Unspecified };
                 language.Metadata = b.NewValue?.Language ?? new BeatmapSetOnlineLanguage { Id = (int)SearchLanguage.Unspecified };
+                updateUserTags();
                 mapperTags.Metadata = b.NewValue?.Tags ?? string.Empty;
             });
             Beatmap.BindValueChanged(b =>
             {
-                userTags.Metadata = b.NewValue?.GetTopUserTags().Select(t => t.Tag.Name).ToArray() ?? Array.Empty<string>();
+                updateUserTags();
                 successRate.Beatmap = b.NewValue;
             });
+        }
+
+        private void updateUserTags()
+        {
+            userTags.Metadata = Beatmap.Value?.GetTopUserTags().Select(t => t.Tag.Name).ToArray() ?? Array.Empty<string>();
         }
 
         [BackgroundDependencyLoader]
