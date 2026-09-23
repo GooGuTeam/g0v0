@@ -245,6 +245,8 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.DashboardSortMode, UserSortCriteria.LastVisit);
             SetDefault(OsuSetting.DashboardDisplayStyle, OverlayPanelDisplayStyle.Card);
+
+            SetDefault(OsuSetting.PMFriendsOnly, false);
         }
 
         protected override bool CheckLookupContainsPrivateInformation(OsuSetting lookup)
@@ -490,6 +492,11 @@ namespace osu.Game.Configuration
         /// <summary>
         /// Disables automatic updates for the GU version.
         /// </summary>
-        DisableAutomaticUpdates
+        DisableAutomaticUpdates,
+
+        /// <summary>
+        /// Blocks private messages, multiplayer room invites, and duel requests from people not on the user's friends list.
+        /// </summary>
+        PMFriendsOnly,
     }
 }
