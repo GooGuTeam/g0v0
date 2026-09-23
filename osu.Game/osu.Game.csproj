@@ -21,7 +21,7 @@ Full licence text: see LICENCE and LICENCE-OSU.</PackageReleaseNotes>
     <Title>g0v0!</Title>
     <PackageId>g0v0.osu.Game</PackageId>
     <Version>2026.913.0</Version>
-    <G0V0ResourcesVersion Condition="'$(G0V0ResourcesVersion)' == ''">2026.913.0</G0V0ResourcesVersion>
+    <G0V0ResourcesVersion Condition="'$(G0V0ResourcesVersion)' == ''">2026.923.0</G0V0ResourcesVersion>
     <PackageIcon>icon.png</PackageIcon>
     <IsPackable>true</IsPackable>
     <PackageTags>g0v0 osu game rhythm</PackageTags>
