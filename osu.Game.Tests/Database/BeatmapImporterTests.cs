@@ -1016,6 +1016,60 @@ namespace osu.Game.Tests.Database
             });
         }
 
+        // Upstream #38792 added this test together with the SharpCompress bump, but SharpCompress 0.50.4
+        // now refuses to build the case-conflicting archive the test uses as its fixture, so the test
+        // fails before it can exercise the importer. Re-evaluate on the next upstream sync.
+        [Ignore("Fixture cannot be constructed: SharpCompress 0.50.4 rejects duplicate entry keys.")]
+        [Test]
+        public void TestImportFailsWithFilenamesDifferingOnlyInCase()
+        {
+            RunTestWithRealmAsync(async (realm, storage) =>
+            {
+                var importer = new BeatmapImporter(storage, realm);
+                using var store = new RealmRulesetStore(realm, storage);
+
+                string? temp = TestResources.GetTestBeatmapForImport();
+
+                string extractedFolder = $"{temp}_extracted";
+                Directory.CreateDirectory(extractedFolder);
+
+                try
+                {
+                    using (var zip = ZipArchive.OpenArchive(temp))
+                        zip.WriteToDirectory(extractedFolder);
+
+                    string background = Directory.GetFiles(extractedFolder, "*.jpg").First();
+
+                    using (var zip = ZipArchive.CreateArchive())
+                    {
+                        zip.AddAllFromDirectory(extractedFolder);
+
+                        zip.AddEntry(Path.GetFileName(background).ToUpperInvariant(), background);
+
+                        zip.SaveTo(temp, new ZipWriterOptions(CompressionType.Deflate));
+                    }
+                }
+                finally
+                {
+                    Directory.Delete(extractedFolder, true);
+                }
+
+                Exception? exception = null;
+
+                try
+                {
+                    await importer.Import(new ImportTask(temp));
+                }
+                catch (Exception e)
+                {
+                    exception = e;
+                }
+
+                Assert.That(exception, Is.TypeOf<InvalidOperationException>());
+                Assert.That(realm.Realm.All<BeatmapSetInfo>().Count(), Is.Zero);
+            });
+        }
+
         [Test]
         public void TestBeatmapFilesInNestedDirectoriesAreIgnored()
         {

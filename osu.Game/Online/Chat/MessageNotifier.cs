@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -154,6 +154,10 @@ namespace osu.Game.Online.Chat
         /// </summary>
         public static Match MatchUsername(string message, string username)
         {
+            // Match the username only when it is not part of a longer word.
+            // Word boundaries must be Unicode-aware (like the server-side username validation in
+            // g0v0-server#189, which permits Unicode usernames via its \w character class), so
+            // CJK and other non-ASCII letters continue a word instead of acting as delimiters.
             string fullName = Regex.Escape(username);
             string underscoreName = Regex.Escape(username.Replace(' ', '_'));
             return Regex.Match(message, $@"(^|\W)({fullName}|{underscoreName})($|\W)", RegexOptions.IgnoreCase);
