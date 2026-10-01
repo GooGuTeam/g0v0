@@ -11,59 +11,25 @@ namespace osu.Game.Database
     /// <summary>
     /// Realm-backed implementation of <see cref="IBeatmapStore"/>.
     /// </summary>
-    public class RealmBeatmapStore : IBeatmapStore
+    public class RealmBeatmapStore : RealmSoftDeletableStore<BeatmapSetInfo>, IBeatmapStore
     {
-        private readonly RealmAccess realm;
-
         public RealmBeatmapStore(RealmAccess realm)
+            : base(realm)
         {
-            this.realm = realm;
         }
 
-        public BeatmapSetInfo? GetSetDetached(Guid id) => realm.Run(r => r.Find<BeatmapSetInfo>(id)?.Detach());
+        public BeatmapSetInfo? GetSetDetached(Guid id) => GetDetached(id);
 
-        public BeatmapInfo? GetBeatmapDetached(Guid id) => realm.Run(r => r.Find<BeatmapInfo>(id)?.Detach());
+        public List<BeatmapSetInfo> GetAllSetsDetached() => GetAllUsableDetached();
 
-        public BeatmapInfo? FindBeatmapByHash(string md5Hash) => realm.Run(r =>
+        public BeatmapInfo? GetBeatmapDetached(Guid id) => Realm.Run(r => r.Find<BeatmapInfo>(id)?.Detach());
+
+        public BeatmapInfo? FindBeatmapByHash(string md5Hash) => Realm.Run(r =>
             r.All<BeatmapInfo>()
              .FirstOrDefault(b => b.BeatmapSet != null && !b.BeatmapSet.DeletePending && b.Hash == md5Hash)?.Detach());
 
-        public BeatmapSetInfo? FindSetByOnlineId(int onlineId) => realm.Run(r =>
+        public BeatmapSetInfo? FindSetByOnlineId(int onlineId) => Realm.Run(r =>
             r.All<BeatmapSetInfo>()
              .FirstOrDefault(s => !s.DeletePending && s.OnlineID == onlineId)?.Detach());
-
-        public List<BeatmapSetInfo> GetAllSetsDetached() => realm.Run(r =>
-            r.All<BeatmapSetInfo>()
-             .Where(s => !s.DeletePending)
-             .AsEnumerable()
-             .Detach());
-
-        public void Add(BeatmapSetInfo item) => realm.Write(r => r.Add(item));
-
-        public bool Delete(Guid id) => realm.Write(r =>
-        {
-            var item = r.Find<BeatmapSetInfo>(id);
-
-            if (item == null || item.DeletePending)
-                return false;
-
-            item.DeletePending = true;
-            return true;
-        });
-
-        public bool Undelete(Guid id) => realm.Write(r =>
-        {
-            var item = r.Find<BeatmapSetInfo>(id);
-
-            if (item == null || !item.DeletePending)
-                return false;
-
-            item.DeletePending = false;
-            return true;
-        });
-
-        public IDisposable Subscribe(Action onChanged) => realm.RegisterForNotifications(
-            r => r.All<BeatmapSetInfo>(),
-            (_, _) => onChanged());
     }
 }
