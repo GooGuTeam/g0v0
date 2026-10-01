@@ -895,7 +895,7 @@ namespace osu.Game.Tests.Visual.UserInterface
 
             AddStep("select mod preset with half time", () =>
             {
-                InputManager.MoveMouseTo(this.ChildrenOfType<ModPresetPanel>().Single(preset => preset.Preset.Value.Name == "Half Time 0.5x"));
+                InputManager.MoveMouseTo(this.ChildrenOfType<ModPresetPanel>().Single(preset => preset.Preset.Name == "Half Time 0.5x"));
                 InputManager.Click(MouseButton.Left);
             });
             AddAssert("difficulty multiplier display shows correct value",

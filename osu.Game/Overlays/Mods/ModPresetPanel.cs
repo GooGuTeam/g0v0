@@ -22,7 +22,7 @@ namespace osu.Game.Overlays.Mods
 {
     public partial class ModPresetPanel : ModSelectPanel, IHasCustomTooltip<ModPreset>, IHasContextMenu, IHasPopover
     {
-        public readonly Live<ModPreset> Preset;
+        public readonly ModPreset Preset;
 
         public int? Index { get; init; }
 
@@ -38,11 +38,11 @@ namespace osu.Game.Overlays.Mods
 
         private OsuSpriteText? shortcutKeyText;
 
-        public ModPresetPanel(Live<ModPreset> preset)
+        public ModPresetPanel(ModPreset preset)
         {
             Preset = preset;
-            Title = preset.Value.Name;
-            Description = preset.Value.Description;
+            Title = preset.Name;
+            Description = preset.Description;
         }
 
         protected override float IdleSwitchWidth => 24;
@@ -94,15 +94,15 @@ namespace osu.Game.Overlays.Mods
             // the non-system mod should take precedence.
             // if this assumption is ever broken, this should be reconsidered.
             var selectedSystemMods = selectedMods.Value.Where(mod => mod.Type == ModType.System &&
-                                                                     !mod.IncompatibleMods.Any(t => Preset.Value.Mods.Any(t.IsInstanceOfType)));
+                                                                     !mod.IncompatibleMods.Any(t => Preset.Mods.Any(t.IsInstanceOfType)));
 
             // will also have the side effect of activating the preset (see `updateActiveState()`).
-            selectedMods.Value = Preset.Value.Mods.Concat(selectedSystemMods).ToArray();
+            selectedMods.Value = Preset.Mods.Concat(selectedSystemMods).ToArray();
         }
 
         protected override void Deselect()
         {
-            selectedMods.Value = selectedMods.Value.Except(Preset.Value.Mods).ToArray();
+            selectedMods.Value = selectedMods.Value.Except(Preset.Mods).ToArray();
         }
 
         private void selectedModsChanged()
@@ -115,7 +115,7 @@ namespace osu.Game.Overlays.Mods
 
         private void updateActiveState()
         {
-            Active.Value = new HashSet<Mod>(Preset.Value.Mods).SetEquals(selectedMods.Value.Where(mod => mod.Type != ModType.System));
+            Active.Value = new HashSet<Mod>(Preset.Mods).SetEquals(selectedMods.Value.Where(mod => mod.Type != ModType.System));
         }
 
         #region Filtering support
@@ -124,7 +124,7 @@ namespace osu.Game.Overlays.Mods
 
         private IEnumerable<LocalisableString> getFilterTerms()
         {
-            var preset = Preset.Value;
+            var preset = Preset;
 
             yield return preset.Name;
             yield return preset.Description;
@@ -141,7 +141,7 @@ namespace osu.Game.Overlays.Mods
 
         #region IHasCustomTooltip
 
-        public ModPreset TooltipContent => Preset.Value;
+        public ModPreset TooltipContent => Preset;
         public ITooltip<ModPreset> GetCustomTooltip() => new ModPresetTooltip(ColourProvider);
 
         #endregion

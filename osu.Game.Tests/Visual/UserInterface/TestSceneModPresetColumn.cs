@@ -245,7 +245,7 @@ namespace osu.Game.Tests.Visual.UserInterface
             AddUntilStep("popover closed", () => !this.ChildrenOfType<OsuPopover>().Any());
             AddUntilStep("preset creation occurred", () => this.ChildrenOfType<ModPresetPanel>().Count() == 4);
             AddAssert("preset has correct mods",
-                () => this.ChildrenOfType<ModPresetPanel>().Single(panel => panel.Preset.Value.Name == "new preset").Preset.Value.Mods,
+                () => this.ChildrenOfType<ModPresetPanel>().Single(panel => panel.Preset.Name == "new preset").Preset.Mods,
                 () => Has.Count.EqualTo(2));
 
             AddStep("click add preset button", () =>
@@ -317,7 +317,7 @@ namespace osu.Game.Tests.Visual.UserInterface
             AddStep("right click first panel", () =>
             {
                 panel = this.ChildrenOfType<ModPresetPanel>().First();
-                presetName = panel.Preset.Value.Name;
+                presetName = panel.Preset.Name;
                 InputManager.MoveMouseTo(panel);
                 InputManager.Click(MouseButton.Right);
             });
@@ -339,13 +339,13 @@ namespace osu.Game.Tests.Visual.UserInterface
                 InputManager.Click(MouseButton.Left);
             });
 
-            AddAssert("preset is not changed", () => panel.Preset.Value.Name == presetName);
+            AddAssert("preset is not changed", () => panel.Preset.Name == presetName);
             AddUntilStep("popover is unchanged", () => this.ChildrenOfType<OsuPopover>().FirstOrDefault() == popover);
             AddStep("edit preset name", () => popover.ChildrenOfType<LabelledTextBox>().First().Current.Value = "something new");
             AddStep("commit changes to textbox", () => InputManager.Key(Key.Enter));
             AddStep("attempt preset edit via select binding", () => InputManager.Key(Key.Enter));
             AddUntilStep("popover closed", () => !this.ChildrenOfType<OsuPopover>().Any());
-            AddAssert("preset is changed", () => panel.Preset.Value.Name != presetName);
+            AddAssert("preset is changed", () => panel.Preset.Name != presetName);
         }
 
         [Test]
@@ -367,7 +367,7 @@ namespace osu.Game.Tests.Visual.UserInterface
             AddStep("right click first panel", () =>
             {
                 var panel = this.ChildrenOfType<ModPresetPanel>().First();
-                previousMod = panel.Preset.Value.Mods.ToList();
+                previousMod = panel.Preset.Mods.ToList();
                 InputManager.MoveMouseTo(panel);
                 InputManager.Click(MouseButton.Right);
             });
@@ -393,7 +393,7 @@ namespace osu.Game.Tests.Visual.UserInterface
             });
 
             AddUntilStep("preset mod not changed", () =>
-                new HashSet<Mod>(this.ChildrenOfType<ModPresetPanel>().First().Preset.Value.Mods).SetEquals(previousMod));
+                new HashSet<Mod>(this.ChildrenOfType<ModPresetPanel>().First().Preset.Mods).SetEquals(previousMod));
 
             AddStep("select mods", () => SelectedMods.Value = mods);
             AddStep("right click first panel", () =>
@@ -424,7 +424,7 @@ namespace osu.Game.Tests.Visual.UserInterface
             });
 
             AddUntilStep("preset mod is changed", () =>
-                new HashSet<Mod>(this.ChildrenOfType<ModPresetPanel>().First().Preset.Value.Mods).SetEquals(mods));
+                new HashSet<Mod>(this.ChildrenOfType<ModPresetPanel>().First().Preset.Mods).SetEquals(mods));
         }
 
         [Test]

@@ -30,7 +30,7 @@ namespace osu.Game.Overlays.Mods
         private ShearedButton saveButton = null!;
         private FillFlowContainer scrollContent = null!;
 
-        private readonly Live<ModPreset> preset;
+        private readonly ModPreset preset;
 
         private HashSet<Mod> saveableMods;
 
@@ -43,10 +43,13 @@ namespace osu.Game.Overlays.Mods
         [Resolved]
         private OverlayColourProvider colourProvider { get; set; } = null!;
 
-        public EditPresetPopover(Live<ModPreset> preset)
+        [Resolved]
+        private IModPresetStore modPresetStore { get; set; } = null!;
+
+        public EditPresetPopover(ModPreset preset)
         {
             this.preset = preset;
-            saveableMods = preset.PerformRead(p => p.Mods).ToHashSet();
+            saveableMods = preset.Mods.ToHashSet();
         }
 
         [BackgroundDependencyLoader]
@@ -68,7 +71,7 @@ namespace osu.Game.Overlays.Mods
                         Origin = Anchor.TopCentre,
                         Label = CommonStrings.Name,
                         TabbableContentContainer = this,
-                        Current = { Value = preset.PerformRead(p => p.Name) },
+                        Current = { Value = preset.Name },
                     },
                     descriptionTextBox = new LabelledTextBox
                     {
@@ -76,7 +79,7 @@ namespace osu.Game.Overlays.Mods
                         Origin = Anchor.TopCentre,
                         Label = CommonStrings.Description,
                         TabbableContentContainer = this,
-                        Current = { Value = preset.PerformRead(p => p.Description) },
+                        Current = { Value = preset.Description },
                     },
                     new Container
                     {
@@ -194,7 +197,7 @@ namespace osu.Game.Overlays.Mods
 
         private void save()
         {
-            preset.PerformWrite(s =>
+            modPresetStore.Update(preset.ID, s =>
             {
                 s.Name = nameTextBox.Current.Value;
                 s.Description = descriptionTextBox.Current.Value;

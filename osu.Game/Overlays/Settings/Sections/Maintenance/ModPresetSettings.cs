@@ -20,7 +20,7 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
         protected override LocalisableString Header => CommonStrings.ModPresets;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IModPresetStore modPresetStore { get; set; } = null!;
 
         [Resolved]
         private INotificationOverlay? notificationOverlay { get; set; }
@@ -53,19 +53,15 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
             });
         }
 
-        private bool deleteAllModPresets() =>
-            realm.Write(r =>
-            {
-                bool anyDeleted = false;
+        private bool deleteAllModPresets()
+        {
+            var presets = modPresetStore.GetAllUsableDetached();
 
-                foreach (var preset in r.All<ModPreset>())
-                {
-                    anyDeleted |= !preset.DeletePending;
-                    preset.DeletePending = true;
-                }
+            foreach (var preset in presets)
+                modPresetStore.Delete(preset.ID);
 
-                return anyDeleted;
-            });
+            return presets.Count > 0;
+        }
 
         private void onAllModPresetsDeleted(Task<bool> deletionTask)
         {
@@ -77,19 +73,15 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
                 Logger.Error(deletionTask.Exception, "Failed to delete all mod presets");
         }
 
-        private bool undeleteModPresets() =>
-            realm.Write(r =>
-            {
-                bool anyRestored = false;
+        private bool undeleteModPresets()
+        {
+            var presets = modPresetStore.GetAllDetached().Where(preset => preset.DeletePending).ToList();
 
-                foreach (var preset in r.All<ModPreset>().Where(preset => preset.DeletePending))
-                {
-                    anyRestored |= preset.DeletePending;
-                    preset.DeletePending = false;
-                }
+            foreach (var preset in presets)
+                modPresetStore.Undelete(preset.ID);
 
-                return anyRestored;
-            });
+            return presets.Count > 0;
+        }
 
         private void onModPresetsUndeleted(Task<bool> undeletionTask)
         {

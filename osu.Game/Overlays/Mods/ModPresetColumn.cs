@@ -17,14 +17,13 @@ using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osuTK;
 using osuTK.Input;
-using Realms;
 
 namespace osu.Game.Overlays.Mods
 {
     public partial class ModPresetColumn : ModSelectColumn
     {
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IModPresetStore modPresetStore { get; set; } = null!;
 
         [Resolved]
         private IBindable<RulesetInfo> ruleset { get; set; } = null!;
@@ -44,25 +43,27 @@ namespace osu.Game.Overlays.Mods
             ItemsFlow.SetLayoutPosition(addPresetButton, float.PositiveInfinity);
         }
 
+        private IDisposable? presetSubscription;
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
-            ruleset.BindValueChanged(_ => rulesetChanged(), true);
+            presetSubscription = modPresetStore.Subscribe(() => Schedule(loadPanels));
+
+            ruleset.BindValueChanged(_ => loadPanels(), true);
 
             Width = contracted_width;
         }
 
-        private IDisposable? presetSubscription;
-
-        private void rulesetChanged()
+        private void loadPanels()
         {
-            presetSubscription?.Dispose();
-            presetSubscription = realm.RegisterForNotifications(r =>
-                r.All<ModPreset>()
-                 .Filter($"{nameof(ModPreset.Ruleset)}.{nameof(RulesetInfo.ShortName)} == $0"
-                         + $" && {nameof(ModPreset.DeletePending)} == false", ruleset.Value.ShortName)
-                 .OrderBy(preset => preset.Name), asyncLoadPanels);
+            var presets = modPresetStore.GetAllUsableDetached()
+                                        .Where(p => p.Ruleset.ShortName == ruleset.Value.ShortName)
+                                        .OrderBy(p => p.Name)
+                                        .ToList();
+
+            asyncLoadPanels(presets);
         }
 
         private CancellationTokenSource? cancellationTokenSource;
@@ -70,11 +71,11 @@ namespace osu.Game.Overlays.Mods
         private Task? latestLoadTask;
         internal bool ItemsLoaded => latestLoadTask?.IsCompleted == true;
 
-        private void asyncLoadPanels(IRealmCollection<ModPreset> presets, ChangeSet? changes)
+        private void asyncLoadPanels(List<ModPreset> presets)
         {
             cancellationTokenSource?.Cancel();
 
-            bool hasPresets = presets.Any();
+            bool hasPresets = presets.Count > 0;
 
             this.ResizeWidthTo(hasPresets ? WIDTH : contracted_width, 200, Easing.OutQuint);
 
@@ -90,7 +91,7 @@ namespace osu.Game.Overlays.Mods
             {
                 var preset = presets[i];
 
-                panels.Add(new ModPresetPanel(preset.ToLive(realm))
+                panels.Add(new ModPresetPanel(preset)
                 {
                     Index = i < 10 ? (i + 1) % 10 : null,
                     Shear = Vector2.Zero

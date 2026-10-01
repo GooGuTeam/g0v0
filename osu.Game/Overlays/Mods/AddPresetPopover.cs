@@ -36,7 +36,7 @@ namespace osu.Game.Overlays.Mods
         private Bindable<IReadOnlyList<Mod>> selectedMods { get; set; } = null!;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IModPresetStore modPresetStore { get; set; } = null!;
 
         public AddPresetPopover(AddPresetButton addPresetButton)
         {
@@ -126,13 +126,13 @@ namespace osu.Game.Overlays.Mods
 
         private void createPreset()
         {
-            realm.Write(r => r.Add(new ModPreset
+            modPresetStore.Add(new ModPreset
             {
                 Name = nameTextBox.Current.Value,
                 Description = descriptionTextBox.Current.Value,
                 Mods = selectedMods.Value.Where(mod => mod.Type != ModType.System).ToArray(),
-                Ruleset = r.Find<RulesetInfo>(ruleset.Value.ShortName)!
-            }));
+                Ruleset = ruleset.Value
+            });
 
             this.HidePopover();
         }

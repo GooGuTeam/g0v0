@@ -42,7 +42,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,
                 Spacing = new Vector2(0, 5),
-                ChildrenEnumerable = createTestPresets().Select(preset => new ModPresetPanel(preset.ToLiveUnmanaged()))
+                ChildrenEnumerable = createTestPresets().Select(preset => new ModPresetPanel(preset))
             });
         }
 
@@ -51,7 +51,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             ModPresetPanel? panel = null;
 
-            AddStep("create panel", () => Child = panel = new ModPresetPanel(createTestPresets().First().ToLiveUnmanaged())
+            AddStep("create panel", () => Child = panel = new ModPresetPanel(createTestPresets().First())
             {
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,
@@ -97,7 +97,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             ModPresetPanel? panel = null;
 
-            AddStep("create panel", () => Child = panel = new ModPresetPanel(createTestPresets().First().ToLiveUnmanaged())
+            AddStep("create panel", () => Child = panel = new ModPresetPanel(createTestPresets().First())
             {
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,
@@ -137,7 +137,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                     new OsuModAutopilot()
                 },
                 Ruleset = new OsuRuleset().RulesetInfo
-            }.ToLiveUnmanaged())
+            })
             {
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,

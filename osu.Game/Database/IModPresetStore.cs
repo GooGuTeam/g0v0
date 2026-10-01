@@ -22,9 +22,25 @@ namespace osu.Game.Database
         ModPreset? GetDetached(Guid id);
 
         /// <summary>
+        /// Retrieve all mod presets, including those pending deletion.
+        /// </summary>
+        List<ModPreset> GetAllDetached();
+
+        /// <summary>
         /// Retrieve all non-deleted mod presets.
         /// </summary>
         List<ModPreset> GetAllUsableDetached();
+
+        /// <summary>
+        /// Add a new mod preset. The preset's <see cref="ModPreset.Ruleset"/> association
+        /// is persisted by the backend as appropriate (only its identity is significant).
+        /// </summary>
+        void Add(ModPreset item);
+
+        /// <summary>
+        /// Applies an in-place mutation to the preset with the given primary key, if it exists.
+        /// </summary>
+        void Update(Guid id, Action<ModPreset> update);
 
         /// <summary>
         /// Soft-delete a mod preset.
