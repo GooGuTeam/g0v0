@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Development;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.UserInterface;
@@ -97,12 +98,23 @@ namespace osu.Game.Graphics.UserInterfaceV2
 
             current.BindValueChanged(_ =>
             {
-                updateState();
-                background.FlashOnCommit();
+                if (!ThreadSafety.IsUpdateThread)
+                {
+                    Scheduler.AddOnce(onValueChanged);
+                    return;
+                }
 
-                ValueChanged?.Invoke();
+                onValueChanged();
             });
             current.BindDisabledChanged(_ => updateState(), true);
+        }
+
+        private void onValueChanged()
+        {
+            updateState();
+            background.FlashOnCommit();
+
+            ValueChanged?.Invoke();
         }
 
         protected override bool OnHover(HoverEvent e)
@@ -125,6 +137,12 @@ namespace osu.Game.Graphics.UserInterfaceV2
 
         private void updateState()
         {
+            if (!ThreadSafety.IsUpdateThread)
+            {
+                Scheduler.AddOnce(updateState);
+                return;
+            }
+
             caption.Colour = Current.Disabled ? colourProvider.Background1 : colourProvider.Content2;
 
             if (IsDisabled)
