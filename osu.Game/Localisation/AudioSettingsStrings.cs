@@ -154,11 +154,6 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString PeriodTooltip => new TranslatableString(getKey(@"period_tooltip"), @"Polling interval for audio updates in seconds. Set to 0 to request the minimum supported device period. Increase this value if audio playback is unstable.");
 
-        /// <summary>
-        /// "Polling interval (s)"
-        /// </summary>
-        public static LocalisableString PollingInterval => new TranslatableString(getKey(@"polling_interval"), @"Polling interval (s)");
-
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }
