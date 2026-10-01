@@ -1,4 +1,4 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
@@ -380,7 +380,10 @@ namespace osu.Game
             dependencies.Cache(beatmapCache = new BeatmapLookupCache());
             base.Content.Add(beatmapCache);
 
-            dependencies.CacheAs<IRulesetConfigCache>(rulesetConfigCache = new RulesetConfigCache(realm, RulesetStore));
+            // must be created before the ruleset config cache and any drawables which resolve stores below.
+            var dataStoreSelector = new DataStoreSelector(realm, Storage, LocalConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend).Value, RulesetStore);
+
+            dependencies.CacheAs<IRulesetConfigCache>(rulesetConfigCache = new RulesetConfigCache(realm, RulesetStore, dataStoreSelector.GetRulesetSettingStore()));
 
             var powerStatus = CreateBatteryInfo();
             if (powerStatus != null)
@@ -434,12 +437,13 @@ namespace osu.Game
             base.Content.Add(menuSamples);
 
             // must be cached before any drawables which resolve key bindings are added to the hierarchy below.
-            var dataStoreSelector = new DataStoreSelector(realm, Storage, LocalConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend).Value);
+            // dataStoreSelector was created above (before the ruleset config cache).
 
             KeyBindingStore = new RealmKeyBindingStore(dataStoreSelector, keyCombinationProvider);
             dependencies.Cache(KeyBindingStore);
             dependencies.Cache(dataStoreSelector);
             dependencies.CacheAs<IKeyBindingStore>(KeyBindingStore.BackingStore);
+            dependencies.CacheAs<IModPresetStore>(dataStoreSelector.GetModPresetStore());
 
             base.Content.Add(SafeAreaContainer = new SafeAreaContainer
             {
