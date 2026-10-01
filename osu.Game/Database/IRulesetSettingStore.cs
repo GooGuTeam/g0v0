@@ -1,6 +1,8 @@
 ﻿// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Collections.Generic;
+
 namespace osu.Game.Database
 {
     /// <summary>
@@ -18,6 +20,13 @@ namespace osu.Game.Database
         /// <param name="key">The setting key.</param>
         /// <returns>The stored value, or null if not set.</returns>
         string? GetValue(string rulesetName, int variant, string key);
+
+        /// <summary>
+        /// Retrieve all settings for a ruleset variant as key-value pairs.
+        /// </summary>
+        /// <param name="rulesetName">Short name of the ruleset.</param>
+        /// <param name="variant">Ruleset variant; 0 is the default variant.</param>
+        List<(string Key, string Value)> GetAll(string rulesetName, int variant);
 
         /// <summary>
         /// Store a setting value, replacing any existing value for the same key.

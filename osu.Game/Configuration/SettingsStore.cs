@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Game.Database;
 
@@ -12,9 +12,15 @@ namespace osu.Game.Configuration
 
         public readonly RealmAccess Realm;
 
-        public SettingsStore(RealmAccess realm)
+        /// <summary>
+        /// The backend-selected per-ruleset setting store.
+        /// </summary>
+        public readonly IRulesetSettingStore Settings;
+
+        public SettingsStore(RealmAccess realm, IRulesetSettingStore settings)
         {
             Realm = realm;
+            Settings = settings;
         }
     }
 }

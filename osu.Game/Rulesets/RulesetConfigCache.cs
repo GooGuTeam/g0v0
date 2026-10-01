@@ -15,20 +15,22 @@ namespace osu.Game.Rulesets
     {
         private readonly RealmAccess realm;
         private readonly RulesetStore rulesets;
+        private readonly IRulesetSettingStore settingStore;
 
         private readonly Dictionary<string, IRulesetConfigManager?> configCache = new Dictionary<string, IRulesetConfigManager?>();
 
-        public RulesetConfigCache(RealmAccess realm, RulesetStore rulesets)
+        public RulesetConfigCache(RealmAccess realm, RulesetStore rulesets, IRulesetSettingStore settingStore)
         {
             this.realm = realm;
             this.rulesets = rulesets;
+            this.settingStore = settingStore;
         }
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
-            var settingsStore = new SettingsStore(realm);
+            var settingsStore = new SettingsStore(realm, settingStore);
 
             // let's keep things simple for now and just retrieve all the required configs at startup..
             foreach (var ruleset in rulesets.AvailableRulesets)

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -18,17 +18,17 @@ namespace osu.Game.Rulesets.Configuration
     public abstract class RulesetConfigManager<TLookup> : ConfigManager<TLookup>, IRulesetConfigManager
         where TLookup : struct, Enum
     {
-        private readonly RealmAccess realm;
+        private readonly IRulesetSettingStore settingStore;
 
         private readonly int variant;
 
-        private List<RealmRulesetSetting> databasedSettings = new List<RealmRulesetSetting>();
+        private List<(string Key, string Value)> databasedSettings = new List<(string, string)>();
 
         private readonly string rulesetName;
 
         protected RulesetConfigManager(SettingsStore store, RulesetInfo ruleset, int? variant = null)
         {
-            realm = store?.Realm;
+            settingStore = store?.Settings;
 
             rulesetName = ruleset.ShortName;
 
@@ -41,10 +41,10 @@ namespace osu.Game.Rulesets.Configuration
 
         protected override void PerformLoad()
         {
-            if (realm != null)
+            if (settingStore != null)
             {
-                // As long as RulesetConfigCache exists, there is no need to subscribe to realm events.
-                databasedSettings = realm.Realm.All<RealmRulesetSetting>().Where(b => b.RulesetName == rulesetName && b.Variant == variant).ToList();
+                // As long as RulesetConfigCache exists, there is no need to subscribe to change events.
+                databasedSettings = settingStore.GetAll(rulesetName, variant);
             }
         }
 
@@ -63,15 +63,11 @@ namespace osu.Game.Rulesets.Configuration
             if (!changed.Any())
                 return true;
 
-            realm?.Write(r =>
+            if (settingStore != null)
             {
                 foreach (var c in changed)
-                {
-                    var setting = r.All<RealmRulesetSetting>().First(s => s.RulesetName == rulesetName && s.Variant == variant && s.Key == c.ToString());
-
-                    setting.Value = ConfigStore[c].ToString(CultureInfo.InvariantCulture);
-                }
-            });
+                    settingStore.SetValue(rulesetName, variant, c.ToString(), ConfigStore[c].ToString(CultureInfo.InvariantCulture));
+            }
 
             return true;
         }
@@ -80,25 +76,20 @@ namespace osu.Game.Rulesets.Configuration
         {
             base.AddBindable(lookup, bindable);
 
-            var setting = databasedSettings.Find(s => s.Key == lookup.ToString());
+            string key = lookup.ToString();
+            var setting = databasedSettings.Find(s => s.Key == key);
 
-            if (setting != null)
+            if (setting.Key != null)
             {
                 bindable.Parse(setting.Value, CultureInfo.InvariantCulture);
             }
             else
             {
-                setting = new RealmRulesetSetting
-                {
-                    Key = lookup.ToString(),
-                    Value = bindable.ToString(CultureInfo.InvariantCulture),
-                    RulesetName = rulesetName,
-                    Variant = variant,
-                };
+                string value = bindable.ToString(CultureInfo.InvariantCulture);
 
-                realm?.Realm.Write(() => realm.Realm.Add(setting));
+                settingStore?.SetValue(rulesetName, variant, key, value);
 
-                databasedSettings.Add(setting);
+                databasedSettings.Add((key, value));
             }
 
             bindable.ValueChanged += _ =>
