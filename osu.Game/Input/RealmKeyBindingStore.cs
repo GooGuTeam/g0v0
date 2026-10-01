@@ -10,19 +10,34 @@ using osu.Game.Database;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osu.Game.Rulesets;
-using Realms;
 
 namespace osu.Game.Input
 {
     public class RealmKeyBindingStore
     {
-        private readonly RealmAccess realm;
         private readonly ReadableKeyCombinationProvider keyCombinationProvider;
+        private readonly DataStoreSelector dataStoreSelector;
 
-        public RealmKeyBindingStore(RealmAccess realm, ReadableKeyCombinationProvider keyCombinationProvider)
+        /// <summary>
+        /// The backend-selected raw key binding store. Owned by <see cref="dataStoreSelector"/>.
+        /// </summary>
+        public IKeyBindingStore BackingStore => dataStoreSelector.GetKeyBindingStore();
+
+        /// <summary>
+        /// Creates a store over the provided backend selector.
+        /// </summary>
+        public RealmKeyBindingStore(DataStoreSelector dataStoreSelector, ReadableKeyCombinationProvider keyCombinationProvider)
         {
-            this.realm = realm;
+            this.dataStoreSelector = dataStoreSelector;
             this.keyCombinationProvider = keyCombinationProvider;
+        }
+
+        /// <summary>
+        /// Creates a store using the given realm as backend.
+        /// </summary>
+        public RealmKeyBindingStore(RealmAccess realm, ReadableKeyCombinationProvider keyCombinationProvider)
+            : this(new DataStoreSelector(realm, null, DataStoreBackend.Realm), keyCombinationProvider)
+        {
         }
 
         /// <summary>
@@ -47,17 +62,14 @@ namespace osu.Game.Input
         {
             List<string> combinations = new List<string>();
 
-            realm.Run(context =>
+            foreach (var action in BackingStore.GetAllDetached().Where(b => string.IsNullOrEmpty(b.RulesetName) && (GlobalAction)b.ActionInt == globalAction))
             {
-                foreach (var action in context.All<RealmKeyBinding>().Where(b => string.IsNullOrEmpty(b.RulesetName) && (GlobalAction)b.ActionInt == globalAction))
-                {
-                    string str = keyCombinationProvider.GetReadableString(action.KeyCombination);
+                string str = keyCombinationProvider.GetReadableString(action.KeyCombination);
 
-                    // even if found, the readable string may be empty for an unbound action.
-                    if (str.Length > 0)
-                        combinations.Add(str);
-                }
-            });
+                // even if found, the readable string may be empty for an unbound action.
+                if (str.Length > 0)
+                    combinations.Add(str);
+            }
 
             return combinations;
         }
@@ -73,17 +85,14 @@ namespace osu.Game.Input
         {
             List<string> combinations = new List<string>();
 
-            realm.Run(context =>
+            foreach (var binding in BackingStore.GetAllDetached().Where(b => b.RulesetName == ruleset && b.Variant == variant && b.ActionInt == action))
             {
-                foreach (var binding in context.All<RealmKeyBinding>().Where(b => b.RulesetName == ruleset && b.Variant == variant && b.ActionInt == action))
-                {
-                    string str = keyCombinationProvider.GetReadableString(binding.KeyCombination);
+                string str = keyCombinationProvider.GetReadableString(binding.KeyCombination);
 
-                    // even if found, the readable string may be empty for an unbound action.
-                    if (str.Length > 0)
-                        combinations.Add(str);
-                }
-            });
+                // even if found, the readable string may be empty for an unbound action.
+                if (str.Length > 0)
+                    combinations.Add(str);
+            }
 
             return combinations;
         }
@@ -95,55 +104,48 @@ namespace osu.Game.Input
         /// <param name="rulesets">The rulesets to populate defaults from.</param>
         public void Register(KeyBindingContainer container, IEnumerable<RulesetInfo> rulesets)
         {
-            realm.Run(r =>
+            // intentionally flattened to a list rather than querying per binding, as the lookup is much cheaper this way.
+            var existingBindings = BackingStore.GetAllDetached();
+
+            insertDefaults(BackingStore, existingBindings, container.DefaultKeyBindings);
+
+            foreach (var ruleset in rulesets)
             {
-                using (var transaction = r.BeginWrite())
-                {
-                    // intentionally flattened to a list rather than querying against the IQueryable, as nullable fields being queried against aren't indexed.
-                    // this is much faster as a result.
-                    var existingBindings = r.All<RealmKeyBinding>().ToList();
+                var instance = ruleset.CreateInstance();
 
-                    insertDefaults(r, existingBindings, container.DefaultKeyBindings);
-
-                    foreach (var ruleset in rulesets)
-                    {
-                        var instance = ruleset.CreateInstance();
-                        foreach (int variant in instance.AllVariants)
-                            insertDefaults(r, existingBindings, instance.GetDefaultKeyBindings(variant), ruleset.ShortName, variant);
-                    }
-
-                    transaction.Commit();
-                }
-            });
+                foreach (int variant in instance.AllVariants)
+                    insertDefaults(BackingStore, existingBindings, instance.GetDefaultKeyBindings(variant), ruleset.ShortName, variant);
+            }
         }
 
-        private void insertDefaults(Realm realm, List<RealmKeyBinding> existingBindings, IEnumerable<IKeyBinding> defaults, string? rulesetName = null, int? variant = null)
+        private static void insertDefaults(IKeyBindingStore store, List<RealmKeyBinding> existingBindings, IEnumerable<IKeyBinding> defaults, string? rulesetName = null, int? variant = null)
         {
             // compare counts in database vs defaults for each action type.
             foreach (var defaultsForAction in defaults.GroupBy(k => k.Action))
             {
-                IEnumerable<RealmKeyBinding> existing = existingBindings.Where(k =>
+                var existing = existingBindings.Where(k =>
                     k.RulesetName == rulesetName
                     && k.Variant == variant
-                    && k.ActionInt == (int)defaultsForAction.Key);
+                    && k.ActionInt == (int)defaultsForAction.Key).ToArray();
 
                 int defaultsCount = defaultsForAction.Count();
-                int existingCount = existing.Count();
+                int existingCount = existing.Length;
 
                 if (defaultsCount > existingCount)
                 {
                     // insert any defaults which are missing.
-                    realm.Add(defaultsForAction.Skip(existingCount).Select(k => new RealmKeyBinding(k.Action, k.KeyCombination, rulesetName, variant)));
+                    foreach (var newBinding in defaultsForAction.Skip(existingCount))
+                        store.Add(new RealmKeyBinding(newBinding.Action, newBinding.KeyCombination, rulesetName, variant));
                 }
                 else if (defaultsCount < existingCount)
                 {
                     // generally this shouldn't happen, but if the user has more key bindings for an action than we expect,
                     // remove the last entries until the count matches for sanity.
-                    foreach (var k in existing.TakeLast(existingCount - defaultsCount).ToArray())
+                    foreach (var k in existing.TakeLast(existingCount - defaultsCount))
                     {
-                        realm.Remove(k);
+                        store.Delete(k.ID);
 
-                        // Remove from the local flattened/cached list so future lookups don't query now deleted rows.
+                        // Remove from the local flattened/cached list so future lookups don't see now deleted rows.
                         existingBindings.Remove(k);
                     }
                 }

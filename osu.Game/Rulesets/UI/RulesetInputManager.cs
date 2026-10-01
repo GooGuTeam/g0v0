@@ -2,6 +2,7 @@
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -224,7 +225,7 @@ namespace osu.Game.Rulesets.UI
             {
             }
 
-            protected override void ReloadMappings(IQueryable<RealmKeyBinding> realmKeyBindings)
+            protected override void ReloadMappings(IEnumerable<RealmKeyBinding> realmKeyBindings)
             {
                 base.ReloadMappings(realmKeyBindings);
 

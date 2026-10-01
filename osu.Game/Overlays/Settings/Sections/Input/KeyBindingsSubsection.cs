@@ -12,7 +12,6 @@ using osu.Game.Database;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osuTK;
-using Realms;
 
 namespace osu.Game.Overlays.Settings.Sections.Input
 {
@@ -29,7 +28,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
         protected IEnumerable<KeyBinding> Defaults { get; init; } = Array.Empty<KeyBinding>();
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IKeyBindingStore keyBindingStore { get; set; } = null!;
 
         protected KeyBindingsSubsection()
         {
@@ -63,15 +62,13 @@ namespace osu.Game.Overlays.Settings.Sections.Input
             {
                 Action = () =>
                 {
-                    realm.Write(r =>
+                    // can't use `RestoreDefaults()` for each key binding row here as it might trigger binding conflicts along the way.
+                    foreach (var row in Children.OfType<KeyBindingRow>())
                     {
-                        // can't use `RestoreDefaults()` for each key binding row here as it might trigger binding conflicts along the way.
-                        foreach (var row in Children.OfType<KeyBindingRow>())
-                        {
-                            foreach (var (currentBinding, defaultBinding) in row.KeyBindings.Zip(row.Defaults))
-                                r.Find<RealmKeyBinding>(currentBinding.ID)!.KeyCombinationString = defaultBinding.ToString();
-                        }
-                    });
+                        foreach (var (currentBinding, defaultBinding) in row.KeyBindings.Zip(row.Defaults))
+                            keyBindingStore.Update(currentBinding.ID, b => b.KeyCombinationString = defaultBinding.ToString());
+                    }
+
                     reloadAllBindings();
                 }
             });
@@ -84,13 +81,9 @@ namespace osu.Game.Overlays.Settings.Sections.Input
             resetButton.Enabled.Value = !Children.OfType<KeyBindingRow>().All(r => r.IsDefault.Value);
         }
 
-        protected abstract IEnumerable<RealmKeyBinding> GetKeyBindings(Realm realm);
+        protected abstract IEnumerable<RealmKeyBinding> GetKeyBindings(IKeyBindingStore store);
 
-        private List<RealmKeyBinding> getAllBindings() => realm.Run(r =>
-        {
-            r.Refresh();
-            return GetKeyBindings(r).Detach();
-        });
+        private List<RealmKeyBinding> getAllBindings() => GetKeyBindings(keyBindingStore).ToList();
 
         protected virtual KeyBindingRow CreateKeyBindingRow(object action, IEnumerable<KeyBinding> defaults)
             => new KeyBindingRow(action)

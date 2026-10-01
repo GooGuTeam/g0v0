@@ -34,7 +34,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
         private HoverableRoundedButton applyNewButton = null!;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IKeyBindingStore keyBindingStore { get; set; } = null!;
 
         [Resolved]
         private OsuColour colours { get; set; } = null!;
@@ -108,17 +108,11 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
         private void applyNew()
         {
-            // only "apply new" needs to cause actual realm changes, since the flow in `KeyBindingsSubsection` does not actually make db changes
+            // only "apply new" needs to cause actual database changes, since the flow in `KeyBindingsSubsection` does not actually make db changes
             // if it detects a binding conflict.
             // the temporary visual changes will be reverted by calling `Hide()` / `BindingConflictResolved`.
-            realm.Write(r =>
-            {
-                var existingBinding = r.Find<RealmKeyBinding>(conflictInfo.Existing.ID);
-                existingBinding!.KeyCombinationString = conflictInfo.Existing.CombinationWhenNotChosen.ToString();
-
-                var newBinding = r.Find<RealmKeyBinding>(conflictInfo.New.ID);
-                newBinding!.KeyCombinationString = conflictInfo.Existing.CombinationWhenChosen.ToString();
-            });
+            keyBindingStore.Update(conflictInfo.Existing.ID, b => b.KeyCombinationString = conflictInfo.Existing.CombinationWhenNotChosen.ToString());
+            keyBindingStore.Update(conflictInfo.New.ID, b => b.KeyCombinationString = conflictInfo.Existing.CombinationWhenChosen.ToString());
 
             Hide();
         }

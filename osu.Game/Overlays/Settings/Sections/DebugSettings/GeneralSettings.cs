@@ -1,10 +1,13 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Configuration;
 using osu.Framework.Localisation;
+using osu.Game.Configuration;
+using osu.Game.Database;
 using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.Localisation;
 
 namespace osu.Game.Overlays.Settings.Sections.DebugSettings
 {
@@ -13,7 +16,7 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
         protected override LocalisableString Header => @"General";
 
         [BackgroundDependencyLoader]
-        private void load(FrameworkDebugConfigManager config, FrameworkConfigManager frameworkConfig)
+        private void load(FrameworkDebugConfigManager config, FrameworkConfigManager frameworkConfig, OsuConfigManager osuConfig)
         {
             Add(new SettingsItemV2(new FormCheckBox
             {
@@ -26,6 +29,16 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
                 Caption = @"Bypass front-to-back render pass",
                 Current = config.GetBindable<bool>(DebugSetting.BypassFrontToBackPass)
             }));
+
+            // temporary migration aid; remove once the SQLite backend is confirmed working.
+            Add(new SettingsItemV2(new FormEnumDropdown<DataStoreBackend>
+            {
+                Caption = DebugSettingsStrings.DataStoreBackend,
+                Current = osuConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend)
+            })
+            {
+                Note = { Value = new SettingsNote.Data(DebugSettingsStrings.DataStoreBackendRestartRequired, SettingsNote.Type.Informational) }
+            });
         }
     }
 }

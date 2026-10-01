@@ -39,6 +39,16 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString RunLatencyCertifier => new TranslatableString(getKey(@"run_latency_certifier"), @"Run latency certifier");
 
+        /// <summary>
+        /// "Storage backend"
+        /// </summary>
+        public static LocalisableString DataStoreBackend => new TranslatableString(getKey(@"data_store_backend"), @"Storage backend");
+
+        /// <summary>
+        /// "Requires a restart to take effect"
+        /// </summary>
+        public static LocalisableString DataStoreBackendRestartRequired => new TranslatableString(getKey(@"data_store_backend_restart_required"), @"Requires a restart to take effect");
+
         private static string getKey(string key) => $"{prefix}:{key}";
     }
 }

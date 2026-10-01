@@ -1,7 +1,7 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
-using System.Linq;
+using System.Collections.Generic;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Bindings;
@@ -38,7 +38,7 @@ namespace osu.Game.Rulesets.Mania.Tests
                 {
                 }
 
-                protected override void ReloadMappings(IQueryable<RealmKeyBinding> realmKeyBindings)
+                protected override void ReloadMappings(IEnumerable<RealmKeyBinding> realmKeyBindings)
                 {
                     KeyBindings = DefaultKeyBindings;
                 }

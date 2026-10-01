@@ -11,6 +11,7 @@ using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps.Drawables.Cards;
+using osu.Game.Database;
 using osu.Game.Input;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
@@ -237,6 +238,7 @@ namespace osu.Game.Configuration
 
             // GU specific settings
             SetDefault(OsuSetting.DisableAutomaticUpdates, false);
+            SetDefault(OsuSetting.DataStoreBackend, DataStoreBackend.Realm);
 
             SetDefault(OsuSetting.WasSupporter, false);
 
@@ -493,6 +495,11 @@ namespace osu.Game.Configuration
         /// Disables automatic updates for the GU version.
         /// </summary>
         DisableAutomaticUpdates,
+
+        /// <summary>
+        /// Selects the local database implementation used by domain stores.
+        /// </summary>
+        DataStoreBackend,
 
         /// <summary>
         /// Blocks private messages, multiplayer room invites, and duel requests from people not on the user's friends list.

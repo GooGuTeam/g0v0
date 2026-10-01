@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -10,7 +10,6 @@ using osu.Framework.Allocation;
 using osu.Framework.Input.Bindings;
 using osu.Game.Database;
 using osu.Game.Rulesets;
-using Realms;
 
 namespace osu.Game.Input.Bindings
 {
@@ -25,10 +24,10 @@ namespace osu.Game.Input.Bindings
 
         private readonly int? variant;
 
-        private IDisposable realmSubscription;
+        private IDisposable storeSubscription;
 
         [Resolved]
-        private RealmAccess realm { get; set; }
+        private IKeyBindingStore keyBindingStore { get; set; }
 
         public override IEnumerable<IKeyBinding> DefaultKeyBindings => ruleset.CreateInstance().GetDefaultKeyBindings(variant ?? 0);
 
@@ -51,34 +50,28 @@ namespace osu.Game.Input.Bindings
 
         protected override void LoadComplete()
         {
-            realmSubscription = realm.RegisterForNotifications(queryRealmKeyBindings, (sender, _) =>
-            {
-                // The first fire of this is a bit redundant as this is being called in base.LoadComplete,
-                // but this is safest in case the subscription is restored after a context recycle.
-                ReloadMappings(sender.AsQueryable());
-            });
+            storeSubscription = keyBindingStore.Subscribe(() => Schedule(() => ReloadMappings(getKeyBindings())));
 
             base.LoadComplete();
         }
 
-        protected sealed override void ReloadMappings() => ReloadMappings(queryRealmKeyBindings(realm.Realm));
+        protected sealed override void ReloadMappings() => ReloadMappings(getKeyBindings());
 
-        private IQueryable<RealmKeyBinding> queryRealmKeyBindings(Realm realm)
+        private IEnumerable<RealmKeyBinding> getKeyBindings()
         {
             string rulesetName = ruleset?.ShortName;
-            return realm.All<RealmKeyBinding>()
-                        .Where(b => b.RulesetName == rulesetName && b.Variant == variant);
+            return keyBindingStore.GetAllDetached().Where(b => b.RulesetName == rulesetName && b.Variant == variant);
         }
 
-        protected virtual void ReloadMappings(IQueryable<RealmKeyBinding> realmKeyBindings)
+        protected virtual void ReloadMappings(IEnumerable<RealmKeyBinding> realmKeyBindings)
         {
             var defaults = DefaultKeyBindings.ToList();
 
-            List<RealmKeyBinding> newBindings = realmKeyBindings.AsEnumerable().Detach()
-                                                                // this ordering is important to ensure that we read entries from the database in the order
-                                                                // enforced by DefaultKeyBindings. allow for song select to handle actions that may otherwise
-                                                                // have been eaten by the music controller due to query order.
-                                                                .OrderBy(b => defaults.FindIndex(d => (int)d.Action == b.ActionInt)).ToList();
+            List<RealmKeyBinding> newBindings = realmKeyBindings
+                                                // this ordering is important to ensure that we read entries from the database in the order
+                                                // enforced by DefaultKeyBindings. allow for song select to handle actions that may otherwise
+                                                // have been eaten by the music controller due to query order.
+                                                .OrderBy(b => defaults.FindIndex(d => (int)d.Action == b.ActionInt)).ToList();
 
             // In the case no bindings were found in the database, presume this usage is for a non-databased ruleset.
             // This actually should never be required and can be removed if it is ever deemed to cause a problem.
@@ -94,7 +87,7 @@ namespace osu.Game.Input.Bindings
         {
             base.Dispose(isDisposing);
 
-            realmSubscription?.Dispose();
+            storeSubscription?.Dispose();
         }
     }
 }

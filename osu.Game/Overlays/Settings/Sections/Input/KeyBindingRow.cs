@@ -83,7 +83,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
         private readonly Bindable<bool> isDefault = new BindableBool(true);
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IKeyBindingStore keyBindingStore { get; set; } = null!;
 
         [Resolved]
         private RulesetStore rulesets { get; set; } = null!;
@@ -567,7 +567,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
             if (existingBinding == null)
             {
-                realm.Write(r => r.Find<RealmKeyBinding>(keyBinding.ID)!.KeyCombinationString = keyBinding.KeyCombination.ToString());
+                keyBindingStore.Update(keyBinding.ID, b => b.KeyCombinationString = keyBinding.KeyCombination.ToString());
                 BindingUpdated?.Invoke(this, new KeyBindingUpdatedEventArgs(bindingConflictResolved: false, advanceToNextBinding));
                 return;
             }

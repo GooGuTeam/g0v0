@@ -433,6 +433,14 @@ namespace osu.Game
             dependencies.Cache(menuSamples = new OsuMenuSamples());
             base.Content.Add(menuSamples);
 
+            // must be cached before any drawables which resolve key bindings are added to the hierarchy below.
+            var dataStoreSelector = new DataStoreSelector(realm, Storage, LocalConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend).Value);
+
+            KeyBindingStore = new RealmKeyBindingStore(dataStoreSelector, keyCombinationProvider);
+            dependencies.Cache(KeyBindingStore);
+            dependencies.Cache(dataStoreSelector);
+            dependencies.CacheAs<IKeyBindingStore>(KeyBindingStore.BackingStore);
+
             base.Content.Add(SafeAreaContainer = new SafeAreaContainer
             {
                 SafeAreaOverrideEdges = SafeAreaOverrideEdges,
@@ -455,9 +463,7 @@ namespace osu.Game
             base.Content.Add(new TouchInputInterceptor());
             base.Content.Add(hitErrorTracker);
 
-            KeyBindingStore = new RealmKeyBindingStore(realm, keyCombinationProvider);
             KeyBindingStore.Register(globalBindings, RulesetStore.AvailableRulesets);
-            dependencies.Cache(KeyBindingStore);
 
             dependencies.Cache(globalBindings);
 

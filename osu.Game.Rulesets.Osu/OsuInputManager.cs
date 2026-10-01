@@ -1,6 +1,7 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
+using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -95,7 +96,7 @@ namespace osu.Game.Rulesets.Osu
             {
             }
 
-            protected override void ReloadMappings(IQueryable<RealmKeyBinding> realmKeyBindings)
+            protected override void ReloadMappings(IEnumerable<RealmKeyBinding> realmKeyBindings)
             {
                 base.ReloadMappings(realmKeyBindings);
 

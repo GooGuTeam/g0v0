@@ -1,13 +1,13 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Localisation;
+using osu.Game.Database;
 using osu.Game.Input.Bindings;
 using osu.Game.Rulesets;
-using Realms;
 
 namespace osu.Game.Overlays.Settings.Sections.Input
 {
@@ -29,11 +29,11 @@ namespace osu.Game.Overlays.Settings.Sections.Input
             Defaults = rulesetInstance.GetDefaultKeyBindings(variant);
         }
 
-        protected override IEnumerable<RealmKeyBinding> GetKeyBindings(Realm realm)
+        protected override IEnumerable<RealmKeyBinding> GetKeyBindings(IKeyBindingStore store)
         {
             string rulesetName = Ruleset.ShortName;
 
-            return realm.All<RealmKeyBinding>()
+            return store.GetAllDetached()
                         .Where(b => b.RulesetName == rulesetName && b.Variant == variant);
         }
 
