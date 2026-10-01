@@ -14,20 +14,20 @@ namespace osu.Game.Database
         /// Retrieve a setting value.
         /// </summary>
         /// <param name="rulesetName">Short name of the ruleset.</param>
-        /// <param name="variant">Ruleset variant, or null for the default variant.</param>
+        /// <param name="variant">Ruleset variant; 0 is the default variant.</param>
         /// <param name="key">The setting key.</param>
         /// <returns>The stored value, or null if not set.</returns>
-        string? GetValue(string rulesetName, int? variant, string key);
+        string? GetValue(string rulesetName, int variant, string key);
 
         /// <summary>
         /// Store a setting value, replacing any existing value for the same key.
         /// </summary>
-        void SetValue(string rulesetName, int? variant, string key, string value);
+        void SetValue(string rulesetName, int variant, string key, string value);
 
         /// <summary>
         /// Remove a setting.
         /// </summary>
         /// <returns>false if the setting was not present.</returns>
-        bool Delete(string rulesetName, int? variant, string key);
+        bool Delete(string rulesetName, int variant, string key);
     }
 }
