@@ -1056,7 +1056,7 @@ namespace osu.Game
                 { FrameworkSetting.VolumeUniversal, 0.6 },
                 { FrameworkSetting.VolumeMusic, 0.6 },
                 { FrameworkSetting.VolumeEffect, 0.6 },
-                { FrameworkSetting.AudioUseExperimentalWasapi, true },
+                { FrameworkSetting.AudioUseWasapi, true },
             };
         }
 
@@ -1371,7 +1371,7 @@ namespace osu.Game
 
             if (combined < 20260521 && RuntimeInfo.OS == RuntimeInfo.Platform.Windows)
             {
-                bool wasAlreadyUsing = Audio.UseExperimentalWasapi.Value;
+                bool wasAlreadyUsing = Audio.UseWasapi.Value;
 
                 // see application of FramedBeatmapClock.WINDOWS_EXPERIMENTAL_AUDIO_OFFSET in FramedBeatmapClock.
                 // this basically undoes this new offset assuming that users which have been using this setting for a while
@@ -1379,7 +1379,7 @@ namespace osu.Game
                 if (wasAlreadyUsing)
                     LocalConfig.SetValue(OsuSetting.AudioOffset, LocalConfig.Get<double>(OsuSetting.AudioOffset) - FramedBeatmapClock.WINDOWS_EXPERIMENTAL_AUDIO_OFFSET);
 
-                Audio.UseExperimentalWasapi.Value = true;
+                Audio.UseWasapi.Value = true;
 
                 dialogOverlay.Push(new MigrateNewAudioDialog(wasAlreadyUsing));
             }

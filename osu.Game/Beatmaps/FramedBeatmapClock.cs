@@ -108,7 +108,7 @@ namespace osu.Game.Beatmaps
                 userAudioOffset = config.GetBindable<double>(OsuSetting.AudioOffset);
                 userAudioOffset.BindValueChanged(offset => userGlobalOffsetClock.Offset = offset.NewValue, true);
 
-                experimentalAudio = audioManager.UseExperimentalWasapi.GetBoundCopy();
+                experimentalAudio = audioManager.UseWasapi.GetBoundCopy();
                 experimentalAudio.BindValueChanged(_ => updatePlatformOffset(), true);
 
                 // TODO: this doesn't update when using ChangeSource() to change beatmap.
@@ -151,7 +151,7 @@ namespace osu.Game.Beatmaps
                 case RuntimeInfo.Platform.Windows:
                     platformOffsetClock.Offset = WINDOWS_BASE_AUDIO_OFFSET;
 
-                    if (audioManager.UseExperimentalWasapi.Value)
+                    if (audioManager.UseWasapi.Value)
                         platformOffsetClock.Offset += WINDOWS_EXPERIMENTAL_AUDIO_OFFSET;
                     return;
 
