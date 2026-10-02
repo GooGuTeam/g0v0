@@ -13,6 +13,7 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         private void load()
         {
             AddSection(new LocalRulesetsSection());
+            AddSection(new OnlineRulesetsSection());
         }
     }
 }

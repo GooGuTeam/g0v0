@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -206,6 +206,85 @@ namespace osu.Game.Localisation
         /// "Restore"
         /// </summary>
         public static LocalisableString Restore => new TranslatableString(getKey(@"restore"), @"Restore");
+
+        /// <summary>
+        /// "Online rulesets"
+        /// </summary>
+        public static LocalisableString OnlineRulesets => new TranslatableString(getKey(@"online_rulesets"), @"Online rulesets");
+
+        /// <summary>
+        /// "Server: {0}"
+        /// </summary>
+        public static LocalisableString OnlineRulesetsSource(string url) => new TranslatableString(getKey(@"online_rulesets_source"), @"Server: {0}", url);
+
+        /// <summary>
+        /// "Fetching ruleset information from the server..."
+        /// </summary>
+        public static LocalisableString OnlineRulesetsFetching => new TranslatableString(getKey(@"online_rulesets_fetching"), @"Fetching ruleset information from the server...");
+
+        /// <summary>
+        /// "Refresh"
+        /// </summary>
+        public static LocalisableString RefreshOnlineRulesets => new TranslatableString(getKey(@"refresh_online_rulesets"), @"Refresh");
+
+        /// <summary>
+        /// "This server doesn't provide ruleset information."
+        /// </summary>
+        public static LocalisableString OnlineRulesetsUnsupportedServer
+            => new TranslatableString(getKey(@"online_rulesets_unsupported_server"), @"This server doesn't provide ruleset information.");
+
+        /// <summary>
+        /// "Couldn't retrieve ruleset information from the server. Refresh to try again."
+        /// </summary>
+        public static LocalisableString OnlineRulesetsFetchFailed
+            => new TranslatableString(getKey(@"online_rulesets_fetch_failed"), @"Couldn't retrieve ruleset information from the server. Refresh to try again.");
+
+        /// <summary>
+        /// "Log in to see the rulesets provided by the server."
+        /// </summary>
+        public static LocalisableString OnlineRulesetsLoginRequired
+            => new TranslatableString(getKey(@"online_rulesets_login_required"), @"Log in to see the rulesets provided by the server.");
+
+        /// <summary>
+        /// "Built-in"
+        /// </summary>
+        public static LocalisableString RulesetBuiltin => new TranslatableString(getKey(@"ruleset_builtin"), @"Built-in");
+
+        /// <summary>
+        /// "Provided by the server"
+        /// </summary>
+        public static LocalisableString RulesetProvidedByServer => new TranslatableString(getKey(@"ruleset_provided_by_server"), @"Provided by the server");
+
+        /// <summary>
+        /// "Not installed"
+        /// </summary>
+        public static LocalisableString RulesetNotInstalled => new TranslatableString(getKey(@"ruleset_not_installed"), @"Not installed");
+
+        /// <summary>
+        /// "No version information available"
+        /// </summary>
+        public static LocalisableString RulesetNoVersionInformation
+            => new TranslatableString(getKey(@"ruleset_no_version_information"), @"No version information available");
+
+        /// <summary>
+        /// "Up to date"
+        /// </summary>
+        public static LocalisableString RulesetUpToDate => new TranslatableString(getKey(@"ruleset_up_to_date"), @"Up to date");
+
+        /// <summary>
+        /// "Update available"
+        /// </summary>
+        public static LocalisableString RulesetUpdateAvailable => new TranslatableString(getKey(@"ruleset_update_available"), @"Update available");
+
+        /// <summary>
+        /// "Download"
+        /// </summary>
+        public static LocalisableString DownloadRuleset => new TranslatableString(getKey(@"download_ruleset"), @"Download");
+
+        /// <summary>
+        /// "v{0}"
+        /// </summary>
+        public static LocalisableString RulesetVersion(string version) => new TranslatableString(getKey(@"ruleset_version"), @"v{0}", version);
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
