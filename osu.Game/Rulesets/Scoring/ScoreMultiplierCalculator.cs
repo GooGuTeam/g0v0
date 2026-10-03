@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -56,7 +56,7 @@ namespace osu.Game.Rulesets.Scoring
         /// <summary>
         /// Calculates the multiplier to be applied to score with the given <paramref name="mods"/>.
         /// </summary>
-        public double CalculateFor(IEnumerable<Mod> mods)
+        public virtual double CalculateFor(IEnumerable<Mod> mods)
         {
             var allModsByType = mods.ToDictionary(m => m.GetType());
 

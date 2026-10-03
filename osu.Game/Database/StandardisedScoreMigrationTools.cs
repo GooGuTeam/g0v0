@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -33,6 +33,7 @@ namespace osu.Game.Database
             {
                 var ruleset = score.Ruleset.CreateInstance();
                 var scoreProcessor = ruleset.CreateScoreProcessor();
+                scoreProcessor.Mods.Value = score.Mods;
 
                 // accuracy and rank may not be populated on old lazer scores - ensure they're always there.
                 // warning: ordering is important here - rank is dependent on accuracy!
@@ -59,6 +60,7 @@ namespace osu.Game.Database
         {
             var ruleset = score.Ruleset.CreateInstance();
             var scoreProcessor = ruleset.CreateScoreProcessor();
+            scoreProcessor.Mods.Value = score.Mods;
 
             // warning: ordering is important here - both total score and ranks are dependent on accuracy!
             score.Accuracy = ComputeAccuracy(score, scoreProcessor);
@@ -83,6 +85,7 @@ namespace osu.Game.Database
         public static void UpdateFromLegacy(ScoreInfo score, Ruleset ruleset, LegacyBeatmapConversionDifficultyInfo difficulty, LegacyScoreAttributes attributes)
         {
             var scoreProcessor = ruleset.CreateScoreProcessor();
+            scoreProcessor.Mods.Value = score.Mods;
 
             // warning: ordering is important here - both total score and ranks are dependent on accuracy!
             score.Accuracy = ComputeAccuracy(score, scoreProcessor);
@@ -139,6 +142,10 @@ namespace osu.Game.Database
 
             if (ruleset is not ILegacyRuleset legacyRuleset)
                 return (score.TotalScoreWithoutMods, score.TotalScore);
+
+            var mods = score.Mods;
+            if (mods.Any(mod => mod is ModScoreV2))
+                return ((long)Math.Round((double)score.LegacyTotalScore / legacyRuleset.CreateLegacyScoreSimulator().GetLegacyScoreMultiplier(mods, difficulty)), score.LegacyTotalScore.Value);
 
             double legacyModMultiplier = legacyRuleset.CreateLegacyScoreSimulator().GetLegacyScoreMultiplier(score.Mods, difficulty);
             int maximumLegacyAccuracyScore = attributes.AccuracyScore;
@@ -452,13 +459,26 @@ namespace osu.Game.Database
         }
 
         public static ScoreRank ComputeRank(ScoreInfo scoreInfo) =>
-            ComputeRank(scoreInfo.Accuracy, scoreInfo.Statistics, scoreInfo.Mods, scoreInfo.Ruleset.CreateInstance().CreateScoreProcessor());
+            ComputeRank(scoreInfo, scoreInfo.Ruleset.CreateInstance().CreateScoreProcessor());
 
-        public static ScoreRank ComputeRank(ScoreInfo scoreInfo, ScoreProcessor processor) =>
-            ComputeRank(scoreInfo.Accuracy, scoreInfo.Statistics, scoreInfo.Mods, processor);
+        public static ScoreRank ComputeRank(ScoreInfo scoreInfo, ScoreProcessor processor)
+        {
+            var mods = scoreInfo.Mods;
+
+            if (scoreInfo.IsLegacyScore && !mods.Any(m => m is ModClassic))
+            {
+                var classicMod = scoreInfo.Ruleset.CreateInstance().CreateMod<ModClassic>();
+                if (classicMod != null)
+                    mods = mods.Append(classicMod).ToArray();
+            }
+
+            return ComputeRank(scoreInfo.Accuracy, scoreInfo.Statistics, mods, processor);
+        }
 
         public static ScoreRank ComputeRank(double accuracy, IReadOnlyDictionary<HitResult, int> statistics, IList<Mod> mods, ScoreProcessor scoreProcessor)
         {
+            scoreProcessor.Mods.Value = mods.ToArray();
+
             var rank = scoreProcessor.RankFromScore(accuracy, statistics);
 
             foreach (var mod in mods.OfType<IApplicableToScoreProcessor>())

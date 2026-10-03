@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -405,6 +405,11 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
             if (!judgement.Type.IsScorable() || judgement.Type.IsBonus())
                 return;
 
+            if (ShouldIgnoreJudgement(judgement))
+                return;
+
+            HitResult displayResult = GetDisplayHitResult(judgement);
+
             if (judgementsContainer.Count > max_concurrent_judgements)
             {
                 const double quick_fade_time = 100;
@@ -422,7 +427,7 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
             judgementLinePool.Get(drawableJudgement =>
             {
                 drawableJudgement.Y = getRelativeJudgementPosition(judgement.TimeOffset);
-                drawableJudgement.Colour = GetColourForHitResult(judgement.Type);
+                drawableJudgement.Colour = GetColourForHitResult(displayResult);
 
                 judgementsContainer.Add(drawableJudgement);
             });

@@ -38,6 +38,9 @@ namespace osu.Game.Rulesets.Osu.Mods
         [SettingSource(typeof(ModsStrings), nameof(ModsStrings.ClassicHealthLabel), nameof(ModsStrings.ClassicHealthDescription))]
         public Bindable<bool> ClassicHealth { get; } = new Bindable<bool>(true);
 
+        [SettingSource(typeof(ModsStrings), nameof(ModsStrings.ClassicSliderJudgementLabel), nameof(ModsStrings.ClassicSliderJudgementDescription))]
+        public Bindable<bool> ClassicSliderJudgement { get; } = new BindableBool(true);
+
         private bool usingHiddenFading;
 
         public void ApplyToHitObject(HitObject hitObject)
@@ -45,7 +48,12 @@ namespace osu.Game.Rulesets.Osu.Mods
             switch (hitObject)
             {
                 case Slider slider:
-                    slider.ClassicSliderBehaviour = NoSliderHeadAccuracy.Value;
+                    slider.ClassicSliderBehaviour = true;
+                    slider.ClassicSliderJudgement = ClassicSliderJudgement.Value;
+                    if (!NoSliderHeadAccuracy.Value || slider.ScoreV2SliderBehaviour)
+                    {
+                        slider.ScoreV2SliderBehaviour = true;
+                    }
                     break;
             }
         }

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -165,10 +165,14 @@ namespace osu.Game.Rulesets.Scoring
         /// </summary>
         private double maximumComboPortion;
 
+        public double MaximumComboPortion => maximumComboPortion;
+
         /// <summary>
         /// The combo score at the current point in time.
         /// </summary>
         private double currentComboPortion;
+
+        public double CurrentComboPortion => currentComboPortion;
 
         /// <summary>
         /// The bonus score at the current point in time.
@@ -203,6 +207,28 @@ namespace osu.Game.Rulesets.Scoring
 
         public bool ApplyNewJudgementsWhenFailed { get; set; }
 
+        private bool scoreV2Active;
+
+        public bool ScoreV2Active
+        {
+            get => scoreV2Active;
+            set
+            {
+                if (scoreV2Active == value)
+                    return;
+
+                scoreV2Active = value;
+                if (beatmapApplied && Beatmap.Value != null && JudgedHits == 0)
+                    ApplyBeatmap(Beatmap.Value);
+                else
+                {
+                    updateScoreMultiplier();
+                    updateScore();
+                    updateRank();
+                }
+            }
+        }
+
         public ScoreProcessor(Ruleset ruleset)
         {
             Ruleset = ruleset;
@@ -211,6 +237,7 @@ namespace osu.Game.Rulesets.Scoring
 
             Mods.ValueChanged += mods =>
             {
+                ScoreV2Active = mods.NewValue.Any(m => m is ModScoreV2);
                 updateScoreMultiplier();
                 updateScore();
                 updateRank();
@@ -256,13 +283,13 @@ namespace osu.Game.Rulesets.Scoring
             result.ComboAfterJudgement = Combo.Value;
             result.HighestComboAfterJudgement = HighestCombo.Value;
 
-            if (result.Judgement.MaxResult.AffectsAccuracy())
+            if (ResultAffectsAccuracy(result.Judgement.MaxResult))
             {
                 currentMaximumBaseScore += GetBaseScoreForResult(result.Judgement.MaxResult);
                 currentAccuracyJudgementCount++;
             }
 
-            if (result.Type.AffectsAccuracy())
+            if (ResultAffectsAccuracy(result.Type))
                 currentBaseScore += GetBaseScoreForResult(result.Type);
 
             if (result.Type.IsBonus())
@@ -308,13 +335,13 @@ namespace osu.Game.Rulesets.Scoring
 
             ScoreResultCounts[result.Type] = ScoreResultCounts.GetValueOrDefault(result.Type) - 1;
 
-            if (result.Judgement.MaxResult.AffectsAccuracy())
+            if (ResultAffectsAccuracy(result.Judgement.MaxResult))
             {
                 currentMaximumBaseScore -= GetBaseScoreForResult(result.Judgement.MaxResult);
                 currentAccuracyJudgementCount--;
             }
 
-            if (result.Type.AffectsAccuracy())
+            if (ResultAffectsAccuracy(result.Type))
                 currentBaseScore -= GetBaseScoreForResult(result.Type);
 
             if (result.Type.IsBonus())
@@ -380,6 +407,17 @@ namespace osu.Game.Rulesets.Scoring
             }
         }
 
+        /// <summary>
+        /// Whether a <see cref="HitResult"/> affects accuracy under the current scoring rules.
+        /// </summary>
+        public virtual bool ResultAffectsAccuracy(HitResult result)
+        {
+            if (ScoreV2Active)
+                return result.IsBasic();
+
+            return result.AffectsAccuracy();
+        }
+
         protected virtual void ApplyScoreChange(JudgementResult result)
         {
         }
@@ -420,8 +458,16 @@ namespace osu.Game.Rulesets.Scoring
             if (Beatmap.Value == null)
                 return;
 
+            var mods = Mods.Value;
+            if (ScoreV2Active && !mods.Any(m => m is ModScoreV2))
+            {
+                var sv2Mod = Ruleset.CreateMod<ModScoreV2>();
+                if (sv2Mod != null)
+                    mods = mods.Append(sv2Mod).ToArray();
+            }
+
             var calculator = Ruleset.CreateScoreMultiplierCalculator(new ScoreMultiplierContext(Beatmap.Value.BeatmapInfo.Difficulty));
-            scoreMultiplier = calculator.CalculateFor(Mods.Value);
+            scoreMultiplier = calculator.CalculateFor(mods);
         }
 
         protected virtual double ComputeTotalScore(double comboProgress, double accuracyProgress, double bonusPortion)

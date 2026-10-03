@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
@@ -123,6 +123,27 @@ namespace osu.Game.Rulesets.Osu.Objects
 
         private bool classicSliderBehaviour;
 
+        /// <summary>
+        /// If <see langword="true"/>, this <see cref="Slider"/> will evaluate both slider head accuracy and tracking proportion under ScoreV2 rules.
+        /// </summary>
+        public bool ScoreV2SliderBehaviour
+        {
+            get => scoreV2SliderBehaviour;
+            set
+            {
+                scoreV2SliderBehaviour = value;
+                if (HeadCircle != null)
+                    HeadCircle.ScoreV2SliderBehaviour = value;
+            }
+        }
+
+        private bool scoreV2SliderBehaviour;
+
+        /// <summary>
+        /// If <see langword="true"/>, slider ticks and slider tails will be judged at fixed points in time matching osu!stable.
+        /// </summary>
+        public bool ClassicSliderJudgement { get; set; }
+
         public BindableNumber<double> SliderVelocityMultiplierBindable { get; } = new BindableDouble(1)
         {
             MinValue = 0.1,
@@ -196,6 +217,7 @@ namespace osu.Game.Rulesets.Osu.Objects
                             Position = Position,
                             StackHeight = StackHeight,
                             ClassicSliderBehaviour = ClassicSliderBehaviour,
+                            ScoreV2SliderBehaviour = ScoreV2SliderBehaviour,
                         });
                         break;
 

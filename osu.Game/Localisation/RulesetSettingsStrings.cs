@@ -139,6 +139,16 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString TouchOverlay => new TranslatableString(getKey(@"touch_overlay"), @"Touch overlay");
 
+        /// <summary>
+        /// "Show slider head judgements"
+        /// </summary>
+        public static LocalisableString ShowSliderHeadJudgements => new TranslatableString(getKey(@"show_slider_head_judgements"), @"Show slider head judgements");
+
+        /// <summary>
+        /// "Display accuracy judgements on slider heads when hit."
+        /// </summary>
+        public static LocalisableString ShowSliderHeadJudgementsDescription => new TranslatableString(getKey(@"show_slider_head_judgements_description"), @"Display accuracy judgements on slider heads when hit.");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

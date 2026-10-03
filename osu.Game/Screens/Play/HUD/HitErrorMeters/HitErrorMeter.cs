@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
@@ -7,6 +7,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Graphics;
 using osu.Game.Rulesets.Judgements;
+using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.UI;
 using osu.Game.Skinning;
@@ -60,6 +61,28 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
         protected Color4 GetColourForHitResult(HitResult result)
         {
             return colours.ForHitResult(result);
+        }
+
+        /// <summary>
+        /// Whether the given <paramref name="judgement"/> should be ignored for hit error display.
+        /// </summary>
+        protected virtual bool ShouldIgnoreJudgement(JudgementResult judgement)
+        {
+            if (judgement.HitObject is IHasDisplayHitResult hasDisplay && hasDisplay.IgnoreHitErrorMeter)
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Gets the <see cref="HitResult"/> to use for displaying hit error colour.
+        /// </summary>
+        protected virtual HitResult GetDisplayHitResult(JudgementResult judgement)
+        {
+            if (judgement.HitObject is IHasDisplayHitResult hasDisplay && hasDisplay.DisplayHitResult != HitResult.None)
+                return hasDisplay.DisplayHitResult;
+
+            return judgement.Type;
         }
 
         /// <summary>

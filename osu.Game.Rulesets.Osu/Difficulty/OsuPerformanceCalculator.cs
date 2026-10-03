@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -204,7 +204,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             {
                 double estimateImproperlyFollowedDifficultSliders;
 
-                if (usingClassicSliderAccuracy)
+                if (usingClassicSliderAccuracy || usingScoreV2)
                 {
                     // When the score is considered classic (regardless if it was made on old client or not) we consider all missing combo to be dropped difficult sliders
                     int maximumPossibleDroppedSliders = totalImperfectHits;
@@ -369,7 +369,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double missCount = countMiss;
 
-            if (usingClassicSliderAccuracy)
+            if (usingClassicSliderAccuracy || usingScoreV2)
             {
                 // If sliders in the map are hard - it's likely for player to drop sliderends
                 // If map has easy sliders - it's more likely for player to sliderbreak
@@ -414,7 +414,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         {
             int nonMissMistakes = countOk + countMeh;
 
-            if (!usingClassicSliderAccuracy || nonMissMistakes == 0)
+            if ((!usingClassicSliderAccuracy && !usingScoreV2) || nonMissMistakes == 0)
                 return 0;
 
             double missedComboPercent = 1.0 - (double)scoreMaxCombo / attributes.MaxCombo;

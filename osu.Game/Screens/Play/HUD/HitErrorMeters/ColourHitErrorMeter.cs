@@ -64,7 +64,12 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
             if (!judgement.Type.IsScorable() || judgement.Type.IsBonus())
                 return;
 
-            judgementsFlow.Push(judgementShapePool.Get(shape => shape.Colour = GetColourForHitResult(judgement.Type)));
+            if (ShouldIgnoreJudgement(judgement))
+                return;
+
+            HitResult displayResult = GetDisplayHitResult(judgement);
+
+            judgementsFlow.Push(judgementShapePool.Get(shape => shape.Colour = GetColourForHitResult(displayResult)));
         }
 
         public override void Clear()

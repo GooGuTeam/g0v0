@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -16,6 +16,7 @@ using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Objects.Legacy;
 using osu.Game.Rulesets.Osu.Beatmaps;
 using osu.Game.Rulesets.Osu.Configuration;
+using osu.Game.Rulesets.Osu.Judgements;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Objects.Drawables.Connections;
@@ -194,7 +195,21 @@ namespace osu.Game.Rulesets.Osu.UI
             if (!judgedObject.DisplayResult || !DisplayJudgements.Value)
                 return;
 
-            var explosion = judgementPooler.Get(result.Type, doj => doj.Apply(result, judgedObject));
+            JudgementResult resultToDisplay = result;
+
+            if (judgedObject is DrawableSliderHead head && head.HitObject.ScoreV2SliderBehaviour)
+            {
+                var hitResult = head.HitObject.RawHitResult;
+                if (hitResult == HitResult.None)
+                    hitResult = result.IsHit ? HitResult.Great : HitResult.Miss;
+
+                resultToDisplay = new OsuHitCircleJudgementResult(head.HitObject, new OsuJudgement())
+                {
+                    Type = hitResult,
+                };
+            }
+
+            var explosion = judgementPooler.Get(resultToDisplay.Type, doj => doj.Apply(resultToDisplay, judgedObject));
 
             if (explosion == null)
                 return;
@@ -203,7 +218,7 @@ namespace osu.Game.Rulesets.Osu.UI
 
             // the proxied content is added to judgementAboveHitObjectLayer once, on first load, and never removed from it.
             // ensure that ordering is consistent with expectations (latest judgement should be front-most).
-            judgementAboveHitObjectLayer.ChangeChildDepth(explosion.ProxiedAboveHitObjectsContent, (float)-result.TimeAbsolute);
+            judgementAboveHitObjectLayer.ChangeChildDepth(explosion.ProxiedAboveHitObjectsContent, (float)-resultToDisplay.TimeAbsolute);
         }
 
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => HitObjectContainer.ReceivePositionalInputAt(screenSpacePos);

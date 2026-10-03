@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -333,6 +333,31 @@ namespace osu.Game.Localisation.Osu
         /// "Multiplier applied to the wiggling strength."
         /// </summary>
         public static LocalisableString WiggleStrengthDescription => new TranslatableString(getKey(@"wiggle_strength_description"), @"Multiplier applied to the wiggling strength.");
+
+        /// <summary>
+        /// "Play with the ScoreV2 scoring algorithm."
+        /// </summary>
+        public static LocalisableString ScoreV2Description => new TranslatableString(getKey(@"score_v2_description"), @"Play with the ScoreV2 scoring algorithm.");
+
+        /// <summary>
+        /// "Show slider head judgements"
+        /// </summary>
+        public static LocalisableString ShowSliderHeadJudgementsLabel => new TranslatableString(getKey(@"show_slider_head_judgements_label"), @"Show slider head judgements");
+
+        /// <summary>
+        /// "Display accuracy judgements on slider heads when hit."
+        /// </summary>
+        public static LocalisableString ShowSliderHeadJudgementsDescription => new TranslatableString(getKey(@"show_slider_head_judgements_description"), @"Display accuracy judgements on slider heads when hit.");
+
+        /// <summary>
+        /// "Classic slider judgement"
+        /// </summary>
+        public static LocalisableString ClassicSliderJudgementLabel => new TranslatableString(getKey(@"classic_slider_judgement"), @"Classic slider judgement");
+
+        /// <summary>
+        /// "Judge slider ticks and tails at fixed points in time, matching osu!stable."
+        /// </summary>
+        public static LocalisableString ClassicSliderJudgementDescription => new TranslatableString(getKey(@"classic_slider_judgement_description"), @"Judge slider ticks and tails at fixed points in time, matching osu!stable.");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

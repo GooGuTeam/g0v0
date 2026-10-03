@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -144,7 +144,7 @@ namespace osu.Game.Rulesets.Osu
                 yield return new OsuModTouchDevice();
 
             if (mods.HasFlag(LegacyMods.ScoreV2))
-                yield return new ModScoreV2();
+                yield return new OsuModScoreV2();
         }
 
         public override LegacyMods ConvertToLegacyMods(Mod[] mods)
@@ -208,7 +208,8 @@ namespace osu.Game.Rulesets.Osu
                         new OsuModClassic(),
                         new OsuModRandom(),
                         new OsuModMirror(),
-                        new MultiMod(new OsuModAlternate(), new OsuModSingleTap())
+                        new MultiMod(new OsuModAlternate(), new OsuModSingleTap()),
+                        new OsuModScoreV2(),
                     };
 
                 case ModType.Automation:
@@ -245,7 +246,6 @@ namespace osu.Game.Rulesets.Osu
                     return new Mod[]
                     {
                         new OsuModTouchDevice(),
-                        new ModScoreV2(),
                     };
 
                 default:

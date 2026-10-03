@@ -80,6 +80,12 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (!head.Judged || !head.Result.IsHit)
                 return;
 
+            if (slider.HitObject.ClassicSliderJudgement)
+            {
+                updateTracking(IsMouseInFollowArea(false));
+                return;
+            }
+
             if (!IsMouseInFollowArea(true))
                 return;
 
@@ -151,7 +157,11 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                     break;
 
                 case DrawableSliderTail:
-                    if (timeOffset < SliderEventGenerator.TAIL_LENIENCY)
+                    double tailLeniency = slider.HitObject.ClassicSliderJudgement
+                        ? Math.Max(-slider.HitObject.Duration / 2, SliderEventGenerator.TAIL_LENIENCY)
+                        : SliderEventGenerator.TAIL_LENIENCY;
+
+                    if (timeOffset < tailLeniency)
                         return;
 
                     // Ensure the tail can only activate after all previous ticks/repeats already have.
@@ -166,6 +176,18 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
                 default:
                     return;
+            }
+
+            if (slider.HitObject.ClassicSliderJudgement)
+            {
+                updateTracking(IsMouseInFollowArea(Tracking));
+
+                if (Tracking)
+                    nestedObject.HitForcefully();
+                else
+                    nestedObject.MissForcefully();
+
+                return;
             }
 
             if (!slider.HeadCircle.Judged)

@@ -23,6 +23,7 @@ namespace osu.Game.Rulesets.Osu.Configuration
             SetDefault(OsuRulesetSetting.ShowCursorTrail, true);
             SetDefault(OsuRulesetSetting.ShowCursorRipples, false);
             SetDefault(OsuRulesetSetting.PlayfieldBorderStyle, PlayfieldBorderStyle.None);
+            SetDefault(OsuRulesetSetting.ShowSliderHeadJudgements, false);
 
             SetDefault(OsuRulesetSetting.ReplayClickMarkersEnabled, false);
             SetDefault(OsuRulesetSetting.ReplayFrameMarkersEnabled, false);
@@ -40,6 +41,7 @@ namespace osu.Game.Rulesets.Osu.Configuration
         ShowCursorTrail,
         ShowCursorRipples,
         PlayfieldBorderStyle,
+        ShowSliderHeadJudgements,
 
         // Replay
         ReplayClickMarkersEnabled,

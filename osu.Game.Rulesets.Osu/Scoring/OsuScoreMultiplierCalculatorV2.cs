@@ -1,7 +1,9 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Mods;
@@ -196,5 +198,112 @@ namespace osu.Game.Rulesets.Osu.Scoring
 
         private static double deflateMultiplier(OsuModDeflate deflate)
             => 1.0 - Math.Max(0, 0.02 * (deflate.StartScale.Value - deflate.StartScale.Default));
+
+        public override double CalculateFor(IEnumerable<Mod> mods)
+        {
+            var modList = mods as IReadOnlyList<Mod> ?? mods.ToList();
+
+            if (modList.Any(m => m is ModScoreV2))
+                return calculateForScoreV2(modList);
+
+            return base.CalculateFor(modList);
+        }
+
+        private static double scoreV2DoubleTimeMultiplier(double speedChange)
+        {
+            if (speedChange < 1.0)
+                return scoreV2HalfTimeMultiplier(speedChange);
+
+            return Math.Round(1.0 + (speedChange - 1.0) * 0.40, 4);
+        }
+
+        private static double scoreV2HalfTimeMultiplier(double speedChange)
+        {
+            if (speedChange > 1.0)
+                return scoreV2DoubleTimeMultiplier(speedChange);
+
+            if (speedChange <= 0.75)
+                return Math.Round(Math.Max(0.1, speedChange - 0.25), 4);
+
+            return Math.Round(0.50 + (speedChange - 0.75) * 2.0, 4);
+        }
+
+        private static double scoreV2TimeRampMultiplier(ModTimeRamp timeRamp)
+        {
+            double minSpeed = Math.Min(timeRamp.InitialRate.Value, timeRamp.FinalRate.Value);
+            double maxSpeed = Math.Max(timeRamp.InitialRate.Value, timeRamp.FinalRate.Value);
+
+            double minMultiplier = minSpeed < 1 ? scoreV2HalfTimeMultiplier(minSpeed) : scoreV2DoubleTimeMultiplier(minSpeed);
+            double maxMultiplier = maxSpeed < 1 ? scoreV2HalfTimeMultiplier(maxSpeed) : scoreV2DoubleTimeMultiplier(maxSpeed);
+
+            return Math.Round(0.8 * minMultiplier + 0.2 * maxMultiplier, 4);
+        }
+
+        private double calculateForScoreV2(IReadOnlyList<Mod> mods)
+        {
+            double multiplier = 1.0;
+
+            foreach (var mod in mods)
+            {
+                switch (mod)
+                {
+                    case ModScoreV2:
+                    case OsuModClassic:
+                    case OsuModNoFail:
+                        break;
+
+                    case OsuModEasy:
+                        multiplier *= 0.5;
+                        break;
+
+                    case OsuModHalfTime halfTime:
+                        multiplier *= scoreV2HalfTimeMultiplier(halfTime.SpeedChange.Value);
+                        break;
+
+                    case OsuModDaycore daycore:
+                        multiplier *= scoreV2HalfTimeMultiplier(daycore.SpeedChange.Value);
+                        break;
+
+                    case OsuModHidden:
+                        multiplier *= 1.06;
+                        break;
+
+                    case OsuModHardRock:
+                        multiplier *= 1.10;
+                        break;
+
+                    case OsuModDoubleTime doubleTime:
+                        multiplier *= scoreV2DoubleTimeMultiplier(doubleTime.SpeedChange.Value);
+                        break;
+
+                    case OsuModNightcore nightcore:
+                        multiplier *= scoreV2DoubleTimeMultiplier(nightcore.SpeedChange.Value);
+                        break;
+
+                    case ModTimeRamp timeRamp:
+                        multiplier *= scoreV2TimeRampMultiplier(timeRamp);
+                        break;
+
+                    case OsuModFlashlight:
+                        multiplier *= 1.12;
+                        break;
+
+                    case OsuModSpunOut:
+                        multiplier *= 0.9;
+                        break;
+
+                    case OsuModRelax:
+                    case OsuModAutopilot:
+                        multiplier *= 0;
+                        break;
+
+                    default:
+                        multiplier *= base.CalculateFor([mod]);
+                        break;
+                }
+            }
+
+            return Math.Round(multiplier, 4);
+        }
     }
 }

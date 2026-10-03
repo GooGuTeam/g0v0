@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using NUnit.Framework;
 using osu.Framework.Utils;
@@ -198,6 +198,16 @@ namespace osu.Game.Rulesets.Osu.Tests
 
             [new Mod[] { new OsuModTouchDevice() }, 1],
             [new Mod[] { new ModScoreV2() }, 1],
+            [new Mod[] { new OsuModScoreV2() }, 1],
+            [new Mod[] { new OsuModScoreV2(), new OsuModNoFail() }, 1],
+            [new Mod[] { new OsuModScoreV2(), new OsuModHardRock() }, 1.10],
+            [new Mod[] { new OsuModScoreV2(), new OsuModDoubleTime() }, 1.20],
+            [new Mod[] { new OsuModScoreV2(), new OsuModHidden() }, 1.06],
+            [new Mod[] { new OsuModScoreV2(), new OsuModHidden(), new OsuModHardRock() }, 1.06 * 1.10],
+            [new Mod[] { new OsuModScoreV2(), new OsuModEasy() }, 0.5],
+            [new Mod[] { new OsuModScoreV2(), new OsuModHalfTime() }, 0.5],
+            [new Mod[] { new OsuModScoreV2(), new OsuModFlashlight() }, 1.12],
+            [new Mod[] { new OsuModScoreV2(), new OsuModSpunOut() }, 0.9],
 
             #endregion
 
