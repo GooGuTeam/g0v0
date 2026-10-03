@@ -14,22 +14,34 @@ namespace osu.Game.Scoring.Legacy
     public static class ScoreInfoExtensions
     {
         public static long GetDisplayScore(this ScoreProcessor scoreProcessor, ScoringMode mode)
-            => scoreProcessor.Mods.Value.Any(m => m is ModScoreV2)
+            => scoreProcessor.ScoreV1Active || scoreProcessor.ScoreV2Active
                 ? scoreProcessor.TotalScore.Value
                 : getDisplayScore(scoreProcessor.Ruleset.RulesetInfo.OnlineID, scoreProcessor.TotalScore.Value, mode, scoreProcessor.MaximumStatistics);
 
         public static long GetDisplayScore(this ScoreInfo scoreInfo, ScoringMode mode)
-            => scoreInfo.Mods.Any(m => m is ModScoreV2)
-                ? scoreInfo.TotalScore
-                : getDisplayScore(scoreInfo.Ruleset.OnlineID, scoreInfo.TotalScore, mode, scoreInfo.MaximumStatistics);
+        {
+            if (scoreInfo.Mods.Any(m => m is ModScoreV1 || m is ModScoreV2))
+                return scoreInfo.TotalScore;
+
+            if (mode == ScoringMode.Classic && scoreInfo.LegacyTotalScore != null)
+                return scoreInfo.LegacyTotalScore.Value;
+
+            return getDisplayScore(scoreInfo.Ruleset.OnlineID, scoreInfo.TotalScore, mode, scoreInfo.MaximumStatistics);
+        }
 
         public static long GetDisplayScore(this SoloScoreInfo soloScoreInfo, ScoringMode mode)
-            => soloScoreInfo.Mods.Any(m => m.Acronym == @"SV2")
-                ? soloScoreInfo.TotalScore
-                : getDisplayScore(soloScoreInfo.RulesetID, soloScoreInfo.TotalScore, mode, soloScoreInfo.MaximumStatistics);
+        {
+            if (soloScoreInfo.Mods.Any(m => m.Acronym == @"SV1" || m.Acronym == @"SV2"))
+                return soloScoreInfo.TotalScore;
+
+            if (mode == ScoringMode.Classic && soloScoreInfo.LegacyTotalScore != null)
+                return soloScoreInfo.LegacyTotalScore.Value;
+
+            return getDisplayScore(soloScoreInfo.RulesetID, soloScoreInfo.TotalScore, mode, soloScoreInfo.MaximumStatistics);
+        }
 
         public static long GetDisplayScore(this MultiplayerScore multiplayerScore, ScoringMode mode)
-            => multiplayerScore.Mods?.Any(m => m.Acronym == @"SV2") == true
+            => multiplayerScore.Mods?.Any(m => m.Acronym == @"SV1" || m.Acronym == @"SV2") == true
                 ? multiplayerScore.TotalScore
                 : getDisplayScore(multiplayerScore.RulesetId, multiplayerScore.TotalScore, mode, multiplayerScore.MaximumStatistics);
 

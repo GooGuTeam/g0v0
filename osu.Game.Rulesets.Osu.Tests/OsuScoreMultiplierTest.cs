@@ -197,6 +197,17 @@ namespace osu.Game.Rulesets.Osu.Tests
             #region System
 
             [new Mod[] { new OsuModTouchDevice() }, 1],
+            [new Mod[] { new ModScoreV1() }, 1],
+            [new Mod[] { new OsuModScoreV1() }, 1],
+            [new Mod[] { new OsuModScoreV1(), new OsuModNoFail() }, 0.5],
+            [new Mod[] { new OsuModScoreV1(), new OsuModHardRock() }, 1.06],
+            [new Mod[] { new OsuModScoreV1(), new OsuModDoubleTime() }, 1.12],
+            [new Mod[] { new OsuModScoreV1(), new OsuModHidden() }, 1.06],
+            [new Mod[] { new OsuModScoreV1(), new OsuModHidden(), new OsuModHardRock() }, 1.06 * 1.06],
+            [new Mod[] { new OsuModScoreV1(), new OsuModEasy() }, 0.5],
+            [new Mod[] { new OsuModScoreV1(), new OsuModHalfTime() }, 0.3],
+            [new Mod[] { new OsuModScoreV1(), new OsuModFlashlight() }, 1.12],
+            [new Mod[] { new OsuModScoreV1(), new OsuModClassic() }, 1],
             [new Mod[] { new ModScoreV2() }, 1],
             [new Mod[] { new OsuModScoreV2() }, 1],
             [new Mod[] { new OsuModScoreV2(), new OsuModNoFail() }, 1],

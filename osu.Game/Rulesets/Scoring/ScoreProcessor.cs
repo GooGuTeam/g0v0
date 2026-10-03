@@ -179,10 +179,14 @@ namespace osu.Game.Rulesets.Scoring
         /// </summary>
         private double currentBonusPortion;
 
+        public double CurrentBonusPortion => currentBonusPortion;
+
         /// <summary>
         /// The total score multiplier.
         /// </summary>
         private double scoreMultiplier = 1;
+
+        public double ScoreMultiplier => scoreMultiplier;
 
         public Dictionary<HitResult, int> MaximumStatistics
         {
@@ -229,6 +233,30 @@ namespace osu.Game.Rulesets.Scoring
             }
         }
 
+        private bool scoreV1Active;
+
+        public bool ScoreV1Active
+        {
+            get => scoreV1Active;
+            set
+            {
+                if (scoreV1Active == value)
+                    return;
+
+                scoreV1Active = value;
+                if (beatmapApplied && Beatmap.Value != null && JudgedHits == 0)
+                    ApplyBeatmap(Beatmap.Value);
+                else
+                {
+                    updateScoreMultiplier();
+                    updateScore();
+                    updateRank();
+                }
+            }
+        }
+
+        protected virtual bool CheckScoreV1Active(IReadOnlyList<Mod> mods) => mods.Any(m => m is ModScoreV1);
+
         public ScoreProcessor(Ruleset ruleset)
         {
             Ruleset = ruleset;
@@ -238,6 +266,7 @@ namespace osu.Game.Rulesets.Scoring
             Mods.ValueChanged += mods =>
             {
                 ScoreV2Active = mods.NewValue.Any(m => m is ModScoreV2);
+                ScoreV1Active = !ScoreV2Active && CheckScoreV1Active(mods.NewValue);
                 updateScoreMultiplier();
                 updateScore();
                 updateRank();
@@ -412,7 +441,7 @@ namespace osu.Game.Rulesets.Scoring
         /// </summary>
         public virtual bool ResultAffectsAccuracy(HitResult result)
         {
-            if (ScoreV2Active)
+            if (ScoreV1Active || ScoreV2Active)
                 return result.IsBasic();
 
             return result.AffectsAccuracy();
@@ -426,7 +455,9 @@ namespace osu.Game.Rulesets.Scoring
         {
         }
 
-        private void updateScore()
+        private void updateScore() => UpdateScore();
+
+        protected virtual void UpdateScore()
         {
             Accuracy.Value = currentMaximumBaseScore > 0 ? currentBaseScore / currentMaximumBaseScore : 1;
             MinimumAccuracy.Value = maximumBaseScore > 0 ? currentBaseScore / maximumBaseScore : 0;
@@ -464,6 +495,12 @@ namespace osu.Game.Rulesets.Scoring
                 var sv2Mod = Ruleset.CreateMod<ModScoreV2>();
                 if (sv2Mod != null)
                     mods = mods.Append(sv2Mod).ToArray();
+            }
+            else if (ScoreV1Active && !mods.Any(m => m is ModScoreV1))
+            {
+                var sv1Mod = Ruleset.CreateMod<ModScoreV1>();
+                if (sv1Mod != null)
+                    mods = mods.Append(sv1Mod).ToArray();
             }
 
             var calculator = Ruleset.CreateScoreMultiplierCalculator(new ScoreMultiplierContext(Beatmap.Value.BeatmapInfo.Difficulty));
@@ -542,6 +579,9 @@ namespace osu.Game.Rulesets.Scoring
             // Populate total score after everything else.
             score.TotalScoreWithoutMods = TotalScoreWithoutMods.Value;
             score.TotalScore = TotalScore.Value;
+
+            if (ScoreV1Active)
+                score.LegacyTotalScore = TotalScore.Value;
         }
 
         /// <summary>

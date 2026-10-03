@@ -4,8 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Judgements;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Osu.Difficulty.Utils;
 using osu.Game.Rulesets.Osu.Judgements;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
@@ -15,14 +17,47 @@ namespace osu.Game.Rulesets.Osu.Scoring
 {
     public partial class OsuScoreProcessor : ScoreProcessor
     {
+        private int difficultyMultiplier = 1;
+
+        private long currentScoreV1BaseScore;
+        private long currentScoreV1ComboScoreWithoutMods;
+        private long currentScoreV1ComboScoreWithMods;
+
         public OsuScoreProcessor()
             : base(new OsuRuleset())
         {
+            Beatmap.ValueChanged += b => updateDifficultyMultiplier(b.NewValue);
+        }
+
+        protected override bool CheckScoreV1Active(IReadOnlyList<Mod> mods)
+            => mods.Any(m => m is ModScoreV1);
+
+        public override void ApplyBeatmap(IBeatmap beatmap)
+        {
+            updateDifficultyMultiplier(beatmap);
+            base.ApplyBeatmap(beatmap);
+        }
+
+        private void updateDifficultyMultiplier(IBeatmap? beatmap)
+        {
+            if (beatmap != null)
+                difficultyMultiplier = LegacyScoreUtils.CalculateDifficultyPeppyStars(beatmap);
+            else
+                difficultyMultiplier = 1;
+        }
+
+        protected override void Reset(bool storeResults)
+        {
+            base.Reset(storeResults);
+
+            currentScoreV1BaseScore = 0;
+            currentScoreV1ComboScoreWithoutMods = 0;
+            currentScoreV1ComboScoreWithMods = 0;
         }
 
         public override ScoreRank RankFromScore(double accuracy, IReadOnlyDictionary<HitResult, int> results)
         {
-            if (Mods.Value.Any(m => m is ModClassic))
+            if (ScoreV1Active)
             {
                 int count300 = results.GetValueOrDefault(HitResult.Great);
                 int count100 = results.GetValueOrDefault(HitResult.Ok);
@@ -71,6 +106,110 @@ namespace osu.Game.Rulesets.Osu.Scoring
 
         protected override HitEvent CreateHitEvent(JudgementResult result)
             => base.CreateHitEvent(result).With((result as OsuHitCircleJudgementResult)?.CursorPositionAtHit);
+
+        protected override double GetBonusScoreChange(JudgementResult result)
+        {
+            if (ScoreV1Active)
+            {
+                if (result.HitObject is SpinnerBonusTick)
+                    return 1100;
+
+                if (result.HitObject is SpinnerTick)
+                    return 100;
+            }
+
+            return base.GetBonusScoreChange(result);
+        }
+
+        private (long baseScore, long comboScore) getScoreV1Change(JudgementResult result, double modMultiplier)
+        {
+            if (!result.IsHit || result.Type.IsBonus())
+                return (0, 0);
+
+            int baseScore;
+            bool addScoreComboMultiplier = false;
+
+            if (result.HitObject is SliderTick)
+            {
+                baseScore = 10;
+            }
+            else if (result.HitObject is SliderHeadCircle or SliderTailCircle or SliderRepeat)
+            {
+                baseScore = 30;
+            }
+            else if (result.HitObject is HitCircle or Slider or Spinner)
+            {
+                baseScore = result.Type switch
+                {
+                    HitResult.Great => 300,
+                    HitResult.Ok => 100,
+                    HitResult.Meh => 50,
+                    _ => 0
+                };
+                addScoreComboMultiplier = true;
+            }
+            else
+            {
+                baseScore = GetBaseScoreForResult(result.Type);
+            }
+
+            if (baseScore <= 0)
+                return (0, 0);
+
+            long comboScore = 0;
+
+            if (addScoreComboMultiplier)
+            {
+                // In osu!stable: Math.Max(0, combo - 1) * (baseScore / 25 * difficultyMultiplier * modMultiplier)
+                // The classic slider's final judgement supplies the tail combo itself.
+                // stable includes that combo when awarding the slider's final score.
+                int combo = result.HitObject is Slider ? result.ComboAfterJudgement : result.ComboAtJudgement;
+                comboScore = (long)(Math.Max(0, combo - 1) * (baseScore / 25 * (difficultyMultiplier * modMultiplier)));
+            }
+
+            return (baseScore, comboScore);
+        }
+
+        protected override void ApplyScoreChange(JudgementResult result)
+        {
+            base.ApplyScoreChange(result);
+
+            if (ScoreV1Active)
+            {
+                var (baseScore, comboScoreWithoutMods) = getScoreV1Change(result, 1.0);
+                var (_, comboScoreWithMods) = getScoreV1Change(result, ScoreMultiplier);
+
+                currentScoreV1BaseScore += baseScore;
+                currentScoreV1ComboScoreWithoutMods += comboScoreWithoutMods;
+                currentScoreV1ComboScoreWithMods += comboScoreWithMods;
+            }
+        }
+
+        protected override void RemoveScoreChange(JudgementResult result)
+        {
+            base.RemoveScoreChange(result);
+
+            if (ScoreV1Active)
+            {
+                var (baseScore, comboScoreWithoutMods) = getScoreV1Change(result, 1.0);
+                var (_, comboScoreWithMods) = getScoreV1Change(result, ScoreMultiplier);
+
+                currentScoreV1BaseScore -= baseScore;
+                currentScoreV1ComboScoreWithoutMods -= comboScoreWithoutMods;
+                currentScoreV1ComboScoreWithMods -= comboScoreWithMods;
+            }
+        }
+
+        protected override void UpdateScore()
+        {
+            base.UpdateScore();
+
+            if (ScoreV1Active)
+            {
+                TotalScoreWithoutMods.Value = currentScoreV1BaseScore + currentScoreV1ComboScoreWithoutMods + (long)CurrentBonusPortion;
+                TotalScore.Value = currentScoreV1BaseScore + currentScoreV1ComboScoreWithMods + (long)CurrentBonusPortion;
+            }
+        }
 
         protected override double GetComboScoreChange(JudgementResult result)
         {

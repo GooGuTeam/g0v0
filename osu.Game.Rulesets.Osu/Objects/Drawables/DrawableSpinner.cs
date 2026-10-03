@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -341,6 +341,15 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             if (ticks.Count == 0)
                 return;
+
+            if (HitObject.LegacyScoreV1)
+            {
+                int halfSpins = (int)(Result.TotalRotation / 180);
+                foreach (var tick in ticks.Where(t => !t.Result.HasResult && ((SpinnerTick)t.HitObject).LegacyHalfSpinIndex <= halfSpins))
+                    tick.TriggerResult(true);
+                completedFullSpins.Value = halfSpins / 2;
+                return;
+            }
 
             int spins = (int)(Result.TotalRotation / 360);
 

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Game.Rulesets.Judgements;
 using osu.Game.Rulesets.Osu.Judgements;
@@ -13,6 +13,8 @@ namespace osu.Game.Rulesets.Osu.Objects
         /// Duration of the <see cref="Spinner"/> containing this spinner tick.
         /// </summary>
         public double SpinnerDuration { get; set; }
+
+        public int LegacyHalfSpinIndex { get; set; }
 
         public override Judgement CreateJudgement() => new OsuSpinnerTickJudgement();
 

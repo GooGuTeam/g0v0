@@ -80,7 +80,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             isRelax = score.Mods.Any(m => m is OsuModRelax);
 
-            usingClassicSliderAccuracy = score.Mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value);
+            usingClassicSliderAccuracy = score.Mods.Any(m => m is ModScoreV1) || score.Mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value);
             usingScoreV2 = score.Mods.Any(m => m is ModScoreV2);
 
             accuracy = Math.Clamp(score.Accuracy, 0, 1);

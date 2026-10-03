@@ -1,10 +1,10 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Linq;
-using osu.Framework.Bindables;
 using osu.Framework.Localisation;
-using osu.Game.Configuration;
+using osu.Game.Beatmaps;
 using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
@@ -15,11 +15,11 @@ using osu.Game.Scoring;
 
 namespace osu.Game.Rulesets.Osu.Mods
 {
-    public class OsuModScoreV2 : ModScoreV2, IApplicableToScoreProcessor, IApplicableToHitObject
+    public class OsuModScoreV1 : ModScoreV1, IApplicableToScoreProcessor, IApplicableToHitObject, IApplicableToBeatmap
     {
         public override ModType Type => ModType.Conversion;
 
-        public override LocalisableString Description => ModsStrings.ScoreV2Description;
+        public override LocalisableString Description => ModsStrings.ScoreV1Description;
 
         public override bool UserPlayable => true;
 
@@ -27,7 +27,7 @@ namespace osu.Game.Rulesets.Osu.Mods
 
         public override bool ValidForMultiplayerAsFreeMod => true;
 
-        public override System.Type[] IncompatibleMods => base.IncompatibleMods.Concat(new[] { typeof(ModScoreV1) }).ToArray();
+        public override Type[] IncompatibleMods => base.IncompatibleMods.Concat(new[] { typeof(ModScoreV2) }).ToArray();
 
         public void ApplyToHitObject(HitObject hitObject)
         {
@@ -36,15 +36,21 @@ namespace osu.Game.Rulesets.Osu.Mods
                 case Slider slider:
                     slider.ClassicSliderBehaviour = true;
                     slider.ClassicSliderJudgement = true;
-                    slider.ScoreV2SliderBehaviour = true;
                     break;
+
             }
+        }
+
+        public void ApplyToBeatmap(IBeatmap beatmap)
+        {
+            foreach (var spinner in beatmap.HitObjects.OfType<Spinner>())
+                spinner.ApplyLegacyScoreV1(beatmap.ControlPointInfo, beatmap.Difficulty);
         }
 
         public void ApplyToScoreProcessor(ScoreProcessor scoreProcessor)
         {
             if (scoreProcessor is OsuScoreProcessor osuScoreProcessor)
-                osuScoreProcessor.ScoreV2Active = true;
+                osuScoreProcessor.ScoreV1Active = true;
         }
 
         public ScoreRank AdjustRank(ScoreRank rank, double accuracy) => rank;

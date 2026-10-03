@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -56,6 +56,19 @@ namespace osu.Game.Rulesets.Osu.Objects
         /// </summary>
         public int MaximumBonusSpins { get; protected set; } = 1;
 
+        /// <summary>
+        /// Whether spinner ticks use stable's half-turn ScoreV1 bonus rules.
+        /// </summary>
+        public bool LegacyScoreV1 { get; private set; }
+
+        public int LegacyHalfSpinsRequired { get; private set; }
+
+        public void ApplyLegacyScoreV1(ControlPointInfo controlPointInfo, IBeatmapDifficultyInfo difficulty)
+        {
+            LegacyScoreV1 = true;
+            ApplyDefaults(controlPointInfo, difficulty);
+        }
+
         public override Vector2 StackOffset => Vector2.Zero;
 
         protected override void ApplyDefaultsToSelf(ControlPointInfo controlPointInfo, IBeatmapDifficultyInfo difficulty)
@@ -73,6 +86,7 @@ namespace osu.Game.Rulesets.Osu.Objects
             // Allow a 0.1ms floating point precision error in the calculation of the duration.
             const double duration_error = 0.0001;
 
+            LegacyHalfSpinsRequired = (int)(minRps * secondsDuration * 2);
             SpinsRequired = (int)(minRps * secondsDuration + duration_error);
             MaximumBonusSpins = Math.Max(0, (int)(maxRps * secondsDuration + duration_error) - SpinsRequired - bonus_spins_gap);
         }
@@ -80,6 +94,31 @@ namespace osu.Game.Rulesets.Osu.Objects
         protected override void CreateNestedHitObjects(CancellationToken cancellationToken)
         {
             base.CreateNestedHitObjects(cancellationToken);
+
+            if (LegacyScoreV1)
+            {
+                // stable awards normal spin score on whole turns, but bonus score
+                // on alternating half turns after a 1.5-turn gap.
+                int bonusThreshold = LegacyHalfSpinsRequired + 3;
+                int halfSpins = (int)(Duration * 0.05 / Math.PI);
+                for (int i = 1; i <= halfSpins; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    bool bonus = i > bonusThreshold && (i - bonusThreshold) % 2 == 0;
+                    if (!bonus && i % 2 != 0)
+                        continue;
+
+                    SpinnerTick tick = bonus
+                        ? new SpinnerBonusTick { Samples = new[] { CreateHitSampleInfo("spinnerbonus") } }
+                        : new SpinnerTick();
+                    tick.StartTime = StartTime + i * Math.PI / 0.05;
+                    tick.SpinnerDuration = Duration;
+                    tick.LegacyHalfSpinIndex = i;
+                    AddNested(tick);
+                }
+                return;
+            }
 
             int totalSpins = MaximumBonusSpins + SpinsRequired + bonus_spins_gap;
 

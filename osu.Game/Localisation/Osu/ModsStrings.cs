@@ -335,6 +335,11 @@ namespace osu.Game.Localisation.Osu
         public static LocalisableString WiggleStrengthDescription => new TranslatableString(getKey(@"wiggle_strength_description"), @"Multiplier applied to the wiggling strength.");
 
         /// <summary>
+        /// "Play with the ScoreV1 scoring algorithm."
+        /// </summary>
+        public static LocalisableString ScoreV1Description => new TranslatableString(getKey(@"score_v1_description"), @"Play with the ScoreV1 scoring algorithm.");
+
+        /// <summary>
         /// "Play with the ScoreV2 scoring algorithm."
         /// </summary>
         public static LocalisableString ScoreV2Description => new TranslatableString(getKey(@"score_v2_description"), @"Play with the ScoreV2 scoring algorithm.");

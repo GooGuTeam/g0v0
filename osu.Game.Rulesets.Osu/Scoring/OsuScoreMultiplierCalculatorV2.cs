@@ -206,7 +206,110 @@ namespace osu.Game.Rulesets.Osu.Scoring
             if (modList.Any(m => m is ModScoreV2))
                 return calculateForScoreV2(modList);
 
+            if (modList.Any(m => m is ModScoreV1))
+                return calculateForScoreV1(modList);
+
             return base.CalculateFor(modList);
+        }
+
+        private static double scoreV1DoubleTimeMultiplier(double speedChange)
+        {
+            if (speedChange < 1.0)
+                return scoreV1HalfTimeMultiplier(speedChange);
+
+            return Math.Round(1.0 + (speedChange - 1.0) * 0.24, 4);
+        }
+
+        private static double scoreV1HalfTimeMultiplier(double speedChange)
+        {
+            if (speedChange > 1.0)
+                return scoreV1DoubleTimeMultiplier(speedChange);
+
+            if (speedChange <= 0.75)
+                return Math.Round(Math.Max(0.1, speedChange - 0.45), 4);
+
+            return Math.Round(0.30 + (speedChange - 0.75) * 2.8, 4);
+        }
+
+        private static double scoreV1TimeRampMultiplier(ModTimeRamp timeRamp)
+        {
+            double minSpeed = Math.Min(timeRamp.InitialRate.Value, timeRamp.FinalRate.Value);
+            double maxSpeed = Math.Max(timeRamp.InitialRate.Value, timeRamp.FinalRate.Value);
+
+            double minMultiplier = minSpeed < 1 ? scoreV1HalfTimeMultiplier(minSpeed) : scoreV1DoubleTimeMultiplier(minSpeed);
+            double maxMultiplier = maxSpeed < 1 ? scoreV1HalfTimeMultiplier(maxSpeed) : scoreV1DoubleTimeMultiplier(maxSpeed);
+
+            return Math.Round(0.8 * minMultiplier + 0.2 * maxMultiplier, 4);
+        }
+
+        private double calculateForScoreV1(IReadOnlyList<Mod> mods)
+        {
+            double multiplier = 1.0;
+
+            foreach (var mod in mods)
+            {
+                switch (mod)
+                {
+                    case ModScoreV1:
+                    case OsuModClassic:
+                        break;
+
+                    case OsuModNoFail:
+                        multiplier *= 0.5;
+                        break;
+
+                    case OsuModEasy:
+                        multiplier *= 0.5;
+                        break;
+
+                    case OsuModHalfTime halfTime:
+                        multiplier *= scoreV1HalfTimeMultiplier(halfTime.SpeedChange.Value);
+                        break;
+
+                    case OsuModDaycore daycore:
+                        multiplier *= scoreV1HalfTimeMultiplier(daycore.SpeedChange.Value);
+                        break;
+
+                    case OsuModHidden:
+                        multiplier *= 1.06;
+                        break;
+
+                    case OsuModHardRock:
+                        multiplier *= 1.06;
+                        break;
+
+                    case OsuModDoubleTime doubleTime:
+                        multiplier *= scoreV1DoubleTimeMultiplier(doubleTime.SpeedChange.Value);
+                        break;
+
+                    case OsuModNightcore nightcore:
+                        multiplier *= scoreV1DoubleTimeMultiplier(nightcore.SpeedChange.Value);
+                        break;
+
+                    case ModTimeRamp timeRamp:
+                        multiplier *= scoreV1TimeRampMultiplier(timeRamp);
+                        break;
+
+                    case OsuModFlashlight:
+                        multiplier *= 1.12;
+                        break;
+
+                    case OsuModSpunOut:
+                        multiplier *= 0.9;
+                        break;
+
+                    case OsuModRelax:
+                    case OsuModAutopilot:
+                        multiplier *= 0;
+                        break;
+
+                    default:
+                        multiplier *= base.CalculateFor([mod]);
+                        break;
+                }
+            }
+
+            return Math.Round(multiplier, 4);
         }
 
         private static double scoreV2DoubleTimeMultiplier(double speedChange)

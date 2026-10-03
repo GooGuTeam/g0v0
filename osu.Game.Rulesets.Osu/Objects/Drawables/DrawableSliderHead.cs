@@ -32,7 +32,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
         }
 
-        [BackgroundDependencyLoader]
+        [BackgroundDependencyLoader(true)]
         private void load(OsuRulesetConfigManager osuConfig)
         {
             osuConfig?.BindWith(OsuRulesetSetting.ShowSliderHeadJudgements, showSliderHeadJudgements);
