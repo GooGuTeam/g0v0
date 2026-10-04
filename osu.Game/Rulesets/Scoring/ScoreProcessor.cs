@@ -328,6 +328,9 @@ namespace osu.Game.Rulesets.Scoring
 
             ApplyScoreChange(result);
 
+            result.ComboAfterJudgement = Combo.Value;
+            result.HighestComboAfterJudgement = HighestCombo.Value;
+
             if (!IsSimulating)
             {
                 if (TrackHitEvents)

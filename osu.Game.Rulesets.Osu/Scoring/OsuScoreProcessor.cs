@@ -7,6 +7,7 @@ using System.Linq;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Judgements;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Difficulty.Utils;
 using osu.Game.Rulesets.Osu.Judgements;
 using osu.Game.Rulesets.Osu.Objects;
@@ -18,6 +19,8 @@ namespace osu.Game.Rulesets.Osu.Scoring
     public partial class OsuScoreProcessor : ScoreProcessor
     {
         private int difficultyMultiplier = 1;
+
+        private readonly HashSet<SliderTailCircle> missedScoreV2Tails = new HashSet<SliderTailCircle>();
 
         private long currentScoreV1BaseScore;
         private long currentScoreV1ComboScoreWithoutMods;
@@ -38,6 +41,28 @@ namespace osu.Game.Rulesets.Osu.Scoring
             base.ApplyBeatmap(beatmap);
         }
 
+        protected override IEnumerable<HitObject> EnumerateHitObjects(IBeatmap beatmap)
+        {
+            if (!ScoreV2Active)
+            {
+                foreach (var hitObject in base.EnumerateHitObjects(beatmap))
+                    yield return hitObject;
+
+                yield break;
+            }
+
+            foreach (var hitObject in beatmap.HitObjects)
+            {
+                // stable's simulation groups the 30-point slider checkpoints before the 10-point ticks.
+                // Keep the tail last: its combo is supplied by the parent judgement, and the simulated
+                // tick combo - 2 adjustment below accounts for moving the tail after the ticks.
+                foreach (var nested in hitObject.NestedHitObjects.OrderBy(o => o is SliderTailCircle ? 2 : o is SliderTick ? 1 : 0))
+                    yield return nested;
+
+                yield return hitObject;
+            }
+        }
+
         private void updateDifficultyMultiplier(IBeatmap? beatmap)
         {
             if (beatmap != null)
@@ -50,6 +75,7 @@ namespace osu.Game.Rulesets.Osu.Scoring
         {
             base.Reset(storeResults);
 
+            missedScoreV2Tails.Clear();
             currentScoreV1BaseScore = 0;
             currentScoreV1ComboScoreWithoutMods = 0;
             currentScoreV1ComboScoreWithMods = 0;
@@ -109,10 +135,10 @@ namespace osu.Game.Rulesets.Osu.Scoring
 
         protected override double GetBonusScoreChange(JudgementResult result)
         {
-            if (ScoreV1Active)
+            if (ScoreV1Active || ScoreV2Active)
             {
                 if (result.HitObject is SpinnerBonusTick)
-                    return 1100;
+                    return ScoreV2Active ? 500 : 1100;
 
                 if (result.HitObject is SpinnerTick)
                     return 100;
@@ -174,6 +200,19 @@ namespace osu.Game.Rulesets.Osu.Scoring
         {
             base.ApplyScoreChange(result);
 
+            if (ScoreV2Active)
+            {
+                if (result.HitObject is SliderTailCircle tail && !result.IsHit)
+                    missedScoreV2Tails.Add(tail);
+
+                // The classic parent judgement supplies the tail combo only when the tail was hit.
+                if (result.HitObject is Slider slider && result.IsHit && missedScoreV2Tails.Contains(slider.TailCircle))
+                {
+                    Combo.Value--;
+                    HighestCombo.Value = Math.Max(result.HighestComboAtJudgement, Combo.Value);
+                }
+            }
+
             if (ScoreV1Active)
             {
                 var (baseScore, comboScoreWithoutMods) = getScoreV1Change(result, 1.0);
@@ -188,6 +227,9 @@ namespace osu.Game.Rulesets.Osu.Scoring
         protected override void RemoveScoreChange(JudgementResult result)
         {
             base.RemoveScoreChange(result);
+
+            if (ScoreV2Active && result.HitObject is SliderTailCircle tail)
+                missedScoreV2Tails.Remove(tail);
 
             if (ScoreV1Active)
             {
@@ -208,6 +250,17 @@ namespace osu.Game.Rulesets.Osu.Scoring
             {
                 TotalScoreWithoutMods.Value = currentScoreV1BaseScore + currentScoreV1ComboScoreWithoutMods + (long)CurrentBonusPortion;
                 TotalScore.Value = currentScoreV1BaseScore + currentScoreV1ComboScoreWithMods + (long)CurrentBonusPortion;
+            }
+            else if (ScoreV2Active)
+            {
+                var statistics = GetScoreProcessorStatistics();
+                double comboProgress = MaximumComboPortion > 0 ? statistics.ComboPortion / MaximumComboPortion : 1;
+                int maximumHits = MaximumResultCounts.Where(r => r.Key.IsBasic()).Sum(r => r.Value);
+                int hits = ScoreResultCounts.Where(r => r.Key.IsBasic()).Sum(r => r.Value);
+                double accuracyProgress = maximumHits > 0 ? (double)hits / maximumHits : 1;
+                double score = ComputeTotalScore(comboProgress, accuracyProgress, statistics.BonusPortion);
+                TotalScoreWithoutMods.Value = (long)Math.Round(score);
+                TotalScore.Value = (long)Math.Round(score * ScoreMultiplier);
             }
         }
 
@@ -243,6 +296,9 @@ namespace osu.Game.Rulesets.Osu.Scoring
                     return 0;
 
                 int combo = result.ComboAfterJudgement;
+
+                if (result.HitObject is Slider slider && missedScoreV2Tails.Contains(slider.TailCircle))
+                    combo = result.ComboAtJudgement;
 
                 if (result.HitObject is SliderTailCircle)
                     combo++;

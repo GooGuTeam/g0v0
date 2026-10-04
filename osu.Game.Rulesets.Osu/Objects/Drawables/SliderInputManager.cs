@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -158,7 +158,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
                 case DrawableSliderTail:
                     double tailLeniency = slider.HitObject.ClassicSliderJudgement
-                        ? Math.Max(-slider.HitObject.Duration / 2, SliderEventGenerator.TAIL_LENIENCY)
+                        ? classicTailCheckpoint - slider.HitObject.EndTime
                         : SliderEventGenerator.TAIL_LENIENCY;
 
                     if (timeOffset < tailLeniency)
@@ -182,7 +182,10 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             {
                 updateTracking(IsMouseInFollowArea(Tracking));
 
-                if (Tracking)
+                // stable cannot recover a checkpoint by starting tracking after its scheduled time,
+                // even when the first frame which processes it also hits a late slider head.
+                double checkpointTime = nestedObject is DrawableSliderTail ? classicTailCheckpoint : nestedObject.HitObject.StartTime;
+                if (Tracking && slider.Result.TrackingHistory.Peek().time <= checkpointTime)
                     nestedObject.HitForcefully();
                 else
                     nestedObject.MissForcefully();
@@ -198,6 +201,10 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             else if (timeOffset >= 0)
                 nestedObject.MissForcefully();
         }
+
+        private double classicTailCheckpoint => Math.Max(
+            slider.HitObject.StartTime + Math.Floor(slider.HitObject.Duration / 2),
+            Math.Floor(slider.HitObject.EndTime) + SliderEventGenerator.TAIL_LENIENCY);
 
         /// <summary>
         /// Whether the mouse is currently in the follow area.

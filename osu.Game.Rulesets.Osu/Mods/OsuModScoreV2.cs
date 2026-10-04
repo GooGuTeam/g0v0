@@ -2,9 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Linq;
-using osu.Framework.Bindables;
 using osu.Framework.Localisation;
-using osu.Game.Configuration;
+using osu.Game.Beatmaps;
 using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
@@ -15,7 +14,7 @@ using osu.Game.Scoring;
 
 namespace osu.Game.Rulesets.Osu.Mods
 {
-    public class OsuModScoreV2 : ModScoreV2, IApplicableToScoreProcessor, IApplicableToHitObject
+    public class OsuModScoreV2 : ModScoreV2, IApplicableToScoreProcessor, IApplicableToHitObject, IApplicableToBeatmap
     {
         public override ModType Type => ModType.Conversion;
 
@@ -39,6 +38,12 @@ namespace osu.Game.Rulesets.Osu.Mods
                     slider.ScoreV2SliderBehaviour = true;
                     break;
             }
+        }
+
+        public void ApplyToBeatmap(IBeatmap beatmap)
+        {
+            foreach (var spinner in beatmap.HitObjects.OfType<Spinner>())
+                spinner.ApplyLegacyScoreV2(beatmap.ControlPointInfo, beatmap.Difficulty);
         }
 
         public void ApplyToScoreProcessor(ScoreProcessor scoreProcessor)

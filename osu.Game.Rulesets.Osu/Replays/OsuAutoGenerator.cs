@@ -363,7 +363,7 @@ namespace osu.Game.Rulesets.Osu.Replays
                         t = ApplyModsToTimeDelta(previousFrame, nextFrame) * spinnerDirection;
                         // stable establishes the spinner angle on its first input frame;
                         // that frame does not yet contribute a rotation delta.
-                        if (!spinner.LegacyScoreV1 || previousFrame != h.StartTime)
+                        if (!spinner.LegacySpinnerScoring || previousFrame != h.StartTime)
                             angle += (float)t * radsPerMillisecond;
 
                         Vector2 pos = SPINNER_CENTRE + CirclePosition(angle, SPIN_RADIUS);

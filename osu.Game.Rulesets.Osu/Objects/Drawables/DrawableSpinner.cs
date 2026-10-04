@@ -54,12 +54,21 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         /// <summary>
         /// The amount of bonus score gained from spinning after the required number of spins, for display purposes.
         /// </summary>
-        public double CurrentBonusScore => score_per_tick * Math.Clamp(completedFullSpins.Value - HitObject.SpinsRequiredForBonus, 0, HitObject.MaximumBonusSpins);
+        public double CurrentBonusScore => HitObject.LegacySpinnerScoring
+            ? legacy_display_score_per_bonus * legacyBonusTicks
+            : score_per_tick * Math.Clamp(completedFullSpins.Value - HitObject.SpinsRequiredForBonus, 0, HitObject.MaximumBonusSpins);
 
         /// <summary>
         /// The maximum amount of bonus score which can be achieved from extra spins.
         /// </summary>
-        public double MaximumBonusScore => score_per_tick * HitObject.MaximumBonusSpins;
+        public double MaximumBonusScore => HitObject.LegacySpinnerScoring
+            ? legacy_display_score_per_bonus * HitObject.NestedHitObjects.OfType<SpinnerBonusTick>().Count()
+            : score_per_tick * HitObject.MaximumBonusSpins;
+
+        // Both stable scoring versions display 1000 per bonus, independently of the scoring award.
+        private const int legacy_display_score_per_bonus = 1000;
+
+        private int legacyBonusTicks;
 
         public IBindable<int> CompletedFullSpins => completedFullSpins;
 
@@ -131,6 +140,16 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
             isSpinning = RotationTracker.IsSpinning.GetBoundCopy();
             isSpinning.BindValueChanged(updateSpinningSample);
+        }
+
+        protected override void OnApply()
+        {
+            base.OnApply();
+
+            legacyBonusTicks = 0;
+
+            if (HitObject.LegacySpinnerScoring)
+                completedFullSpins.Value = 0;
         }
 
         protected override void OnFree()
@@ -237,12 +256,16 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             get
             {
-                if (HitObject.SpinsRequired == 0)
+                int required = HitObject.LegacySpinnerScoring ? HitObject.LegacyHalfSpinsRequired : HitObject.SpinsRequired;
+
+                if (required == 0)
                     // some spinners are so short they can't require an integer spin count.
                     // these become implicitly hit.
                     return 1;
 
-                return Result.TotalRotation / 360 / HitObject.SpinsRequired;
+                return HitObject.LegacySpinnerScoring
+                    ? Result.TotalRotation / 180 / required
+                    : Result.TotalRotation / 360 / required;
             }
         }
 
@@ -265,6 +288,18 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             ApplyResult(static (r, hitObject) =>
             {
                 var spinner = (DrawableSpinner)hitObject;
+
+                if (spinner.HitObject.LegacySpinnerScoring)
+                {
+                    int halfSpins = (int)(spinner.Result.TotalRotation / 180);
+                    int required = spinner.HitObject.LegacyHalfSpinsRequired;
+                    r.Type = required == 0 || halfSpins > required ? HitResult.Great
+                        : halfSpins >= required - 1 ? HitResult.Ok
+                        : halfSpins >= Math.Max(0, required / 4) ? HitResult.Meh
+                        : HitResult.Miss;
+                    return;
+                }
+
                 if (spinner.Progress >= 1)
                     r.Type = HitResult.Great;
                 else if (spinner.Progress > .9)
@@ -342,12 +377,22 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (ticks.Count == 0)
                 return;
 
-            if (HitObject.LegacyScoreV1)
+            if (HitObject.LegacySpinnerScoring)
             {
                 int halfSpins = (int)(Result.TotalRotation / 180);
                 foreach (var tick in ticks.Where(t => !t.Result.HasResult && ((SpinnerTick)t.HitObject).LegacyHalfSpinIndex <= halfSpins))
                     tick.TriggerResult(true);
-                completedFullSpins.Value = halfSpins / 2;
+
+                int bonusTicks = ticks.Count(t => t.HitObject is SpinnerBonusTick && t.IsHit);
+                bool bonusChanged = legacyBonusTicks != bonusTicks;
+                legacyBonusTicks = bonusTicks;
+
+                if (bonusChanged && completedFullSpins.Value == halfSpins / 2)
+                    // An odd half-turn bonus (or its rewind) also needs to refresh the skin counter.
+                    completedFullSpins.TriggerChange();
+                else
+                    completedFullSpins.Value = halfSpins / 2;
+
                 return;
             }
 

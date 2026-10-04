@@ -57,15 +57,29 @@ namespace osu.Game.Rulesets.Osu.Objects
         public int MaximumBonusSpins { get; protected set; } = 1;
 
         /// <summary>
-        /// Whether spinner ticks use stable's half-turn ScoreV1 bonus rules.
+        /// Whether spinner judgements and ticks use stable's modern ScoreV1 thresholds.
         /// </summary>
         public bool LegacyScoreV1 { get; private set; }
+
+        /// <summary>
+        /// Whether spinner judgements and ticks use stable's modern ScoreV2 thresholds.
+        /// This does not change cursor rotation tracking or replay playback.
+        /// </summary>
+        public bool LegacyScoreV2 { get; private set; }
+
+        public bool LegacySpinnerScoring => LegacyScoreV1 || LegacyScoreV2;
 
         public int LegacyHalfSpinsRequired { get; private set; }
 
         public void ApplyLegacyScoreV1(ControlPointInfo controlPointInfo, IBeatmapDifficultyInfo difficulty)
         {
             LegacyScoreV1 = true;
+            ApplyDefaults(controlPointInfo, difficulty);
+        }
+
+        public void ApplyLegacyScoreV2(ControlPointInfo controlPointInfo, IBeatmapDifficultyInfo difficulty)
+        {
+            LegacyScoreV2 = true;
             ApplyDefaults(controlPointInfo, difficulty);
         }
 
@@ -95,12 +109,13 @@ namespace osu.Game.Rulesets.Osu.Objects
         {
             base.CreateNestedHitObjects(cancellationToken);
 
-            if (LegacyScoreV1)
+            if (LegacySpinnerScoring)
             {
-                // stable awards normal spin score on whole turns, but bonus score
-                // on alternating half turns after a 1.5-turn gap.
+                // Both stable scoring versions award normal spin score on whole turns,
+                // and bonus score on alternating half turns after a 1.5-turn gap.
                 int bonusThreshold = LegacyHalfSpinsRequired + 3;
                 int halfSpins = (int)(Duration * 0.05 / Math.PI);
+
                 for (int i = 1; i <= halfSpins; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -117,6 +132,7 @@ namespace osu.Game.Rulesets.Osu.Objects
                     tick.LegacyHalfSpinIndex = i;
                     AddNested(tick);
                 }
+
                 return;
             }
 
