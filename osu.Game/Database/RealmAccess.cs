@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -990,7 +990,9 @@ namespace osu.Game.Database
                 case 21:
                     // Migrate collections from external file to inside realm.
                     // We use the "legacy" importer because that is how things were actually being saved out until now.
-                    var legacyCollectionImporter = new LegacyCollectionImporter(this);
+                    // This migration intentionally targets the realm-backed store regardless of the configured
+                    // backend, as the historical collection data this import merges into lives in realm.
+                    var legacyCollectionImporter = new LegacyCollectionImporter(new RealmBeatmapCollectionStore(this));
 
                     if (legacyCollectionImporter.GetAvailableCount(storage).GetResultSafely() > 0)
                     {

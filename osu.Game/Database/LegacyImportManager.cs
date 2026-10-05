@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -42,7 +42,7 @@ namespace osu.Game.Database
         private IDialogOverlay dialogOverlay { get; set; } = null!;
 
         [Resolved]
-        private RealmAccess realmAccess { get; set; } = null!;
+        private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
         [Resolved]
         private GameHost gameHost { get; set; } = null!;
@@ -130,7 +130,7 @@ namespace osu.Game.Database
                     return await new LegacySkinImporter(skins).GetAvailableCount(stableStorage).ConfigureAwait(false);
 
                 case StableContent.Collections:
-                    return await new LegacyCollectionImporter(realmAccess).GetAvailableCount(stableStorage).ConfigureAwait(false);
+                    return await new LegacyCollectionImporter(collectionStore).GetAvailableCount(stableStorage).ConfigureAwait(false);
 
                 case StableContent.Scores:
                     return await new LegacyScoreImporter(scores).GetAvailableCount(stableStorage).ConfigureAwait(false);
@@ -171,7 +171,7 @@ namespace osu.Game.Database
 
             if (content.HasFlag(StableContent.Collections))
             {
-                importTasks.Add(beatmapImportTask.ContinueWith(_ => new LegacyCollectionImporter(realmAccess)
+                importTasks.Add(beatmapImportTask.ContinueWith(_ => new LegacyCollectionImporter(collectionStore)
                 {
                     // Other legacy importers import via model managers which handle the posting of notifications.
                     // Collections are an exception.

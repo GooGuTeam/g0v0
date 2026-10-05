@@ -1,10 +1,9 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
@@ -19,13 +18,13 @@ namespace osu.Game.Database
     {
         public Action<Notification>? PostNotification { protected get; set; }
 
-        private readonly RealmAccess realm;
+        private readonly IBeatmapCollectionStore collectionStore;
 
         private const string database_name = "collection.db";
 
-        public LegacyCollectionImporter(RealmAccess realm)
+        public LegacyCollectionImporter(IBeatmapCollectionStore collectionStore)
         {
-            this.realm = realm;
+            this.collectionStore = collectionStore;
         }
 
         public Task<int> GetAvailableCount(Storage storage)
@@ -82,24 +81,25 @@ namespace osu.Game.Database
 
             try
             {
-                realm.Write(r =>
+                foreach (var collection in newCollections)
                 {
-                    foreach (var collection in newCollections)
-                    {
-                        var existing = r.All<BeatmapCollection>().FirstOrDefault(c => c.Name == collection.Name);
+                    var existing = collectionStore.FindByName(collection.Name);
 
-                        if (existing != null)
+                    if (existing != null)
+                    {
+                        // Merge into the existing collection, skipping hashes which are already tracked.
+                        collectionStore.Update(existing.ID, stored =>
                         {
                             foreach (string newBeatmap in collection.BeatmapMD5Hashes)
                             {
-                                if (!existing.BeatmapMD5Hashes.Contains(newBeatmap))
-                                    existing.BeatmapMD5Hashes.Add(newBeatmap);
+                                if (!stored.BeatmapMD5Hashes.Contains(newBeatmap))
+                                    stored.BeatmapMD5Hashes.Add(newBeatmap);
                             }
-                        }
-                        else
-                            r.Add(collection);
+                        });
                     }
-                });
+                    else
+                        collectionStore.Add(collection);
+                }
 
                 tcs.SetResult(true);
             }
