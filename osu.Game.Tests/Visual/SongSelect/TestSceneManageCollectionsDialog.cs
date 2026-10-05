@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using NUnit.Framework;
@@ -75,12 +75,6 @@ namespace osu.Game.Tests.Visual.SongSelect
         }
 
         [Test]
-        public void TestLastItemIsPlaceholder()
-        {
-            AddAssert("last item is placeholder", () => !dialog.ChildrenOfType<DrawableCollectionListItem>().Last().Model.IsManaged);
-        }
-
-        [Test]
         public void TestAddCollectionExternal()
         {
             AddStep("add collection", () => Realm.Write(r => r.Add(new BeatmapCollection(name: "First collection"))));
@@ -124,8 +118,6 @@ namespace osu.Game.Tests.Visual.SongSelect
             });
 
             assertCollectionCount(1);
-
-            AddAssert("last item is placeholder", () => !dialog.ChildrenOfType<DrawableCollectionListItem>().Last().Model.IsManaged);
         }
 
         [Test]
