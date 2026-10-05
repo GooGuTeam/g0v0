@@ -17,6 +17,7 @@ namespace osu.Game.Database
         private const string key_bindings_database = @"key-bindings.db";
         private const string mod_presets_database = @"mod-presets.db";
         private const string ruleset_settings_database = @"ruleset-settings.db";
+        private const string beatmap_collections_database = @"beatmap-collections.db";
 
         private readonly RealmAccess realm;
         private readonly Storage? storage;
@@ -26,6 +27,7 @@ namespace osu.Game.Database
         private SqliteKeyBindingStore? sqliteKeyBindingStore;
         private SqliteModPresetStore? sqliteModPresetStore;
         private SqliteRulesetSettingStore? sqliteRulesetSettingStore;
+        private SqliteBeatmapCollectionStore? sqliteBeatmapCollectionStore;
 
         public DataStoreSelector(RealmAccess realm, Storage? storage, DataStoreBackend backend, RulesetStore? rulesets = null)
         {
@@ -73,6 +75,17 @@ namespace osu.Game.Database
             _ => throw new ArgumentOutOfRangeException(nameof(backend), backend, null)
         };
 
+        /// <summary>
+        /// Resolve the beatmap collection store for the selected backend.
+        /// The returned instance is owned by this selector and must not be disposed by callers.
+        /// </summary>
+        public IBeatmapCollectionStore GetBeatmapCollectionStore() => backend switch
+        {
+            DataStoreBackend.Realm => new RealmBeatmapCollectionStore(realm),
+            DataStoreBackend.SQLite => sqliteBeatmapCollectionStore ??= new SqliteBeatmapCollectionStore(getDatabasePath(beatmap_collections_database)),
+            _ => throw new ArgumentOutOfRangeException(nameof(backend), backend, null)
+        };
+
         private RulesetStore getRulesetStore()
         {
             if (rulesets == null)
@@ -94,6 +107,7 @@ namespace osu.Game.Database
             sqliteKeyBindingStore?.Dispose();
             sqliteModPresetStore?.Dispose();
             sqliteRulesetSettingStore?.Dispose();
+            sqliteBeatmapCollectionStore?.Dispose();
         }
     }
 }

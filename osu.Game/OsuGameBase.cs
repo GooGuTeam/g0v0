@@ -249,6 +249,7 @@ namespace osu.Game
         private MetadataClient metadataClient;
 
         private RealmAccess realm;
+        private DataStoreSelector dataStoreSelector;
 
         protected SafeAreaContainer SafeAreaContainer { get; private set; }
 
@@ -381,7 +382,7 @@ namespace osu.Game
             base.Content.Add(beatmapCache);
 
             // must be created before the ruleset config cache and any drawables which resolve stores below.
-            var dataStoreSelector = new DataStoreSelector(realm, Storage, LocalConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend).Value, RulesetStore);
+            dataStoreSelector = new DataStoreSelector(realm, Storage, LocalConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend).Value, RulesetStore);
 
             dependencies.CacheAs<IRulesetConfigCache>(rulesetConfigCache = new RulesetConfigCache(realm, RulesetStore, dataStoreSelector.GetRulesetSettingStore()));
 
@@ -444,6 +445,7 @@ namespace osu.Game
             dependencies.Cache(dataStoreSelector);
             dependencies.CacheAs<IKeyBindingStore>(KeyBindingStore.BackingStore);
             dependencies.CacheAs<IModPresetStore>(dataStoreSelector.GetModPresetStore());
+            dependencies.CacheAs<IBeatmapCollectionStore>(dataStoreSelector.GetBeatmapCollectionStore());
 
             base.Content.Add(SafeAreaContainer = new SafeAreaContainer
             {
@@ -826,6 +828,8 @@ namespace osu.Game
             beatmapUpdater?.Dispose();
 
             onlineAssetStore?.Dispose();
+
+            dataStoreSelector?.Dispose();
 
             realm?.Dispose();
 
