@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using osu.Framework.Allocation;
@@ -19,7 +19,7 @@ namespace osu.Game.Screens.Ranking
         private readonly BeatmapInfo beatmapInfo;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
         [Resolved]
         private ManageCollectionsDialog? manageCollectionsDialog { get; set; }
@@ -55,10 +55,9 @@ namespace osu.Game.Screens.Ranking
         {
             get
             {
-                var collectionItems = realm.Realm.All<BeatmapCollection>()
-                                           .OrderBy(c => c.Name)
-                                           .AsEnumerable()
-                                           .Select(c => new CollectionToggleMenuItem(c.ToLive(realm), beatmapInfo)).Cast<OsuMenuItem>().ToList();
+                var collectionItems = collectionStore.GetAllDetached()
+                                                     .OrderBy(c => c.Name)
+                                                     .Select(c => new CollectionToggleMenuItem(collectionStore, c.ToLiveUnmanaged(), beatmapInfo)).Cast<OsuMenuItem>().ToList();
 
                 collectionItems.Add(new OsuMenuItem(CommonStrings.Manage, MenuItemType.Standard, () => manageCollectionsDialog?.Show()));
 

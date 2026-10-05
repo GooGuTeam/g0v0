@@ -1,7 +1,8 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,7 +23,6 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osuTK;
-using Realms;
 
 namespace osu.Game.Screens.Select
 {
@@ -43,11 +43,20 @@ namespace osu.Game.Screens.Select
         private ManageCollectionsDialog? manageCollectionsDialog { get; set; }
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
-        private IDisposable? realmSubscription;
+        private IDisposable? storeSubscription;
 
         private readonly CollectionFilterMenuItem allBeatmapsItem = new AllBeatmapsCollectionFilterMenuItem();
+
+        /// <summary>
+        /// The id of the collection the user last actually selected, or null for "all beatmaps".
+        /// This is the authoritative selection: the framework clears <see cref="Dropdown{T}.Current"/>
+        /// to the first menu item whenever the menu is opened, so neither it nor the persisted filter
+        /// (which is written back from selection changes) can be trusted to reflect the selection
+        /// while the menu is open. Written back to the persisted filter for cross-session restore.
+        /// </summary>
+        private Guid? selectedCollectionId;
 
         public CollectionDropdown()
             : base(CollectionsStrings.Collection)
@@ -62,66 +71,60 @@ namespace osu.Game.Screens.Select
         private void load(OsuConfigManager configManager)
         {
             configManager.BindWith(OsuSetting.SongSelectCollectionFilter, configCollectionFilter);
+
+            if (Guid.TryParse(configCollectionFilter.Value, out var persistedId))
+                selectedCollectionId = persistedId;
         }
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
-            realmSubscription = realm.RegisterForNotifications(r => r.All<BeatmapCollection>().OrderBy(c => c.Name), collectionsChanged);
+            storeSubscription = collectionStore.Subscribe(collectionsChanged);
 
             Current.BindValueChanged(selectionChanged);
         }
 
-        private void collectionsChanged(IRealmCollection<BeatmapCollection> collections, ChangeSet? changes)
+        private void collectionsChanged()
         {
-            if (changes == null)
-            {
-                filters.Clear();
-                filters.Add(allBeatmapsItem);
-                filters.AddRange(collections.Select(c => new CollectionFilterMenuItem(c.ToLive(realm))));
-                if (ShowManageCollectionsItem)
-                    filters.Add(new ManageCollectionsFilterMenuItem());
+            // The store callback may run off the update thread and only signals that the data
+            // changed, so fetch a detached snapshot (safe on any thread) and rebuild on the
+            // update thread.
+            var collections = collectionStore.GetAllDetached().OrderBy(c => c.Name).ToList();
 
-                Current.Value = filters.SingleOrDefault(item => item.Collection?.PerformRead(c => c.ID.ToString()) == configCollectionFilter.Value) ?? allBeatmapsItem;
+            Schedule(() => rebuild(collections));
+        }
+
+        private void rebuild(List<BeatmapCollection> collections)
+        {
+            // The store contract is an invalidation hint only, so a full snapshot replace is used
+            // rather than incremental updates.
+            filters.Clear();
+            filters.Add(allBeatmapsItem);
+            filters.AddRange(collections.Select(c => new CollectionFilterMenuItem(c.ToLiveUnmanaged())));
+            if (ShowManageCollectionsItem)
+                filters.Add(new ManageCollectionsFilterMenuItem());
+
+            // Restore the selection from the authoritative id (the framework's Current is not
+            // reliable while the menu is open). Re-created items compare equal to the previous
+            // selection (equality is by collection id), so assigning one may not raise a change
+            // notification and the dropdown header can display stale text. Force a header refresh
+            // by clearing and re-selecting when a collection is selected.
+            var restored = filters.SingleOrDefault(item => item.Collection != null && item.Collection.ID == selectedCollectionId) ?? allBeatmapsItem;
+
+            if (restored.Collection != null)
+            {
+                Current.Value = allBeatmapsItem;
+                Schedule(() =>
+                {
+                    // Current may have changed before the scheduled call is run.
+                    if (Current.Value == allBeatmapsItem)
+                        Current.Value = restored;
+                });
             }
             else
             {
-                foreach (int i in changes.DeletedIndices.OrderDescending())
-                    filters.RemoveAt(i + 1);
-
-                foreach (int i in changes.InsertedIndices)
-                    filters.Insert(i + 1, new CollectionFilterMenuItem(collections[i].ToLive(realm)));
-
-                var selectedItem = SelectedItem?.Value;
-
-                foreach (int i in changes.NewModifiedIndices)
-                {
-                    var updatedItem = collections[i];
-
-                    // This is responsible for updating the state of the +/- button and the collection's name.
-                    // TODO: we can probably make the menu items update with changes to avoid this.
-                    filters.RemoveAt(i + 1);
-                    filters.Insert(i + 1, new CollectionFilterMenuItem(updatedItem.ToLive(realm)));
-
-                    if (updatedItem.ID == selectedItem?.Collection?.ID)
-                    {
-                        // This current update and schedule is required to work around dropdown headers not updating text even when the selected item
-                        // changes. It's not great but honestly the whole dropdown menu structure isn't great. This needs to be fixed, but I'll issue
-                        // a warning that it's going to be a frustrating journey.
-                        Current.Value = allBeatmapsItem;
-                        Schedule(() =>
-                        {
-                            // current may have changed before the scheduled call is run.
-                            if (Current.Value != allBeatmapsItem)
-                                return;
-
-                            Current.Value = filters.SingleOrDefault(f => f.Collection?.ID == selectedItem.Collection?.ID) ?? filters[0];
-                        });
-
-                        break;
-                    }
-                }
+                Current.Value = restored;
             }
         }
 
@@ -141,11 +144,25 @@ namespace osu.Game.Screens.Select
                     break;
 
                 case CollectionFilterMenuItem collectionMenuItem when collectionMenuItem.Collection != null:
-                    configCollectionFilter.Value = collectionMenuItem.Collection.PerformRead(c => c.ID.ToString());
+                    // Ignore framework-driven resets: opening the menu clears the selection to the
+                    // first item, which is not a user choice. Only record selections made while the
+                    // menu is closed (an actual user pick closes the menu first).
+                    if (Menu.State != MenuState.Open)
+                    {
+                        selectedCollectionId = collectionMenuItem.Collection.ID;
+                        configCollectionFilter.Value = collectionMenuItem.Collection.ID.ToString();
+                    }
+
                     break;
 
                 case AllBeatmapsCollectionFilterMenuItem:
-                    configCollectionFilter.Value = string.Empty;
+                    // See above: don't let the menu-open reset clear the authoritative selection.
+                    if (Menu.State != MenuState.Open)
+                    {
+                        selectedCollectionId = null;
+                        configCollectionFilter.Value = string.Empty;
+                    }
+
                     break;
             }
         }
@@ -153,7 +170,7 @@ namespace osu.Game.Screens.Select
         protected override void Dispose(bool isDisposing)
         {
             base.Dispose(isDisposing);
-            realmSubscription?.Dispose();
+            storeSubscription?.Dispose();
         }
 
         protected override LocalisableString GenerateItemText(CollectionFilterMenuItem item) => item.CollectionName;
@@ -254,11 +271,14 @@ namespace osu.Game.Screens.Select
                     addOrRemoveButton.Alpha = IsHovered || IsPreSelected || beatmapInCollection ? 1 : 0;
             }
 
+            [Resolved]
+            private IBeatmapCollectionStore collectionStore { get; set; } = null!;
+
             private void addOrRemove()
             {
                 Debug.Assert(collection != null);
 
-                Task.Run(() => collection.PerformWrite(c =>
+                Task.Run(() => collectionStore.Update(collection.ID, c =>
                 {
                     if (!c.BeatmapMD5Hashes.Remove(beatmap.Value.BeatmapInfo.MD5Hash))
                         c.BeatmapMD5Hashes.Add(beatmap.Value.BeatmapInfo.MD5Hash);

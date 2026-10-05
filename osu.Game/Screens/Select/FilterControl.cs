@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -15,7 +15,6 @@ using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Framework.Threading;
 using osu.Game.Beatmaps;
-using osu.Game.Collections;
 using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Graphics.Containers;
@@ -67,7 +66,7 @@ namespace osu.Game.Screens.Select
         private OsuConfigManager config { get; set; } = null!;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
         private IBindable<APIUser> localUser = null!;
         private readonly IBindableList<int> localUserFavouriteBeatmapSets = new BindableList<int>();
@@ -264,11 +263,7 @@ namespace osu.Game.Screens.Select
             sortDropdown.Current.BindValueChanged(_ => updateCriteria());
             groupDropdown.Current.BindValueChanged(_ => updateCriteria());
             configCollectionFilter.BindValueChanged(_ => updateCriteria());
-            collectionsSubscription = realm.RegisterForNotifications(r => r.All<BeatmapCollection>(), (_, changeSet) =>
-            {
-                if (changeSet != null && groupDropdown.Current.Value.Value == GroupMode.Collections)
-                    updateCriteria();
-            });
+            collectionsSubscription = collectionStore.Subscribe(() => Schedule(() => updateCriteria()));
 
             localUser.BindValueChanged(_ => updateCriteria());
             localUserFavouriteBeatmapSets.BindCollectionChanged((_, _) => updateCriteria());
@@ -294,7 +289,7 @@ namespace osu.Game.Screens.Select
             IEnumerable<string>? collectionBeatmapMD5Hashes = null;
 
             if (Guid.TryParse(configCollectionFilter.Value, out var collectionId))
-                collectionBeatmapMD5Hashes = realm.Run(r => r.Find<BeatmapCollection>(collectionId)?.BeatmapMD5Hashes.ToImmutableHashSet());
+                collectionBeatmapMD5Hashes = collectionStore.GetDetached(collectionId)?.BeatmapMD5Hashes.ToImmutableHashSet();
 
             var criteria = new FilterCriteria
             {

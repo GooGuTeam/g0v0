@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -12,13 +12,11 @@ using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.UserInterface;
 using osu.Game.Beatmaps;
-using osu.Game.Collections;
 using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
 using osuTK;
-using Realms;
 
 namespace osu.Game.Screens.Ranking
 {
@@ -28,7 +26,7 @@ namespace osu.Game.Screens.Ranking
         private readonly Bindable<bool> isInAnyCollection;
 
         [Resolved]
-        private RealmAccess realmAccess { get; set; } = null!;
+        private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
         private IDisposable? collectionSubscription;
 
@@ -56,7 +54,7 @@ namespace osu.Game.Screens.Ranking
         {
             base.LoadComplete();
 
-            collectionSubscription = realmAccess.RegisterForNotifications(r => r.All<BeatmapCollection>(), collectionsChanged);
+            collectionSubscription = collectionStore.Subscribe(collectionsChanged);
 
             isInAnyCollection.BindValueChanged(_ => updateState(), true);
         }
@@ -68,9 +66,9 @@ namespace osu.Game.Screens.Ranking
             collectionSubscription?.Dispose();
         }
 
-        private void collectionsChanged(IRealmCollection<BeatmapCollection> sender, ChangeSet? changes)
+        private void collectionsChanged()
         {
-            isInAnyCollection.Value = sender.AsEnumerable().Any(c => c.BeatmapMD5Hashes.Contains(beatmapInfo.MD5Hash));
+            Schedule(() => isInAnyCollection.Value = collectionStore.GetAllDetached().Any(c => c.BeatmapMD5Hashes.Contains(beatmapInfo.MD5Hash)));
         }
 
         private void updateState()

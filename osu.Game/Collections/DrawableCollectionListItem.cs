@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -40,16 +40,19 @@ namespace osu.Game.Collections
         /// Creates a new <see cref="DrawableCollectionListItem"/>.
         /// </summary>
         /// <param name="item">The <see cref="BeatmapCollection"/>.</param>
-        /// <param name="isCreated">Whether <paramref name="item"/> currently exists inside realm.</param>
+        /// <param name="isCreated">Whether <paramref name="item"/> currently exists in the backing store
+        /// (false marks the placeholder row used to create a new collection).</param>
         public DrawableCollectionListItem(Live<BeatmapCollection> item, bool isCreated)
             : base(item)
         {
+            this.isCreated = isCreated;
+
             // For now we don't support rearranging and always use alphabetical sort.
             // Change this to:
             //
-            // ShowDragHandle.Value = item.IsManaged;
+            // ShowDragHandle.Value = isCreated;
             //
-            // if we want to support user sorting (but changes will need to be made to realm to persist).
+            // if we want to support user sorting (but changes will need to be made to the store to persist).
             ShowDragHandle.Value = false;
 
             Masking = true;
@@ -60,20 +63,27 @@ namespace osu.Game.Collections
             CornerExponent = 2.5f;
         }
 
-        protected override Drawable CreateContent() => content = new ItemContent(Model);
+        private readonly bool isCreated;
+
+        protected override Drawable CreateContent() => content = new ItemContent(Model, isCreated);
 
         /// <summary>
         /// The main content of the <see cref="DrawableCollectionListItem"/>.
         /// </summary>
         private partial class ItemContent : CompositeDrawable
         {
+            [Resolved]
+            private IBeatmapCollectionStore collectionStore { get; set; } = null!;
+
             private readonly Live<BeatmapCollection> collection;
+            private readonly bool isCreated;
 
             public ItemTextBox TextBox { get; private set; } = null!;
 
-            public ItemContent(Live<BeatmapCollection> collection)
+            public ItemContent(Live<BeatmapCollection> collection, bool isCreated)
             {
                 this.collection = collection;
+                this.isCreated = isCreated;
 
                 RelativeSizeAxes = Axes.X;
                 Height = item_height;
@@ -84,7 +94,7 @@ namespace osu.Game.Collections
             {
                 InternalChildren = new[]
                 {
-                    collection.IsManaged
+                    isCreated
                         ? new DeleteButton(collection)
                         {
                             Anchor = Anchor.CentreRight,
@@ -95,10 +105,10 @@ namespace osu.Game.Collections
                     new Container
                     {
                         RelativeSizeAxes = Axes.Both,
-                        Padding = new MarginPadding { Right = collection.IsManaged ? button_width : 0 },
+                        Padding = new MarginPadding { Right = isCreated ? button_width : 0 },
                         Children = new Drawable[]
                         {
-                            TextBox = new ItemTextBox(collection)
+                            TextBox = new ItemTextBox(collection, isCreated)
                             {
                                 RelativeSizeAxes = Axes.X,
                                 Height = item_height,
@@ -120,8 +130,8 @@ namespace osu.Game.Collections
 
             private void onCommit(TextBox sender, bool newText)
             {
-                if (collection.IsManaged && collection.Value.Name != TextBox.Current.Value)
-                    collection.PerformWrite(c => c.Name = TextBox.Current.Value);
+                if (isCreated && collection.Value.Name != TextBox.Current.Value)
+                    collectionStore.Update(collection.ID, c => c.Name = TextBox.Current.Value);
             }
         }
 
@@ -132,12 +142,14 @@ namespace osu.Game.Collections
             private const float count_text_size = 12;
 
             private readonly Live<BeatmapCollection> collection;
+            private readonly bool isCreated;
 
             private OsuSpriteText countText = null!;
 
-            public ItemTextBox(Live<BeatmapCollection> collection)
+            public ItemTextBox(Live<BeatmapCollection> collection, bool isCreated)
             {
                 this.collection = collection;
+                this.isCreated = isCreated;
 
                 CornerRadius = 10;
                 CornerExponent = 2.5f;
@@ -149,7 +161,7 @@ namespace osu.Game.Collections
                 BackgroundUnfocused = colours.GreySeaFoamDarker.Darken(0.5f);
                 BackgroundFocused = colours.GreySeaFoam;
 
-                if (collection.IsManaged)
+                if (isCreated)
                 {
                     TextContainer.Height *= (Height - count_text_size) / Height;
                     TextContainer.Margin = new MarginPadding { Bottom = count_text_size };
@@ -164,11 +176,9 @@ namespace osu.Game.Collections
                         Colour = colours.Yellow
                     });
 
-                    // interestingly, it is not required to subscribe to change notifications on this collection at all for this to work correctly.
-                    // the reasoning for this is that `DrawableCollectionList` already takes out a subscription on the set of all `BeatmapCollection`s -
-                    // but that subscription does not only cover *changes to the set of collections* (i.e. addition/removal/rearrangement of collections),
-                    // but also covers *changes to the properties of collections*, which `BeatmapMD5Hashes` is one.
-                    // when a collection item changes due to `BeatmapMD5Hashes` changing, the list item is deleted and re-inserted, thus guaranteeing this to work correctly.
+                    // it is not required to subscribe to change notifications on this collection for this to stay correct:
+                    // `DrawableCollectionList` takes out a subscription on the store and rebuilds list items on any
+                    // change (including `BeatmapMD5Hashes`), so this count text is re-created whenever the value changes.
                     countText.Text = CommonStrings.ItemsCount(collection.PerformRead(c => c.BeatmapMD5Hashes.Count));
                 }
                 else
@@ -184,6 +194,9 @@ namespace osu.Game.Collections
 
             [Resolved]
             private IDialogOverlay? dialogOverlay { get; set; }
+
+            [Resolved]
+            private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
             private readonly Live<BeatmapCollection> collection;
 
@@ -252,7 +265,7 @@ namespace osu.Game.Collections
                 return base.OnClick(e);
             }
 
-            private void deleteCollection() => collection.PerformWrite(c => c.Realm!.Remove(c));
+            private void deleteCollection() => collectionStore.Delete(collection.ID);
         }
 
         public IEnumerable<LocalisableString> FilterTerms => Model.PerformRead(m => m.IsValid ? new[] { (LocalisableString)m.Name } : []);

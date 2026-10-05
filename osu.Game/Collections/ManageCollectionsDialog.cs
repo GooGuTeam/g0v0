@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -197,7 +197,7 @@ namespace osu.Game.Collections
         private partial class NewCollectionEntryItem : DrawableCollectionListItem
         {
             [Resolved]
-            private RealmAccess realm { get; set; } = null!;
+            private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
             public NewCollectionEntryItem()
                 : base(new BeatmapCollection().ToLiveUnmanaged(), false)
@@ -213,7 +213,7 @@ namespace osu.Game.Collections
                     if (string.IsNullOrEmpty(TextBox.Text))
                         return;
 
-                    realm.Write(r => r.Add(new BeatmapCollection(TextBox.Text)));
+                    collectionStore.Add(new BeatmapCollection(TextBox.Text));
                     TextBox.Text = string.Empty;
                 };
             }

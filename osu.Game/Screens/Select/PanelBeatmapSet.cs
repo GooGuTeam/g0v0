@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -220,7 +220,7 @@ namespace osu.Game.Screens.Select
         }
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
         [Resolved]
         private ManageCollectionsDialog? manageCollectionsDialog { get; set; }
@@ -264,11 +264,10 @@ namespace osu.Game.Screens.Select
                     items.Add(new OsuMenuItemSpacer());
                 }
 
-                var collectionItems = realm.Realm.All<BeatmapCollection>()
-                                           .OrderBy(c => c.Name)
-                                           .AsEnumerable()
-                                           .Select(createCollectionMenuItem)
-                                           .ToList();
+                var collectionItems = collectionStore.GetAllDetached()
+                                                     .OrderBy(c => c.Name)
+                                                     .Select(createCollectionMenuItem)
+                                                     .ToList();
 
                 if (manageCollectionsDialog != null)
                     collectionItems.Add(new OsuMenuItem(CommonStrings.Manage, MenuItemType.Standard, manageCollectionsDialog.Show));
@@ -298,11 +297,9 @@ namespace osu.Game.Screens.Select
             else
                 state = TernaryState.False;
 
-            var liveCollection = collection.ToLive(realm);
-
             return new TernaryStateToggleMenuItem(collection.Name, MenuItemType.Standard, s =>
             {
-                Task.Run(() => liveCollection.PerformWrite(c =>
+                Task.Run(() => collectionStore.Update(collection.ID, c =>
                 {
                     foreach (var b in beatmapSet.Beatmaps)
                     {

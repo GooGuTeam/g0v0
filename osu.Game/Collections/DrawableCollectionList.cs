@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,6 @@ using osu.Framework.Graphics.Containers;
 using osu.Game.Database;
 using osu.Game.Graphics.Containers;
 using osuTK;
-using Realms;
 
 namespace osu.Game.Collections
 {
@@ -29,11 +28,11 @@ namespace osu.Game.Collections
         protected override ScrollContainer<Drawable> CreateScrollContainer() => scroll = new Scroll();
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
         private Scroll scroll = null!;
 
-        private IDisposable? realmSubscription;
+        private IDisposable? storeSubscription;
 
         private Flow flow = null!;
 
@@ -54,7 +53,7 @@ namespace osu.Game.Collections
         {
             base.LoadComplete();
 
-            realmSubscription = realm.RegisterForNotifications(r => r.All<BeatmapCollection>().OrderBy(c => c.Name), collectionsChanged);
+            storeSubscription = collectionStore.Subscribe(collectionsChanged);
         }
 
         /// <summary>
@@ -79,30 +78,27 @@ namespace osu.Game.Collections
             }
         }
 
-        private void collectionsChanged(IRealmCollection<BeatmapCollection> collections, ChangeSet? changes)
+        private void collectionsChanged()
         {
-            if (changes == null)
+            // The store callback may run off the update thread and only signals that the data
+            // changed, so fetch a detached snapshot (safe on any thread) and rebuild on the
+            // update thread.
+            var collections = collectionStore.GetAllDetached().OrderBy(c => c.Name).ToList();
+
+            Schedule(() =>
             {
-                Items.AddRange(collections.AsEnumerable().Select(c => c.ToLive(realm)));
-                return;
-            }
+                // The store contract is an invalidation hint only, so a full snapshot replace is
+                // used rather than incremental updates. Preserve scroll-to-created behaviour by
+                // detecting a single newly added collection.
+                var previousIds = Items.Select(i => i.ID).ToHashSet();
+                var added = collections.Where(c => !previousIds.Contains(c.ID)).ToList();
 
-            foreach (int i in changes.DeletedIndices.OrderDescending())
-                Items.RemoveAt(i);
+                if (added.Count == 1)
+                    lastCreated = added[0].ID;
 
-            foreach (int i in changes.InsertedIndices)
-                Items.Insert(i, collections[i].ToLive(realm));
-
-            if (changes.InsertedIndices.Length == 1)
-                lastCreated = collections[changes.InsertedIndices[0]].ID;
-
-            foreach (int i in changes.NewModifiedIndices)
-            {
-                var updatedItem = collections[i];
-
-                Items.RemoveAt(i);
-                Items.Insert(i, updatedItem.ToLive(realm));
-            }
+                Items.Clear();
+                Items.AddRange(collections.Select(c => c.ToLiveUnmanaged()));
+            });
         }
 
         protected override OsuRearrangeableListItem<Live<BeatmapCollection>> CreateOsuDrawable(Live<BeatmapCollection> item) =>
@@ -111,7 +107,7 @@ namespace osu.Game.Collections
         protected override void Dispose(bool isDisposing)
         {
             base.Dispose(isDisposing);
-            realmSubscription?.Dispose();
+            storeSubscription?.Dispose();
         }
 
         /// <summary>

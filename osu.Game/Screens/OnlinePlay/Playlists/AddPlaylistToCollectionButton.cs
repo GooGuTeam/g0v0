@@ -1,9 +1,10 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
@@ -25,11 +26,14 @@ namespace osu.Game.Screens.OnlinePlay.Playlists
         private IDisposable? beatmapSubscription;
         private IDisposable? collectionSubscription;
 
-        private Live<BeatmapCollection>? collection;
+        private BeatmapCollection? collection;
         private HashSet<string> localBeatmapHashes = new HashSet<string>();
 
         [Resolved]
         private RealmAccess realm { get; set; } = null!;
+
+        [Resolved]
+        private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
         [Resolved(canBeNull: true)]
         private INotificationOverlay? notifications { get; set; }
@@ -47,38 +51,57 @@ namespace osu.Game.Screens.OnlinePlay.Playlists
                 if (room.Playlist.Count == 0)
                     return;
 
-                int countBefore = 0;
-                int countAfter = 0;
-
                 Text = "Updating collection...";
                 Enabled.Value = false;
 
-                realm.WriteAsync(r =>
+                Task.Run(() =>
                 {
-                    var beatmaps = getBeatmapsForPlaylist(r).ToArray();
-                    var c = getCollectionsForPlaylist(r).FirstOrDefault()
-                            ?? r.Add(new BeatmapCollection(room.Name));
+                    string[] hashes = realm.Run(r => getBeatmapsForPlaylist(r).Select(b => b.MD5Hash).ToArray());
 
-                    countBefore = c.BeatmapMD5Hashes.Count;
+                    int countBefore;
+                    int countAfter;
 
-                    foreach (var item in beatmaps)
+                    BeatmapCollection? existing = collectionStore.FindByName(room.Name);
+
+                    if (existing == null)
                     {
-                        if (!c.BeatmapMD5Hashes.Contains(item.MD5Hash))
-                            c.BeatmapMD5Hashes.Add(item.MD5Hash);
+                        var created = new BeatmapCollection(room.Name, hashes.Distinct().ToList());
+                        countBefore = 0;
+                        countAfter = created.BeatmapMD5Hashes.Count;
+                        collectionStore.Add(created);
+                    }
+                    else
+                    {
+                        countBefore = existing.BeatmapMD5Hashes.Count;
+
+                        int after = 0;
+
+                        collectionStore.Update(existing.ID, c =>
+                        {
+                            foreach (string hash in hashes)
+                            {
+                                if (!c.BeatmapMD5Hashes.Contains(hash))
+                                    c.BeatmapMD5Hashes.Add(hash);
+                            }
+
+                            after = c.BeatmapMD5Hashes.Count;
+                        });
+
+                        countAfter = after;
                     }
 
-                    countAfter = c.BeatmapMD5Hashes.Count;
-                }).ContinueWith(_ => Schedule(() =>
-                {
-                    LocalisableString message;
+                    Schedule(() =>
+                    {
+                        LocalisableString message;
 
-                    if (countBefore == 0)
-                        message = NotificationsStrings.CollectionCreated(room.Name, countAfter);
-                    else
-                        message = NotificationsStrings.CollectionBeatmapsAdded(room.Name, countAfter - countBefore);
+                        if (countBefore == 0)
+                            message = NotificationsStrings.CollectionCreated(room.Name, countAfter);
+                        else
+                            message = NotificationsStrings.CollectionBeatmapsAdded(room.Name, countAfter - countBefore);
 
-                    notifications?.Post(new SimpleNotification { Text = message });
-                }));
+                        notifications?.Post(new SimpleNotification { Text = message });
+                    });
+                });
             };
         }
 
@@ -98,9 +121,9 @@ namespace osu.Game.Screens.OnlinePlay.Playlists
                 Schedule(updateButtonState);
             });
 
-            collectionSubscription = realm.RegisterForNotifications(getCollectionsForPlaylist, (sender, _) =>
+            collectionSubscription = collectionStore.Subscribe(() =>
             {
-                collection = sender.FirstOrDefault()?.ToLive(realm);
+                collection = collectionStore.FindByName(room.Name);
                 Schedule(updateButtonState);
             });
         }
@@ -124,21 +147,16 @@ namespace osu.Game.Screens.OnlinePlay.Playlists
             if (collection == null)
                 return localBeatmapHashes.Count;
 
-            return collection.PerformRead(c =>
+            int count = localBeatmapHashes.Count;
+
+            foreach (string hash in localBeatmapHashes)
             {
-                int count = localBeatmapHashes.Count;
+                if (collection.BeatmapMD5Hashes.Contains(hash))
+                    count--;
+            }
 
-                foreach (string hash in localBeatmapHashes)
-                {
-                    if (c.BeatmapMD5Hashes.Contains(hash))
-                        count--;
-                }
-
-                return count;
-            });
+            return count;
         }
-
-        private IQueryable<BeatmapCollection> getCollectionsForPlaylist(Realm r) => r.All<BeatmapCollection>().Where(c => c.Name == room.Name);
 
         private IQueryable<BeatmapInfo> getBeatmapsForPlaylist(Realm r)
         {
@@ -153,7 +171,7 @@ namespace osu.Game.Screens.OnlinePlay.Playlists
                     return false;
 
                 return room.Playlist.DistinctBy(i => i.Beatmap.OnlineID).Count() ==
-                       collection.PerformRead(c => c.BeatmapMD5Hashes.Count);
+                       collection.BeatmapMD5Hashes.Count;
             }
         }
 

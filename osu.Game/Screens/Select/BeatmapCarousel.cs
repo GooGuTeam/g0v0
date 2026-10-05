@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -826,17 +826,16 @@ namespace osu.Game.Screens.Select
         private RealmAccess realm { get; set; } = null!;
 
         [Resolved]
+        private IBeatmapCollectionStore collectionStore { get; set; } = null!;
+
+        [Resolved]
         private IAPIProvider api { get; set; } = null!;
 
         /// <remarks>
-        /// FOOTGUN WARNING: this being sorted on the realm side before detaching is IMPORTANT.
-        /// realm supports sorting as an internal operation, and realm's implementation of string sorting does NOT match dotnet's
-        /// with respect to treatment of punctuation characters like <c>-</c> or <c>_</c>, among others.
-        /// All other places that show lists of collections also use the realm-side sorting implementation,
-        /// because they use the sorting operation inside subscription queries for efficient drawable management,
-        /// so this usage kind of has to follow suit.
+        /// Collections are already detached by the backend-neutral store; sorting is performed
+        /// here so all backends produce the same ordering.
         /// </remarks>
-        protected virtual List<BeatmapCollection> GetAllCollections() => realm.Run(r => r.All<BeatmapCollection>().OrderBy(c => c.Name).AsEnumerable().Detach());
+        protected virtual List<BeatmapCollection> GetAllCollections() => collectionStore.GetAllDetached().OrderBy(c => c.Name).ToList();
 
         protected virtual Dictionary<Guid, ScoreRank> GetBeatmapInfoGuidToTopRankMapping(FilterCriteria criteria) => realm.Run(r =>
         {

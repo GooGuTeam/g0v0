@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Threading.Tasks;
 using osu.Game.Beatmaps;
@@ -10,10 +10,10 @@ namespace osu.Game.Collections
 {
     public class CollectionToggleMenuItem : ToggleMenuItem
     {
-        public CollectionToggleMenuItem(Live<BeatmapCollection> collection, IBeatmapInfo beatmap)
+        public CollectionToggleMenuItem(IBeatmapCollectionStore collectionStore, Live<BeatmapCollection> collection, IBeatmapInfo beatmap)
             : base(collection.PerformRead(c => c.Name), MenuItemType.Standard, state => Task.Run(() =>
             {
-                collection.PerformWrite(c =>
+                collectionStore.Update(collection.ID, c =>
                 {
                     if (state)
                         c.BeatmapMD5Hashes.Add(beatmap.MD5Hash);
