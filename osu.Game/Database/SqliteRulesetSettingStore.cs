@@ -1,4 +1,4 @@
-﻿// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
@@ -51,7 +51,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
@@ -69,7 +69,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
@@ -93,7 +93,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
@@ -111,7 +111,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
@@ -141,7 +141,7 @@ namespace osu.Game.Database
             command.Parameters.AddWithValue("$key", key);
         }
 
-        private void ThrowIfDisposed()
+        private void throwIfDisposed()
         {
             ObjectDisposedException.ThrowIf(disposed, this);
         }

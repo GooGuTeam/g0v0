@@ -54,7 +54,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
@@ -77,7 +77,7 @@ namespace osu.Game.Database
 
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
@@ -97,7 +97,7 @@ namespace osu.Game.Database
 
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 RealmKeyBinding? item = find(id);
                 if (item == null)
@@ -128,7 +128,7 @@ namespace osu.Game.Database
 
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = "DELETE FROM key_bindings WHERE id = $id;";
@@ -149,7 +149,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
                 subscribers.Add(onChanged);
             }
 
@@ -221,7 +221,7 @@ namespace osu.Game.Database
                 subscribers.Remove(callback);
         }
 
-        private void ThrowIfDisposed()
+        private void throwIfDisposed()
         {
             ObjectDisposedException.ThrowIf(disposed, this);
         }

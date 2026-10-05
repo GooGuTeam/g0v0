@@ -1,4 +1,4 @@
-﻿// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
@@ -56,7 +56,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
                 return find(id);
             }
         }
@@ -65,7 +65,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
                 return query(null);
             }
         }
@@ -74,7 +74,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
@@ -94,7 +94,7 @@ namespace osu.Game.Database
 
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
@@ -116,7 +116,7 @@ namespace osu.Game.Database
 
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 BeatmapCollection? item = find(id);
                 if (item == null)
@@ -146,7 +146,7 @@ namespace osu.Game.Database
 
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
 
                 using var command = connection.CreateCommand();
                 command.CommandText = @"
@@ -169,7 +169,7 @@ namespace osu.Game.Database
         {
             lock (sync)
             {
-                ThrowIfDisposed();
+                throwIfDisposed();
                 subscribers.Add(onChanged);
             }
 
@@ -272,7 +272,7 @@ namespace osu.Game.Database
                 subscribers.Remove(callback);
         }
 
-        private void ThrowIfDisposed()
+        private void throwIfDisposed()
         {
             ObjectDisposedException.ThrowIf(disposed, this);
         }
