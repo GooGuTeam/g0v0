@@ -1,4 +1,4 @@
-﻿// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
@@ -10,7 +10,6 @@ using osu.Game.Database;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
-using osu.Game.Tests;
 
 namespace osu.Game.Tests.NonVisual
 {

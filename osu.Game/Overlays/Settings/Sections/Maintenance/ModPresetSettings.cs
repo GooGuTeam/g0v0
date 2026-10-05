@@ -10,7 +10,6 @@ using osu.Framework.Localisation;
 using osu.Framework.Logging;
 using osu.Game.Database;
 using osu.Game.Overlays.Notifications;
-using osu.Game.Rulesets.Mods;
 using osu.Game.Localisation;
 
 namespace osu.Game.Overlays.Settings.Sections.Maintenance
