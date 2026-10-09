@@ -23,6 +23,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
 
         private readonly ScoreRank rank;
 
+        private V2RankEmblem? emblem;
         private BufferedContainer flash = null!;
         private BufferedContainer superFlash = null!;
         private GlowingSpriteText rankText = null!;
@@ -43,7 +44,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
         {
             if (UseV2Style)
             {
-                InternalChild = new V2RankEmblem(rank);
+                InternalChild = emblem = new V2RankEmblem(rank);
                 return;
             }
 
@@ -111,7 +112,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
 
             if (UseV2Style)
             {
-                this.FadeInFromZero(200, Easing.OutQuint);
+                emblem?.Appear();
                 return;
             }
 

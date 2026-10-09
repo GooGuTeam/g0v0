@@ -18,10 +18,14 @@ using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
+using osu.Framework.Input.Bindings;
+using osu.Framework.Input.Events;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Drawables;
 using osu.Game.Graphics;
+using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
@@ -46,7 +50,7 @@ namespace osu.Game.Screens.Ranking
     /// (accuracy circle) to the right edge, so the layout stretches with the aspect ratio the same way song select does.
     /// Visual language (shear, colour provider, wedge corner radius / hide offset, gradients, enter timing) follows <see cref="SongSelect"/>.
     /// </summary>
-    public partial class V2ResultsPanel : CompositeDrawable
+    public partial class V2ResultsPanel : CompositeDrawable, IKeyBindingHandler<GlobalAction>
     {
         // Geometry. The wedge right edge at screen-y is: wedge_x + wedge_width - OsuGame.SHEAR.X * y.
         private const float wedge_corner_radius = 10;
@@ -65,6 +69,7 @@ namespace osu.Game.Screens.Ranking
         private readonly ScoreInfo score;
         private readonly bool withFlair;
         public readonly Bindable<ScoreInfo?> ComparisonScore = new Bindable<ScoreInfo?>();
+        public readonly BindableBool DetailsVisible = new BindableBool();
 
         [Cached]
         private readonly OverlayColourProvider colourProvider = new OverlayColourProvider(OverlayColourScheme.Blue);
@@ -98,26 +103,55 @@ namespace osu.Game.Screens.Ranking
 
         public void ShowDetails() => setDetailsVisible(true);
 
+        public void ToggleDetails() => setDetailsVisible(!detailsVisible);
+
+        private const double details_transition_duration = 350;
+
         private void setDetailsVisible(bool visible)
         {
             if (detailsVisible == visible)
                 return;
 
             detailsVisible = visible;
+            DetailsVisible.Value = visible;
+
             rightColumn.ClearTransforms();
             detailsPanel.ClearTransforms();
 
             if (detailsVisible)
             {
-                rightColumn.MoveToX(760, 300, Easing.InQuint).FadeOut(250);
+                rightColumn.MoveToX(760, details_transition_duration, Easing.OutQuint)
+                           .FadeOut(details_transition_duration * 0.7, Easing.OutQuint);
+
                 detailsPanel.MoveToX(760).FadeOut();
-                detailsPanel.Delay(180).MoveToX(0, 400, Easing.OutQuint).FadeIn(250);
+                detailsPanel.MoveToX(0, details_transition_duration, Easing.OutQuint)
+                            .FadeIn(details_transition_duration * 0.7, Easing.OutQuint);
             }
             else
             {
-                detailsPanel.MoveToX(760, 300, Easing.InQuint).FadeOut(250);
-                rightColumn.Delay(180).MoveToX(0, 400, Easing.OutQuint).FadeIn(250);
+                detailsPanel.MoveToX(760, details_transition_duration, Easing.OutQuint)
+                            .FadeOut(details_transition_duration * 0.7, Easing.OutQuint);
+
+                rightColumn.MoveToX(0, details_transition_duration, Easing.OutQuint)
+                           .FadeIn(details_transition_duration * 0.7, Easing.OutQuint);
             }
+        }
+
+        public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
+        {
+            if (e.Repeat)
+                return false;
+
+            if (e.Action == GlobalAction.Back && detailsVisible)
+            {
+                return CloseDetails();
+            }
+
+            return false;
+        }
+
+        public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
+        {
         }
 
         [Resolved]
@@ -142,7 +176,10 @@ namespace osu.Game.Screens.Ranking
             {
                 isPersonalBest.BindTo(resultsScreen.IsPersonalBest);
                 ComparisonScore.BindTo(resultsScreen.ComparisonScore);
+                DetailsVisible.BindTo(resultsScreen.V2DetailsVisible);
             }
+
+            DetailsVisible.BindValueChanged(v => setDetailsVisible(v.NewValue));
 
             var beatmap = score.BeatmapInfo!;
             var metadata = beatmap.BeatmapSet?.Metadata ?? beatmap.Metadata;
@@ -200,23 +237,18 @@ namespace osu.Game.Screens.Ranking
                 Width = 473,
                 Children = new Drawable[]
                 {
-                    new Container
+                    new ClickableAccuracyCircle(score, withFlair)
                     {
-                        Name = "Accuracy circle",
                         Position = new Vector2(0, 118),
                         Size = new Vector2(414),
-                        Child = new AccuracyCircle(score, withFlair)
-                        {
-                            UseV2Style = true,
-                            RelativeSizeAxes = Axes.Both,
-                        },
+                        Action = ToggleDetails,
                     },
                     new V2ResultsButton(ResultsScreenStrings.MoreInfo, FontAwesome.Regular.ArrowAltCircleRight, Colour4.White, iconOnly: true)
                     {
                         Name = "Show score details",
                         Position = new Vector2(416, 298),
                         Size = new Vector2(48),
-                        Action = ShowDetails,
+                        Action = ToggleDetails,
                     },
                 },
             };
@@ -870,6 +902,52 @@ namespace osu.Game.Screens.Ranking
             username.Scale = new Vector2(Math.Min(1, 190 / Math.Max(1, username.DrawWidth)));
             positionText.Text = score.Position.HasValue ? $"#{score.Position}" : "—";
             positionText.Scale = new Vector2(Math.Min(1, 44 / Math.Max(1, positionText.DrawWidth)));
+        }
+
+        private partial class ClickableAccuracyCircle : OsuClickableContainer
+        {
+            private readonly Container content;
+
+            public ClickableAccuracyCircle(ScoreInfo score, bool withFlair)
+            {
+                Name = "Accuracy circle";
+                TooltipText = ResultsScreenStrings.MoreInfo;
+                Child = content = new Container
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    Child = new AccuracyCircle(score, withFlair)
+                    {
+                        UseV2Style = true,
+                        RelativeSizeAxes = Axes.Both,
+                    },
+                };
+            }
+
+            protected override bool OnHover(HoverEvent e)
+            {
+                content.ScaleTo(1.025f, 250, Easing.OutQuint);
+                return base.OnHover(e);
+            }
+
+            protected override void OnHoverLost(HoverLostEvent e)
+            {
+                content.ScaleTo(1f, 250, Easing.OutQuint);
+                base.OnHoverLost(e);
+            }
+
+            protected override bool OnMouseDown(MouseDownEvent e)
+            {
+                content.ScaleTo(0.985f, 100, Easing.OutQuad);
+                return base.OnMouseDown(e);
+            }
+
+            protected override void OnMouseUp(MouseUpEvent e)
+            {
+                content.ScaleTo(IsHovered ? 1.025f : 1f, 200, Easing.OutQuint);
+                base.OnMouseUp(e);
+            }
         }
     }
 }

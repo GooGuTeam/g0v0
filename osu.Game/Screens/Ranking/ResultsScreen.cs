@@ -61,6 +61,8 @@ namespace osu.Game.Screens.Ranking
         /// </summary>
         public readonly Bindable<ScoreInfo?> ComparisonScore = new Bindable<ScoreInfo?>();
 
+        public readonly BindableBool V2DetailsVisible = new BindableBool();
+
         public readonly ScoreInfo? Score;
 
         protected ScorePanelList ScorePanelList { get; private set; } = null!;
@@ -231,10 +233,12 @@ namespace osu.Game.Screens.Ranking
                 DetailsAction = () =>
                 {
                     foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
-                        panel.ShowDetails();
+                        panel.ToggleDetails();
                 },
                 RetryAction = player != null && AllowRetry ? restartPlayer : null,
             });
+
+            v2Footer.DetailsVisible.BindTo(V2DetailsVisible);
 
             if (Score != null)
             {
@@ -305,6 +309,12 @@ namespace osu.Game.Screens.Ranking
                     {
                         if (!this.IsCurrentScreen()) return;
 
+                        if (showingV2Layout && v2Footer.RetryButton.Enabled.Value)
+                        {
+                            v2Footer.RetryButton.TriggerClick();
+                            return;
+                        }
+
                         skipExitTransition = true;
                         player?.Restart(true);
                     },
@@ -347,6 +357,7 @@ namespace osu.Game.Screens.Ranking
         {
             Schedule(() =>
             {
+                V2DetailsVisible.Value = false;
                 SelectedScore.Value = score;
                 v2PanelContainer.Clear();
                 v2PanelContainer.Add(new V2ResultsPanel(score));
@@ -355,6 +366,10 @@ namespace osu.Game.Screens.Ranking
 
         private void showOriginalResults(bool showStatistics)
         {
+            V2DetailsVisible.Value = false;
+            foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                panel.CloseDetails();
+
             showingOriginalLayout = true;
             updateResultsLayout();
             if (showStatistics && SelectedScore.Value != null)
@@ -368,6 +383,12 @@ namespace osu.Game.Screens.Ranking
                 VerticalScrollContent.ScrollToStart(false);
                 StatisticsPanel.Hide();
                 SelectedScore.Value = Score;
+            }
+            else
+            {
+                V2DetailsVisible.Value = false;
+                foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                    panel.CloseDetails();
             }
 
             BackButtonVisibility.Value = !showingV2Layout && !useLegacyResults;
@@ -692,8 +713,10 @@ namespace osu.Game.Screens.Ranking
 
                     if (showingV2Layout)
                     {
-                        showingOriginalLayout = true;
-                        updateResultsLayout();
+                        foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                            panel.ToggleDetails();
+
+                        return true;
                     }
 
                     if (SelectedScore.Value != null)

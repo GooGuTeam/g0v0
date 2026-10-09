@@ -30,6 +30,8 @@ namespace osu.Game.Screens.Ranking
         public ScoreInfo? Score { get; init; }
         public bool AllowWatchingReplay { get; init; }
 
+        public readonly BindableBool DetailsVisible = new BindableBool();
+
         public ScreenBackButton BackButton { get; private set; } = null!;
         public ScreenFooterButton ExportButton { get; private set; } = null!;
         public ScreenFooterButton RankingButton { get; private set; } = null!;
@@ -144,6 +146,7 @@ namespace osu.Game.Screens.Ranking
                     Text = ResultsScreenStrings.PlayAgain,
                     Icon = FontAwesome.Solid.Redo,
                     AccentColour = colours.Green1,
+                    Hotkey = GlobalAction.QuickRetry,
                     Action = () => RetryAction?.Invoke(),
                     Enabled = { Value = RetryAction != null },
                     TooltipText = ResultsScreenStrings.PlayAgain,
@@ -213,6 +216,12 @@ namespace osu.Game.Screens.Ranking
         {
             base.LoadComplete();
             replayState.BindValueChanged(_ => updateReplayState(), true);
+            DetailsVisible.BindValueChanged(visible =>
+            {
+                DetailsButton.Text = visible.NewValue ? ResultsScreenStrings.ScoreOverview : ResultsScreenStrings.MoreInfo;
+                DetailsButton.TooltipText = visible.NewValue ? ResultsScreenStrings.ScoreOverview : ResultsScreenStrings.MoreInfo;
+                DetailsButton.OverlayState.Value = visible.NewValue ? Visibility.Visible : Visibility.Hidden;
+            }, true);
         }
 
         private void updateReplayState()

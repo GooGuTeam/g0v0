@@ -78,6 +78,8 @@ namespace osu.Game.Screens.Ranking
                 foreground = new Container
                 {
                     RelativeSizeAxes = Axes.Both,
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
                     Children = new Drawable[]
                     {
                         new SpriteIcon
@@ -124,13 +126,17 @@ namespace osu.Game.Screens.Ranking
         protected override bool OnHover(HoverEvent e)
         {
             if (Enabled.Value)
+            {
                 highlight.FadeTo(0.12f, 100);
+                foreground.ScaleTo(1.08f, 150, Easing.OutQuint);
+            }
             return base.OnHover(e);
         }
 
         protected override void OnHoverLost(HoverLostEvent e)
         {
             highlight.FadeOut(150);
+            foreground.ScaleTo(1f, 150, Easing.OutQuint);
             base.OnHoverLost(e);
         }
 

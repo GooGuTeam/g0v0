@@ -442,5 +442,27 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("rank animation completes", () => circle.ChildrenOfType<RankText>().First().Alpha == 1);
             AddAssert("ring progress is finite", () => circle.ChildrenOfType<CircularProgress>().All(p => double.IsFinite(p.Progress)));
         }
+
+        [TestCase(ScoreRank.X)]
+        [TestCase(ScoreRank.S)]
+        [TestCase(ScoreRank.A)]
+        [TestCase(ScoreRank.B)]
+        [TestCase(ScoreRank.D)]
+        public void TestV2RankEmblemAppear(ScoreRank rank)
+        {
+            V2RankEmblem emblem = null!;
+            AddStep("load emblem", () =>
+            {
+                Child = emblem = new V2RankEmblem(rank)
+                {
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                };
+            });
+            AddUntilStep("emblem loaded", () => emblem.IsLoaded);
+            AddStep("trigger appear", () => emblem.Appear());
+            AddAssert("displayed grade letter", () => emblem.ChildrenOfType<SpriteText>().Single().Text.ToString(),
+                () => Is.EqualTo(osu.Game.Online.Leaderboards.DrawableRank.GetRankLetter(rank)));
+        }
     }
 }
