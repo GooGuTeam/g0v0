@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -9,44 +9,30 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Graphics;
+using osu.Game.Graphics.Sprites;
 using osu.Game.Online.Leaderboards;
 using osu.Game.Scoring;
 using osuTK;
 
 namespace osu.Game.Screens.Ranking.Expanded.Accuracy
 {
-    /// <summary>
-    /// Contains a <see cref="DrawableRank"/> that is positioned around the <see cref="AccuracyCircle"/>.
-    /// </summary>
     public partial class RankBadge : CompositeDrawable
     {
-        /// <summary>
-        /// The accuracy value corresponding to the <see cref="ScoreRank"/> displayed by this badge.
-        /// </summary>
         public readonly double Accuracy;
-
-        /// <summary>
-        /// The position around the <see cref="AccuracyCircle"/> to display this badge.
-        /// </summary>
+        public readonly ScoreRank Rank;
         private readonly double displayPosition;
 
-        public readonly ScoreRank Rank;
+        public bool UseV2Style { get; init; }
 
         private Drawable rankContainer = null!;
         private Drawable overlay = null!;
+        private OsuSpriteText? modernLetter;
 
-        /// <summary>
-        /// Creates a new <see cref="RankBadge"/>.
-        /// </summary>
-        /// <param name="accuracy">The accuracy value corresponding to <paramref name="rank"/>.</param>
-        /// <param name="position">The position around the <see cref="AccuracyCircle"/> to display this badge.</param>
-        /// <param name="rank">The <see cref="ScoreRank"/> to be displayed in this <see cref="RankBadge"/>.</param>
         public RankBadge(double accuracy, double position, ScoreRank rank)
         {
             Accuracy = accuracy;
             displayPosition = position;
             Rank = rank;
-
             RelativeSizeAxes = Axes.Both;
             Alpha = 0;
         }
@@ -54,38 +40,60 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
         [BackgroundDependencyLoader]
         private void load()
         {
-            InternalChild = rankContainer = new Container
+            var container = new Container
             {
                 Origin = Anchor.Centre,
-                Size = new Vector2(28, 14),
-                Children = new[]
+                Size = UseV2Style ? new Vector2(36, 19) : new Vector2(28, 14),
+            };
+            InternalChild = rankContainer = container;
+
+            if (UseV2Style)
+            {
+                container.Add(new CircularContainer
                 {
-                    new DrawableRank(Rank),
-                    overlay = new CircularContainer
+                    RelativeSizeAxes = Axes.Both,
+                    Masking = true,
+                    Children = new Drawable[]
                     {
-                        RelativeSizeAxes = Axes.Both,
-                        Blending = BlendingParameters.Additive,
-                        Masking = true,
-                        EdgeEffect = new EdgeEffectParameters
-                        {
-                            Type = EdgeEffectType.Glow,
-                            Colour = OsuColour.ForRank(Rank).Opacity(0.2f),
-                            Radius = 10,
-                        },
-                        Child = new Box
+                        new Box { RelativeSizeAxes = Axes.Both, Colour = OsuColour.ForRank(Rank) },
+                        new Box
                         {
                             RelativeSizeAxes = Axes.Both,
-                            Alpha = 0,
-                            AlwaysPresent = true,
-                        }
-                    }
-                }
-            };
+                            Size = new Vector2(0.32f, 2),
+                            Rotation = -25,
+                            Colour = Colour4.White.Opacity(0.18f),
+                        },
+                    },
+                });
+                container.Add(modernLetter = new OsuSpriteText
+                {
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    Text = DrawableRank.GetRankLetter(Rank),
+                    Font = OsuFont.Default.With(size: Rank >= ScoreRank.X ? 16 : 20, weight: FontWeight.Bold),
+                    Colour = Rank >= ScoreRank.S ? Colour4.FromHex("#FFE43B") : Colour4.Black.Opacity(0.55f),
+                    Shadow = false,
+                });
+            }
+            else
+                container.Add(new DrawableRank(Rank));
+
+            container.Add(overlay = new CircularContainer
+            {
+                RelativeSizeAxes = Axes.Both,
+                Blending = BlendingParameters.Additive,
+                Masking = true,
+                Alpha = 0,
+                EdgeEffect = new EdgeEffectParameters
+                {
+                    Type = EdgeEffectType.Glow,
+                    Colour = OsuColour.ForRank(Rank).Opacity(0.2f),
+                    Radius = 10,
+                },
+                Child = new Box { RelativeSizeAxes = Axes.Both, Alpha = 0, AlwaysPresent = true },
+            });
         }
 
-        /// <summary>
-        /// Shows this <see cref="RankBadge"/>.
-        /// </summary>
         public void Appear()
         {
             this.FadeIn(50);
@@ -96,11 +104,16 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
         {
             base.Update();
 
-            // Starts at -90deg (top) and moves counter-clockwise by the accuracy
-            rankContainer.Position = circlePosition(-MathF.PI / 2 - (1 - (float)displayPosition) * MathF.PI * 2);
-        }
+            double position = UseV2Style ? V2AccuracyScale.BadgeAngle(Rank) / 360 : displayPosition;
+            float angle = -MathF.PI / 2 - (1 - (float)position) * MathF.PI * 2;
+            rankContainer.Position = DrawSize / 2 + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * DrawSize / 2;
 
-        private Vector2 circlePosition(float t)
-            => DrawSize / 2 + new Vector2(MathF.Cos(t), MathF.Sin(t)) * DrawSize / 2;
+            if (modernLetter != null)
+            {
+                float rotation = angle * 180 / MathF.PI;
+                rankContainer.Rotation = rotation;
+                modernLetter.Rotation = -rotation;
+            }
+        }
     }
 }

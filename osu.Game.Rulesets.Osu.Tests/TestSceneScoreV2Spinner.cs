@@ -16,7 +16,7 @@ using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Tests
 {
-    public partial class TestSceneScoreV2Spinner : OsuTestScene
+    public partial class TestSceneScoreV2Spinner : OsuManualInputManagerTestScene
     {
         private const double spinner_start = 1500;
         private const double spinner_duration = 1667;
@@ -24,6 +24,67 @@ namespace osu.Game.Rulesets.Osu.Tests
         private readonly ManualClock source = new ManualClock { Rate = 1 };
         private FramedClock clock = null!;
         private DrawableSpinner drawableSpinner = null!;
+
+        [TestCase(0, 1)]
+        [TestCase(0, -1)]
+        [TestCase(1, 1)]
+        [TestCase(1, -1)]
+        [TestCase(2, 1)]
+        [TestCase(2, -1)]
+        public void TestApproachBeforeStart(int scoringVersion, int direction)
+        {
+            AddStep("create spinner before its start", () =>
+            {
+                source.CurrentTime = spinner_start - 1;
+                clock = new FramedClock(source);
+                clock.ProcessFrame();
+                Spinner spinner;
+
+                if (scoringVersion == 0)
+                {
+                    spinner = new Spinner { StartTime = spinner_start, Duration = spinner_duration, Position = new Vector2(256, 192) };
+                    spinner.ApplyDefaults(new ControlPointInfo(), new BeatmapDifficulty { OverallDifficulty = 6 });
+                }
+                else
+                    spinner = prepareSpinner(scoringVersion == 1, spinner_duration, 6);
+
+                var playfield = new TestPlayfield();
+                playfield.Add(drawableSpinner = new DrawableSpinner(spinner));
+                Child = new OsuInputManager(new OsuRuleset().RulesetInfo)
+                {
+                    Clock = clock,
+                    ProcessCustomClock = false,
+                    Child = playfield
+                };
+                ((OsuInputManager)Child).KeyBindingContainer.TriggerPressed(OsuAction.LeftButton);
+            });
+            AddStep("approach from the right before start", () => moveCursor(0));
+            AddAssert("no pre-start rotation", () => drawableSpinner.Result.TotalRotation, () => Is.Zero);
+            AddStep("first input inside spinner", () =>
+            {
+                source.CurrentTime = spinner_start + 1;
+                clock.ProcessFrame();
+                moveCursor(direction * 90);
+            });
+            AddAssert("legacy first input only initializes the angle", () => drawableSpinner.Result.TotalRotation,
+                () => Is.EqualTo(scoringVersion == 0 ? 90 : 0).Within(0.001));
+            AddStep("next input rotates ninety degrees", () =>
+            {
+                source.CurrentTime = spinner_start + 2;
+                clock.ProcessFrame();
+                moveCursor(direction * 180);
+            });
+            AddAssert("subsequent movement counts normally", () => drawableSpinner.Result.TotalRotation,
+                () => Is.EqualTo(scoringVersion == 0 ? 180 : 90).Within(0.001));
+
+            void moveCursor(float degrees)
+            {
+                var tracker = drawableSpinner.RotationTracker;
+                float radians = MathHelper.DegreesToRadians(degrees);
+                var position = tracker.DrawSize / 2 + new Vector2(MathF.Cos(radians), MathF.Sin(radians)) * 50;
+                InputManager.MoveMouseTo(tracker.Parent!.ToScreenSpace(position));
+            }
+        }
 
         [TestCase(false, 0, HitResult.Miss)]
         [TestCase(false, 1, HitResult.Miss)]

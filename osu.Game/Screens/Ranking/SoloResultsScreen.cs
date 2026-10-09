@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -78,6 +78,11 @@ namespace osu.Game.Screens.Ranking
                 Logger.Log($"Failed to fetch scores (beatmap: {Score.BeatmapInfo}, ruleset: {Score.Ruleset}): {result.FailState}");
                 return [];
             }
+
+            // A personal-best badge must be backed by the user's best score, not inferred from rank or placement.
+            bool isPersonalBest = Score.UserID == api.LocalUser.Value.OnlineID && result.UserScore != null
+                                  && (Score.Equals(result.UserScore) || Score.MatchesOnlineID(result.UserScore));
+            Schedule(() => IsPersonalBest.Value = isPersonalBest);
 
             var clonedScores = result.AllScores.Select(s => s.DeepClone()).ToArray();
 

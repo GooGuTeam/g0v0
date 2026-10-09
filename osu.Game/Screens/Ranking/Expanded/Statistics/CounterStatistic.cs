@@ -1,8 +1,9 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Colour;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
@@ -16,6 +17,11 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
     /// </summary>
     public partial class CounterStatistic : StatisticDisplay
     {
+        /// <summary>
+        /// Suffix for overview judgement counts (for example 2137×). Does not affect other results layouts.
+        /// </summary>
+        public string V2Suffix { get; init; } = string.Empty;
+
         private readonly int count;
         private readonly int? maxCount;
 
@@ -48,10 +54,24 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
                 Direction = FillDirection.Horizontal,
                 Child = counter = new StatisticCounter
                 {
+                    UseV2Style = UseV2Style,
                     Anchor = Anchor.TopCentre,
                     Origin = Anchor.TopCentre
                 }
             };
+
+            if (UseV2Style && V2Suffix.Length > 0)
+            {
+                container.Add(new OsuSpriteText
+                {
+                    Anchor = Anchor.BottomCentre,
+                    Origin = Anchor.BottomCentre,
+                    Font = OsuFont.Numeric.With(size: 20, weight: FontWeight.Light),
+                    Text = V2Suffix,
+                    Colour = ColourInfo.GradientVertical(Colour4.White, Colour4.FromHex("#AFE8FF")),
+                    Shadow = false,
+                });
+            }
 
             if (maxCount != null)
             {
@@ -59,9 +79,11 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
                 {
                     Anchor = Anchor.BottomCentre,
                     Origin = Anchor.BottomCentre,
-                    Font = OsuFont.MapleMono.With(size: 12, fixedWidth: true),
-                    Spacing = new Vector2(-2, 0),
-                    Text = $"/{maxCount}"
+                    Font = UseV2Style ? OsuFont.Numeric.With(size: 10) : OsuFont.MapleMono.With(size: 12, fixedWidth: true),
+                    Spacing = new Vector2(UseV2Style ? 0 : -2, 0),
+                    Text = $"/{maxCount}",
+                    Colour = UseV2Style ? ColourInfo.GradientVertical(Colour4.White, Colour4.FromHex("#AFE8FF")) : Colour4.White,
+                    Shadow = !UseV2Style,
                 });
             }
 

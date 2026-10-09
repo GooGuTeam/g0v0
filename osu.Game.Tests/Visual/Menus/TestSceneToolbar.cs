@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -73,6 +73,21 @@ namespace osu.Game.Tests.Visual.Menus
                 toolbar = new TestToolbar { State = { Value = Visibility.Visible } },
             };
         });
+
+        [Test]
+        public void TestV2ResultsStyle()
+        {
+            AddStep("enable results style", () => toolbar.UseV2ResultsStyle.Value = true);
+            AddAssert("compact toolbar height", () => toolbar.Height == 36);
+            AddAssert("avatar without username", () => !toolbar.ChildrenOfType<ToolbarUserButton>().Single().ShowUsername);
+            AddAssert("real toolbar controls retained", () =>
+                toolbar.ChildrenOfType<ToolbarSettingsButton>().Any()
+                && toolbar.ChildrenOfType<ToolbarMusicButton>().Any()
+                && toolbar.ChildrenOfType<ToolbarRulesetSelector>().Any());
+            AddStep("restore standard toolbar", () => toolbar.UseV2ResultsStyle.Value = false);
+            AddAssert("standard height restored", () => toolbar.Height == Toolbar.HEIGHT);
+            AddAssert("username restored", () => toolbar.ChildrenOfType<ToolbarUserButton>().Single().ShowUsername);
+        }
 
         [Test]
         public void TestNotificationCounter()

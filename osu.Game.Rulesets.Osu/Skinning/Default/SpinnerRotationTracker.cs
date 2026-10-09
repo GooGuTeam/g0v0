@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -76,7 +76,11 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
                 if (Tracking)
                     AddRotation(delta);
 
-                lastAngle = thisAngle;
+                // Stable initializes the angle on the first input at or after the spinner's start.
+                // The cursor approach during fade-in must not contribute a scoring delta.
+                lastAngle = drawableSpinner.HitObject.LegacySpinnerScoring && Time.Current < drawableSpinner.HitObject.StartTime
+                    ? null
+                    : thisAngle;
             }
 
             IsSpinning.Value = IsSpinnableTime && Math.Abs(currentRotation - Rotation) > 10f;

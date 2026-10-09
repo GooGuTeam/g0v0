@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -24,6 +24,8 @@ namespace osu.Game.Screens.Ranking
 {
     public partial class CollectionButton : GrayButton, IHasPopover
     {
+        public bool UseV2Style { get; init; }
+
         private readonly BeatmapInfo beatmapInfo;
         private readonly Bindable<bool> isInAnyCollection;
 
@@ -49,6 +51,13 @@ namespace osu.Game.Screens.Ranking
         [BackgroundDependencyLoader]
         private void load()
         {
+            if (UseV2Style)
+            {
+                Icon.Icon = FontAwesome.Regular.Folder;
+                Icon.Size = new Vector2(16);
+                Icon.Shear = -Shear;
+            }
+
             Action = this.ShowPopover;
         }
 
@@ -75,7 +84,7 @@ namespace osu.Game.Screens.Ranking
 
         private void updateState()
         {
-            Background.FadeColour(isInAnyCollection.Value ? colours.Green : colours.Gray4, 500, Easing.InOutExpo);
+            Background.FadeColour(isInAnyCollection.Value ? colours.Green : UseV2Style ? Colour4.FromHex("#293A35") : colours.Gray4, 500, Easing.InOutExpo);
         }
 
         public Popover GetPopover() => new CollectionPopover(beatmapInfo);

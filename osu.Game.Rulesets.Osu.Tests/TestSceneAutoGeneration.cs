@@ -41,6 +41,45 @@ namespace osu.Game.Rulesets.Osu.Tests
             Assert.That(spinnerAngle(nonLegacyFrames[1]), Is.Not.EqualTo(spinnerAngle(nonLegacyFrames[0])).Within(0.000001));
         }
 
+        [TestCase(866, 1)]
+        [TestCase(1667, 1)]
+        [TestCase(3115, 1)]
+        [TestCase(6000, 1)]
+        [TestCase(866, 1.5)]
+        [TestCase(1667, 1.5)]
+        [TestCase(3115, 1.5)]
+        [TestCase(6000, 1.5)]
+        public void TestLegacySpinnerAutoplayAcceleration(double duration, double rate)
+        {
+            var frames = generateSpinnerFrames(duration, rate == 1.5, 2);
+            const double frame_duration = 1000.0 / 60;
+            double acceleration = 0.00008 + Math.Max(0, (5000 - (int)duration) / 1000.0 / 2000);
+            double velocity = 0;
+            double expectedRotation = 0;
+            double actualRotation = 0;
+            double previousTime = 2000;
+
+            for (int i = 1; i < frames.Length; i++)
+            {
+                double time = i == frames.Length - 1 ? 2000 + duration : 2000 + i * frame_duration * rate;
+
+                if (i > 1)
+                {
+                    double elapsed = (time - previousTime) / rate;
+                    velocity = Math.Min(0.05, velocity + acceleration * elapsed);
+                    expectedRotation += velocity * elapsed;
+                }
+
+                double delta = spinnerAngle(frames[i]) - spinnerAngle(frames[i - 1]);
+                actualRotation += Math.Abs(Math.Atan2(Math.Sin(delta), Math.Cos(delta)));
+                Assert.That(actualRotation, Is.EqualTo(expectedRotation).Within(0.001), $"Frame {i}");
+                previousTime = time;
+            }
+
+            Assert.That(velocity, Is.EqualTo(0.05));
+            Assert.That(actualRotation, Is.LessThan(duration * 0.05 / rate));
+        }
+
         private static double spinnerAngle(OsuReplayFrame frame) => Math.Atan2(frame.Position.Y - 192, frame.Position.X - 256);
 
         private static OsuReplayFrame[] generateSpinnerFrames(double duration, bool doubleTime, int scoringVersion)

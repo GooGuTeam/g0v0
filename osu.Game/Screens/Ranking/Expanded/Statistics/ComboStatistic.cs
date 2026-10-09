@@ -1,7 +1,8 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Extensions.Color4Extensions;
+using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
@@ -22,6 +23,15 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
 
         private Drawable perfectText = null!;
 
+        [BackgroundDependencyLoader]
+        private void load(OsuColour colours)
+        {
+            if (UseV2Style && isPerfect)
+                comboContent.Colour = colours.Lime1;
+        }
+
+        private Drawable comboContent = null!;
+
         /// <summary>
         /// Creates a new <see cref="ComboStatistic"/>.
         /// </summary>
@@ -37,36 +47,44 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
         {
             base.Appear();
 
-            if (isPerfect)
+            if (isPerfect && !UseV2Style)
             {
                 using (BeginDelayedSequence(AccuracyCircle.ACCURACY_TRANSFORM_DURATION / 2))
                     perfectText.FadeIn(50);
             }
         }
 
-        protected override Drawable CreateContent() => new FillFlowContainer
+        protected override Drawable CreateContent()
         {
-            AutoSizeAxes = Axes.Both,
-            Direction = FillDirection.Horizontal,
-            Spacing = new Vector2(10, 0),
-            Children = new[]
+            if (UseV2Style)
             {
-                base.CreateContent().With(_ =>
-                {
-                    Anchor = Anchor.CentreLeft;
-                    Origin = Anchor.CentreLeft;
-                }),
-                perfectText = new OsuSpriteText
-                {
-                    Anchor = Anchor.CentreLeft,
-                    Origin = Anchor.CentreLeft,
-                    Text = "PERFECT",
-                    Font = OsuFont.MapleMono.With(size: 11, weight: FontWeight.SemiBold),
-                    Colour = ColourInfo.GradientVertical(Color4Extensions.FromHex("#66FFCC"), Color4Extensions.FromHex("#FF9AD7")),
-                    Alpha = 0,
-                    UseFullGlyphHeight = false,
-                }
+                return comboContent = base.CreateContent();
             }
-        };
+
+            return new FillFlowContainer
+            {
+                AutoSizeAxes = Axes.Both,
+                Direction = FillDirection.Horizontal,
+                Spacing = new Vector2(10, 0),
+                Children = new[]
+                {
+                    base.CreateContent().With(_ =>
+                    {
+                        Anchor = Anchor.CentreLeft;
+                        Origin = Anchor.CentreLeft;
+                    }),
+                    perfectText = new OsuSpriteText
+                    {
+                        Anchor = Anchor.CentreLeft,
+                        Origin = Anchor.CentreLeft,
+                        Text = "PERFECT",
+                        Font = OsuFont.MapleMono.With(size: 11, weight: FontWeight.SemiBold),
+                        Colour = ColourInfo.GradientVertical(Color4Extensions.FromHex("#66FFCC"), Color4Extensions.FromHex("#FF9AD7")),
+                        Alpha = 0,
+                        UseFullGlyphHeight = false,
+                    }
+                }
+            };
+        }
     }
 }

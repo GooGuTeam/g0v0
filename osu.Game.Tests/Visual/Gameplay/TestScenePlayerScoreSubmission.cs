@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -13,6 +13,8 @@ using osu.Framework.Screens;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps;
 using osu.Game.Online.API;
+using osu.Game.Online.API.Requests;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Rooms;
 using osu.Game.Online.Solo;
 using osu.Game.Rulesets;
@@ -107,6 +109,9 @@ namespace osu.Game.Tests.Visual.Gameplay
 
             AddUntilStep("results displayed", () => Player.GetChildScreen() is ResultsScreen);
             AddAssert("ensure passing submission", () => Player.SubmittedScore?.ScoreInfo.Passed == true);
+            AddAssert("server PP retained", () => ((ResultsScreen)Player.GetChildScreen()).Score.PP, () => Is.EqualTo(123.45));
+            AddAssert("baseline is pre-play best PP not highest score", () => ((ResultsScreen)Player.GetChildScreen()).ComparisonScore.Value.PP, () => Is.EqualTo(100));
+            AddAssert("baseline combo retained", () => ((ResultsScreen)Player.GetChildScreen()).ComparisonScore.Value.MaxCombo, () => Is.EqualTo(321));
         }
 
         [Test]
@@ -376,6 +381,18 @@ namespace osu.Game.Tests.Visual.Gameplay
                                 tokenRequest.TriggerFailure(new APIException("something went wrong!", null));
                             return true;
 
+                        case GetBeatmapUserScoresRequest personalScoresRequest:
+                            personalScoresRequest.TriggerSuccess(new APIScoresCollection
+                            {
+                                Scores = new()
+                                {
+                                    new SoloScoreInfo { PP = 80, TotalScore = 900000, Passed = true },
+                                    new SoloScoreInfo { PP = 100, TotalScore = 800000, Passed = true, MaxCombo = 321 },
+                                    new SoloScoreInfo { PP = 200, TotalScore = 950000, Passed = false },
+                                },
+                            });
+                            return true;
+
                         case SubmitSoloScoreRequest submissionRequest:
                             if (validToken)
                             {
@@ -393,7 +410,8 @@ namespace osu.Game.Tests.Visual.Gameplay
                                     Statistics = requestScore.Statistics,
                                     Passed = requestScore.Passed,
                                     EndedAt = DateTimeOffset.Now,
-                                    Position = 1
+                                    Position = 1,
+                                    PP = 123.45,
                                 });
 
                                 return true;

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -10,6 +10,7 @@ using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Utils;
 using osu.Game.Audio;
@@ -88,12 +89,18 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
         /// </summary>
         public static readonly Easing ACCURACY_TRANSFORM_EASING = Easing.OutPow10;
 
+        /// <summary>
+        /// Uses a thin accuracy ring, outer grade markers and an enlarged rank for the modern results layout.
+        /// </summary>
+        public bool UseV2Style { get; init; }
+
         private readonly ScoreInfo score;
 
         [Resolved]
         private ResultsScreen? resultsScreen { get; set; }
 
         private CircularProgress accuracyCircle = null!;
+        private V2AccuracyScale v2Scale = null!;
         private GradedCircles gradedCircles = null!;
         private Container<RankBadge> badges = null!;
         private RankText rankText = null!;
@@ -107,7 +114,8 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
         private readonly Bindable<double> tickPlaybackRate = new Bindable<double>();
 
         private double lastTickPlaybackTime;
-        private bool isTicking;
+        private double tickStartTime = double.PositiveInfinity;
+        private double tickEndTime = double.NegativeInfinity;
 
         private readonly double accuracyX;
         private readonly double accuracyS;
@@ -140,8 +148,19 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
         [BackgroundDependencyLoader]
         private void load()
         {
+            v2Scale = new V2AccuracyScale(accuracyC, accuracyB, accuracyA, accuracyS, accuracyX);
+
             InternalChildren = new Drawable[]
             {
+                new Circle
+                {
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    RelativeSizeAxes = Axes.Both,
+                    Size = new Vector2(1.16f),
+                    Colour = Colour4.FromHex("#202020"),
+                    Alpha = UseV2Style ? 0.28f : 0,
+                },
                 new CircularProgress
                 {
                     Name = "Background circle",
@@ -149,27 +168,28 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                     Origin = Anchor.Centre,
                     RelativeSizeAxes = Axes.Both,
                     Colour = OsuColour.Gray(47),
-                    Alpha = 0.5f,
-                    InnerRadius = accuracy_circle_radius + 0.01f, // Extends a little bit into the circle
+                    Alpha = UseV2Style ? 0 : 0.5f,
+                    InnerRadius = (UseV2Style ? 0.095f : accuracy_circle_radius) + 0.01f, // Extends a little bit into the circle
                     Progress = 1,
                 },
-                accuracyCircle = new CircularProgress
+                accuracyCircle = (UseV2Style ? new V2AccuracyRing() : new CircularProgress
                 {
-                    Name = "Accuracy circle",
-                    Anchor = Anchor.Centre,
-                    Origin = Anchor.Centre,
-                    RelativeSizeAxes = Axes.Both,
                     Colour = ColourInfo.GradientVertical(Color4Extensions.FromHex("#7CF6FF"), Color4Extensions.FromHex("#BAFFA9")),
                     InnerRadius = accuracy_circle_radius,
-                },
+                }).With(d =>
+                {
+                    d.Name = "Accuracy circle";
+                    d.Anchor = d.Origin = Anchor.Centre;
+                    d.RelativeSizeAxes = Axes.Both;
+                }),
                 new Container
                 {
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
                     RelativeSizeAxes = Axes.Both,
-                    Size = new Vector2(0.8f),
-                    Padding = new MarginPadding(2.5f),
-                    Child = gradedCircles = new GradedCircles(accuracyC, accuracyB, accuracyA, accuracyS, accuracyX)
+                    Size = new Vector2(UseV2Style ? V2AccuracyScale.GRADE_RING_SIZE : 0.8f),
+                    Padding = UseV2Style ? new MarginPadding() : new MarginPadding(2.5f),
+                    Child = gradedCircles = new GradedCircles(accuracyC, accuracyB, accuracyA, accuracyS, accuracyX, UseV2Style)
                     {
                         RelativeSizeAxes = Axes.Both
                     }
@@ -178,23 +198,31 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                 {
                     Name = "Rank badges",
                     RelativeSizeAxes = Axes.Both,
-                    Padding = new MarginPadding { Vertical = -15, Horizontal = -20 },
+                    Padding = UseV2Style ? new MarginPadding(-V2AccuracyScale.BADGE_PADDING) : new MarginPadding { Vertical = -15, Horizontal = -20 },
                     Children = new[]
                     {
-                        new RankBadge(accuracyD, Interpolation.Lerp(accuracyD, accuracyC, 0.5), getRank(ScoreRank.D)),
-                        new RankBadge(accuracyC, Interpolation.Lerp(accuracyC, accuracyB, 0.5), getRank(ScoreRank.C)),
-                        new RankBadge(accuracyB, Interpolation.Lerp(accuracyB, accuracyA, 0.5), getRank(ScoreRank.B)),
+                        new RankBadge(accuracyD, Interpolation.Lerp(accuracyD, accuracyC, 0.5), getRank(ScoreRank.D)) { UseV2Style = UseV2Style },
+                        new RankBadge(accuracyC, Interpolation.Lerp(accuracyC, accuracyB, 0.5), getRank(ScoreRank.C)) { UseV2Style = UseV2Style },
+                        new RankBadge(accuracyB, Interpolation.Lerp(accuracyB, accuracyA, 0.5), getRank(ScoreRank.B)) { UseV2Style = UseV2Style },
                         // The S and A badges are moved down slightly to prevent collision with the SS badge.
-                        new RankBadge(accuracyA, Interpolation.Lerp(accuracyA, accuracyS, 0.25), getRank(ScoreRank.A)),
-                        new RankBadge(accuracyS, Interpolation.Lerp(accuracyS, (accuracyX - VIRTUAL_SS_PERCENTAGE), 0.25), getRank(ScoreRank.S)),
-                        new RankBadge(accuracyX, accuracyX, getRank(ScoreRank.X)),
+                        new RankBadge(accuracyA, Interpolation.Lerp(accuracyA, accuracyS, 0.25), getRank(ScoreRank.A)) { UseV2Style = UseV2Style },
+                        new RankBadge(accuracyS, Interpolation.Lerp(accuracyS, (accuracyX - VIRTUAL_SS_PERCENTAGE), 0.25), getRank(ScoreRank.S)) { UseV2Style = UseV2Style },
+                        new RankBadge(accuracyX, accuracyX, getRank(ScoreRank.X)) { UseV2Style = UseV2Style },
                     }
                 },
                 rankText = new RankText(score.Rank)
+                {
+                    UseV2Style = UseV2Style,
+                }
             };
 
             if (isFailedSDueToMisses)
-                AddInternal(failedSRankText = new RankText(ScoreRank.S));
+            {
+                AddInternal(failedSRankText = new RankText(ScoreRank.S)
+                {
+                    UseV2Style = UseV2Style,
+                });
+            }
 
             if (withFlair)
             {
@@ -266,25 +294,39 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                 if (targetAccuracy < 1 && targetAccuracy >= visual_alignment_offset)
                     targetAccuracy -= visual_alignment_offset;
 
-                accuracyCircle.ProgressTo(targetAccuracy, ACCURACY_TRANSFORM_DURATION, ACCURACY_TRANSFORM_EASING);
+                // SS closes the modern ring, while lower ranks retain the cap gap.
+                if (UseV2Style && isFailedSDueToMisses)
+                {
+                    double stop = v2Scale.RingProgress(accuracyS - GRADE_SPACING_PERCENTAGE / 2);
+                    // Push against the top of the A interval and settle just before the S threshold.
+                    accuracyCircle.ProgressTo(stop - 0.012, 1050, Easing.OutQuint)
+                        .Then().ProgressTo(stop, 220, Easing.OutSine)
+                        .Then().ProgressTo(stop - 0.008, 180, Easing.OutSine)
+                        .Then().ProgressTo(stop - 0.002, 220, Easing.OutSine)
+                        .Then().ProgressTo(stop, 500, Easing.OutQuint);
+                }
+                else
+                    accuracyCircle.ProgressTo(UseV2Style ? v2Scale.RingProgress(targetAccuracy) : targetAccuracy, ACCURACY_TRANSFORM_DURATION, ACCURACY_TRANSFORM_EASING);
 
                 if (withFlair)
                 {
-                    Schedule(() =>
-                    {
-                        const double score_tick_debounce_rate_start = 18f;
-                        const double score_tick_debounce_rate_end = 300f;
-                        const double score_tick_volume_start = 0.6f;
-                        const double score_tick_volume_end = 1.0f;
+                    const double score_tick_debounce_rate_start = 18f;
+                    const double score_tick_debounce_rate_end = 300f;
+                    const double score_tick_volume_start = 0.6f;
+                    const double score_tick_volume_end = 1.0f;
 
-                        this.TransformBindableTo(tickPlaybackRate, score_tick_debounce_rate_start);
-                        this.TransformBindableTo(tickPlaybackRate, score_tick_debounce_rate_end, ACCURACY_TRANSFORM_DURATION, Easing.OutSine);
+                    // Use a bounded playback window, not paired scheduler callbacks. A hidden or masked
+                    // panel can miss updates; resuming it must not restart the ticking or catch up sounds.
+                    // Keep the classic sound duration even when the modern missed-S animation is longer.
+                    tickStartTime = TransformStartTime;
+                    tickEndTime = tickStartTime + TEXT_APPEAR_DELAY;
+                    lastTickPlaybackTime = tickStartTime;
 
-                        scoreTickSound!.FrequencyTo(1 + targetAccuracy, ACCURACY_TRANSFORM_DURATION, Easing.OutSine);
-                        scoreTickSound!.VolumeTo(score_tick_volume_start).Then().VolumeTo(score_tick_volume_end, ACCURACY_TRANSFORM_DURATION, Easing.OutSine);
+                    this.TransformBindableTo(tickPlaybackRate, score_tick_debounce_rate_start);
+                    this.TransformBindableTo(tickPlaybackRate, score_tick_debounce_rate_end, ACCURACY_TRANSFORM_DURATION, Easing.OutSine);
 
-                        isTicking = true;
-                    });
+                    scoreTickSound!.FrequencyTo(1 + targetAccuracy, ACCURACY_TRANSFORM_DURATION, Easing.OutSine);
+                    scoreTickSound!.VolumeTo(score_tick_volume_start).Then().VolumeTo(score_tick_volume_end, ACCURACY_TRANSFORM_DURATION, Easing.OutSine);
                 }
 
                 int badgeNum = 0;
@@ -293,11 +335,11 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                 {
                     foreach (var badge in badges)
                     {
-                        if (badge.Rank > score.Rank)
+                        if (badge.Rank > score.Rank || (UseV2Style && isFailedSDueToMisses && badge.Rank >= getRank(ScoreRank.S)))
                             continue;
 
                         using (BeginDelayedSequence(
-                                   inverseEasing(ACCURACY_TRANSFORM_EASING, Math.Min(accuracyX - VIRTUAL_SS_PERCENTAGE, badge.Accuracy) / targetAccuracy) * ACCURACY_TRANSFORM_DURATION))
+                                   inverseEasing(ACCURACY_TRANSFORM_EASING, Math.Min(accuracyX - VIRTUAL_SS_PERCENTAGE, badge.Accuracy) / Math.Max(double.Epsilon, targetAccuracy)) * ACCURACY_TRANSFORM_DURATION))
                         {
                             badge.Appear();
 
@@ -315,15 +357,18 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                     }
                 }
 
-                using (BeginDelayedSequence(TEXT_APPEAR_DELAY))
-                {
+                using (BeginDelayedSequence(UseV2Style && isFailedSDueToMisses ? 2170 : TEXT_APPEAR_DELAY))
                     rankText.Appear();
 
-                    if (withFlair)
+                // The modern missed-S animation has its own visual timing, but must not extend
+                // the ticking or shift the classic rank-impact / applause sound sequence.
+                if (withFlair)
+                {
+                    using (BeginDelayedSequence(TEXT_APPEAR_DELAY))
                     {
                         Schedule(() =>
                         {
-                            isTicking = false;
+                            scoreTickSound!.Stop();
                             rankImpactSound!.Play();
                         });
 
@@ -334,7 +379,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                     }
                 }
 
-                if (isFailedSDueToMisses)
+                if (isFailedSDueToMisses && !UseV2Style)
                 {
                     const double adjust_duration = 200;
 
@@ -351,7 +396,9 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                                 .FadeOut(800, Easing.Out);
 
                             accuracyCircle
-                                .ProgressTo(accuracyS - GRADE_SPACING_PERCENTAGE / 2 - visual_alignment_offset, 70, Easing.OutQuint);
+                                .ProgressTo(UseV2Style
+                                    ? v2Scale.RingProgress(accuracyS - GRADE_SPACING_PERCENTAGE / 2 - visual_alignment_offset)
+                                    : accuracyS - GRADE_SPACING_PERCENTAGE / 2 - visual_alignment_offset, 70, Easing.OutQuint);
 
                             badges.Single(b => b.Rank == getRank(ScoreRank.S))
                                   .FadeOut(70, Easing.OutQuint);
@@ -365,10 +412,17 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
         {
             base.Update();
 
-            if (isTicking && Clock.CurrentTime - lastTickPlaybackTime >= tickPlaybackRate.Value)
+            double now = Time.Current;
+            if (now >= tickEndTime)
+            {
+                scoreTickSound?.Stop();
+                return;
+            }
+
+            if (now >= tickStartTime && now - lastTickPlaybackTime >= Math.Max(18, tickPlaybackRate.Value))
             {
                 scoreTickSound?.Play();
-                lastTickPlaybackTime = Clock.CurrentTime;
+                lastTickPlaybackTime = now;
             }
         }
 
@@ -406,23 +460,28 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
             return rank;
         }
 
-        private double inverseEasing(Easing easing, double targetValue)
+        private static double inverseEasing(Easing easing, double targetValue)
         {
-            double test = 0;
-            double result = 0;
-            int count = 2;
+            // Scores from old clients can contain a rank inconsistent with their accuracy.
+            // Bound the inversion so a zero/invalid accuracy cannot stall the update thread.
+            if (double.IsNaN(targetValue) || targetValue <= 0)
+                return 0;
+            if (targetValue >= 1)
+                return 1;
 
-            while (Math.Abs(result - targetValue) > 0.005)
+            double low = 0;
+            double high = 1;
+
+            for (int i = 0; i < 24; i++)
             {
-                int dir = Math.Sign(targetValue - result);
-
-                test += dir * 1.0 / count;
-                result = Interpolation.ApplyEasing(easing, test);
-
-                count++;
+                double middle = (low + high) / 2;
+                if (Interpolation.ApplyEasing(easing, middle) < targetValue)
+                    low = middle;
+                else
+                    high = middle;
             }
 
-            return test;
+            return (low + high) / 2;
         }
     }
 }

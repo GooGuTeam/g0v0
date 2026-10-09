@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Humanizer;
 using JetBrains.Annotations;
+using Newtonsoft.Json;
 using osu.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
@@ -444,11 +445,56 @@ namespace osu.Game
 
             configSkin = LocalConfig.GetBindable<string>(OsuSetting.Skin);
 
-            // Transfer skin from config to realm instance once on startup.
-            SkinManager.SetSkinFromConfiguration(configSkin.Value);
+            var useRulesetSkins = LocalConfig.GetBindable<bool>(OsuSetting.UseRulesetSkins);
+            var configRulesetSkins = LocalConfig.GetBindable<string>(OsuSetting.RulesetSkins);
+            Dictionary<string, string> rulesetSkins;
 
-            // Transfer any runtime changes back to configuration file.
-            SkinManager.CurrentSkinInfo.ValueChanged += skin => configSkin.Value = skin.NewValue.ID.ToString();
+            try
+            {
+                rulesetSkins = JsonConvert.DeserializeObject<Dictionary<string, string>>(configRulesetSkins.Value) ?? new Dictionary<string, string>();
+            }
+            catch (JsonException e)
+            {
+                Logger.Error(e, "Failed to load ruleset skin preferences.");
+                rulesetSkins = new Dictionary<string, string>();
+            }
+
+            bool switchingSkin = false;
+
+            void restoreSkin()
+            {
+                switchingSkin = true;
+                try
+                {
+                    string skin = useRulesetSkins.Value && rulesetSkins.TryGetValue(Ruleset.Value.ShortName, out string preferredSkin)
+                        ? preferredSkin
+                        : configSkin.Value;
+                    SkinManager.SetSkinFromConfiguration(skin);
+                }
+                finally
+                {
+                    switchingSkin = false;
+                }
+            }
+
+            // Automatic switches must not overwrite either the global skin or another ruleset's preference.
+            SkinManager.CurrentSkinInfo.ValueChanged += skin =>
+            {
+                if (switchingSkin || skin.NewValue.ID == SkinInfo.RANDOM_SKIN)
+                    return;
+
+                if (useRulesetSkins.Value)
+                {
+                    rulesetSkins[Ruleset.Value.ShortName] = skin.NewValue.ID.ToString();
+                    configRulesetSkins.Value = JsonConvert.SerializeObject(rulesetSkins);
+                }
+                else
+                    configSkin.Value = skin.NewValue.ID.ToString();
+            };
+
+            Ruleset.ValueChanged += _ => restoreSkin();
+            useRulesetSkins.BindValueChanged(_ => restoreSkin());
+            restoreSkin();
 
             UserPlayingState.BindValueChanged(p =>
             {
@@ -1743,6 +1789,9 @@ namespace osu.Game
         protected override void UpdateAfterChildren()
         {
             base.UpdateAfterChildren();
+
+            if (Toolbar != null)
+                Toolbar.UseV2ResultsStyle.Value = ScreenStack.CurrentScreen is ResultsScreen { IsV2Overview: true };
 
             ScreenOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };
             overlayOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };

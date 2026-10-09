@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -19,6 +19,7 @@ using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Screens;
 using osu.Game.Audio;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
@@ -50,6 +51,16 @@ namespace osu.Game.Screens.Ranking
 
         public readonly Bindable<ScoreInfo?> SelectedScore = new Bindable<ScoreInfo?>();
 
+        /// <summary>
+        /// Set only when the leaderboard confirms that the presented score is the local user's best.
+        /// </summary>
+        public readonly BindableBool IsPersonalBest = new BindableBool();
+
+        /// <summary>
+        /// The pre-play personal best by PP on this beatmap. Null when no reliable baseline is available.
+        /// </summary>
+        public readonly Bindable<ScoreInfo?> ComparisonScore = new Bindable<ScoreInfo?>();
+
         public readonly ScoreInfo? Score;
 
         protected ScorePanelList ScorePanelList { get; private set; } = null!;
@@ -64,9 +75,25 @@ namespace osu.Game.Screens.Ranking
         protected StatisticsPanel StatisticsPanel { get; private set; } = null!;
 
         private Drawable bottomPanel = null!;
+        private V2ResultsFooter v2Footer = null!;
+        private Box classicFooterBackground = null!;
+        private FillFlowContainer buttons = null!;
         private Container<ScorePanel> detachedPanelContainer = null!;
 
         private Task lastFetchTask = Task.CompletedTask;
+
+        private readonly Bindable<bool> useV2ResultsScreen = new Bindable<bool>();
+        private Container v2PanelContainer = null!;
+        private ShearedButton layoutButton = null!;
+        private ShearedButton backButton = null!;
+        private bool showingOriginalLayout;
+        private bool v2PanelLoading;
+        private bool hasEntered;
+
+        private bool v2LayoutEnabled => useV2ResultsScreen.Value && this is SoloResultsScreen && Score?.BeatmapInfo != null;
+        private bool showingV2Layout => v2LayoutEnabled && !showingOriginalLayout;
+
+        public bool IsV2Overview => showingV2Layout;
 
         /// <summary>
         /// Whether the user can retry the beatmap from the results screen.
@@ -97,9 +124,10 @@ namespace osu.Game.Screens.Ranking
         }
 
         [BackgroundDependencyLoader]
-        private void load(AudioManager audio)
+        private void load(AudioManager audio, OsuConfigManager config)
         {
-            FillFlowContainer buttons;
+            // Bind directly: a temporary GetBindable() copy may be collected and break live setting updates.
+            config.BindWith(OsuSetting.UseV2ResultsScreen, useV2ResultsScreen);
 
             popInSample = audio.Samples.Get(@"UI/overlay-pop-in");
 
@@ -139,6 +167,11 @@ namespace osu.Game.Screens.Ranking
                                         {
                                             RelativeSizeAxes = Axes.Both
                                         },
+                                        v2PanelContainer = new Container
+                                        {
+                                            RelativeSizeAxes = Axes.Both,
+                                            Alpha = 0,
+                                        },
                                     }
                                 }
                             },
@@ -154,7 +187,7 @@ namespace osu.Game.Screens.Ranking
                                 Alpha = 0,
                                 Children = new Drawable[]
                                 {
-                                    new Box
+                                    classicFooterBackground = new Box
                                     {
                                         RelativeSizeAxes = Axes.Both,
                                         Colour = Color4Extensions.FromHex("#333")
@@ -179,17 +212,54 @@ namespace osu.Game.Screens.Ranking
                 }
             };
 
+            ((Container)bottomPanel).Add(v2Footer = new V2ResultsFooter
+            {
+                Alpha = 0,
+                Score = Score,
+                AllowWatchingReplay = AllowWatchingReplay,
+                BackAction = () => this.Exit(),
+                RankingAction = () => showOriginalResults(false),
+                DetailsAction = () => showOriginalResults(true),
+                RetryAction = player != null && AllowRetry ? restartPlayer : null,
+            });
+
             if (Score != null)
             {
                 // only show flair / animation when arriving after watching a play that isn't autoplay.
                 bool shouldFlair = player != null && !Score.User.IsBot;
 
-                ScorePanelList.AddScore(Score, shouldFlair);
+                ScorePanelList.AddScore(Score, shouldFlair && !v2LayoutEnabled);
+
+                if (v2LayoutEnabled)
+                    v2PanelContainer.Add(new V2ResultsPanel(Score, shouldFlair) { DetailsAction = () => showOriginalResults(true) });
                 // this is mostly for medal display.
                 // we don't want the medal animation to trample on the results screen animation, so we (ab)use `OverlayActivationMode`
                 // to give the results screen enough time to play the animation out before the medals can be shown.
                 Scheduler.AddDelayed(() => OverlayActivationMode.Value = OverlayActivation.All, shouldFlair ? AccuracyCircle.TOTAL_DURATION + 1000 : 0);
             }
+
+            buttons.Add(backButton = new ShearedButton
+            {
+                Text = CommonStrings.Back,
+                Width = 140,
+                Height = 30,
+                DarkerColour = Color4Extensions.FromHex("#CF2BA5"),
+                Action = () => this.Exit(),
+                Alpha = 0,
+            });
+
+            buttons.Add(layoutButton = new ShearedButton
+            {
+                Width = 220,
+                Height = 30,
+                Action = () =>
+                {
+                    StatisticsPanel.Hide();
+                    showingOriginalLayout = !showingOriginalLayout;
+                    updateResultsLayout();
+                },
+                Alpha = 0,
+            });
 
             bool allowHotkeyRetry = false;
 
@@ -240,13 +310,91 @@ namespace osu.Game.Screens.Ranking
             base.LoadComplete();
 
             StatisticsPanel.State.BindValueChanged(onStatisticsStateChanged, true);
+            useV2ResultsScreen.BindValueChanged(_ =>
+            {
+                showingOriginalLayout = false;
+                updateResultsLayout();
+            }, true);
 
             fetchScores(null);
+        }
+
+        private void restartPlayer()
+        {
+            skipExitTransition = true;
+            player!.Restart(true);
+        }
+
+        public IEnumerable<ScoreInfo> GetOverviewScores() => ScorePanelList.GetScorePanels().Select(p => p.Score);
+
+        public void SelectOverviewScore(ScoreInfo score)
+        {
+            Schedule(() =>
+            {
+                SelectedScore.Value = score;
+                v2PanelContainer.Clear();
+                v2PanelContainer.Add(new V2ResultsPanel(score) { DetailsAction = () => showOriginalResults(true) });
+            });
+        }
+
+        private void showOriginalResults(bool showStatistics)
+        {
+            showingOriginalLayout = true;
+            updateResultsLayout();
+            if (showStatistics && SelectedScore.Value != null)
+                StatisticsPanel.Show();
+        }
+
+        private void updateResultsLayout()
+        {
+            if (showingV2Layout)
+            {
+                VerticalScrollContent.ScrollToStart(false);
+                StatisticsPanel.Hide();
+                SelectedScore.Value = Score;
+            }
+
+            BackButtonVisibility.Value = !showingV2Layout;
+            VerticalScrollContent.FitToViewport = showingV2Layout;
+            v2Footer.Alpha = showingV2Layout ? 1 : 0;
+            classicFooterBackground.Alpha = showingV2Layout ? 0 : 1;
+            buttons.Alpha = showingV2Layout ? 0 : 1;
+            bottomPanel.Height = showingV2Layout ? DrawWidth * V2ResultsFooter.DESIGN_HEIGHT / 1280 : TwoLayerButton.SIZE_EXTENDED.Y;
+
+            ScorePanelList.Alpha = showingV2Layout ? 0 : 1;
+            ScorePanelList.HandleInput = !showingV2Layout;
+            detachedPanelContainer.Alpha = showingV2Layout ? 0 : 1;
+            v2PanelContainer.Alpha = showingV2Layout ? 1 : 0;
+            layoutButton.Alpha = v2LayoutEnabled ? 1 : 0;
+            backButton.Alpha = v2LayoutEnabled ? 1 : 0;
+            layoutButton.Text = showingV2Layout ? ResultsScreenStrings.LeaderboardAndDetails : ResultsScreenStrings.ScoreOverview;
+
+            foreach (var button in buttons.Children.OfType<ReplayDownloadButton>())
+                button.Width = v2LayoutEnabled ? 180 : 300;
+
+            foreach (var button in buttons.Children.OfType<RetryButton>())
+                button.Width = v2LayoutEnabled ? 180 : 300;
+
+            if (showingV2Layout && v2PanelContainer.Count == 0 && !v2PanelLoading)
+            {
+                v2PanelLoading = true;
+                LoadComponentAsync(new V2ResultsPanel(Score!) { DetailsAction = () => showOriginalResults(true) }, panel =>
+                {
+                    v2PanelContainer.Add(panel);
+                    v2PanelLoading = false;
+                });
+            }
+
+            if (hasEntered && this.IsCurrentScreen())
+                ApplyToBackground(b => b.BlurAmount.Value = showingV2Layout ? 0 : BACKGROUND_BLUR);
         }
 
         protected override void Update()
         {
             base.Update();
+
+            if (showingV2Layout)
+                bottomPanel.Height = DrawWidth * V2ResultsFooter.DESIGN_HEIGHT / 1280;
 
             if (ScorePanelList.IsScrolledToStart)
                 fetchScores(-1);
@@ -395,10 +543,11 @@ namespace osu.Game.Screens.Ranking
         public override void OnEntering(ScreenTransitionEvent e)
         {
             base.OnEntering(e);
+            hasEntered = true;
 
             ApplyToBackground(b =>
             {
-                b.BlurAmount.Value = BACKGROUND_BLUR;
+                b.BlurAmount.Value = showingV2Layout ? 0 : BACKGROUND_BLUR;
                 b.FadeColour(OsuColour.Gray(0.5f), 250);
             });
 
@@ -426,6 +575,16 @@ namespace osu.Game.Screens.Ranking
 
         public override bool OnBackButton()
         {
+            if (showingV2Layout && v2PanelContainer.Children.OfType<V2ResultsPanel>().Any(p => p.CloseDetails()))
+                return true;
+
+            if (v2LayoutEnabled && showingOriginalLayout && StatisticsPanel.State.Value != Visibility.Visible)
+            {
+                showingOriginalLayout = false;
+                updateResultsLayout();
+                return true;
+            }
+
             if (StatisticsPanel.State.Value == Visibility.Visible)
             {
                 StatisticsPanel.Hide();
@@ -509,6 +668,12 @@ namespace osu.Game.Screens.Ranking
                     break;
 
                 case GlobalAction.Select:
+                    if (showingV2Layout)
+                    {
+                        showingOriginalLayout = true;
+                        updateResultsLayout();
+                    }
+
                     if (SelectedScore.Value != null)
                         StatisticsPanel.ToggleVisibility();
                     return true;
@@ -533,6 +698,8 @@ namespace osu.Game.Screens.Ranking
 
         protected partial class VerticalScrollContainer : OsuScrollContainer
         {
+            public bool FitToViewport { get; set; }
+
             protected override Container<Drawable> Content => content;
 
             private readonly Container content;
@@ -549,7 +716,7 @@ namespace osu.Game.Screens.Ranking
             protected override void Update()
             {
                 base.Update();
-                content.Height = Math.Max(screen_height, DrawHeight);
+                content.Height = FitToViewport ? DrawHeight : Math.Max(screen_height, DrawHeight);
             }
         }
     }

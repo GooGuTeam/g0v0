@@ -40,6 +40,8 @@ namespace osu.Game.Configuration
             // UI/selection defaults
             SetDefault(OsuSetting.Ruleset, string.Empty);
             SetDefault(OsuSetting.Skin, SkinInfo.ARGON_SKIN.ToString());
+            SetDefault(OsuSetting.UseRulesetSkins, false);
+            SetDefault(OsuSetting.RulesetSkins, "{}");
 
             SetDefault(OsuSetting.BeatmapDetailTab, BeatmapDetailTab.Local);
             SetDefault(OsuSetting.BeatmapLeaderboardSortMode, LeaderboardSortMode.Score);
@@ -67,6 +69,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ToolbarClockDisplayMode, ToolbarClockDisplayMode.Full);
 
             SetDefault(OsuSetting.SongSelectBackgroundBlur, false);
+            SetDefault(OsuSetting.UseV2ResultsScreen, false);
 
             // Online settings
             SetDefault(OsuSetting.Username, string.Empty);
@@ -403,6 +406,8 @@ namespace osu.Game.Configuration
         ShowFirstRunSetup,
         ShowConvertedBeatmaps,
         Skin,
+        UseRulesetSkins,
+        RulesetSkins,
         ScreenshotFormat,
         ScreenshotCaptureMenuCursor,
         BeatmapSkins,
@@ -498,5 +503,10 @@ namespace osu.Game.Configuration
         /// Blocks private messages, multiplayer room invites, and duel requests from people not on the user's friends list.
         /// </summary>
         PMFriendsOnly,
+
+        /// <summary>
+        /// Uses the full-width results layout for solo scores.
+        /// </summary>
+        UseV2ResultsScreen,
     }
 }

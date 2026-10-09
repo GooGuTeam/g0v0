@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -16,6 +16,7 @@ using osu.Framework.Testing;
 using osu.Framework.Utils;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
+using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Online;
 using osu.Game.Online.API;
@@ -53,6 +54,9 @@ namespace osu.Game.Tests.Visual.Ranking
         [Resolved]
         private SkinManager skins { get; set; }
 
+        [Resolved]
+        private OsuConfigManager config { get; set; }
+
         private DummyAPIAccess dummyAPI => (DummyAPIAccess)API;
 
         private BeatmapInfo beatmap;
@@ -84,6 +88,7 @@ namespace osu.Game.Tests.Visual.Ranking
         [SetUpSteps]
         public void SetUpSteps()
         {
+            AddStep("use original results layout", () => config.SetValue(OsuSetting.UseV2ResultsScreen, false));
             AddToggleStep("toggle legacy classic skin", v =>
             {
                 skins?.CurrentSkinInfo.Value = v ? skins.DefaultClassicSkin.SkinInfo : skins.CurrentSkinInfo.Default;
@@ -206,6 +211,50 @@ namespace osu.Game.Tests.Visual.Ranking
                         PP = 5_072
                     }
                 ));
+        }
+
+        [Test]
+        public void TestV2LayoutToggle()
+        {
+            TestResultsScreen screen = null;
+            ScoreInfo score = null;
+
+            loadResultsScreen(() =>
+            {
+                score = TestResources.CreateTestScoreInfo();
+                return screen = createResultsScreen(score);
+            });
+
+            AddStep("enable v2 results", () => config.SetValue(OsuSetting.UseV2ResultsScreen, true));
+            AddUntilStep("v2 panel loaded", () => screen.ChildrenOfType<V2ResultsPanel>().Any(p => p.IsLoaded));
+            AddAssert("v2 panel present", () => screen.ChildrenOfType<V2ResultsPanel>().Single().IsPresent);
+            AddAssert("original panels hidden", () => !screen.ChildrenOfType<ScorePanelList>().Single().IsPresent);
+            AddAssert("original input disabled", () => !screen.ChildrenOfType<ScorePanelList>().Single().HandleInput);
+
+            AddStep("show leaderboard", () => screen.ChildrenOfType<V2ResultsFooter>().Single().RankingButton.TriggerClick());
+            AddAssert("leaderboard visible", () => screen.ChildrenOfType<ScorePanelList>().Single().IsPresent);
+            AddAssert("v2 panel hidden", () => !screen.ChildrenOfType<V2ResultsPanel>().Single().Parent.IsPresent);
+            AddAssert("v2 footer hidden", () => !screen.ChildrenOfType<V2ResultsFooter>().Single().IsPresent);
+            AddStep("return to overview", () => screen.OnBackButton());
+            AddAssert("v2 panel visible", () => screen.ChildrenOfType<V2ResultsPanel>().Single().IsPresent);
+            AddAssert("overview score selected", () => ReferenceEquals(screen.SelectedScore.Value, score));
+
+            AddStep("show statistics from circle", () => screen.ChildrenOfType<V2ResultsPanel>().Single().ChildrenOfType<V2ResultsButton>().Single(b => b.Name == "Show score details").TriggerClick());
+            AddUntilStep("statistics visible", () => screen.ChildrenOfType<StatisticsPanel>().Any(p => p.IsPresent && p.State.Value == Visibility.Visible));
+            AddStep("close statistics", () => screen.OnBackButton());
+            AddStep("return from statistics to overview", () => screen.OnBackButton());
+            AddAssert("overview restored", () => screen.ChildrenOfType<V2ResultsFooter>().Single().IsPresent);
+            AddAssert("retry enabled for local play", () => screen.ChildrenOfType<V2ResultsFooter>().Single().RetryButton.Enabled.Value);
+
+            AddStep("show statistics from footer", () => screen.ChildrenOfType<V2ResultsFooter>().Single().DetailsButton.TriggerClick());
+            AddUntilStep("footer opens statistics", () => screen.ChildrenOfType<StatisticsPanel>().Any(p => p.IsPresent && p.State.Value == Visibility.Visible));
+            AddStep("close footer statistics", () => screen.OnBackButton());
+            AddStep("return to overview again", () => screen.OnBackButton());
+
+            AddStep("disable v2 results", () => config.SetValue(OsuSetting.UseV2ResultsScreen, false));
+            AddAssert("original panels restored", () => screen.ChildrenOfType<ScorePanelList>().Single().IsPresent);
+            AddAssert("original input restored", () => screen.ChildrenOfType<ScorePanelList>().Single().HandleInput);
+            AddAssert("v2 panel hidden", () => !screen.ChildrenOfType<V2ResultsPanel>().Single().Parent.IsPresent);
         }
 
         private int onlineScoreID = 1;

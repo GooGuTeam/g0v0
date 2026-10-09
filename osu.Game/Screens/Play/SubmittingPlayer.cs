@@ -328,6 +328,7 @@ namespace osu.Game.Screens.Play
             {
                 score.ScoreInfo.OnlineID = s.ID;
                 score.ScoreInfo.Position = s.Position;
+                score.ScoreInfo.PP = s.PP ?? score.ScoreInfo.PP;
 
                 scoreSubmissionSource.SetResult(true);
                 Logger.Log($"Score submission completed! (token:{token.Value} id:{s.ID})");

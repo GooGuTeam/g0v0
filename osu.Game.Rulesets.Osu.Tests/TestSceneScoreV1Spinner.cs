@@ -28,23 +28,31 @@ using osu.Game.Tests.Visual;
 
 namespace osu.Game.Rulesets.Osu.Tests
 {
-    public partial class TestSceneScoreV1Spinner : RateAdjustedBeatmapTestScene
+    public partial class TestSceneScoreV1Spinner : ScreenTestScene
     {
         private ScoreAccessibleReplayPlayer currentPlayer = null!;
         private readonly List<string> replayDiagnostics = new List<string>();
         private Replay? diagnosticReplay;
         private int diagnosticFrame;
         private bool steppingReplay;
+        private bool preserveModRate;
 
-        [TestCase(3115, 14400)]
-        [TestCase(866, 2600)]
-        [TestCase(2711, 13100)]
-        [TestCase(2134, 10400)]
-        public void TestStableAutoplaySpinnerScore(double duration, long expectedBonus)
+        [TestCase(3115, 8.8f, false, false, 14400)]
+        [TestCase(866, 8.8f, false, false, 2600)]
+        [TestCase(2711, 8.8f, false, false, 13100)]
+        [TestCase(2134, 8.8f, false, false, 10400)]
+        [TestCase(1667, 6f, false, true, 7200)]
+        [TestCase(1667, 6f, true, true, 3600)]
+        public void TestStableAutoplaySpinnerScore(double duration, float overallDifficulty, bool scoreV2, bool doubleTime, long expectedBonus)
         {
             AddStep("load autoplay", () =>
             {
-                Mod[] mods = { new OsuModClassic(), new OsuModScoreV1(), new OsuModAutoplay() };
+                preserveModRate = doubleTime;
+                Mod[] mods = { new OsuModClassic(), scoreV2 ? new OsuModScoreV2() : new OsuModScoreV1(), new OsuModAutoplay() };
+
+                if (doubleTime)
+                    mods = mods.Append(new OsuModDoubleTime()).ToArray();
+
                 SelectedMods.Value = mods;
                 Beatmap.Value = CreateWorkingBeatmap(new Beatmap<OsuHitObject>
                 {
@@ -59,7 +67,7 @@ namespace osu.Game.Rulesets.Osu.Tests
                     },
                     BeatmapInfo =
                     {
-                        Difficulty = new BeatmapDifficulty { OverallDifficulty = 8.8f },
+                        Difficulty = new BeatmapDifficulty { OverallDifficulty = overallDifficulty },
                         Ruleset = new OsuRuleset().RulesetInfo
                     }
                 });
@@ -72,7 +80,9 @@ namespace osu.Game.Rulesets.Osu.Tests
             });
             AddUntilStep("player loaded", () => currentPlayer.IsCurrentScreen());
             AddUntilStep("spinner completed", () => currentPlayer.ScoreProcessor.HasCompleted.Value);
-            AddAssert("stable score", () => currentPlayer.ScoreProcessor.TotalScore.Value, () => Is.EqualTo(expectedBonus + 300));
+            AddAssert("stable spinner awards", () => currentPlayer.ScoreProcessor.GetScoreProcessorStatistics().BonusPortion, () => Is.EqualTo(expectedBonus));
+            AddAssert("stable score", () => currentPlayer.ScoreProcessor.TotalScore.Value,
+                () => Is.EqualTo((long)Math.Round(((scoreV2 ? 1000000 : 300) + expectedBonus) * (scoreV2 && doubleTime ? 1.2 : 1))));
         }
 
         [TestCase(false)]
@@ -82,6 +92,7 @@ namespace osu.Game.Rulesets.Osu.Tests
         {
             AddStep("load beatmap autoplay", () =>
             {
+                preserveModRate = false;
                 string path = Environment.GetEnvironmentVariable("OSU_SCORE_V1_BEATMAP")
                               ?? throw new InvalidOperationException("Set OSU_SCORE_V1_BEATMAP to the .osu file path.");
                 Mod[] mods = { new OsuModClassic(), scoreV2 ? new OsuModScoreV2() : new OsuModScoreV1(), new OsuModAutoplay() };
@@ -109,19 +120,44 @@ namespace osu.Game.Rulesets.Osu.Tests
         [Explicit("Requires the locally installed Byoushin Zenkai Girl [Hard] beatmap via OSU_SCORE_V2_BEATMAP.")]
         public void TestByoushinZenkaiGirlScoreV2DoubleTimeAutoplay()
         {
+            var spinnerAwards = new List<(int normal, int bonus)>();
             AddStep("load beatmap with ScoreV2 DT autoplay", () =>
             {
+                preserveModRate = true;
                 string path = Environment.GetEnvironmentVariable("OSU_SCORE_V2_BEATMAP")
                               ?? throw new InvalidOperationException("Set OSU_SCORE_V2_BEATMAP to the .osu file path.");
                 Mod[] mods = { new OsuModScoreV2(), new OsuModDoubleTime(), new OsuModAutoplay() };
                 SelectedMods.Value = mods;
                 Beatmap.Value = CreateWorkingBeatmap(new FlatWorkingBeatmap(path).Beatmap);
                 var playable = Beatmap.Value.GetPlayableBeatmap(new OsuRuleset().RulesetInfo, mods);
-                LoadScreen(currentPlayer = new ScoreAccessibleReplayPlayer(new Score
+                var replay = new OsuAutoGenerator(playable, mods).Generate();
+                spinnerAwards.Clear();
+                int normalAwards = 0;
+                int bonusAwards = 0;
+                var player = new ScoreAccessibleReplayPlayer(new Score
                 {
                     ScoreInfo = new ScoreInfo { Mods = mods },
-                    Replay = new OsuAutoGenerator(playable, mods).Generate()
-                }));
+                    Replay = replay
+                });
+                player.OnLoadComplete += _ => player.ScoreProcessor.NewJudgement += result =>
+                {
+                    if (result.HitObject is SpinnerTick && result.IsHit)
+                    {
+                        if (result.HitObject is SpinnerBonusTick)
+                            bonusAwards++;
+                        else
+                            normalAwards++;
+                    }
+
+                    if (result is OsuSpinnerJudgementResult spinner)
+                    {
+                        spinnerAwards.Add((normalAwards, bonusAwards));
+                        var statistics = player.ScoreProcessor.GetScoreProcessorStatistics();
+                        TestContext.Out.WriteLine($"Spinner={spinner.HitObject.StartTime}, Rotation={spinner.TotalRotation}, HalfTurns={(int)(spinner.TotalRotation / 180)}, NormalAwards={normalAwards}, BonusAwards={bonusAwards}, CumulativeBonus={statistics.BonusPortion}");
+                        normalAwards = bonusAwards = 0;
+                    }
+                };
+                LoadScreen(currentPlayer = player);
             });
             AddUntilStep("player loaded", () => currentPlayer.IsCurrentScreen());
             AddUntilStep("autoplay completed", () => currentPlayer.ScoreProcessor.HasCompleted.Value);
@@ -131,7 +167,9 @@ namespace osu.Game.Rulesets.Osu.Tests
                 var statistics = processor.GetScoreProcessorStatistics();
                 TestContext.Out.WriteLine($"ScoreV2=True, DoubleTime=True, Total={processor.TotalScore.Value}, Accuracy={processor.Accuracy.Value}, Combo={processor.Combo.Value}, ComboPortion={statistics.ComboPortion}, MaximumComboPortion={processor.MaximumComboPortion}, Bonus={statistics.BonusPortion}");
             });
-            AddAssert("reported stable autoplay score", () => currentPlayer.ScoreProcessor.TotalScore.Value, () => Is.EqualTo(12117280));
+            AddAssert("DT rate preserved", () => currentPlayer.GameplayClockContainer.GetTrueGameplayRate(), () => Is.EqualTo(1.5));
+            AddAssert("six normal and six bonus awards on each spinner", () => spinnerAwards, () => Is.EqualTo(Enumerable.Repeat((6, 6), 4)));
+            AddAssert("reported stable autoplay score", () => currentPlayer.ScoreProcessor.TotalScore.Value, () => Is.EqualTo(1217280));
         }
 
         [Test]
@@ -146,6 +184,7 @@ namespace osu.Game.Rulesets.Osu.Tests
         {
             AddStep("load legacy replay", () =>
             {
+                preserveModRate = false;
                 string beatmapPath = Environment.GetEnvironmentVariable("OSU_SCORE_V2_BEATMAP")
                                      ?? throw new InvalidOperationException("Set OSU_SCORE_V2_BEATMAP to the .osu file path.");
                 string replayPath = Environment.GetEnvironmentVariable("OSU_SCORE_V2_REPLAY")
@@ -209,6 +248,10 @@ namespace osu.Game.Rulesets.Osu.Tests
             if (steppingReplay && diagnosticReplay != null && diagnosticFrame < diagnosticReplay.Frames.Count)
                 currentPlayer.GameplayClockContainer.Seek(diagnosticReplay.Frames[diagnosticFrame++].Time);
             base.Update();
+
+            if (!preserveModRate && Beatmap.Value.TrackLoaded)
+                // Retain test-runner rate adjustment for the existing NT and legacy replay diagnostics.
+                Beatmap.Value.Track.Tempo.Value = Clock.Rate;
         }
 
         private class LocalReplayDecoder : LegacyScoreDecoder

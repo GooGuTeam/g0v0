@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -35,6 +35,19 @@ namespace osu.Game.Overlays.Toolbar
 
         private OsuSpriteText usernameText = null!;
 
+        private bool showUsername = true;
+
+        public bool ShowUsername
+        {
+            get => showUsername;
+            set
+            {
+                showUsername = value;
+                if (IsLoaded)
+                    usernameText.Alpha = value ? 1 : 0;
+            }
+        }
+
         public ToolbarUserButton()
         {
             ButtonContent.AutoSizeAxes = Axes.X;
@@ -47,6 +60,7 @@ namespace osu.Game.Overlays.Toolbar
             {
                 usernameText = new OsuSpriteText
                 {
+                    Alpha = showUsername ? 1 : 0,
                     Anchor = Anchor.CentreLeft,
                     Origin = Anchor.CentreLeft,
                     Margin = new MarginPadding { Right = 5 },
