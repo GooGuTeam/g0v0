@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -23,6 +23,51 @@ namespace osu.Game.Localisation
         /// "Renderer"
         /// </summary>
         public static LocalisableString Renderer => new TranslatableString(getKey(@"renderer"), @"Renderer");
+
+        /// <summary>
+        /// "Direct3D presentation model: {0}"
+        /// </summary>
+        public static LocalisableString Direct3DPresentationModel(LocalisableString arg0) => new TranslatableString(getKey(@"direct3d_presentation_model"), @"Direct3D presentation model: {0}", arg0);
+
+        /// <summary>
+        /// "Flip model (FLIP_DISCARD)"
+        /// </summary>
+        public static LocalisableString FlipDiscard => new TranslatableString(getKey(@"flip_discard"), @"Flip model (FLIP_DISCARD)");
+
+        /// <summary>
+        /// "Flip model (FLIP_SEQUENTIAL)"
+        /// </summary>
+        public static LocalisableString FlipSequential => new TranslatableString(getKey(@"flip_sequential"), @"Flip model (FLIP_SEQUENTIAL)");
+
+        /// <summary>
+        /// "BitBlt model (DISCARD)"
+        /// </summary>
+        public static LocalisableString BitBltDiscard => new TranslatableString(getKey(@"bitblt_discard"), @"BitBlt model (DISCARD)");
+
+        /// <summary>
+        /// "BitBlt model (SEQUENTIAL)"
+        /// </summary>
+        public static LocalisableString BitBltSequential => new TranslatableString(getKey(@"bitblt_sequential"), @"BitBlt model (SEQUENTIAL)");
+
+        /// <summary>
+        /// "Exclusive fullscreen: {0}"
+        /// </summary>
+        public static LocalisableString Direct3DExclusiveFullscreen(LocalisableString arg0) => new TranslatableString(getKey(@"direct3d_exclusive_fullscreen"), @"Exclusive fullscreen: {0}", arg0);
+
+        /// <summary>
+        /// "Active"
+        /// </summary>
+        public static LocalisableString ExclusiveFullscreenActive => new TranslatableString(getKey(@"exclusive_fullscreen_active"), @"Active");
+
+        /// <summary>
+        /// "Inactive"
+        /// </summary>
+        public static LocalisableString ExclusiveFullscreenInactive => new TranslatableString(getKey(@"exclusive_fullscreen_inactive"), @"Inactive");
+
+        /// <summary>
+        /// "Unknown"
+        /// </summary>
+        public static LocalisableString PresentationUnknown => new TranslatableString(getKey(@"presentation_unknown"), @"Unknown");
 
         /// <summary>
         /// "Frame limiter"
