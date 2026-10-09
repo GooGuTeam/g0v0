@@ -29,7 +29,7 @@ namespace osu.Game.Screens.Ranking
         public readonly Bindable<ScoreInfo?> Score = new Bindable<ScoreInfo?>();
 
         [Resolved(canBeNull: true)]
-        private ReplayRenderOverlay renderOverlay { get; set; }
+        private ReplayRenderOverlay? renderOverlay { get; set; }
 
         public RenderVideoButton(ScoreInfo? score = null)
             : base(FontAwesome.Solid.Video)

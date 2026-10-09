@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Collections.Generic;
@@ -67,7 +67,7 @@ namespace osu.Game.Configuration
         /// "Grayscale by fsyori" desaturated palette — a significant
         /// new chrome option in this release and the headline novelty
         /// the badge wants to draw attention to. Both call sites mount
-        /// the same <see cref="osu.Game.Overlays.Settings.UIThemeDropdownAndRestart"/>
+        /// the same <c>UIThemeDropdownAndRestart</c>
         /// drawable, which sets <c>NewFeatureId</c> on its internal
         /// <see cref="osu.Game.Graphics.UserInterfaceV2.FormEnumDropdown{T}"/>,
         /// so the pill appears uniformly inline-next-to-the-tooltip in

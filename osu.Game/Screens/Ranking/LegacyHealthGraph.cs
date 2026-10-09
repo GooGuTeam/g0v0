@@ -183,9 +183,10 @@ namespace osu.Game.Screens.Ranking
                 {
                     token.ThrowIfCancellationRequested();
 
-                    // los replays legacy convertidos pueden traer este result y ApplyResult tira.
+#pragma warning disable CS0618
                     if (e.Result == HitResult.LegacyComboIncrease)
                         continue;
+#pragma warning restore CS0618
 
                     double eventTime = e.HitObject.GetEndTime() + e.TimeOffset;
 

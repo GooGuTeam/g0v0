@@ -26,10 +26,10 @@ namespace osu.Game.Screens.Ranking
         public readonly Bindable<ScoreInfo?> Score = new Bindable<ScoreInfo?>();
 
         [Resolved(canBeNull: true)]
-        private ScoreNoteOverlay noteOverlay { get; set; }
+        private ScoreNoteOverlay? noteOverlay { get; set; }
 
         [Resolved]
-        private IAPIProvider api { get; set; }
+        private IAPIProvider api { get; set; } = null!;
 
         public AddNoteButton(ScoreInfo? score = null)
             : base(FontAwesome.Solid.CommentDots)

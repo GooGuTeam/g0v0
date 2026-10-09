@@ -18,7 +18,7 @@ namespace osu.Game.Configuration
     /// ----------------
     /// A per-feature interaction counter. When the user clicks (taps)
     /// the host control of a [NEW] badge, the host forwards via
-    /// <see cref="NewFeatureBadge.RegisterInteraction"/> which bumps
+    /// <see cref="RecordInteraction"/> which bumps
     /// this counter for the badge's feature ID. Once the counter
     /// reaches <see cref="dismiss_threshold"/> the badge auto-hides
     /// for good — the user has engaged with the feature enough times
@@ -38,7 +38,7 @@ namespace osu.Game.Configuration
     ///
     /// Why this lives outside Realm
     /// ----------------------------
-    /// Same reason as <see cref="osu.Game.Skinning.PinnedSkinsStore"/>:
+    /// Same reason as <c>PinnedSkinsStore</c>:
     /// Realm schema is locked at 51 to keep vanilla osu! lazer able to
     /// open Torii-shared realm folders, and this is Torii-only metadata
     /// that has no business in the cross-compatible schema. Stored
@@ -51,7 +51,7 @@ namespace osu.Game.Configuration
     /// Saves go to <c>new-features-seen.json.tmp</c>, get flushed, and
     /// only then overwrite the real file. A power loss mid-save leaves
     /// the previous good copy intact rather than a torn file. Same
-    /// pattern as <see cref="osu.Game.Skinning.PinnedSkinsStore"/>.
+    /// pattern as <c>PinnedSkinsStore</c>.
     /// </summary>
     public class NewFeatureTracker
     {
@@ -81,7 +81,7 @@ namespace osu.Game.Configuration
         /// badge out. Subscribers may be invoked on any thread;
         /// re-marshal to the update thread before touching drawables.
         /// </summary>
-        public event Action<string> FeatureDismissed;
+        public event Action<string>? FeatureDismissed;
 
         public NewFeatureTracker(Storage baseStorage)
         {
