@@ -43,6 +43,12 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         NotInstalled,
 
         /// <summary>
+        /// The ruleset is installed locally, but the server doesn't recognise its version, so it won't accept scores
+        /// set on it.
+        /// </summary>
+        Unsupported,
+
+        /// <summary>
         /// The locally installed ruleset matches the latest version the server provides.
         /// </summary>
         UpToDate,
@@ -83,6 +89,9 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 
         [Resolved]
         private RulesetHashCache rulesetHashes { get; set; } = null!;
+
+        [Resolved]
+        private OsuColour osuColour { get; set; } = null!;
 
         [Resolved(CanBeNull = true)]
         private OsuGame? game { get; set; }
@@ -301,7 +310,7 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
             string? localHash = rulesetHashes.GetHash(localRuleset);
 
             if (localHash == null)
-                return OnlineRulesetState.VersionUnknown;
+                return OnlineRulesetState.Unsupported;
 
             foreach (var (version, hash) in versionInfo!.Versions)
             {
@@ -311,6 +320,11 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
                 currentVersion = version;
                 break;
             }
+
+            // a hash the server doesn't know about is a hard failure rather than "an update is available": the server
+            // rejects scores set on it, and replacing the ruleset is the only way out.
+            if (currentVersion == null)
+                return OnlineRulesetState.Unsupported;
 
             return currentVersion == latestVersion ? OnlineRulesetState.UpToDate : OnlineRulesetState.UpdateAvailable;
         }
@@ -351,18 +365,19 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 
                     break;
 
-                case OnlineRulesetState.UpToDate:
-                    addDescription(RulesetSettingsStrings.RulesetVersion(latestVersion!));
+                case OnlineRulesetState.Unsupported:
+                    addDescription(RulesetSettingsStrings.RulesetUnsupported, t => t.Colour = osuColour.Yellow);
                     addDescription(separator);
-                    addDescription(RulesetSettingsStrings.RulesetUpToDate);
+                    addDescription(RulesetSettingsStrings.RulesetVersion(latestVersion!));
+                    break;
+
+                case OnlineRulesetState.UpToDate:
+                    addDescription(RulesetSettingsStrings.RulesetVersion(currentVersion!));
                     break;
 
                 case OnlineRulesetState.UpdateAvailable:
-                    addDescription(currentVersion == null
-                        ? RulesetSettingsStrings.UnknownVersionPlaceholder
-                        : RulesetSettingsStrings.RulesetVersion(currentVersion));
-
-                    addUpdateHighlight(separator);
+                    addDescription(RulesetSettingsStrings.RulesetVersion(currentVersion!));
+                    addDescription(separator);
                     addUpdateHighlight(RulesetSettingsStrings.RulesetVersion(latestVersion!));
                     addUpdateHighlight(separator);
                     addUpdateHighlight(RulesetSettingsStrings.RulesetUpdateAvailable);

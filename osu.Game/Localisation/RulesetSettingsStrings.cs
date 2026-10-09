@@ -267,9 +267,9 @@ namespace osu.Game.Localisation
             => new TranslatableString(getKey(@"ruleset_no_version_information"), @"No version information available");
 
         /// <summary>
-        /// "Up to date"
+        /// "Unsupported"
         /// </summary>
-        public static LocalisableString RulesetUpToDate => new TranslatableString(getKey(@"ruleset_up_to_date"), @"Up to date");
+        public static LocalisableString RulesetUnsupported => new TranslatableString(getKey(@"ruleset_unsupported"), @"Unsupported");
 
         /// <summary>
         /// "Update available"
