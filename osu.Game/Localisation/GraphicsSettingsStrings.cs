@@ -55,6 +55,36 @@ namespace osu.Game.Localisation
         public static LocalisableString Direct3DExclusiveFullscreen(LocalisableString arg0) => new TranslatableString(getKey(@"direct3d_exclusive_fullscreen"), @"Exclusive fullscreen: {0}", arg0);
 
         /// <summary>
+        /// "Vulkan presentation mode: {0}"
+        /// </summary>
+        public static LocalisableString VulkanPresentationMode(LocalisableString arg0) => new TranslatableString(getKey(@"vulkan_presentation_mode"), @"Vulkan presentation mode: {0}", arg0);
+
+        /// <summary>
+        /// "Exclusive fullscreen: {0}"
+        /// </summary>
+        public static LocalisableString VulkanExclusiveFullscreen(LocalisableString arg0) => new TranslatableString(getKey(@"vulkan_exclusive_fullscreen"), @"Exclusive fullscreen: {0}", arg0);
+
+        /// <summary>
+        /// "Immediate (Tearing)"
+        /// </summary>
+        public static LocalisableString VulkanPresentModeImmediate => new TranslatableString(getKey(@"vulkan_present_mode_immediate"), @"Immediate (Tearing)");
+
+        /// <summary>
+        /// "Mailbox (Fast Sync)"
+        /// </summary>
+        public static LocalisableString VulkanPresentModeMailbox => new TranslatableString(getKey(@"vulkan_present_mode_mailbox"), @"Mailbox (Fast Sync)");
+
+        /// <summary>
+        /// "FIFO (VSync)"
+        /// </summary>
+        public static LocalisableString VulkanPresentModeFifo => new TranslatableString(getKey(@"vulkan_present_mode_fifo"), @"FIFO (VSync)");
+
+        /// <summary>
+        /// "FIFO Relaxed"
+        /// </summary>
+        public static LocalisableString VulkanPresentModeFifoRelaxed => new TranslatableString(getKey(@"vulkan_present_mode_fifo_relaxed"), @"FIFO Relaxed");
+
+        /// <summary>
         /// "Active"
         /// </summary>
         public static LocalisableString ExclusiveFullscreenActive => new TranslatableString(getKey(@"exclusive_fullscreen_active"), @"Active");
