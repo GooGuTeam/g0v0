@@ -173,6 +173,9 @@ namespace osu.Game
 
         protected OsuConfigManager LocalConfig { get; private set; }
 
+        private readonly Bindable<bool> legacyFontSetting = new Bindable<bool>();
+        private readonly Bindable<bool> unslantedSongSelectUI = new Bindable<bool>();
+
         protected SessionStatics SessionStatics { get; private set; }
 
         protected OsuColour Colours { get; private set; }
@@ -328,6 +331,11 @@ namespace osu.Game
             dependencies.Cache(onlineAssetStore = new OnlineAssetCachingStore(Host, realm));
 
             dependencies.CacheAs(LocalConfig);
+            dependencies.Cache(new NewFeatureTracker(Storage));
+            LocalConfig.BindWith(OsuSetting.UnslantedSongSelectUI, unslantedSongSelectUI);
+            unslantedSongSelectUI.BindValueChanged(e => OsuGame.SetUnslantedUI(e.NewValue), true);
+            LocalConfig.BindWith(OsuSetting.ToriiLegacyFont, legacyFontSetting);
+            legacyFontSetting.BindValueChanged(e => Screens.Select.LegacyFonts.UseInterFont = e.NewValue, true);
             dependencies.CacheAs<IGameplaySettings>(LocalConfig);
 
             InitialiseFonts();

@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -70,6 +70,15 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.SongSelectBackgroundBlur, false);
             SetDefault(OsuSetting.UseV2ResultsScreen, false);
+            SetDefault(OsuSetting.ToriiLegacyFooterUseSkin, false);
+            SetDefault(OsuSetting.ToriiLegacySongSelectFooter, false);
+            SetDefault(OsuSetting.ToriiStableResults, false);
+            SetDefault(OsuSetting.ToriiLegacyFont, false);
+            SetDefault(OsuSetting.UnslantedSongSelectUI, false);
+            SetDefault(OsuSetting.ToriiRenderResolution, "1280x720");
+            SetDefault(OsuSetting.ToriiRenderSkin, "default");
+            SetDefault(OsuSetting.ToriiRenderMotionBlur, false);
+            SetDefault(OsuSetting.ToriiRenderShare, true);
 
             // Online settings
             SetDefault(OsuSetting.Username, string.Empty);
@@ -508,5 +517,14 @@ namespace osu.Game.Configuration
         /// Uses the full-width results layout for solo scores.
         /// </summary>
         UseV2ResultsScreen,
+        ToriiLegacyFooterUseSkin,
+        ToriiLegacySongSelectFooter,
+        ToriiStableResults,
+        ToriiLegacyFont,
+        UnslantedSongSelectUI,
+        ToriiRenderResolution,
+        ToriiRenderSkin,
+        ToriiRenderMotionBlur,
+        ToriiRenderShare,
     }
 }

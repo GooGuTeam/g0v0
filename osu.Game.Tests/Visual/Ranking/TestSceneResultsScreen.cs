@@ -96,6 +96,18 @@ namespace osu.Game.Tests.Visual.Ranking
         }
 
         [Test]
+        public void TestLegacyResults()
+        {
+            TestResultsScreen screen = null;
+            AddStep("enable legacy results", () => config.SetValue(OsuSetting.ToriiStableResults, true));
+            AddStep("load legacy results", () => Child = resultsContainer = new TestResultsContainer(screen = createResultsScreen()));
+            AddUntilStep("legacy panel loaded", () => this.ChildrenOfType<LegacyRankingPanel>().Any(p => p.IsLoaded));
+            AddAssert("modern overview disabled", () => !screen.IsV2Overview);
+            AddAssert("legacy back exits at top", () => !screen.OnBackButton());
+            AddStep("reset legacy setting", () => config.SetValue(OsuSetting.ToriiStableResults, false));
+        }
+
+        [Test]
         public void TestFullyPopulated()
         {
             TestResultsScreen screen = null;

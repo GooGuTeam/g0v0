@@ -34,6 +34,7 @@ namespace osu.Game.Skinning
         /// Conversion factor from converting legacy positioning values (based in x480 dimensions) to x768.
         /// </summary>
         public const float STABLE_MAGIC_SCALE_FACTOR = 1.6f;
+        public const float POSITION_SCALE_FACTOR = STABLE_MAGIC_SCALE_FACTOR;
 
         protected virtual bool AllowManiaConfigLookups => true;
 

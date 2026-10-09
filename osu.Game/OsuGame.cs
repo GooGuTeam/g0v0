@@ -112,7 +112,9 @@ namespace osu.Game
         /// <summary>
         /// A common shear factor applied to most components of the game.
         /// </summary>
-        public static readonly Vector2 SHEAR = new Vector2(0.2f, 0);
+        public static readonly Vector2 DEFAULT_SHEAR = new Vector2(0.2f, 0);
+        public static Vector2 SHEAR { get; private set; } = new Vector2(0.2f, 0);
+        public static void SetUnslantedUI(bool unslanted) => SHEAR = unslanted ? Vector2.Zero : DEFAULT_SHEAR;
 
         /// <summary>
         /// For elements placed close to the screen edge, this is the margin to leave to the edge.
@@ -162,6 +164,8 @@ namespace osu.Game
         private Container footerBasedOverlayContent;
 
         protected ScalingContainer ScreenContainer { get; private set; }
+
+        public void SetLegacyScreenAspectLock(float? aspectRatio) => ScreenContainer.SetForcedAspectRatio(aspectRatio);
 
         protected Container ScreenOffsetContainer { get; private set; }
 
@@ -1297,6 +1301,9 @@ namespace osu.Game
             loadComponentSingleFile(new AccountCreationOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile<IDialogOverlay>(dialogOverlay = new DialogOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new MedalOverlay(), topMostOverlayContent.Add);
+            loadComponentSingleFile(new osu.Game.Overlays.ReplayRender.ReplayRenderOverlay(), topMostOverlayContent.Add, true);
+            loadComponentSingleFile(new osu.Game.Online.ScoreNotes.ScoreNoteStore(), Add, true);
+            loadComponentSingleFile(new osu.Game.Overlays.ScoreNotes.ScoreNoteOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new MedalAwarderContainer(), Add, true);
 
             loadComponentSingleFile(new BackgroundDataStoreProcessor(), Add);

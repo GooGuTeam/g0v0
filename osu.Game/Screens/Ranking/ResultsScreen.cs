@@ -90,7 +90,11 @@ namespace osu.Game.Screens.Ranking
         private bool v2PanelLoading;
         private bool hasEntered;
 
-        private bool v2LayoutEnabled => useV2ResultsScreen.Value && this is SoloResultsScreen && Score?.BeatmapInfo != null;
+        internal bool LegacyStableDirectMode;
+        private LegacyRankingOverlay? legacyOverlay;
+        private bool useLegacyResults;
+
+        private bool v2LayoutEnabled => !useLegacyResults && useV2ResultsScreen.Value && this is SoloResultsScreen && Score?.BeatmapInfo != null;
         private bool showingV2Layout => v2LayoutEnabled && !showingOriginalLayout;
 
         public bool IsV2Overview => showingV2Layout;
@@ -128,6 +132,7 @@ namespace osu.Game.Screens.Ranking
         {
             // Bind directly: a temporary GetBindable() copy may be collected and break live setting updates.
             config.BindWith(OsuSetting.UseV2ResultsScreen, useV2ResultsScreen);
+            useLegacyResults = config.Get<bool>(OsuSetting.ToriiStableResults);
 
             popInSample = audio.Samples.Get(@"UI/overlay-pop-in");
 
@@ -217,25 +222,33 @@ namespace osu.Game.Screens.Ranking
                 Alpha = 0,
                 Score = Score,
                 AllowWatchingReplay = AllowWatchingReplay,
-                BackAction = () => this.Exit(),
+                BackAction = () =>
+                {
+                    if (!OnBackButton())
+                        this.Exit();
+                },
                 RankingAction = () => showOriginalResults(false),
-                DetailsAction = () => showOriginalResults(true),
+                DetailsAction = () =>
+                {
+                    foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                        panel.ShowDetails();
+                },
                 RetryAction = player != null && AllowRetry ? restartPlayer : null,
             });
 
             if (Score != null)
             {
                 // only show flair / animation when arriving after watching a play that isn't autoplay.
-                bool shouldFlair = player != null && !Score.User.IsBot;
+                bool shouldFlair = player != null && !Score.User.IsBot && !(useLegacyResults && this is SoloResultsScreen);
 
                 ScorePanelList.AddScore(Score, shouldFlair && !v2LayoutEnabled);
 
                 if (v2LayoutEnabled)
-                    v2PanelContainer.Add(new V2ResultsPanel(Score, shouldFlair) { DetailsAction = () => showOriginalResults(true) });
+                    v2PanelContainer.Add(new V2ResultsPanel(Score, shouldFlair));
                 // this is mostly for medal display.
                 // we don't want the medal animation to trample on the results screen animation, so we (ab)use `OverlayActivationMode`
                 // to give the results screen enough time to play the animation out before the medals can be shown.
-                Scheduler.AddDelayed(() => OverlayActivationMode.Value = OverlayActivation.All, shouldFlair ? AccuracyCircle.TOTAL_DURATION + 1000 : 0);
+                Scheduler.AddDelayed(() => OverlayActivationMode.Value = OverlayActivation.All, shouldFlair ? AccuracyCircle.TOTAL_DURATION + 1000 : useLegacyResults && this is SoloResultsScreen ? 4000 : 0);
             }
 
             buttons.Add(backButton = new ShearedButton
@@ -303,6 +316,9 @@ namespace osu.Game.Screens.Ranking
 
             if (Score?.BeatmapInfo?.BeatmapSet != null && Score.BeatmapInfo.BeatmapSet.OnlineID > 0)
                 buttons.Add(new FavouriteButton(Score.BeatmapInfo.BeatmapSet));
+
+            if (useLegacyResults)
+                AddInternal(legacyOverlay = new LegacyRankingOverlay(this, StatisticsPanel, VerticalScrollContent, bottomPanel, autoShowDetails: this is SoloResultsScreen) { Depth = float.MinValue });
         }
 
         protected override void LoadComplete()
@@ -333,7 +349,7 @@ namespace osu.Game.Screens.Ranking
             {
                 SelectedScore.Value = score;
                 v2PanelContainer.Clear();
-                v2PanelContainer.Add(new V2ResultsPanel(score) { DetailsAction = () => showOriginalResults(true) });
+                v2PanelContainer.Add(new V2ResultsPanel(score));
             });
         }
 
@@ -354,12 +370,12 @@ namespace osu.Game.Screens.Ranking
                 SelectedScore.Value = Score;
             }
 
-            BackButtonVisibility.Value = !showingV2Layout;
+            BackButtonVisibility.Value = !showingV2Layout && !useLegacyResults;
             VerticalScrollContent.FitToViewport = showingV2Layout;
             v2Footer.Alpha = showingV2Layout ? 1 : 0;
             classicFooterBackground.Alpha = showingV2Layout ? 0 : 1;
             buttons.Alpha = showingV2Layout ? 0 : 1;
-            bottomPanel.Height = showingV2Layout ? DrawWidth * V2ResultsFooter.DESIGN_HEIGHT / 1280 : TwoLayerButton.SIZE_EXTENDED.Y;
+            bottomPanel.Height = useLegacyResults ? 0 : showingV2Layout ? DrawWidth * V2ResultsFooter.DESIGN_HEIGHT / 1280 : TwoLayerButton.SIZE_EXTENDED.Y;
 
             ScorePanelList.Alpha = showingV2Layout ? 0 : 1;
             ScorePanelList.HandleInput = !showingV2Layout;
@@ -378,7 +394,7 @@ namespace osu.Game.Screens.Ranking
             if (showingV2Layout && v2PanelContainer.Count == 0 && !v2PanelLoading)
             {
                 v2PanelLoading = true;
-                LoadComponentAsync(new V2ResultsPanel(Score!) { DetailsAction = () => showOriginalResults(true) }, panel =>
+                LoadComponentAsync(new V2ResultsPanel(Score!), panel =>
                 {
                     v2PanelContainer.Add(panel);
                     v2PanelLoading = false;
@@ -575,6 +591,9 @@ namespace osu.Game.Screens.Ranking
 
         public override bool OnBackButton()
         {
+            if (LegacyStableDirectMode)
+                return legacyOverlay?.HandleBackScroll() == true;
+
             if (showingV2Layout && v2PanelContainer.Children.OfType<V2ResultsPanel>().Any(p => p.CloseDetails()))
                 return true;
 
@@ -668,6 +687,9 @@ namespace osu.Game.Screens.Ranking
                     break;
 
                 case GlobalAction.Select:
+                    if (LegacyStableDirectMode)
+                        return true;
+
                     if (showingV2Layout)
                     {
                         showingOriginalLayout = true;

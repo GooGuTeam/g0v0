@@ -27,6 +27,8 @@ namespace osu.Game.Screens.Select
 {
     public partial class SoloSongSelect : SongSelect
     {
+        public override bool AllowLegacyFooterSkinning => true;
+
         protected override UserActivity InitialActivity => new UserActivity.ChoosingBeatmap();
 
         private PlayerLoader? playerLoader;

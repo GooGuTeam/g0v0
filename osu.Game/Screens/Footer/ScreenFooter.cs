@@ -49,6 +49,21 @@ namespace osu.Game.Screens.Footer
         private readonly List<OverlayContainer> overlays = new List<OverlayContainer>();
 
         private Box background = null!;
+        private GridContainer buttonsGrid = null!;
+
+        public bool HasActiveOverlay => ActiveOverlay != null;
+        public event Action? OverlayStateChanged;
+        public bool DefaultChromeVisible { get; private set; } = true;
+
+        public void SetDefaultChromeVisible(bool visible)
+        {
+            DefaultChromeVisible = visible;
+            background.FadeTo(visible ? 1 : 0, 120, Easing.OutQuint);
+            buttonsGrid.FadeTo(visible ? 1 : 0, 120, Easing.OutQuint);
+            BackButton.FadeTo(visible ? 1 : 0, 120, Easing.OutQuint);
+        }
+
+        public void TriggerFooterButton(int index) => buttonsFlow.ElementAtOrDefault(index)?.TriggerClick();
         private FillFlowContainer<ScreenFooterButton> buttonsFlow = null!;
         private Container overlayContentContainer = null!;
         private Container<ScreenFooterButton> hiddenButtonsContainer = null!;
@@ -87,7 +102,7 @@ namespace osu.Game.Screens.Footer
                     RelativeSizeAxes = Axes.Both,
                     Colour = colourProvider.Background5
                 },
-                new GridContainer
+                buttonsGrid = new GridContainer
                 {
                     RelativeSizeAxes = Axes.Both,
                     Padding = new MarginPadding { Left = OsuGame.SCREEN_EDGE_MARGIN + ScreenBackButton.BUTTON_WIDTH + padding },
@@ -250,6 +265,7 @@ namespace osu.Game.Screens.Footer
             }
 
             ActiveOverlay = overlay;
+            OverlayStateChanged?.Invoke();
 
             Debug.Assert(temporarilyHiddenButtons.Count == 0);
 
@@ -326,6 +342,7 @@ namespace osu.Game.Screens.Footer
 
             activeOverlayContent = null;
             ActiveOverlay = null;
+            OverlayStateChanged?.Invoke();
         }
 
         private void updateColourScheme(int hue)
