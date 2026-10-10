@@ -7,12 +7,14 @@ using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Testing;
 using osu.Game.Overlays;
 using osu.Game.Graphics;
+using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Online;
 using osu.Game.Online.API;
@@ -463,6 +465,109 @@ namespace osu.Game.Tests.Visual.Ranking
             AddStep("trigger appear", () => emblem.Appear());
             AddAssert("displayed grade letter", () => emblem.ChildrenOfType<SpriteText>().Single().Text.ToString(),
                 () => Is.EqualTo(osu.Game.Online.Leaderboards.DrawableRank.GetRankLetter(rank)));
+        }
+
+        [Test]
+        public void TestLeaderboardPopoverNavigationAndStyling()
+        {
+            PopoverContainer popoverContainer = null!;
+            V2ResultsPanel panel = null!;
+            V2ResultsFooter footer = null!;
+            ScoreInfo currentScore = null!;
+
+            AddStep("load panel and footer with scores", () =>
+            {
+                currentScore = TestResources.CreateTestScoreInfo();
+                currentScore.TotalScore = 950000;
+
+                var score1 = TestResources.CreateTestScoreInfo();
+                score1.TotalScore = 1000000;
+                var score3 = TestResources.CreateTestScoreInfo();
+                score3.TotalScore = 900000;
+                var scores = new[] { score1, currentScore, score3 };
+
+                Child = popoverContainer = new PopoverContainer
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Children = new Drawable[]
+                    {
+                        new Container
+                        {
+                            RelativeSizeAxes = Axes.Both,
+                            Padding = new MarginPadding { Bottom = 60 },
+                            Child = panel = new V2ResultsPanel(currentScore)
+                            {
+                                ScoresOverride = () => scores,
+                            },
+                        },
+                        footer = new V2ResultsFooter
+                        {
+                            Score = currentScore,
+                            AllowWatchingReplay = false,
+                            RankingAction = () => panel.ToggleLeaderboard(),
+                        },
+                    }
+                };
+                footer.LeaderboardVisible.BindTo(panel.LeaderboardVisible);
+            });
+
+            AddUntilStep("panel and footer loaded", () => panel.IsLoaded && footer.IsLoaded);
+            AddAssert("leaderboard initially closed", () => !panel.LeaderboardVisible.Value);
+            AddAssert("ranking button overlay state hidden", () => footer.RankingButton.OverlayState.Value == Visibility.Hidden);
+
+            AddStep("toggle leaderboard via panel", () => panel.ToggleLeaderboard());
+            AddAssert("leaderboard marked visible", () => panel.LeaderboardVisible.Value);
+            AddAssert("ranking button overlay state visible", () => footer.RankingButton.OverlayState.Value == Visibility.Visible);
+            AddUntilStep("popover shown", () => popoverContainer.ChildrenOfType<V2ResultsScoreButton.ScoresPopover>().Any(p => p.IsPresent));
+
+            AddAssert("header and count pill present", () =>
+            {
+                var popover = popoverContainer.ChildrenOfType<V2ResultsScoreButton.ScoresPopover>().Single();
+                return popover.ChildrenOfType<OsuSpriteText>().Any(t => t.Text.ToString().Contains("score"));
+            });
+
+            AddAssert("score rows rendered", () => popoverContainer.ChildrenOfType<V2ResultsScoreButton.V2LeaderboardScoreRow>().Any());
+
+            AddStep("close leaderboard via panel", () => panel.CloseLeaderboard());
+            AddUntilStep("popover hidden", () => !panel.LeaderboardVisible.Value);
+            AddAssert("ranking button overlay state hidden again", () => footer.RankingButton.OverlayState.Value == Visibility.Hidden);
+
+            AddStep("toggle leaderboard via footer button", () => footer.RankingButton.TriggerClick());
+            AddUntilStep("popover shown via footer", () => panel.LeaderboardVisible.Value && footer.RankingButton.OverlayState.Value == Visibility.Visible);
+
+            AddStep("toggle leaderboard again via footer button", () => footer.RankingButton.TriggerClick());
+            AddUntilStep("popover closed via footer", () => !panel.LeaderboardVisible.Value && footer.RankingButton.OverlayState.Value == Visibility.Hidden);
+        }
+
+        [Test]
+        public void TestEmptyLeaderboardPopover()
+        {
+            PopoverContainer popoverContainer = null!;
+            V2ResultsPanel panel = null!;
+            ScoreInfo currentScore = null!;
+
+            AddStep("load panel with no scores", () =>
+            {
+                currentScore = TestResources.CreateTestScoreInfo();
+
+                Child = popoverContainer = new PopoverContainer
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Child = panel = new V2ResultsPanel(currentScore)
+                    {
+                        ScoresOverride = () => Array.Empty<ScoreInfo>(),
+                    },
+                };
+            });
+
+            AddUntilStep("panel loaded", () => panel.IsLoaded);
+            AddStep("open leaderboard", () => panel.ToggleLeaderboard());
+            AddUntilStep("popover shown", () => popoverContainer.ChildrenOfType<V2ResultsScoreButton.ScoresPopover>().Any(p => p.IsPresent));
+            AddAssert("empty placeholder displayed", () =>
+            {
+                var popover = popoverContainer.ChildrenOfType<V2ResultsScoreButton.ScoresPopover>().Single();
+                return popover.ChildrenOfType<SpriteIcon>().Any(i => i.Icon.Equals(FontAwesome.Solid.Trophy));
+            });
         }
     }
 }

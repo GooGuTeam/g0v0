@@ -244,10 +244,12 @@ namespace osu.Game.Tests.Visual.Ranking
             AddAssert("original input disabled", () => !screen.ChildrenOfType<ScorePanelList>().Single().HandleInput);
 
             AddStep("show leaderboard", () => screen.ChildrenOfType<V2ResultsFooter>().Single().RankingButton.TriggerClick());
-            AddAssert("leaderboard visible", () => screen.ChildrenOfType<ScorePanelList>().Single().IsPresent);
-            AddAssert("v2 panel hidden", () => !screen.ChildrenOfType<V2ResultsPanel>().Single().Parent.IsPresent);
-            AddAssert("v2 footer hidden", () => !screen.ChildrenOfType<V2ResultsFooter>().Single().IsPresent);
+            AddUntilStep("leaderboard popover visible", () => screen.ChildrenOfType<V2ResultsScoreButton.ScoresPopover>().Any(p => p.IsPresent));
+            AddAssert("v2 panel still visible", () => screen.ChildrenOfType<V2ResultsPanel>().Single().IsPresent);
+            AddAssert("v2 footer still visible", () => screen.ChildrenOfType<V2ResultsFooter>().Single().IsPresent);
+            AddAssert("original panels stay hidden", () => !screen.ChildrenOfType<ScorePanelList>().Single().IsPresent);
             AddStep("return to overview", () => screen.OnBackButton());
+            AddUntilStep("leaderboard popover hidden", () => !screen.ChildrenOfType<V2ResultsScoreButton.ScoresPopover>().Any(p => p.IsPresent));
             AddAssert("v2 panel visible", () => screen.ChildrenOfType<V2ResultsPanel>().Single().IsPresent);
             AddAssert("overview score selected", () => ReferenceEquals(screen.SelectedScore.Value, score));
 

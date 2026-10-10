@@ -62,6 +62,7 @@ namespace osu.Game.Screens.Ranking
         public readonly Bindable<ScoreInfo?> ComparisonScore = new Bindable<ScoreInfo?>();
 
         public readonly BindableBool V2DetailsVisible = new BindableBool();
+        public readonly BindableBool V2LeaderboardVisible = new BindableBool();
 
         public readonly ScoreInfo? Score;
 
@@ -229,7 +230,11 @@ namespace osu.Game.Screens.Ranking
                     if (!OnBackButton())
                         this.Exit();
                 },
-                RankingAction = () => showOriginalResults(false),
+                RankingAction = () =>
+                {
+                    foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                        panel.ToggleLeaderboard();
+                },
                 DetailsAction = () =>
                 {
                     foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
@@ -239,6 +244,7 @@ namespace osu.Game.Screens.Ranking
             });
 
             v2Footer.DetailsVisible.BindTo(V2DetailsVisible);
+            v2Footer.LeaderboardVisible.BindTo(V2LeaderboardVisible);
 
             if (Score != null)
             {
@@ -357,6 +363,7 @@ namespace osu.Game.Screens.Ranking
         {
             Schedule(() =>
             {
+                V2LeaderboardVisible.Value = false;
                 V2DetailsVisible.Value = false;
                 SelectedScore.Value = score;
                 v2PanelContainer.Clear();
@@ -366,9 +373,13 @@ namespace osu.Game.Screens.Ranking
 
         private void showOriginalResults(bool showStatistics)
         {
+            V2LeaderboardVisible.Value = false;
             V2DetailsVisible.Value = false;
             foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+            {
+                panel.CloseLeaderboard();
                 panel.CloseDetails();
+            }
 
             showingOriginalLayout = true;
             updateResultsLayout();
@@ -386,9 +397,13 @@ namespace osu.Game.Screens.Ranking
             }
             else
             {
+                V2LeaderboardVisible.Value = false;
                 V2DetailsVisible.Value = false;
                 foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                {
+                    panel.CloseLeaderboard();
                     panel.CloseDetails();
+                }
             }
 
             BackButtonVisibility.Value = !showingV2Layout && !useLegacyResults;
@@ -615,7 +630,7 @@ namespace osu.Game.Screens.Ranking
             if (LegacyStableDirectMode)
                 return legacyOverlay?.HandleBackScroll() == true;
 
-            if (showingV2Layout && v2PanelContainer.Children.OfType<V2ResultsPanel>().Any(p => p.CloseDetails()))
+            if (showingV2Layout && v2PanelContainer.Children.OfType<V2ResultsPanel>().Any(p => p.CloseLeaderboard() || p.CloseDetails()))
                 return true;
 
             if (v2LayoutEnabled && showingOriginalLayout && StatisticsPanel.State.Value != Visibility.Visible)

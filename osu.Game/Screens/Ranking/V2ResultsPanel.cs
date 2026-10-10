@@ -70,6 +70,8 @@ namespace osu.Game.Screens.Ranking
         private readonly bool withFlair;
         public readonly Bindable<ScoreInfo?> ComparisonScore = new Bindable<ScoreInfo?>();
         public readonly BindableBool DetailsVisible = new BindableBool();
+        public readonly BindableBool LeaderboardVisible = new BindableBool();
+        public Func<IEnumerable<ScoreInfo>>? ScoresOverride { get; set; }
 
         [Cached]
         private readonly OverlayColourProvider colourProvider = new OverlayColourProvider(OverlayColourScheme.Blue);
@@ -91,6 +93,7 @@ namespace osu.Game.Screens.Ranking
         private Container detailsPanel = null!;
         private bool detailsVisible;
         private Sample? appearanceSample;
+        private V2ResultsScoreButton scoreButton = null!;
 
         public bool CloseDetails()
         {
@@ -101,9 +104,25 @@ namespace osu.Game.Screens.Ranking
             return true;
         }
 
-        public void ShowDetails() => setDetailsVisible(true);
+        public void ShowDetails()
+        {
+            CloseLeaderboard();
+            setDetailsVisible(true);
+        }
 
-        public void ToggleDetails() => setDetailsVisible(!detailsVisible);
+        public void ToggleDetails()
+        {
+            CloseLeaderboard();
+            setDetailsVisible(!detailsVisible);
+        }
+
+        public void ToggleLeaderboard()
+        {
+            CloseDetails();
+            scoreButton.TogglePopover();
+        }
+
+        public bool CloseLeaderboard() => scoreButton.ClosePopover();
 
         private const double details_transition_duration = 350;
 
@@ -177,9 +196,15 @@ namespace osu.Game.Screens.Ranking
                 isPersonalBest.BindTo(resultsScreen.IsPersonalBest);
                 ComparisonScore.BindTo(resultsScreen.ComparisonScore);
                 DetailsVisible.BindTo(resultsScreen.V2DetailsVisible);
+                LeaderboardVisible.BindTo(resultsScreen.V2LeaderboardVisible);
             }
 
             DetailsVisible.BindValueChanged(v => setDetailsVisible(v.NewValue));
+            LeaderboardVisible.BindValueChanged(v =>
+            {
+                if (v.NewValue)
+                    CloseDetails();
+            });
 
             var beatmap = score.BeatmapInfo!;
             var metadata = beatmap.BeatmapSet?.Metadata ?? beatmap.Metadata;
@@ -365,15 +390,16 @@ namespace osu.Game.Screens.Ranking
                             },
                         },
                     },
-                    new V2ResultsScoreButton(
-                        () => resultsScreen?.GetOverviewScores() ?? new[] { score },
-                        selected => resultsScreen?.SelectOverviewScore(selected))
+                    scoreButton = new V2ResultsScoreButton(
+                        () => ScoresOverride?.Invoke() ?? resultsScreen?.GetOverviewScores() ?? new[] { score },
+                        selected => resultsScreen?.SelectOverviewScore(selected),
+                        () => score)
                     {
                         Name = "Score selection button",
                         Position = new Vector2(0, 570),
                         Size = new Vector2(56, 40),
                         Children = new Drawable[] { positionText },
-                    },
+                    }.With(b => b.LeaderboardVisible.BindTo(LeaderboardVisible)),
                     new UpdateableAvatar(score.User)
                     {
                         Position = new Vector2(60, 570),

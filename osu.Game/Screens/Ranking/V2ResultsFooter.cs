@@ -31,6 +31,7 @@ namespace osu.Game.Screens.Ranking
         public bool AllowWatchingReplay { get; init; }
 
         public readonly BindableBool DetailsVisible = new BindableBool();
+        public readonly BindableBool LeaderboardVisible = new BindableBool();
 
         public ScreenBackButton BackButton { get; private set; } = null!;
         public ScreenFooterButton ExportButton { get; private set; } = null!;
@@ -221,6 +222,10 @@ namespace osu.Game.Screens.Ranking
                 DetailsButton.Text = visible.NewValue ? ResultsScreenStrings.ScoreOverview : ResultsScreenStrings.MoreInfo;
                 DetailsButton.TooltipText = visible.NewValue ? ResultsScreenStrings.ScoreOverview : ResultsScreenStrings.MoreInfo;
                 DetailsButton.OverlayState.Value = visible.NewValue ? Visibility.Visible : Visibility.Hidden;
+            }, true);
+            LeaderboardVisible.BindValueChanged(visible =>
+            {
+                RankingButton.OverlayState.Value = visible.NewValue ? Visibility.Visible : Visibility.Hidden;
             }, true);
         }
 
