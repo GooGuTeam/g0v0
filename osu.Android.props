@@ -1,7 +1,4 @@
-<Project>
-  <ItemGroup>
-    <ProjectReference Include="$(MSBuildThisFileDirectory)..\g0v0-framework\osu.Framework.Android\osu.Framework.Android.csproj" />
-  </ItemGroup>
+﻿<Project>
   <PropertyGroup>
     <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
     <RuntimeIdentifiers>android-x86;android-arm;android-arm64</RuntimeIdentifiers>
@@ -12,6 +9,9 @@
     <NullabilityInfoContextSupport>true</NullabilityInfoContextSupport>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ppy.osu.Framework.Android" Version="2026.921.0" />
+  </ItemGroup>
   <PropertyGroup>
     <!-- Fody does not handle Android build well, and warns when unchanged.
          Since Realm objects are not declared directly in Android projects, simply disable Fody. -->
