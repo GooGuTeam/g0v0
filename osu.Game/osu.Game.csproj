@@ -70,8 +70,6 @@ Full licence text: see LICENCE and LICENCE-OSU.</PackageReleaseNotes>
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\g0v0-framework\osu.Framework\osu.Framework.csproj" />
+    <PackageReference Include="g0v0.Framework" Version="2026.1011.2" />
   </ItemGroup>
 </Project>
