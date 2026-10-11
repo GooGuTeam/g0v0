@@ -107,6 +107,7 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
             judgementLinePool.Get(drawableJudgement =>
             {
                 drawableJudgement.X = relativePosition;
+                drawableJudgement.Width = 3 / Math.Abs(Scale.X);
                 drawableJudgement.Colour = GetColourForHitResult(displayResult);
 
                 judgementContainer.Add(drawableJudgement);

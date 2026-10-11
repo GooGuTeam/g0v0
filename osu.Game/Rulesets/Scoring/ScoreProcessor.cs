@@ -263,7 +263,7 @@ namespace osu.Game.Rulesets.Scoring
 
             Accuracy.ValueChanged += _ => updateRank();
 
-            Mods.ValueChanged += mods =>
+            Mods.ValueChanged += _ =>
             {
                 ScoreV2Active = mods.NewValue.Any(m => m is ModScoreV2);
                 ScoreV1Active = !ScoreV2Active && CheckScoreV1Active(mods.NewValue);
@@ -272,7 +272,7 @@ namespace osu.Game.Rulesets.Scoring
                 updateRank();
             };
 
-            Beatmap.ValueChanged += beatmap =>
+            Beatmap.ValueChanged += _ =>
             {
                 updateScoreMultiplier();
             };
