@@ -3,22 +3,29 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
+using osu.Framework.IO.Network;
 using osu.Framework.Localisation;
+using osu.Framework.Logging;
+using osu.Framework.Platform;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Online.API.Requests.Private.Responses;
-using osu.Game.Online.Chat;
+using osu.Game.Overlays.Dialog;
+using osu.Game.Overlays.Notifications;
 using osu.Game.Rulesets;
 using osuTK;
+using WebCommonStrings = osu.Game.Resources.Localisation.Web.CommonStrings;
 
 namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 {
@@ -95,6 +102,17 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 
         [Resolved(CanBeNull = true)]
         private OsuGame? game { get; set; }
+
+        [Resolved(CanBeNull = true)]
+        private IDialogOverlay? dialogOverlay { get; set; }
+
+        [Resolved(CanBeNull = true)]
+        private Clipboard? clipboard { get; set; }
+
+        [Resolved(CanBeNull = true)]
+        private INotificationOverlay? notifications { get; set; }
+
+        private FileWebRequest? downloadRequest;
 
         /// <summary>
         /// Creates a row for a server-provided game mode.
@@ -390,7 +408,101 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
             if (versionInfo?.DownloadUrl is not string url)
                 return;
 
-            game?.OpenUrlExternally(url, LinkWarnMode.NeverWarn);
+            dialogOverlay?.Push(new RulesetDownloadDialog(mode, url, () => startDownload(url), () => clipboard?.SetText(url)));
+        }
+
+        private partial class RulesetDownloadDialog : PopupDialog
+        {
+            public RulesetDownloadDialog(APIRuleset mode, string url, Action downloadAction, Action copyLinkAction)
+            {
+                HeaderText = RulesetSettingsStrings.DownloadRuleset;
+                BodyText = $"{mode.ReadableName} ({mode.Name})\n{url}";
+
+                Buttons = new PopupDialogButton[]
+                {
+                    new PopupDialogOkButton
+                    {
+                        Text = RulesetSettingsStrings.DownloadRuleset,
+                        Action = downloadAction,
+                    },
+                    new PopupDialogCancelButton
+                    {
+                        Text = CommonStrings.CopyLink,
+                        Action = copyLinkAction,
+                    },
+                    new PopupDialogCancelButton
+                    {
+                        Text = WebCommonStrings.ButtonsCancel,
+                    },
+                };
+            }
+        }
+
+        /// <summary>
+        /// Downloads the ruleset package in the background and installs it into the ruleset storage.
+        /// The installed files take effect on next launch.
+        /// </summary>
+        private void startDownload(string url)
+        {
+            if (downloadRequest != null)
+                return;
+
+            string temporaryPath = Path.GetTempFileName();
+
+            var request = downloadRequest = new FileWebRequest(temporaryPath, url);
+
+            var notification = new ProgressNotification { Text = NotificationsStrings.Downloading(mode.ReadableName) };
+            notifications?.Post(notification);
+
+            request.DownloadProgress += (current, total) =>
+            {
+                if (total > 0)
+                    notification.Progress = (float)current / total;
+            };
+
+            request.Failed += e =>
+            {
+                downloadRequest = null;
+                notification.State = ProgressNotificationState.Cancelled;
+                Logger.Error(e, $"Failed to download the ruleset package from {url}.");
+
+                try
+                {
+                    File.Delete(temporaryPath);
+                }
+                catch
+                {
+                    // best-effort cleanup of the temporary file.
+                }
+            };
+
+            request.Finished += () =>
+            {
+                downloadRequest = null;
+                notification.Progress = 1;
+
+                Task.Run(() =>
+                {
+                    bool installed = rulesets.TryInstallRulesetPackage(temporaryPath, mode.Name);
+
+                    if (installed)
+                        notification.CompletionText = RulesetSettingsStrings.LocalRulesetRestartNote;
+
+                    notification.State = installed ? ProgressNotificationState.Completed : ProgressNotificationState.Cancelled;
+
+                    try
+                    {
+                        File.Delete(temporaryPath);
+                    }
+                    catch
+                    {
+                        // best-effort cleanup of the temporary file.
+                    }
+                });
+            };
+
+            notification.State = ProgressNotificationState.Active;
+            request.PerformAsync();
         }
 
         private static bool isServerSideVariant(string shortName)

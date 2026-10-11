@@ -142,6 +142,89 @@ namespace osu.Game.Rulesets
         }
 
         /// <summary>
+        /// Installs a downloaded ruleset assembly into the ruleset storage, overwriting any file of the same name.
+        /// The downloaded file must be a dll, otherwise the installation fails.
+        /// The installed file takes effect on next launch.
+        /// </summary>
+        /// <param name="downloadedPath">The local path of the downloaded file.</param>
+        /// <param name="preferredName">A name used to derive the target file name.</param>
+        /// <returns>Whether the assembly was installed.</returns>
+        public bool TryInstallRulesetPackage(string downloadedPath, string preferredName)
+        {
+            if (RulesetStorage == null)
+                return false;
+
+            try
+            {
+                if (!isRulesetAssembly(downloadedPath))
+                {
+                    Logger.Log(@"[Ruleset] The downloaded file is not a ruleset assembly (dll), discarding.");
+                    return false;
+                }
+
+                string assemblyName = Path.GetFileName(preferredName);
+
+                if (string.IsNullOrEmpty(assemblyName))
+                    return false;
+
+                if (!Path.HasExtension(assemblyName))
+                    assemblyName += @".dll";
+
+                using (var sourceStream = File.OpenRead(downloadedPath))
+                using (var targetStream = RulesetStorage.GetStream(assemblyName, FileAccess.Write, FileMode.Create))
+                    sourceStream.CopyTo(targetStream);
+
+                Logger.Log($"[Ruleset] Installed ruleset assembly {assemblyName}.");
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, @"Failed to install the ruleset assembly.");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Returns whether the file at the given path looks like a dll (a PE image with the DLL flag set).
+        /// </summary>
+        private static bool isRulesetAssembly(string path)
+        {
+            try
+            {
+                using var stream = File.OpenRead(path);
+                using var reader = new BinaryReader(stream);
+
+                // DOS header magic ("MZ").
+                if (reader.ReadInt16() != 0x5A4D)
+                    return false;
+
+                // Offset of the PE signature, from the DOS header's e_lfanew field.
+                stream.Seek(0x3C, SeekOrigin.Begin);
+                int peOffset = reader.ReadInt32();
+
+                if (peOffset < 0 || peOffset > stream.Length - 24)
+                    return false;
+
+                stream.Seek(peOffset, SeekOrigin.Begin);
+
+                // PE signature.
+                if (reader.ReadInt32() != 0x00004550)
+                    return false;
+
+                // Skip machine (2), number of sections (2), timestamp (4), pointer to symbol table (4)
+                // and number of symbols (4) of the COFF header, to reach Characteristics.
+                stream.Seek(16, SeekOrigin.Current);
+
+                // IMAGE_FILE_DLL.
+                return (reader.ReadUInt16() & 0x2000) != 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Enable or disable a ruleset in the store config, then persist.
         /// Enabling a ruleset also marks it as trusted (adds to <see cref="RulesetManagementConfig.KnownRulesets"/>).
         /// </summary>
