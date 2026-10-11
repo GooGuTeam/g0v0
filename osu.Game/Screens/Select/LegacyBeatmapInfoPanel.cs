@@ -229,7 +229,6 @@ namespace osu.Game.Screens.Select
             var info = working.BeatmapInfo;
             var metadata = info.Metadata;
 
-            titleText.BeatmapTags = metadata.Tags;
             titleText.Text = $"{metadata.Artist} - {metadata.Title} [{info.DifficultyName}]";
             mapperText.Text = $"Mapped by {metadata.Author.Username}";
 

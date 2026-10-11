@@ -227,7 +227,6 @@ namespace osu.Game.Screens.Select
             titleLabel.CreateContent = () => new OsuSpriteText
             {
                 Text = titleText,
-                BeatmapTags = metadata.Tags,
                 Shadow = true,
                 Font = OsuFont.Style.Title,
             };
@@ -238,7 +237,6 @@ namespace osu.Game.Screens.Select
             artistLabel.CreateContent = () => new OsuSpriteText
             {
                 Text = artistText,
-                BeatmapTags = metadata.Tags,
                 Shadow = true,
                 Font = OsuFont.Style.Heading2,
             };
