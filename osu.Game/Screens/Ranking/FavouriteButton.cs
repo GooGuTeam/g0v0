@@ -1,14 +1,16 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Graphics;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Logging;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Drawables.Cards;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Graphics.Sprites;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -22,6 +24,13 @@ namespace osu.Game.Screens.Ranking
     public partial class FavouriteButton : GrayButton
     {
         public readonly BeatmapSetInfo BeatmapSetInfo;
+
+        /// <summary>
+        /// Shows the server-provided favourite count beside the heart in the overview header.
+        /// </summary>
+        public bool ShowCount { get; init; }
+
+        private TruncatingSpriteText? countText;
         private APIBeatmapSet? beatmapSet;
         private readonly Bindable<BeatmapSetFavouriteState> current;
 
@@ -51,6 +60,25 @@ namespace osu.Game.Screens.Ranking
         [BackgroundDependencyLoader]
         private void load()
         {
+            if (ShowCount)
+            {
+                Icon.Anchor = Icon.Origin = Anchor.CentreLeft;
+                Icon.X = 8;
+                Icon.Size = new Vector2(16);
+                Icon.Shear = -Shear;
+                Add(countText = new TruncatingSpriteText
+                {
+                    Anchor = Anchor.CentreLeft,
+                    Origin = Anchor.CentreLeft,
+                    X = 29,
+                    MaxWidth = Width - 34,
+                    Font = OsuFont.Default.With(size: 14, weight: FontWeight.SemiBold),
+                    Text = "—",
+                    Shadow = false,
+                    Shear = -Shear,
+                });
+            }
+
             Add(loading = new LoadingLayer(true, false));
 
             Action = toggleFavouriteStatus;
@@ -149,6 +177,8 @@ namespace osu.Game.Screens.Ranking
 
         private void updateState()
         {
+            countText?.Text = beatmapSet != null ? current.Value.FavouriteCount.ToString("N0") : "—";
+
             if (current.Value.Favourited)
             {
                 Background.Colour = colours.Green;
@@ -157,7 +187,7 @@ namespace osu.Game.Screens.Ranking
             }
             else
             {
-                Background.Colour = colours.Gray4;
+                Background.Colour = ShowCount ? Colour4.FromHex("#293A35") : colours.Gray4;
                 Icon.Icon = FontAwesome.Regular.Heart;
                 TooltipText = BeatmapsetsStrings.ShowDetailsFavourite;
             }

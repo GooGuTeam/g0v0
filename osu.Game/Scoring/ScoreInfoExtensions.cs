@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -67,6 +67,15 @@ namespace osu.Game.Scoring
         /// <param name="score">The <see cref="ScoreInfo"/> to compute the maximum achievable combo for.</param>
         /// <returns>The maximum achievable combo.</returns>
         public static int GetMaximumAchievableCombo(this ScoreInfo score) => score.MaximumStatistics.Where(kvp => kvp.Key.AffectsCombo()).Sum(kvp => kvp.Value);
+
+        /// <summary>
+        /// A perfect full combo requires both perfect accuracy and the complete achievable combo.
+        /// Bonus judgements are intentionally excluded: spinner bonus does not determine PFC.
+        /// </summary>
+        public static bool IsPerfectCombo(this ScoreInfo score)
+            => score.Passed && score.Rank != ScoreRank.F && score.Accuracy == 1
+               && score.GetMaximumAchievableCombo() > 0 && score.MaxCombo == score.GetMaximumAchievableCombo()
+               && !score.Statistics.Any(s => s.Value > 0 && (s.Key.BreaksCombo() || (s.Key.IsMiss() && s.Key.AffectsAccuracy())));
 
         /// <summary>
         /// Performs a realm filter that returns all scores that belong to the user with the given <paramref name="userId"/>.

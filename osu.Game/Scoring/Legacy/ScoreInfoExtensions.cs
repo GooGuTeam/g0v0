@@ -1,11 +1,12 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Rooms;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
 
 namespace osu.Game.Scoring.Legacy
@@ -13,16 +14,36 @@ namespace osu.Game.Scoring.Legacy
     public static class ScoreInfoExtensions
     {
         public static long GetDisplayScore(this ScoreProcessor scoreProcessor, ScoringMode mode)
-            => getDisplayScore(scoreProcessor.Ruleset.RulesetInfo.OnlineID, scoreProcessor.TotalScore.Value, mode, scoreProcessor.MaximumStatistics);
+            => scoreProcessor.ScoreV1Active || scoreProcessor.ScoreV2Active
+                ? scoreProcessor.TotalScore.Value
+                : getDisplayScore(scoreProcessor.Ruleset.RulesetInfo.OnlineID, scoreProcessor.TotalScore.Value, mode, scoreProcessor.MaximumStatistics);
 
         public static long GetDisplayScore(this ScoreInfo scoreInfo, ScoringMode mode)
-            => getDisplayScore(scoreInfo.Ruleset.OnlineID, scoreInfo.TotalScore, mode, scoreInfo.MaximumStatistics);
+        {
+            if (scoreInfo.Mods.Any(m => m is ModScoreV1 || m is ModScoreV2))
+                return scoreInfo.TotalScore;
+
+            if (mode == ScoringMode.Classic && scoreInfo.LegacyTotalScore != null)
+                return scoreInfo.LegacyTotalScore.Value;
+
+            return getDisplayScore(scoreInfo.Ruleset.OnlineID, scoreInfo.TotalScore, mode, scoreInfo.MaximumStatistics);
+        }
 
         public static long GetDisplayScore(this SoloScoreInfo soloScoreInfo, ScoringMode mode)
-            => getDisplayScore(soloScoreInfo.RulesetID, soloScoreInfo.TotalScore, mode, soloScoreInfo.MaximumStatistics);
+        {
+            if (soloScoreInfo.Mods.Any(m => m.Acronym == @"SV1" || m.Acronym == @"SV2"))
+                return soloScoreInfo.TotalScore;
+
+            if (mode == ScoringMode.Classic && soloScoreInfo.LegacyTotalScore != null)
+                return soloScoreInfo.LegacyTotalScore.Value;
+
+            return getDisplayScore(soloScoreInfo.RulesetID, soloScoreInfo.TotalScore, mode, soloScoreInfo.MaximumStatistics);
+        }
 
         public static long GetDisplayScore(this MultiplayerScore multiplayerScore, ScoringMode mode)
-            => getDisplayScore(multiplayerScore.RulesetId, multiplayerScore.TotalScore, mode, multiplayerScore.MaximumStatistics);
+            => multiplayerScore.Mods?.Any(m => m.Acronym == @"SV1" || m.Acronym == @"SV2") == true
+                ? multiplayerScore.TotalScore
+                : getDisplayScore(multiplayerScore.RulesetId, multiplayerScore.TotalScore, mode, multiplayerScore.MaximumStatistics);
 
         private static long getDisplayScore(int rulesetId, long score, ScoringMode mode, IReadOnlyDictionary<HitResult, int> maximumStatistics)
         {

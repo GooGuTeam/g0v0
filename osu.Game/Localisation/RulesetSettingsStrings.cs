@@ -286,6 +286,16 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString RulesetVersion(string version) => new TranslatableString(getKey(@"ruleset_version"), @"v{0}", version);
 
+        /// <summary>
+        /// "Show slider head judgements"
+        /// </summary>
+        public static LocalisableString ShowSliderHeadJudgements => new TranslatableString(getKey(@"show_slider_head_judgements"), @"Show slider head judgements");
+
+        /// <summary>
+        /// "Display accuracy judgements on slider heads when hit."
+        /// </summary>
+        public static LocalisableString ShowSliderHeadJudgementsDescription => new TranslatableString(getKey(@"show_slider_head_judgements_description"), @"Display accuracy judgements on slider heads when hit.");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

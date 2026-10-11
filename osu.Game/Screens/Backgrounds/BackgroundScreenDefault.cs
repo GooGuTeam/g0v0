@@ -40,6 +40,8 @@ namespace osu.Game.Screens.Backgrounds
 
         protected virtual bool AllowStoryboardBackground => true;
 
+        protected virtual string SkinBackgroundLookupName => @"menu-background";
+
         [BackgroundDependencyLoader]
         private void load(IAPIProvider api, SkinManager skinManager, OsuConfigManager config)
         {
@@ -160,7 +162,7 @@ namespace osu.Game.Screens.Backgrounds
                                 break;
 
                             default:
-                                newBackground = new SkinBackground(skin.Value, getBackgroundTextureName());
+                                newBackground = new SkinBackground(skin.Value, getBackgroundTextureName(), SkinBackgroundLookupName);
                                 break;
                         }
 

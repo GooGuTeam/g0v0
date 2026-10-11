@@ -22,5 +22,6 @@ namespace osu.Game.Rulesets.Mods
         public override bool UserPlayable => false;
         public override bool ValidForMultiplayer => false;
         public override bool ValidForMultiplayerAsFreeMod => false;
+        public override System.Type[] IncompatibleMods => new[] { typeof(ModScoreV1) };
     }
 }

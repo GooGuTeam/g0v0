@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -40,6 +40,8 @@ namespace osu.Game.Configuration
             // UI/selection defaults
             SetDefault(OsuSetting.Ruleset, string.Empty);
             SetDefault(OsuSetting.Skin, SkinInfo.ARGON_SKIN.ToString());
+            SetDefault(OsuSetting.UseRulesetSkins, false);
+            SetDefault(OsuSetting.RulesetSkins, "{}");
 
             SetDefault(OsuSetting.BeatmapDetailTab, BeatmapDetailTab.Local);
             SetDefault(OsuSetting.BeatmapLeaderboardSortMode, LeaderboardSortMode.Score);
@@ -67,6 +69,16 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ToolbarClockDisplayMode, ToolbarClockDisplayMode.Full);
 
             SetDefault(OsuSetting.SongSelectBackgroundBlur, false);
+            SetDefault(OsuSetting.UseV2ResultsScreen, false);
+            SetDefault(OsuSetting.ToriiLegacyFooterUseSkin, false);
+            SetDefault(OsuSetting.ToriiLegacySongSelectFooter, false);
+            SetDefault(OsuSetting.ToriiStableResults, false);
+            SetDefault(OsuSetting.ToriiLegacyFont, false);
+            SetDefault(OsuSetting.UnslantedSongSelectUI, false);
+            SetDefault(OsuSetting.ToriiRenderResolution, "1280x720");
+            SetDefault(OsuSetting.ToriiRenderSkin, "default");
+            SetDefault(OsuSetting.ToriiRenderMotionBlur, false);
+            SetDefault(OsuSetting.ToriiRenderShare, true);
 
             // Online settings
             SetDefault(OsuSetting.Username, string.Empty);
@@ -403,6 +415,8 @@ namespace osu.Game.Configuration
         ShowFirstRunSetup,
         ShowConvertedBeatmaps,
         Skin,
+        UseRulesetSkins,
+        RulesetSkins,
         ScreenshotFormat,
         ScreenshotCaptureMenuCursor,
         BeatmapSkins,
@@ -498,5 +512,19 @@ namespace osu.Game.Configuration
         /// Blocks private messages, multiplayer room invites, and duel requests from people not on the user's friends list.
         /// </summary>
         PMFriendsOnly,
+
+        /// <summary>
+        /// Uses the full-width results layout for solo scores.
+        /// </summary>
+        UseV2ResultsScreen,
+        ToriiLegacyFooterUseSkin,
+        ToriiLegacySongSelectFooter,
+        ToriiStableResults,
+        ToriiLegacyFont,
+        UnslantedSongSelectUI,
+        ToriiRenderResolution,
+        ToriiRenderSkin,
+        ToriiRenderMotionBlur,
+        ToriiRenderShare,
     }
 }

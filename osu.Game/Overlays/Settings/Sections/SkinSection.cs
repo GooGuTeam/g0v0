@@ -17,6 +17,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Localisation;
 using osu.Framework.Logging;
+using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
@@ -55,10 +56,15 @@ namespace osu.Game.Overlays.Settings.Sections
         private IDisposable realmSubscription;
 
         [BackgroundDependencyLoader(permitNulls: true)]
-        private void load([CanBeNull] SkinEditorOverlay skinEditor)
+        private void load([CanBeNull] SkinEditorOverlay skinEditor, OsuConfigManager config)
         {
             Children = new Drawable[]
             {
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "Remember a separate skin for each ruleset",
+                    Current = config.GetBindable<bool>(OsuSetting.UseRulesetSkins),
+                }),
                 new SettingsItemV2(skinDropdown = new SkinDropdown
                 {
                     AlwaysShowSearchBar = true,

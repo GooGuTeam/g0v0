@@ -1,10 +1,11 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.UserInterface;
@@ -30,14 +31,26 @@ namespace osu.Game.Graphics.UserInterfaceV2
         private readonly BindableWithCurrent<bool> current = new BindableWithCurrent<bool>();
 
         /// <summary>
-        /// Caption describing this control, displayed on top of the controls.
+        /// Caption describing this slider bar, displayed on top of the controls.
         /// </summary>
         public LocalisableString Caption { get; init; }
 
         /// <summary>
-        /// Hint text containing an extended description of this control, displayed in a tooltip when hovering the caption.
+        /// Hint text containing an extended description of this slider bar, displayed in a tooltip when hovering the caption.
         /// </summary>
         public LocalisableString HintText { get; init; }
+
+        /// <summary>
+        /// When set, a dismissible "NEW" badge is shown on the caption (auto-dismisses
+        /// after a few interactions, tracked by <see cref="osu.Game.Configuration.NewFeatureTracker"/>).
+        /// Use a <see cref="osu.Game.Configuration.NewFeatureRegistry"/> id.
+        /// </summary>
+        public string? NewFeatureId { get; init; }
+
+        /// <summary>
+        /// When true, a small "+18" pill is appended to the caption (adult-content cue).
+        /// </summary>
+        public bool ShowExplicitContentBadge { get; init; }
 
         private FormControlBackground background = null!;
         private FormFieldCaption caption = null!;
@@ -59,7 +72,7 @@ namespace osu.Game.Graphics.UserInterfaceV2
                 new Container
                 {
                     RelativeSizeAxes = Axes.X,
-                    Height = ExtendedHeight ? 52 : 0,
+                    Height = ExtendedHeight ? 48 : 0,
                     AutoSizeAxes = ExtendedHeight ? Axes.None : Axes.Y,
                     Padding = new MarginPadding(9),
                     Children = new Drawable[]
@@ -77,6 +90,8 @@ namespace osu.Game.Graphics.UserInterfaceV2
                                 {
                                     Caption = Caption,
                                     TooltipText = HintText,
+                                    NewFeatureId = NewFeatureId,
+                                    ShowExplicitContentBadge = ShowExplicitContentBadge,
                                 },
                             },
                         },
@@ -95,6 +110,7 @@ namespace osu.Game.Graphics.UserInterfaceV2
         {
             base.LoadComplete();
 
+            colourProvider.ColoursChanged += updateState;
             current.BindValueChanged(_ =>
             {
                 updateState();
@@ -120,6 +136,7 @@ namespace osu.Game.Graphics.UserInterfaceV2
         protected override bool OnClick(ClickEvent e)
         {
             switchButton.TriggerClick();
+            caption.RegisterInteraction();
             return true;
         }
 
@@ -135,7 +152,7 @@ namespace osu.Game.Graphics.UserInterfaceV2
                 background.VisualStyle = VisualStyle.Normal;
         }
 
-        public IEnumerable<LocalisableString> FilterTerms => new[] { Caption, HintText };
+        public IEnumerable<LocalisableString> FilterTerms => Caption.Yield();
 
         public event Action? ValueChanged;
 
@@ -146,5 +163,13 @@ namespace osu.Game.Graphics.UserInterfaceV2
         public bool IsDisabled => Current.Disabled;
 
         public float MainDrawHeight => DrawHeight;
+
+        protected override void Dispose(bool isDisposing)
+        {
+            if (isDisposing)
+                colourProvider.ColoursChanged -= updateState;
+
+            base.Dispose(isDisposing);
+        }
     }
 }

@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Humanizer;
 using JetBrains.Annotations;
+using Newtonsoft.Json;
 using osu.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
@@ -112,7 +113,9 @@ namespace osu.Game
         /// <summary>
         /// A common shear factor applied to most components of the game.
         /// </summary>
-        public static readonly Vector2 SHEAR = new Vector2(0.2f, 0);
+        public static readonly Vector2 DEFAULT_SHEAR = new Vector2(0.2f, 0);
+        public static Vector2 SHEAR { get; private set; } = new Vector2(0.2f, 0);
+        public static void SetUnslantedUI(bool unslanted) => SHEAR = unslanted ? Vector2.Zero : DEFAULT_SHEAR;
 
         /// <summary>
         /// For elements placed close to the screen edge, this is the margin to leave to the edge.
@@ -163,6 +166,8 @@ namespace osu.Game
         private Container footerBasedOverlayContent;
 
         protected ScalingContainer ScreenContainer { get; private set; }
+
+        public void SetLegacyScreenAspectLock(float? aspectRatio) => ScreenContainer.SetForcedAspectRatio(aspectRatio);
 
         protected Container ScreenOffsetContainer { get; private set; }
 
@@ -446,11 +451,56 @@ namespace osu.Game
 
             configSkin = LocalConfig.GetBindable<string>(OsuSetting.Skin);
 
-            // Transfer skin from config to realm instance once on startup.
-            SkinManager.SetSkinFromConfiguration(configSkin.Value);
+            var useRulesetSkins = LocalConfig.GetBindable<bool>(OsuSetting.UseRulesetSkins);
+            var configRulesetSkins = LocalConfig.GetBindable<string>(OsuSetting.RulesetSkins);
+            Dictionary<string, string> rulesetSkins;
 
-            // Transfer any runtime changes back to configuration file.
-            SkinManager.CurrentSkinInfo.ValueChanged += skin => configSkin.Value = skin.NewValue.ID.ToString();
+            try
+            {
+                rulesetSkins = JsonConvert.DeserializeObject<Dictionary<string, string>>(configRulesetSkins.Value) ?? new Dictionary<string, string>();
+            }
+            catch (JsonException e)
+            {
+                Logger.Error(e, "Failed to load ruleset skin preferences.");
+                rulesetSkins = new Dictionary<string, string>();
+            }
+
+            bool switchingSkin = false;
+
+            void restoreSkin()
+            {
+                switchingSkin = true;
+                try
+                {
+                    string skin = useRulesetSkins.Value && rulesetSkins.TryGetValue(Ruleset.Value.ShortName, out string preferredSkin)
+                        ? preferredSkin
+                        : configSkin.Value;
+                    SkinManager.SetSkinFromConfiguration(skin);
+                }
+                finally
+                {
+                    switchingSkin = false;
+                }
+            }
+
+            // Automatic switches must not overwrite either the global skin or another ruleset's preference.
+            SkinManager.CurrentSkinInfo.ValueChanged += skin =>
+            {
+                if (switchingSkin || skin.NewValue.ID == SkinInfo.RANDOM_SKIN)
+                    return;
+
+                if (useRulesetSkins.Value)
+                {
+                    rulesetSkins[Ruleset.Value.ShortName] = skin.NewValue.ID.ToString();
+                    configRulesetSkins.Value = JsonConvert.SerializeObject(rulesetSkins);
+                }
+                else
+                    configSkin.Value = skin.NewValue.ID.ToString();
+            };
+
+            Ruleset.ValueChanged += _ => restoreSkin();
+            useRulesetSkins.BindValueChanged(_ => restoreSkin());
+            restoreSkin();
 
             UserPlayingState.BindValueChanged(p =>
             {
@@ -1059,7 +1109,7 @@ namespace osu.Game
                 { FrameworkSetting.VolumeUniversal, 0.6 },
                 { FrameworkSetting.VolumeMusic, 0.6 },
                 { FrameworkSetting.VolumeEffect, 0.6 },
-                { FrameworkSetting.AudioUseExperimentalWasapi, true },
+                { FrameworkSetting.AudioUseWasapi, true },
             };
         }
 
@@ -1254,6 +1304,9 @@ namespace osu.Game
             loadComponentSingleFile(new AccountCreationOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile<IDialogOverlay>(dialogOverlay = new DialogOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new MedalOverlay(), topMostOverlayContent.Add);
+            loadComponentSingleFile(new osu.Game.Overlays.ReplayRender.ReplayRenderOverlay(), topMostOverlayContent.Add, true);
+            loadComponentSingleFile(new osu.Game.Online.ScoreNotes.ScoreNoteStore(), Add, true);
+            loadComponentSingleFile(new osu.Game.Overlays.ScoreNotes.ScoreNoteOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new MedalAwarderContainer(), Add, true);
 
             loadComponentSingleFile(new BackgroundDataStoreProcessor(), Add);
@@ -1393,7 +1446,7 @@ namespace osu.Game
 
             if (combined < 20260521 && RuntimeInfo.OS == RuntimeInfo.Platform.Windows)
             {
-                bool wasAlreadyUsing = Audio.UseExperimentalWasapi.Value;
+                bool wasAlreadyUsing = Audio.UseWasapi.Value;
 
                 // see application of FramedBeatmapClock.WINDOWS_EXPERIMENTAL_AUDIO_OFFSET in FramedBeatmapClock.
                 // this basically undoes this new offset assuming that users which have been using this setting for a while
@@ -1401,7 +1454,7 @@ namespace osu.Game
                 if (wasAlreadyUsing)
                     LocalConfig.SetValue(OsuSetting.AudioOffset, LocalConfig.Get<double>(OsuSetting.AudioOffset) - FramedBeatmapClock.WINDOWS_EXPERIMENTAL_AUDIO_OFFSET);
 
-                Audio.UseExperimentalWasapi.Value = true;
+                Audio.UseWasapi.Value = true;
 
                 dialogOverlay.Push(new MigrateNewAudioDialog(wasAlreadyUsing));
             }
@@ -1778,6 +1831,9 @@ namespace osu.Game
         protected override void UpdateAfterChildren()
         {
             base.UpdateAfterChildren();
+
+            if (Toolbar != null)
+                Toolbar.UseV2ResultsStyle.Value = ScreenStack.CurrentScreen is ResultsScreen { IsV2Overview: true };
 
             ScreenOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };
             overlayOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };

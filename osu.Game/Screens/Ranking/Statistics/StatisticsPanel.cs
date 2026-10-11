@@ -62,19 +62,28 @@ namespace osu.Game.Screens.Ranking.Statistics
         private Sample? popOutSample;
         private CancellationTokenSource? loadCancellation;
 
-        public StatisticsPanel()
+        private readonly bool embedded;
+
+        public StatisticsPanel(bool embedded = false)
         {
+            this.embedded = embedded;
             InternalChild = new Container
             {
-                RelativeSizeAxes = Axes.Both,
+                RelativeSizeAxes = embedded ? Axes.X : Axes.Both,
+                AutoSizeAxes = embedded ? Axes.Y : Axes.None,
                 Padding = new MarginPadding
                 {
-                    Left = ScorePanel.EXPANDED_WIDTH + SIDE_PADDING * 2,
+                    Left = embedded ? SIDE_PADDING : ScorePanel.EXPANDED_WIDTH + SIDE_PADDING * 2,
                     Right = SIDE_PADDING,
                 },
                 Children = new Drawable[]
                 {
-                    content = new Container { RelativeSizeAxes = Axes.Both },
+                    content = new Container
+                    {
+                        RelativeSizeAxes = embedded ? Axes.X : Axes.Both,
+                        AutoSizeAxes = embedded ? Axes.Y : Axes.None,
+                        Padding = embedded ? new MarginPadding { Bottom = 20 } : default,
+                    },
                     spinner = new LoadingSpinner()
                 }
             };
@@ -122,9 +131,10 @@ namespace osu.Game.Screens.Ranking.Statistics
                 {
                     container = new FillFlowContainer
                     {
-                        RelativeSizeAxes = Axes.Both,
-                        Anchor = Anchor.Centre,
-                        Origin = Anchor.Centre,
+                        RelativeSizeAxes = embedded ? Axes.X : Axes.Both,
+                        AutoSizeAxes = embedded ? Axes.Y : Axes.None,
+                        Anchor = embedded ? Anchor.TopCentre : Anchor.Centre,
+                        Origin = embedded ? Anchor.TopCentre : Anchor.Centre,
                         Direction = FillDirection.Vertical,
                         Children = new Drawable[]
                         {
@@ -144,8 +154,8 @@ namespace osu.Game.Screens.Ranking.Statistics
                     container = flow = new FillFlowContainer
                     {
                         Alpha = 0,
-                        Anchor = Anchor.Centre,
-                        Origin = Anchor.Centre,
+                        Anchor = embedded ? Anchor.TopCentre : Anchor.Centre,
+                        Origin = embedded ? Anchor.TopCentre : Anchor.Centre,
                         RelativeSizeAxes = Axes.X,
                         AutoSizeAxes = Axes.Y,
                         Direction = FillDirection.Full,
@@ -165,6 +175,7 @@ namespace osu.Game.Screens.Ranking.Statistics
                         {
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
+                            Width = embedded ? 1 : item.FullWidth ? 1 : 0.5f,
                         });
                     }
 
@@ -306,6 +317,9 @@ namespace osu.Game.Screens.Ranking.Statistics
 
         protected override bool OnClick(ClickEvent e)
         {
+            if (embedded)
+                return false;
+
             ToggleVisibility();
             return true;
         }

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osuTK;
 using osu.Framework.Utils;
@@ -357,11 +357,26 @@ namespace osu.Game.Rulesets.Osu.Replays
 
                     double t;
                     double previousFrame = h.StartTime;
+                    double legacyAngularVelocity = 0;
+                    // Stable accelerates towards its 0.05 rad/ms autoplay target using real elapsed time.
+                    double legacyAcceleration = 0.00008 + Math.Max(0, (5000 - (int)spinner.Duration) / 1000.0 / 2000);
 
                     for (double nextFrame = h.StartTime + GetFrameDelay(h.StartTime); nextFrame < spinner.EndTime; nextFrame += GetFrameDelay(nextFrame))
                     {
                         t = ApplyModsToTimeDelta(previousFrame, nextFrame) * spinnerDirection;
-                        angle += (float)t * radsPerMillisecond;
+
+                        // stable establishes the spinner angle on its first input frame;
+                        // that frame does not yet contribute a rotation delta.
+                        if (spinner.LegacySpinnerScoring)
+                        {
+                            if (previousFrame != h.StartTime)
+                            {
+                                legacyAngularVelocity = Math.Min(0.05, legacyAngularVelocity + legacyAcceleration * Math.Abs(t));
+                                angle += (float)(t * legacyAngularVelocity);
+                            }
+                        }
+                        else
+                            angle += (float)t * radsPerMillisecond;
 
                         Vector2 pos = SPINNER_CENTRE + CirclePosition(angle, SPIN_RADIUS);
                         AddFrameToReplay(new OsuReplayFrame((int)nextFrame, new Vector2(pos.X, pos.Y), action));
@@ -370,7 +385,14 @@ namespace osu.Game.Rulesets.Osu.Replays
                     }
 
                     t = ApplyModsToTimeDelta(previousFrame, spinner.EndTime) * spinnerDirection;
-                    angle += (float)t * radsPerMillisecond;
+
+                    if (spinner.LegacySpinnerScoring)
+                    {
+                        legacyAngularVelocity = Math.Min(0.05, legacyAngularVelocity + legacyAcceleration * Math.Abs(t));
+                        angle += (float)(t * legacyAngularVelocity);
+                    }
+                    else
+                        angle += (float)t * radsPerMillisecond;
 
                     Vector2 endPosition = SPINNER_CENTRE + CirclePosition(angle, SPIN_RADIUS);
 

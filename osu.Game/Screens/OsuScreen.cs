@@ -41,6 +41,8 @@ namespace osu.Game.Screens
 
         public virtual bool ShowFooter => false;
 
+        public virtual bool AllowLegacyFooterSkinning => false;
+
         public virtual bool AllowExternalScreenChange => false;
 
         public virtual bool HideOverlaysOnEnter => false;

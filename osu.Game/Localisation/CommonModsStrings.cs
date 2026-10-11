@@ -100,6 +100,11 @@ namespace osu.Game.Localisation
         public static LocalisableString PerfectDescription => new TranslatableString(getKey(@"perfect_description"), @"SS or quit.");
 
         /// <summary>
+        /// "Score set on earlier g0v0! versions with the classic ScoreV1 scoring algorithm."
+        /// </summary>
+        public static LocalisableString ScoreV1Description => new TranslatableString(getKey(@"score_v1_description"), @"Score set on earlier g0v0! versions with the classic ScoreV1 scoring algorithm.");
+
+        /// <summary>
         /// "Score set on earlier g0v0! versions with the V2 scoring algorithm active."
         /// </summary>
         public static LocalisableString ScoreV2Description => new TranslatableString(getKey(@"score_v2_description"), @"Score set on earlier g0v0! versions with the V2 scoring algorithm active.");
