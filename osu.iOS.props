@@ -1,5 +1,7 @@
-﻿<Project>
+<Project>
   <PropertyGroup>
+    <ValidateXcodeVersion>false</ValidateXcodeVersion>
+    <_SuppressXcodeRequirementCheck>true</_SuppressXcodeRequirementCheck>
     <CodesignKey>iPhone Developer</CodesignKey>
     <NullabilityInfoContextSupport>true</NullabilityInfoContextSupport>
     <!-- MT7091 occurs when referencing a .framework bundle that consists of a static library.

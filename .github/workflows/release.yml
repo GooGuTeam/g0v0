@@ -671,6 +671,8 @@ jobs:
         run: |
           dotnet restore osu.iOS/osu.iOS.csproj \
             --runtime ios-arm64 \
+            -p:ValidateXcodeVersion=false \
+            -p:_SuppressXcodeRequirementCheck=true \
             --verbosity normal \
             --no-cache \
             --force
