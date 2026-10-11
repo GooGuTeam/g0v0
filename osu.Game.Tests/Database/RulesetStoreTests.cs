@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -178,6 +178,26 @@ namespace osu.Game.Tests.Database
                 using var __ = new RealmRulesetStore(realm, storage);
 
                 Assert.That(realm.Run(r => r.Find<RulesetInfo>(second.ShortName)!.Available), Is.True);
+            });
+        }
+
+        [Test]
+        public void TestEventsRecordedForLoadedRulesets()
+        {
+            RunTestWithRealm((realm, storage) =>
+            {
+                using var rulesets = new RealmRulesetStore(realm, storage);
+
+                var loadEvents = rulesets.Events.OfType<RulesetLoadEvent>().ToList();
+
+                ClassicAssert.IsNotEmpty(loadEvents);
+
+                foreach (var ev in loadEvents)
+                {
+                    ClassicAssert.IsNotNull(ev.Assembly);
+                    ClassicAssert.IsNotNull(ev.RulesetInfo);
+                    ClassicAssert.IsNotNull(ev.Location);
+                }
             });
         }
 
