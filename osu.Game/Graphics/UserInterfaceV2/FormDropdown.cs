@@ -37,12 +37,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
         }
 
         /// <summary>
-        /// When set, a dismissible "NEW" badge is shown on the caption (auto-dismisses
-        /// after a few interactions). Use a <see cref="osu.Game.Configuration.NewFeatureRegistry"/> id.
-        /// </summary>
-        public string? NewFeatureId { get; init; }
-
-        /// <summary>
         /// The maximum height of the dropdown's menu.
         /// By default, this is set to 200px high. Set to <see cref="float.PositiveInfinity"/> to remove such limit.
         /// </summary>
@@ -59,7 +53,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
 
             header.Caption = Caption;
             header.HintText = HintText;
-            header.NewFeatureId = NewFeatureId;
         }
 
         protected override void LoadComplete()
@@ -136,20 +129,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
                 }
             }
 
-            private string? newFeatureId;
-
-            public string? NewFeatureId
-            {
-                get => newFeatureId;
-                set
-                {
-                    newFeatureId = value;
-
-                    if (caption.IsNotNull())
-                        caption.NewFeatureId = value;
-                }
-            }
-
             protected override LocalisableString Label
             {
                 get => labelText;
@@ -201,7 +180,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
                                     {
                                         Caption = Caption,
                                         TooltipText = HintText,
-                                        NewFeatureId = NewFeatureId,
                                     },
                                     label = new TruncatingSpriteText
                                     {
@@ -235,10 +213,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
                 {
                     updateState();
                     updateChevron();
-
-                    // Opening the dropdown counts as interacting with it — dismiss the NEW badge.
-                    if (state == MenuState.Open)
-                        caption.RegisterInteraction();
                 };
                 SearchBar.TextBox.OnCommit += (_, _) =>
                 {

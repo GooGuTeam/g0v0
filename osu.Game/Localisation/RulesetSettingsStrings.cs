@@ -291,7 +291,7 @@ namespace osu.Game.Localisation
         /// "Download URL: {0}\nWarning: the download URL is provided by the server. Beware of potentially malicious code."
         /// </summary>
         public static LocalisableString DownloadRulesetConfirmationBody(string url)
-            => new TranslatableString(getKey(@"download_ruleset_confirmation_body"), "Download URL: {0}\nWarning: the download URL is provided by the server. Beware of potentially malicious code.", url);
+            => new TranslatableString(getKey(@"download_ruleset_confirmation_body"), @"Download URL: {0}\nWarning: the download URL is provided by the server. Beware of potentially malicious code.", url);
 
         /// <summary>
         /// "v{0}"

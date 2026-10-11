@@ -34,7 +34,6 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
                     Caption = UserInterfaceStrings.ResultsScreenStyle,
                     HintText = UserInterfaceStrings.ResultsScreenStyleDescription,
                     Current = style,
-                    NewFeatureId = NewFeatureRegistry.StableResults,
                 })
                 {
                     Keywords = new[] { @"results", @"ranking", @"score", @"modern", @"legacy", @"stable", @"layout", @"skin" },

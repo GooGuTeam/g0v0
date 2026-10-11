@@ -273,7 +273,6 @@ namespace osu.Game.Overlays.ReplayRender
                                 Caption = "Resolution",
                                 HintText = "720p for everyone. 1080p comes with supporter.",
                                 Items = new[] { @"960x540", @"1280x720" },
-                                NewFeatureId = NewFeatureRegistry.ReplayRender,
                             },
                             skinSelector = new OrdrSkinSelector(),
                             motionBlurRow = new Container

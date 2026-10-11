@@ -332,7 +332,6 @@ namespace osu.Game
             dependencies.Cache(onlineAssetStore = new OnlineAssetCachingStore(Host, realm));
 
             dependencies.CacheAs(LocalConfig);
-            dependencies.Cache(new NewFeatureTracker(Storage));
             LocalConfig.BindWith(OsuSetting.UnslantedSongSelectUI, unslantedSongSelectUI);
             unslantedSongSelectUI.BindValueChanged(e => OsuGame.SetUnslantedUI(e.NewValue), true);
             LocalConfig.BindWith(OsuSetting.ToriiLegacyFont, legacyFontSetting);

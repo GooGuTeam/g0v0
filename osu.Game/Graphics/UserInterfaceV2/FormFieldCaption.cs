@@ -49,36 +49,8 @@ namespace osu.Game.Graphics.UserInterfaceV2
             }
         }
 
-        // Torii: when set, a NewFeatureBadge is appended to the caption
-        // textflow right after the tooltip icon — landing the pill INSIDE
-        // the form-control card, immediately to the right of the help
-        // bubble, rather than floating as its own row above the card
-        // (which was the original SettingsItemV2.MarkAsNew layout and
-        // looked detached). Form controls that want to expose a [NEW]
-        // badge forward an init-time property to this field — see
-        // FormDropdown<T>.NewFeatureId for the canonical wiring.
-        private string? newFeatureId;
-
-        public string? NewFeatureId
-        {
-            get => newFeatureId;
-            set
-            {
-                newFeatureId = value;
-
-                if (IsLoaded)
-                    updateDisplay();
-            }
-        }
-
-        // Reference to the badge once it's added to the textflow, so
-        // RegisterInteraction can forward clicks without re-querying
-        // the textflow's internal children every time.
-        private NewFeatureBadge? badge;
-
         // Torii: when true, a small "+18" red pill is appended after
-        // the [NEW] badge (or after the tooltip icon if no [NEW] badge
-        // is attached). Used for settings that toggle access to
+        // the tooltip icon. Used for settings that toggle access to
         // adult-rated content — currently the NSFW profile media
         // toggle in Settings → Torii → Interface. The pill is a
         // visual cue only; the enforcement is server-side via
@@ -119,7 +91,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
         private void updateDisplay()
         {
             textFlow.Text = caption;
-            badge = null;
 
             if (TooltipText != default)
             {
@@ -134,22 +105,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
                 });
             }
 
-            if (!string.IsNullOrEmpty(newFeatureId))
-            {
-                // Compact-mode badge — caption text is ~caption-size, so
-                // the default badge font (10pt + 6/2 padding) reads too
-                // chunky next to it. NewFeatureBadge.Compact dials font /
-                // padding down to match the caption's visual weight.
-                badge = new NewFeatureBadge(newFeatureId)
-                {
-                    Compact = true,
-                    Anchor = Anchor.BottomLeft,
-                    Origin = Anchor.BottomLeft,
-                    Margin = new MarginPadding { Left = 6 },
-                };
-                textFlow.AddArbitraryDrawable(badge);
-            }
-
             if (showExplicitContentBadge)
             {
                 textFlow.AddArbitraryDrawable(new ExplicitContentBadge
@@ -162,23 +117,9 @@ namespace osu.Game.Graphics.UserInterfaceV2
         }
 
         /// <summary>
-        /// Forwarded by parent form controls when the user clicks (taps)
-        /// the control card — counts as one interaction toward dismissing
-        /// the [NEW] badge. No-op when no badge is currently attached
-        /// (caption has no NewFeatureId set, or the badge has already
-        /// been dismissed and expired).
-        /// </summary>
-        public void RegisterInteraction()
-        {
-            badge?.RegisterInteraction();
-        }
-
-        /// <summary>
         /// Small red "+18" pill rendered inline in the caption flow when
         /// <see cref="ShowExplicitContentBadge"/> is set. Visual cue
         /// flagging that the host setting unlocks adult-rated content.
-        /// Sized + padded to roughly match the [NEW] badge's footprint so
-        /// the two read as siblings when both are present.
         /// </summary>
         private partial class ExplicitContentBadge : CompositeDrawable
         {
