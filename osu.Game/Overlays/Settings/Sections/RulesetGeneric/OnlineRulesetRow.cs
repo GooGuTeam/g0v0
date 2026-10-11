@@ -233,7 +233,7 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
                                                 Anchor = Anchor.CentreRight,
                                                 Origin = Anchor.CentreRight,
                                                 Icon = FontAwesome.Solid.Download,
-                                                TooltipText = RulesetSettingsStrings.DownloadRuleset,
+                                                TooltipText = CommonStrings.Download,
                                                 Action = openDownloadPage,
                                                 Alpha = downloadUrl == null ? 0 : 1,
                                                 Enabled = { Value = downloadUrl != null },
@@ -415,14 +415,16 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         {
             public RulesetDownloadDialog(APIRuleset mode, string url, Action downloadAction, Action copyLinkAction)
             {
-                HeaderText = RulesetSettingsStrings.DownloadRuleset;
-                BodyText = $"{mode.ReadableName} ({mode.Name})\n{url}";
+                HeaderText = $"Download {mode.ReadableName} ({mode.Name})?";
+                BodyText = $"Download URL: {url}\nWarning: the download URL is provided by the server. Beware of potentially malicious code.";
+
+                Icon = FontAwesome.Solid.Download;
 
                 Buttons = new PopupDialogButton[]
                 {
                     new PopupDialogOkButton
                     {
-                        Text = RulesetSettingsStrings.DownloadRuleset,
+                        Text = CommonStrings.Download,
                         Action = downloadAction,
                     },
                     new PopupDialogCancelButton
@@ -463,6 +465,7 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
             request.Failed += e =>
             {
                 downloadRequest = null;
+                notification.Text = $"{NotificationsStrings.RulesetException(mode.ReadableName)} {e.Message}";
                 notification.State = ProgressNotificationState.Cancelled;
                 Logger.Error(e, $"Failed to download the ruleset package from {url}.");
 
