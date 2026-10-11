@@ -640,18 +640,20 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # The iOS project targets net10.0-ios26.5, which requires the iOS 26.5 SDK.
-          # Only Xcode 26.5 / 26.6 ship it - never select Xcode 27+ here or the build fails with MT4162.
-          if [ -d "/Applications/Xcode_26.6.app" ]; then
-            sudo xcode-select -switch /Applications/Xcode_26.6.app
-          elif [ -d "/Applications/Xcode_26.5.app" ]; then
-            sudo xcode-select -switch /Applications/Xcode_26.5.app
-          else
-            echo "No Xcode with the iOS 26.5 SDK found; available versions:" >&2
-            ls /Applications | grep -i xcode >&2 || true
-            exit 1
-          fi
-          xcodebuild -version
+          # The iOS projects target net10.0-ios26.0 (the newest platform version the .NET iOS
+          # workload supports alongside 27.0). Any Xcode shipping an iOS SDK >= 26.0 works;
+          # Xcode 26.6 (SDK 26.5) is pinned for deterministic builds. Do not bump this ahead
+          # of the workload's valid TargetPlatformVersion list or the build fails (NETSDK1140).
+          for xcode in Xcode_26.6.app Xcode_26.5.app Xcode_26.0.1.app; do
+            if [ -d "/Applications/$xcode" ]; then
+              sudo xcode-select -switch "/Applications/$xcode"
+              xcodebuild -version
+              exit 0
+            fi
+          done
+          echo "No suitable Xcode (>= iOS 26.0 SDK) found; available versions:" >&2
+          ls /Applications | grep -i xcode >&2 || true
+          exit 1
 
       - name: Validate Sentry DSN
         shell: bash
