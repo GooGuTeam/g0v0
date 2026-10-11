@@ -263,10 +263,10 @@ namespace osu.Game.Rulesets.Scoring
 
             Accuracy.ValueChanged += _ => updateRank();
 
-            Mods.ValueChanged += _ =>
+            Mods.ValueChanged += e =>
             {
-                ScoreV2Active = mods.NewValue.Any(m => m is ModScoreV2);
-                ScoreV1Active = !ScoreV2Active && CheckScoreV1Active(mods.NewValue);
+                ScoreV2Active = e.NewValue.Any(m => m is ModScoreV2);
+                ScoreV1Active = !ScoreV2Active && CheckScoreV1Active(e.NewValue);
                 updateScoreMultiplier();
                 updateScore();
                 updateRank();

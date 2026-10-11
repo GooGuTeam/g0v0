@@ -619,11 +619,15 @@ jobs:
     if: needs.version.outputs.nugetOnly != 'true'
     runs-on: macos-26
     # Release iOS builds AOT compile (see osu.iOS.props), which takes far longer
-    # than the Debug compile done by the CI workflow.
-    timeout-minutes: 180
+    # than the Debug compile done by the CI workflow. The job additionally waits
+    # up to 2 hours for the GitHub Release to appear before attaching the IPA,
+    # so the timeout must cover build time + the wait window.
+    timeout-minutes: 240
     concurrency:
       group: build-ios
       cancel-in-progress: false
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -708,9 +712,51 @@ jobs:
           path: Releases/*.ipa
           retention-days: 90
 
+      - name: Wait for GitHub Release (up to 2 hours)
+        # The release job intentionally does not depend on this job, so the
+        # release may not exist yet when the iOS build finishes. Poll for it;
+        # bail out early if the release job completed without publishing one
+        # (that means another platform build failed).
+        timeout-minutes: 125
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          DEADLINE=$((SECONDS + 7200))
+          while (( SECONDS < DEADLINE )); do
+            if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+              echo "Release $VERSION is available."
+              exit 0
+            fi
+
+            RELEASE_JOB="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" \
+              --jq '.jobs[] | select(.name == "Create GitHub Release") | .status + ":" + (.conclusion // "")')"
+            if [[ "$RELEASE_JOB" == completed:* ]]; then
+              echo "::error::Release job finished as '$RELEASE_JOB' without publishing the release - another platform build failed. Cancelling iOS asset upload."
+              exit 1
+            fi
+
+            echo "Release $VERSION not published yet ($(printf '%02d:%02d' $((SECONDS/60)) $((SECONDS%60))) elapsed); retrying in 30s..."
+            sleep 30
+          done
+          echo "::error::Timed out after 2 hours waiting for release $VERSION."
+          exit 1
+
+      - name: Attach IPA to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          gh release upload "$VERSION" Releases/*.ipa --repo "$GITHUB_REPOSITORY" --clobber
+          echo "Attached IPA to release $VERSION:" && gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
+
   release:
     name: Create GitHub Release
-    needs: [version, nuget, build-windows, build-linux, build-macos, build-android, build-ios]
+    # iOS builds in the background and attaches its IPA to the release on its
+    # own; the release only waits for the other platform builds.
+    needs: [version, nuget, build-windows, build-linux, build-macos, build-android]
 
     if: needs.version.outputs.nugetOnly != 'true'
     runs-on: ubuntu-latest

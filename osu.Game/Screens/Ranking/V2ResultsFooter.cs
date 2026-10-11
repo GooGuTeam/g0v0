@@ -109,7 +109,7 @@ namespace osu.Game.Screens.Ranking
                     Action = () =>
                     {
                         if (GetContainingInputManager()?.CurrentState.Keyboard.ShiftPressed == true)
-                            _ = screenshots?.UploadScreenshotAsync();
+                            _ = screenshots?.TakeAndUploadScreenshotAsync();
                         else
                             _ = screenshots?.TakeScreenshotAsync();
                     },
