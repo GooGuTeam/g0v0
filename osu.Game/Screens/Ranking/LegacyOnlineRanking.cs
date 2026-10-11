@@ -589,7 +589,7 @@ namespace osu.Game.Screens.Ranking
 
         private void onToggleFavourite(bool ticked)
         {
-            var setId = score.BeatmapInfo?.BeatmapSet?.OnlineID ?? 0;
+            int setId = score.BeatmapInfo?.BeatmapSet?.OnlineID ?? 0;
 
             if (setId <= 0 || !api.IsLoggedIn)
                 return;

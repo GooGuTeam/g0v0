@@ -5,7 +5,6 @@ using System.Linq;
 using Moq;
 using NUnit.Framework;
 using osu.Framework.Audio.Sample;
-using osu.Framework.Graphics;
 using osu.Framework.Testing;
 using osu.Framework.Timing;
 using osu.Game.Audio;

@@ -5,7 +5,6 @@ using System;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Screens;
-using osu.Framework.Testing;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Mods;

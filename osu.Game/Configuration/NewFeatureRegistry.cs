@@ -56,6 +56,8 @@ namespace osu.Game.Configuration
     /// </summary>
     public static class NewFeatureRegistry
     {
+#pragma warning disable IDE1006 // Feature IDs follow PascalCase rather than ALL_CAPS
+
         // ---------------------------------------------------------------
         // v2026.514.x — first release shipping the NEW-badge framework.
         // ---------------------------------------------------------------
@@ -276,5 +278,6 @@ namespace osu.Game.Configuration
         /// unknown IDs must NOT trigger a badge.
         /// </summary>
         public static bool IsKnown(string featureId) => known_ids.Contains(featureId);
+#pragma warning restore IDE1006
     }
 }

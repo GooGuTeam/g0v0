@@ -16,7 +16,6 @@ using osu.Framework.Graphics.Textures;
 using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
-using osu.Game.Graphics.Sprites;
 using osu.Game.Screens.Select.Filter;
 using osu.Game.Skinning;
 using osuTK;

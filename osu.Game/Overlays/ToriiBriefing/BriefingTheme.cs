@@ -38,6 +38,8 @@ namespace osu.Game.Overlays.ToriiBriefing
     /// </remarks>
     internal static class BriefingTheme
     {
+#pragma warning disable IDE1006 // HIG constants follow PascalCase rather than ALL_CAPS
+
         // ─── Colour palette ────────────────────────────────────────────
         // Two brand accents (cyan / pink), four semantic ones. Prefer
         // these over hardcoding hex strings inline; keeps a future
@@ -105,11 +107,11 @@ namespace osu.Game.Overlays.ToriiBriefing
         // sizes, none of them on a clean ratio). Now four sizes on a 1.25×
         // ratio with one display.
 
-        public const float TypeCaption = 11;    // KICKER labels, fine print
-        public const float TypeBody    = 14;    // body text
-        public const float TypeHeadline = 18;   // card headlines
-        public const float TypeTitle   = 24;    // section / overlay subtitle
-        public const float TypeDisplay = 30;    // overlay title only
+        public const float TypeCaption = 11; // KICKER labels, fine print
+        public const float TypeBody = 14; // body text
+        public const float TypeHeadline = 18; // card headlines
+        public const float TypeTitle = 24; // section / overlay subtitle
+        public const float TypeDisplay = 30; // overlay title only
 
         public const float CaptionTracking = 0.18f; // letter-spacing on captions (Apple SF Caps feel)
 
@@ -117,12 +119,13 @@ namespace osu.Game.Overlays.ToriiBriefing
         // Spring-y feel for entrance, snappy for interactive feedback.
 
         public const double EntranceDuration = 480;
-        public const double EntranceStagger  = 70;     // ms between consecutive cards
-        public const double HoverDuration    = 180;
+        public const double EntranceStagger = 70; // ms between consecutive cards
+        public const double HoverDuration = 180;
         // Snappy dismiss — was 220 ms, but the "enter Torii" CTA is the
         // user's "I'm done with this overlay, get me to the menu" gesture.
         // 160 ms feels immediate while still letting the panel ease out
         // visually rather than vanishing.
-        public const double DismissDuration  = 160;
+        public const double DismissDuration = 160;
+#pragma warning restore IDE1006
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 #nullable disable
@@ -366,7 +366,7 @@ namespace osu.Game.Overlays.ReplayRender
 
             // opciones supporter: no mostrar lo que no se puede usar (el server igual lo rechaza).
             bool supporter = api?.LocalUser?.Value?.IsSupporter == true;
-            var resolutions = supporter
+            string[] resolutions = supporter
                 ? new[] { @"960x540", @"1280x720", @"1920x1080" }
                 : new[] { @"960x540", @"1280x720" };
             resolutionDropdown.Items = resolutions;

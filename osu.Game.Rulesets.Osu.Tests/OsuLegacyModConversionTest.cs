@@ -4,7 +4,6 @@
 using System;
 using NUnit.Framework;
 using osu.Game.Beatmaps.Legacy;
-using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Tests.Beatmaps;
 
