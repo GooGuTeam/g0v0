@@ -14,7 +14,6 @@ dotnet build osu.iOS/osu.iOS.csproj \
   --runtime ios-arm64 \
   -p:ValidateXcodeVersion=false \
   -p:_SuppressXcodeRequirementCheck=true \
-  -p:TargetPlatformVersion=26.5 \
   -p:BuildIpa=true \
   -p:CodesignKey="-" \
   --no-restore \
