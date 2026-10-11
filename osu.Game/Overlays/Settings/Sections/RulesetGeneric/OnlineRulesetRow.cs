@@ -415,8 +415,8 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         {
             public RulesetDownloadDialog(APIRuleset mode, string url, Action downloadAction, Action copyLinkAction)
             {
-                HeaderText = $"Download {mode.ReadableName} ({mode.Name})?";
-                BodyText = $"Download URL: {url}\nWarning: the download URL is provided by the server. Beware of potentially malicious code.";
+                HeaderText = RulesetSettingsStrings.DownloadRulesetConfirmationHeader(mode.ReadableName, mode.Name);
+                BodyText = RulesetSettingsStrings.DownloadRulesetConfirmationBody(url);
 
                 Icon = FontAwesome.Solid.Download;
 

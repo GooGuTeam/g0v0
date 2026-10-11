@@ -282,6 +282,18 @@ namespace osu.Game.Localisation
         public static LocalisableString DownloadRuleset => new TranslatableString(getKey(@"download_ruleset"), @"Download");
 
         /// <summary>
+        /// "Download {0} ({1})?"
+        /// </summary>
+        public static LocalisableString DownloadRulesetConfirmationHeader(string readableName, string shortName)
+            => new TranslatableString(getKey(@"download_ruleset_confirmation_header"), @"Download {0} ({1})?", readableName, shortName);
+
+        /// <summary>
+        /// "Download URL: {0}\nWarning: the download URL is provided by the server. Beware of potentially malicious code."
+        /// </summary>
+        public static LocalisableString DownloadRulesetConfirmationBody(string url)
+            => new TranslatableString(getKey(@"download_ruleset_confirmation_body"), "Download URL: {0}\nWarning: the download URL is provided by the server. Beware of potentially malicious code.", url);
+
+        /// <summary>
         /// "v{0}"
         /// </summary>
         public static LocalisableString RulesetVersion(string version) => new TranslatableString(getKey(@"ruleset_version"), @"v{0}", version);
