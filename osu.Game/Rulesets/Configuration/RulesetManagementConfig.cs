@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using osu.Framework.Bindables;
+using osu.Game.Extensions;
 
 namespace osu.Game.Rulesets.Configuration
 {
@@ -13,7 +14,7 @@ namespace osu.Game.Rulesets.Configuration
         public BindableBool BlockUnseenRulesets = new BindableBool();
 
         /// <summary>
-        /// Formed enabled and loaded rulesets (trusted).
+        /// Previously enabled and loaded rulesets (trusted).
         /// </summary>
         public List<RulesetInfo> KnownRulesets { get; } = [];
 
@@ -33,11 +34,11 @@ namespace osu.Game.Rulesets.Configuration
         public string? RulesetCausedCrashLastTime { get; set; }
 
         /// <summary>
-        /// Is the specified ruleset trusted, i.e. formly enabled by the user (or <see cref="BlockUnseenRulesets"/> is disabled).
+        /// Is the specified ruleset trusted, i.e. previously enabled by the user (or <see cref="BlockUnseenRulesets"/> is disabled).
         /// </summary>
         /// <param name="ruleset"></param>
         /// <returns></returns>
-        public bool IsTrusted(RulesetInfo ruleset) => !BlockUnseenRulesets.Value || KnownRulesets.Contains(ruleset);
+        public bool IsTrusted(RulesetInfo ruleset) => !BlockUnseenRulesets.Value || KnownRulesets.Contains(ruleset) || ruleset.IsBuiltinRuleset();
 
         /// <summary>
         /// Should the specified ruleset be loaded into the game.

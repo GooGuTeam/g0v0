@@ -87,6 +87,14 @@ namespace osu.Game.Extensions
         public static bool HasSpecialRuleset(this IRulesetInfo ruleset) => ruleset.ShortName is RulesetInfo.OSU_MODE_SHORTNAME or RulesetInfo.TAIKO_MODE_SHORTNAME or RulesetInfo.CATCH_MODE_SHORTNAME;
 
         /// <summary>
+        /// Check whether this <see cref="IRulesetInfo"/> is a built-in ruleset (ie. either osu!, taiko, catch or mania).
+        /// </summary>
+        /// <remarks>
+        /// g0v0-server numbers custom rulesets from 10.
+        /// </remarks>
+        public static bool IsBuiltinRuleset(this IRulesetInfo ruleset) => IsLegacyRuleset(ruleset) && ruleset.OnlineID < 10;
+
+        /// <summary>
         /// Check whether the online ID of two <see cref="IBeatmapSetInfo"/>s match.
         /// </summary>
         /// <param name="instance">The instance to compare.</param>
