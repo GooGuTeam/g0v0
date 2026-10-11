@@ -28,6 +28,8 @@ namespace osu.Game.Rulesets
 
         private readonly List<RulesetEvent> events = new List<RulesetEvent>();
 
+        private readonly HashSet<string> presentRulesetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         public BindableBool BlockUnseenRulesets => Config.BlockUnseenRulesets;
 
         /// <summary>
@@ -229,6 +231,24 @@ namespace osu.Game.Rulesets
         }
 
         /// <summary>
+        /// Removes configuration entries of rulesets which were not resolved during this launch, and broken
+        /// ruleset records whose files have disappeared, so that stale entries don't accumulate (or show
+        /// duplicated rows). Presence is recorded by <see cref="SetRulesetInfo"/> for every resolved ruleset,
+        /// regardless of whether it ends up loaded or disabled.
+        /// </summary>
+        protected void PruneStaleConfigEntries()
+        {
+            Config.KnownRulesets.RemoveAll(r => !presentRulesetNames.Contains(r.ShortName));
+            Config.DisabledRulesets.RemoveAll(r => !presentRulesetNames.Contains(r.ShortName));
+
+            if (RulesetStorage != null)
+            {
+                Config.BrokenRulesetFilenames.RemoveAll(name =>
+                    !RulesetStorage.Exists(name) && !RulesetStorage.Exists(Path.ChangeExtension(name, @".dll.broken")));
+            }
+        }
+
+        /// <summary>
         /// Retrieve a ruleset using a known ID.
         /// </summary>
         /// <param name="id">The ruleset's internal ID.</param>
@@ -293,6 +313,8 @@ namespace osu.Game.Rulesets
         /// <param name="rulesetInfo">The loaded ruleset info to attach.</param>
         protected void SetRulesetInfo(Assembly assembly, RulesetInfo rulesetInfo)
         {
+            presentRulesetNames.Add(rulesetInfo.ShortName);
+
             foreach (RulesetEvent evt in events.Where(evt => evt.Assembly == assembly && evt.RulesetInfo == null))
             {
                 evt.RulesetInfo = rulesetInfo;

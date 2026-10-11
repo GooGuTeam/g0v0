@@ -27,6 +27,7 @@ namespace osu.Game.Rulesets
         {
             this.realmAccess = realmAccess;
             prepareDetachedRulesets();
+            PruneStaleConfigEntries();
             SaveConfiguration();
         }
 
