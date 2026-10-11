@@ -9,7 +9,7 @@ namespace osu.Game.Rulesets.Taiko.Objects
 {
     public class DrumRollTick : TaikoStrongableHitObject
     {
-        public readonly DrumRoll Parent;
+        public new readonly DrumRoll Parent;
 
         /// <summary>
         /// Whether this is the first (initial) tick of the slider.

@@ -13,7 +13,7 @@ namespace osu.Game.Rulesets.Taiko.Objects
     /// </summary>
     public abstract class StrongNestedHitObject : TaikoHitObject
     {
-        public readonly TaikoHitObject Parent;
+        public new readonly TaikoHitObject Parent;
 
         protected StrongNestedHitObject(TaikoHitObject parent)
         {
