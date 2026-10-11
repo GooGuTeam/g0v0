@@ -1,11 +1,12 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
@@ -26,7 +27,8 @@ namespace osu.Game.Rulesets
         {
             this.realmAccess = realmAccess;
             prepareDetachedRulesets();
-            informUserAboutBrokenRulesets();
+            PruneStaleConfigEntries();
+            SaveConfiguration();
         }
 
         private void prepareDetachedRulesets()
@@ -72,6 +74,8 @@ namespace osu.Game.Rulesets
                 // perform a consistency check and detach final rulesets from realm for cross-thread runtime usage.
                 foreach (var r in rulesets.OrderBy(r => r.OnlineID))
                 {
+                    Assembly? rulesetAssembly = null;
+
                     try
                     {
                         var resolvedType = Type.GetType(r.InstantiationInfo);
@@ -82,6 +86,8 @@ namespace osu.Game.Rulesets
                             r.Available = false;
                             continue;
                         }
+
+                        rulesetAssembly = resolvedType.Assembly;
 
                         var instance = (Activator.CreateInstance(resolvedType) as Ruleset);
                         var instanceInfo = instance?.RulesetInfo
@@ -110,12 +116,21 @@ namespace osu.Game.Rulesets
 
                         testRulesetCompatibility(r);
 
-                        detachedRulesets.Add(r.Clone());
+                        var detached = r.Clone();
+                        SetRulesetInfo(resolvedType.Assembly, detached);
+
+                        if (Config.ShouldBeLoaded(detached))
+                            detachedRulesets.Add(detached);
+                        else
+                            AddOrUpdateDisabledRuleset(detached);
                     }
                     catch (Exception ex)
                     {
                         r.Available = false;
-                        LogRulesetFailure(r, ex);
+                        AddEvent(new RulesetErrorEvent(rulesetAssembly, ex, rulesetAssembly?.Location ?? string.Empty)
+                        {
+                            RulesetInfo = r.Clone()
+                        });
                     }
                 }
 
@@ -156,18 +171,6 @@ namespace osu.Game.Rulesets
             instance.CreateBeatmapProcessor(converter.Convert());
         }
 
-        private void informUserAboutBrokenRulesets()
-        {
-            if (RulesetStorage == null)
-                return;
-
-            foreach (string brokenRulesetDll in RulesetStorage.GetFiles(@".", @"*.dll.broken"))
-            {
-                Logger.Log($"Ruleset '{Path.GetFileNameWithoutExtension(brokenRulesetDll)}' has been disabled due to causing a crash.\n\n"
-                           + "Please update the ruleset or report the issue to the developers of the ruleset if no updates are available.", level: LogLevel.Important);
-            }
-        }
-
         internal void TryDisableCustomRulesetsCausing(Exception exception)
         {
             try
@@ -184,12 +187,26 @@ namespace osu.Game.Rulesets
                     {
                         string sourceLocation = declaringAssembly.Location;
                         string destinationLocation = Path.ChangeExtension(sourceLocation, @".dll.broken");
+                        string sourceName = Path.GetFileNameWithoutExtension(sourceLocation);
 
                         if (File.Exists(sourceLocation))
                         {
-                            Logger.Log($"Unhandled exception traced back to custom ruleset {Path.GetFileNameWithoutExtension(sourceLocation)}. Marking as broken.");
+                            Logger.Log($"Unhandled exception traced back to custom ruleset {sourceName}. Marking as broken.");
                             File.Move(sourceLocation, destinationLocation);
                         }
+
+                        // Sync to config so the ruleset appears in BrokenRulesets for UI display.
+                        var loadEvent = Events.OfType<RulesetLoadEvent>()
+                                              .FirstOrDefault(e => e.Assembly == declaringAssembly);
+
+                        if (loadEvent?.RulesetInfo != null)
+                        {
+                            MarkRulesetAsBroken(loadEvent.RulesetInfo, exception, declaringAssembly, sourceLocation);
+                            Config.RulesetCausedCrashLastTime = sourceName;
+                            SaveConfiguration();
+                        }
+                        else
+                            Logger.Log($"Could not find ruleset info for assembly {declaringAssembly.GetName().Name} to mark as broken in config.");
                     }
                 }
             }

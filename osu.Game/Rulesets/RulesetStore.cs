@@ -1,30 +1,67 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Newtonsoft.Json;
 using osu.Framework;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
+using osu.Game.Rulesets.Configuration;
 
 namespace osu.Game.Rulesets
 {
     public abstract class RulesetStore : IDisposable, IRulesetStore
     {
         private const string ruleset_library_prefix = @"osu.Game.Rulesets";
+        private const string config_filename = @"rulesets.json";
 
         protected readonly Dictionary<Assembly, Type> LoadedAssemblies = new Dictionary<Assembly, Type>();
         protected readonly HashSet<Assembly> UserRulesetAssemblies = new HashSet<Assembly>();
         protected readonly Storage? RulesetStorage;
+        protected readonly RulesetManagementConfig Config = new RulesetManagementConfig();
+
+        private readonly List<RulesetEvent> events = new List<RulesetEvent>();
+
+        private readonly HashSet<string> presentRulesetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        public BindableBool BlockUnseenRulesets => Config.BlockUnseenRulesets;
+
+        /// <summary>
+        /// Loaded rulesets of all states.
+        /// </summary>
+        /// <remarks>Note: This doesn't include broken rulesets.</remarks>
+        public IEnumerable<RulesetInfo> AllRulesets => AvailableRulesets.Concat(DisabledRulesets);
 
         /// <summary>
         /// All available rulesets.
         /// </summary>
         public abstract IEnumerable<RulesetInfo> AvailableRulesets { get; }
+
+        /// <summary>
+        /// Rulesets that are disabled.
+        /// </summary>
+        public virtual List<RulesetInfo> DisabledRulesets => Config.DisabledRulesets;
+
+        /// <summary>
+        /// (Filenames of) rulesets that threw exceptions on load or caused the game to crash.
+        /// </summary>
+        public virtual List<string> BrokenRulesetFilenames => Config.BrokenRulesetFilenames;
+
+        /// <inheritdoc />
+        /// <summary>
+        /// A chronological list of ruleset loading events.
+        /// </summary>
+        public virtual IEnumerable<RulesetEvent> Events => events;
+
+        public event Action<RulesetLoadEvent>? OnLoaded;
+
+        public event Action<RulesetErrorEvent>? OnError;
 
         protected RulesetStore(Storage? storage = null)
         {
@@ -44,8 +81,254 @@ namespace osu.Game.Rulesets
             AppDomain.CurrentDomain.AssemblyResolve += resolveRulesetDependencyAssembly;
 
             RulesetStorage = storage?.GetStorageForDirectory(@"rulesets");
+
+            if (RulesetStorage == null)
+                return;
+
+            if (RulesetStorage.Exists(config_filename))
+            {
+                using var configStream = RulesetStorage.GetStream(config_filename);
+                using var sr = new StreamReader(configStream);
+
+                try
+                {
+                    Config = JsonConvert.DeserializeObject<RulesetManagementConfig>(sr.ReadToEnd()) ?? new RulesetManagementConfig();
+                }
+                catch (Exception e)
+                {
+                    Logger.Error(e, @"An error occurred while deserializing the ruleset config.");
+                }
+            }
+            else
+            {
+                Logger.Log(@"The ruleset configuration file doesn't exist, creating.");
+            }
+
+            loadUserRulesets(RulesetStorage);
+        }
+
+        /// <summary>
+        /// Write the ruleset configuration into the external storage.
+        /// </summary>
+        public void SaveConfiguration()
+        {
+            if (RulesetStorage == null)
+                return;
+
+            try
+            {
+                using var configStream = RulesetStorage.GetStream(config_filename, FileAccess.Write, FileMode.Create);
+                using var sw = new StreamWriter(configStream);
+                sw.Write(JsonConvert.SerializeObject(Config, Formatting.Indented));
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, @"Failed to save ruleset configuration.");
+            }
+        }
+
+        /// <summary>
+        /// Tells if custom rulesets make the game crash and which one (namely <see cref="RulesetManagementConfig.RulesetCausedCrashLastTime"/>),
+        /// then reset it.
+        /// </summary>
+        /// <returns>The name of the disabled ruleset file.</returns>
+        public string? FireAndForgetLastCrash()
+        {
+            string? lastName = Config.RulesetCausedCrashLastTime;
+
+            Config.RulesetCausedCrashLastTime = null;
+            SaveConfiguration();
+            return lastName;
+        }
+
+        /// <summary>
+        /// Installs a downloaded ruleset assembly into the ruleset storage, overwriting any file of the same name.
+        /// The downloaded file must be a dll, otherwise the installation fails.
+        /// The installed file takes effect on next launch.
+        /// </summary>
+        /// <param name="downloadedPath">The local path of the downloaded file.</param>
+        /// <param name="preferredName">A name used to derive the target file name.</param>
+        /// <returns>Whether the assembly was installed.</returns>
+        public bool TryInstallRulesetPackage(string downloadedPath, string preferredName)
+        {
+            if (RulesetStorage == null)
+                return false;
+
+            try
+            {
+                if (!isRulesetAssembly(downloadedPath))
+                {
+                    Logger.Log(@"[Ruleset] The downloaded file is not a ruleset assembly (dll), discarding.");
+                    return false;
+                }
+
+                string assemblyName = Path.GetFileName(preferredName);
+
+                if (string.IsNullOrEmpty(assemblyName))
+                    return false;
+
+                if (!Path.HasExtension(assemblyName))
+                    assemblyName += @".dll";
+
+                using (var sourceStream = File.OpenRead(downloadedPath))
+                using (var targetStream = RulesetStorage.GetStream(assemblyName, FileAccess.Write, FileMode.Create))
+                    sourceStream.CopyTo(targetStream);
+
+                Logger.Log($"[Ruleset] Installed ruleset assembly {assemblyName}.");
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, @"Failed to install the ruleset assembly.");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Returns whether the file at the given path looks like a dll (a PE image with the DLL flag set).
+        /// </summary>
+        private static bool isRulesetAssembly(string path)
+        {
+            try
+            {
+                using var stream = File.OpenRead(path);
+                using var reader = new BinaryReader(stream);
+
+                // DOS header magic ("MZ").
+                if (reader.ReadInt16() != 0x5A4D)
+                    return false;
+
+                // Offset of the PE signature, from the DOS header's e_lfanew field.
+                stream.Seek(0x3C, SeekOrigin.Begin);
+                int peOffset = reader.ReadInt32();
+
+                if (peOffset < 0 || peOffset > stream.Length - 24)
+                    return false;
+
+                stream.Seek(peOffset, SeekOrigin.Begin);
+
+                // PE signature.
+                if (reader.ReadInt32() != 0x00004550)
+                    return false;
+
+                // Skip machine (2), number of sections (2), timestamp (4), pointer to symbol table (4)
+                // and number of symbols (4) of the COFF header, to reach Characteristics.
+                stream.Seek(16, SeekOrigin.Current);
+
+                // IMAGE_FILE_DLL.
+                return (reader.ReadUInt16() & 0x2000) != 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Enable or disable a ruleset in the store config, then persist.
+        /// Enabling a ruleset also marks it as trusted (adds to <see cref="RulesetManagementConfig.KnownRulesets"/>).
+        /// </summary>
+        public void SetRulesetEnabled(RulesetInfo ruleset, bool enabled)
+        {
+            if (enabled)
+            {
+                Config.DisabledRulesets.RemoveAll(r => r.Equals(ruleset));
+
+                if (!Config.KnownRulesets.Any(r => r.Equals(ruleset)))
+                    Config.KnownRulesets.Add(ruleset.Clone());
+            }
+            else
+            {
+                if (!Config.DisabledRulesets.Any(r => r.Equals(ruleset)))
+                    Config.DisabledRulesets.Add(ruleset.Clone());
+            }
+
+            SaveConfiguration();
+        }
+
+        /// <summary>
+        /// Adds the ruleset to <see cref="DisabledRulesets"/> if not already present,
+        /// or updates the existing entry with fresh metadata. Used during loading to
+        /// ensure disabled/untrusted rulesets appear in <see cref="AllRulesets"/> for display.
+        /// </summary>
+        protected void AddOrUpdateDisabledRuleset(RulesetInfo ruleset)
+        {
+            var existing = Config.DisabledRulesets.FirstOrDefault(r => r.Equals(ruleset));
+
+            if (existing != null)
+            {
+                existing.Name = ruleset.Name;
+                existing.InstantiationInfo = ruleset.InstantiationInfo;
+                existing.OnlineID = ruleset.OnlineID;
+                existing.Available = ruleset.Available;
+            }
+            else
+            {
+                Config.DisabledRulesets.Add(ruleset.Clone());
+            }
+        }
+
+        /// <summary>
+        /// Marks a ruleset as broken by adding its filename to the configuration,
+        /// records an error event, and persists the configuration.
+        /// </summary>
+        protected void MarkRulesetAsBroken(RulesetInfo rulesetInfo, Exception? exception, Assembly? assembly, string location)
+        {
+            if (!BrokenRulesetFilenames.Contains(location))
+                BrokenRulesetFilenames.Add(location);
+
+            if (exception != null)
+                AddEvent(new RulesetErrorEvent(assembly, exception, location) { RulesetInfo = rulesetInfo.Clone() });
+
+            SaveConfiguration();
+        }
+
+        /// <summary>
+        /// Restores a previously broken ruleset: moves the <c>.dll.broken</c> file back
+        /// to its original location and removes it from <see cref="BrokenRulesetFilenames"/>.
+        /// </summary>
+        public void TryRestoreBrokenRuleset(string location)
+        {
+            BrokenRulesetFilenames.Remove(location);
+
+            SaveConfiguration();
+
+            if (RulesetStorage == null)
+                return;
+
+            string brokenPath = Path.ChangeExtension(location, @".dll.broken");
+
+            // A ruleset file with the same name exists or the "broken" file has gone.
+            // We'd better not mess with them.
+            if (RulesetStorage.Exists(location) || !RulesetStorage.Exists(brokenPath))
+                return;
+
+            try
+            {
+                RulesetStorage.Move(brokenPath, location);
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, @"Failed to rename the broken ruleset file.");
+            }
+        }
+
+        /// <summary>
+        /// Removes configuration entries of rulesets which were not resolved during this launch, and broken
+        /// ruleset records whose files have disappeared, so that stale entries don't accumulate (or show
+        /// duplicated rows). Presence is recorded by <see cref="SetRulesetInfo"/> for every resolved ruleset,
+        /// regardless of whether it ends up loaded or disabled.
+        /// </summary>
+        protected void PruneStaleConfigEntries()
+        {
+            Config.KnownRulesets.RemoveAll(r => !presentRulesetNames.Contains(r.ShortName));
+            Config.DisabledRulesets.RemoveAll(r => !presentRulesetNames.Contains(r.ShortName));
+
             if (RulesetStorage != null)
-                loadUserRulesets(RulesetStorage);
+            {
+                Config.BrokenRulesetFilenames.RemoveAll(name =>
+                    !RulesetStorage.Exists(name) && !RulesetStorage.Exists(Path.ChangeExtension(name, @".dll.broken")));
+            }
         }
 
         /// <summary>
@@ -61,6 +344,66 @@ namespace osu.Game.Rulesets
         /// <param name="shortName">The ruleset's short name.</param>
         /// <returns>A ruleset, if available, else null.</returns>
         public RulesetInfo? GetRuleset(string shortName) => AvailableRulesets.FirstOrDefault(r => r.ShortName == shortName);
+
+        protected Assembly? GetUnderlyingAssembly(RulesetInfo ruleset)
+            => Events.OfType<RulesetLoadEvent>()
+                     .FirstOrDefault(r => ruleset.Equals(r.RulesetInfo))?
+                     .Assembly;
+
+        public bool PresentRulesetExternally(RulesetInfo ruleset)
+        {
+            var sourceEvent = Events.OfType<RulesetLoadEvent>()
+                                    .FirstOrDefault(r => ruleset.Equals(r.RulesetInfo));
+            string? location = sourceEvent?.Location;
+            if (location == null) return false;
+
+            return RulesetStorage?.PresentFileExternally(location) ?? false;
+        }
+
+        /// <summary>
+        /// Records a ruleset loading event and raises the corresponding event handler.
+        /// </summary>
+        /// <param name="e">The event to record.</param>
+        protected void AddEvent(RulesetEvent e)
+        {
+            events.Add(e);
+
+            switch (e)
+            {
+                case RulesetLoadEvent loadEvent:
+                    Logger.Log($"[Ruleset] Loaded new ruleset from {loadEvent.Location}.");
+                    OnLoaded?.Invoke(loadEvent);
+                    break;
+
+                case RulesetErrorEvent errorEvent:
+                    string finalName = errorEvent.RulesetInfo?.Name
+                                       ?? errorEvent.Assembly?.GetName().Name!.Split('.').Last()
+                                       ?? @"<unknown>";
+
+                    Logger.Log($"[Ruleset] An issue with ruleset \"{finalName}\" occurred.", level: LogLevel.Error);
+                    if (errorEvent.Exception != null)
+                        Logger.Log(errorEvent.Exception.ToString());
+
+                    OnError?.Invoke(errorEvent);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Associates any recorded events for the specified assembly with the given <see cref="RulesetInfo"/>.
+        /// </summary>
+        /// <param name="assembly">The assembly whose events should be associated.</param>
+        /// <param name="rulesetInfo">The loaded ruleset info to attach.</param>
+        protected void SetRulesetInfo(Assembly assembly, RulesetInfo rulesetInfo)
+        {
+            presentRulesetNames.Add(rulesetInfo.ShortName);
+
+            foreach (RulesetEvent evt in events.Where(evt => evt.Assembly == assembly && evt.RulesetInfo == null))
+            {
+                evt.RulesetInfo = rulesetInfo;
+                Logger.Log($@"Updating ruleset event entry: {evt.Location} <=> {rulesetInfo.Name}");
+            }
+        }
 
         private Assembly? resolveRulesetDependencyAssembly(object? sender, ResolveEventArgs args)
         {
@@ -98,7 +441,7 @@ namespace osu.Game.Rulesets
                 if (!rulesetName.StartsWith(ruleset_library_prefix, StringComparison.InvariantCultureIgnoreCase) || rulesetName.Contains(@"Tests"))
                     continue;
 
-                addRuleset(ruleset);
+                addRuleset(ruleset, RulesetSource.Builtin, ruleset.Location);
             }
         }
 
@@ -108,7 +451,7 @@ namespace osu.Game.Rulesets
 
             foreach (string? ruleset in rulesets.Where(f => !f.Contains(@"Tests")))
             {
-                var assembly = loadRulesetFromFile(rulesetStorage.GetFullPath(ruleset));
+                var assembly = loadRulesetFromFile(rulesetStorage.GetFullPath(ruleset), RulesetSource.User);
                 if (assembly != null)
                     UserRulesetAssemblies.Add(assembly);
             }
@@ -121,7 +464,7 @@ namespace osu.Game.Rulesets
                 string[] files = Directory.GetFiles(RuntimeInfo.StartupDirectory, @$"{ruleset_library_prefix}.*.dll");
 
                 foreach (string file in files.Where(f => !Path.GetFileName(f).Contains("Tests")))
-                    loadRulesetFromFile(file);
+                    loadRulesetFromFile(file, RulesetSource.Builtin);
             }
             catch (Exception e)
             {
@@ -129,7 +472,7 @@ namespace osu.Game.Rulesets
             }
         }
 
-        private Assembly? loadRulesetFromFile(string file)
+        private Assembly? loadRulesetFromFile(string file, RulesetSource source)
         {
             string filename = Path.GetFileNameWithoutExtension(file);
 
@@ -139,18 +482,18 @@ namespace osu.Game.Rulesets
             try
             {
                 var assembly = Assembly.LoadFrom(file);
-                addRuleset(assembly);
+                addRuleset(assembly, source, file);
                 return assembly;
             }
             catch (Exception e)
             {
-                logRulesetFailure(filename, e);
+                AddEvent(new RulesetErrorEvent(null, e, file));
             }
 
             return null;
         }
 
-        private void addRuleset(Assembly assembly)
+        private void addRuleset(Assembly assembly, RulesetSource source, string location)
         {
             if (LoadedAssemblies.ContainsKey(assembly))
                 return;
@@ -163,10 +506,11 @@ namespace osu.Game.Rulesets
             try
             {
                 LoadedAssemblies[assembly] = assembly.GetTypes().First(t => t.IsPublic && t.IsSubclassOf(typeof(Ruleset)));
+                AddEvent(new RulesetLoadEvent(assembly, source, location));
             }
             catch (Exception e)
             {
-                logRulesetFailure(assembly.GetName().Name!.Split('.').Last(), e);
+                AddEvent(new RulesetErrorEvent(assembly, e, location));
             }
         }
 
@@ -196,5 +540,74 @@ namespace osu.Game.Rulesets
         IEnumerable<IRulesetInfo> IRulesetStore.AvailableRulesets => AvailableRulesets;
 
         #endregion
+    }
+
+    /// <summary>
+    /// Represents an event entry during ruleset setup.
+    /// </summary>
+    public class RulesetEvent
+    {
+        /// <summary>
+        /// The assembly that produced this event, if any.
+        /// </summary>
+        public Assembly? Assembly { get; init; }
+
+        /// <summary>
+        /// The ruleset info associated with this event. Populated after a ruleset is successfully resolved.
+        /// </summary>
+        public RulesetInfo? RulesetInfo { get; set; }
+
+        /// <summary>
+        /// The file system location relevant to this event (e.g. the loaded DLL path).
+        /// </summary>
+        public string Location { get; set; } = string.Empty;
+    }
+
+    /// <inheritdoc />
+    /// <summary>
+    /// A new ruleset was loaded into the ruleset store.
+    /// </summary>
+    public class RulesetLoadEvent : RulesetEvent
+    {
+        /// <summary>
+        /// The location of the ruleset (builtin or user provided).
+        /// </summary>
+        public RulesetSource Source { get; init; }
+
+        public RulesetLoadEvent(Assembly assembly, RulesetSource source, string location)
+        {
+            Assembly = assembly;
+            Source = source;
+            Location = location;
+        }
+    }
+
+    /// <inheritdoc />
+    /// <summary>
+    /// An error was occured while loading the ruleset assembly.
+    /// </summary>
+    public class RulesetErrorEvent : RulesetEvent
+    {
+        public Exception? Exception { get; init; }
+
+        public RulesetErrorEvent(Assembly? assembly, Exception? exception, string location)
+        {
+            Assembly = assembly;
+            Exception = exception;
+            Location = location;
+        }
+    }
+
+    public enum RulesetSource
+    {
+        /// <summary>
+        /// The ruleset is loaded from the installation directory or AppDomain.
+        /// </summary>
+        Builtin,
+
+        /// <summary>
+        /// The ruleset is loaded from the "rulesets" directory.
+        /// </summary>
+        User,
     }
 }
