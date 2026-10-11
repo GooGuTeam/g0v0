@@ -2,6 +2,7 @@
   <PropertyGroup>
     <ValidateXcodeVersion>false</ValidateXcodeVersion>
     <_SuppressXcodeRequirementCheck>true</_SuppressXcodeRequirementCheck>
+    <TargetPlatformVersion>26.5</TargetPlatformVersion>
     <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
     <CodesignKey>iPhone Developer</CodesignKey>
     <NullabilityInfoContextSupport>true</NullabilityInfoContextSupport>

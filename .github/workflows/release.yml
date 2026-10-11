@@ -638,8 +638,16 @@ jobs:
       - name: Install .NET iOS workload
         run: dotnet workload install ios
 
-      - name: Use Xcode 26.6
-        run: sudo xcode-select -switch /Applications/Xcode_26.6.app
+      - name: Select Xcode
+        run: |
+          if [ -d "/Applications/Xcode_27.0.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode_27.0.app
+          elif [ -d "/Applications/Xcode_27.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode_27.app
+          elif [ -d "/Applications/Xcode_26.6.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode_26.6.app
+          fi
+          xcodebuild -version
 
       - name: Validate Sentry DSN
         shell: bash
@@ -673,6 +681,7 @@ jobs:
             --runtime ios-arm64 \
             -p:ValidateXcodeVersion=false \
             -p:_SuppressXcodeRequirementCheck=true \
+            -p:TargetPlatformVersion=26.5 \
             --verbosity normal \
             --no-cache \
             --force
