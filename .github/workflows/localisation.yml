@@ -1,0 +1,31 @@
+name: Localisation check
+
+# Cross-checks this repository's *Strings.cs classes against the .resx files in the resources
+# repository and publishes the findings to Security -> Code scanning. The checker lives in
+# GooGuTeam/g0v0-l10n-checker; this file only says who calls it and with what.
+#
+# The resources repository has its own call: a SARIF report is a list of paths relative to one
+# repository, so each side is published from the repository that holds the files.
+
+on:
+  pull_request:
+  push:
+    branches: [v2]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  localisation:
+    uses: GooGuTeam/g0v0-l10n-checker/.github/workflows/localisation-check.yml@main
+    permissions:
+      contents: read
+      # Required to publish the report to code scanning. A called workflow can only be granted what
+      # its caller grants; without this the upload is rejected with a 403 and the findings are left in
+      # the job log. Missing it never fails the check — publishing is best effort.
+      security-events: write
+    with:
+      # Match G0V0ResourcesVersion in osu.Game/osu.Game.csproj, so the checker compares against the
+      # same resources the build consumes.
+      resources-ref: "2026.923.0"
