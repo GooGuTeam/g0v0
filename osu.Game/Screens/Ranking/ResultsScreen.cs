@@ -99,6 +99,12 @@ namespace osu.Game.Screens.Ranking
         private bool v2LayoutEnabled => !useLegacyResults && useV2ResultsScreen.Value && this is SoloResultsScreen && Score?.BeatmapInfo != null;
         private bool showingV2Layout => v2LayoutEnabled && !showingOriginalLayout;
 
+        /// <summary>
+        /// Whether the current score should play the full flair sequence (sound + animation),
+        /// matching the original expanded result screen behaviour.
+        /// </summary>
+        private bool shouldFlairForCurrentScore => player != null && Score?.User.IsBot == false && !(useLegacyResults && this is SoloResultsScreen);
+
         public bool IsV2Overview => showingV2Layout;
 
         /// <summary>
@@ -247,7 +253,7 @@ namespace osu.Game.Screens.Ranking
             if (Score != null)
             {
                 // only show flair / animation when arriving after watching a play that isn't autoplay.
-                bool shouldFlair = player != null && !Score.User.IsBot && !(useLegacyResults && this is SoloResultsScreen);
+                bool shouldFlair = shouldFlairForCurrentScore;
 
                 ScorePanelList.AddScore(Score, shouldFlair && !v2LayoutEnabled);
 
@@ -265,7 +271,7 @@ namespace osu.Game.Screens.Ranking
                 Width = 140,
                 Height = 30,
                 DarkerColour = Color4Extensions.FromHex("#CF2BA5"),
-                Action = () => this.Exit(),
+                Action = this.Exit,
                 Alpha = 0,
             });
 
@@ -373,6 +379,7 @@ namespace osu.Game.Screens.Ranking
         {
             V2LeaderboardVisible.Value = false;
             V2DetailsVisible.Value = false;
+
             foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
             {
                 panel.CloseLeaderboard();
@@ -397,6 +404,7 @@ namespace osu.Game.Screens.Ranking
             {
                 V2LeaderboardVisible.Value = false;
                 V2DetailsVisible.Value = false;
+
                 foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
                 {
                     panel.CloseLeaderboard();
@@ -428,7 +436,7 @@ namespace osu.Game.Screens.Ranking
             if (showingV2Layout && v2PanelContainer.Count == 0 && !v2PanelLoading)
             {
                 v2PanelLoading = true;
-                LoadComponentAsync(new V2ResultsPanel(Score!), panel =>
+                LoadComponentAsync(new V2ResultsPanel(Score!, shouldFlairForCurrentScore), panel =>
                 {
                     v2PanelContainer.Add(panel);
                     v2PanelLoading = false;

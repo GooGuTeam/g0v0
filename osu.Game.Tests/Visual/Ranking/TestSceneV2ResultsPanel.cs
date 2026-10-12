@@ -95,7 +95,10 @@ namespace osu.Game.Tests.Visual.Ranking
             });
 
             if (!withFlair)
+            {
                 AddAssert("existing score does not roll on entry", () => counter.DisplayedCount, () => Is.EqualTo(counter.Current.Value));
+                AddAssert("rank ring animation skipped for existing score", () => panel.ChildrenOfType<GradedCircles>().Single().Progress, () => Is.EqualTo(1));
+            }
 
             AddUntilStep("counter reaches final score", () => counter.DisplayedCount == counter.Current.Value);
             AddAssert("accuracy sounds only loaded for a new play", () =>
