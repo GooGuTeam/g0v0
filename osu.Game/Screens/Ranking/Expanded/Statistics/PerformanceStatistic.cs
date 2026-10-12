@@ -16,6 +16,7 @@ using osu.Framework.Localisation;
 using osu.Framework.Logging;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
+using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Resources.Localisation.Web;
@@ -39,8 +40,13 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
         private RollingCounter<int> counter = null!;
         private FillFlowContainer v2Content = null!;
         private OsuSpriteText maximumText = null!;
+        private OsuHoverContainer fullComboArea = null!;
         private TruncatingSpriteText fullComboText = null!;
         private V2StatisticChange personalBestChange = null!;
+
+        private double? fullComboPP;
+        private double? perfectPP;
+        private bool showPerfectEstimate;
 
         public void SetComparisonDebugPreview(bool enabled)
         {
@@ -59,14 +65,21 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
         {
             if (UseV2Style)
             {
-                AddInternal(fullComboText = new TruncatingSpriteText
+                AddInternal(fullComboArea = new OsuHoverContainer
                 {
                     Name = "If FC performance",
                     Y = -18,
-                    Font = OsuFont.Default.With(size: 12),
-                    Colour = Colour4.FromHex("#BDEFFF"),
-                    Shadow = false,
+                    AutoSizeAxes = Axes.Both,
                     BypassAutoSizeAxes = Axes.Both,
+                    IdleColour = Colour4.FromHex("#BDEFFF"),
+                    HoverColour = Colour4.White,
+                    Action = toggleEstimateCase,
+                    Child = fullComboText = new TruncatingSpriteText
+                    {
+                        Font = OsuFont.Default.With(size: 12),
+                        Colour = Colour4.FromHex("#BDEFFF"),
+                        Shadow = false,
+                    },
                 });
                 v2Content.Add(personalBestChange = new V2StatisticChange
                 {
@@ -99,13 +112,15 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
 
                 double pp = score.PP ?? (await calculator.CalculateAsync(score, attributes.Value.DifficultyAttributes, token).ConfigureAwait(false)).Total;
 
-                // Once the play is already a full combo, an FC estimate adds nothing over the achieved pp —
-                // switch to the perfect (SS) estimate instead, labelled SSH when the mod setup would grant the rank its H suffix.
-                bool estimateIsPerfect = score.IsPerfect();
+                // Both estimates are needed once the FC/SS estimate line can switch between the two cases.
+                if (UseV2Style)
+                {
+                    if (FullComboScoreInfo.Create(score) is { } fullComboScore)
+                        fullComboPP = (await calculator.CalculateAsync(fullComboScore, attributes.Value.DifficultyAttributes, token).ConfigureAwait(false)).Total;
 
-                double? estimatePP = null;
-                if (UseV2Style && (estimateIsPerfect ? PerfectScoreInfo.Create(score) : FullComboScoreInfo.Create(score)) is { } estimateScore)
-                    estimatePP = (await calculator.CalculateAsync(estimateScore, attributes.Value.DifficultyAttributes, token).ConfigureAwait(false)).Total;
+                    if (PerfectScoreInfo.Create(score) is { } perfectScore)
+                        perfectPP = (await calculator.CalculateAsync(perfectScore, attributes.Value.DifficultyAttributes, token).ConfigureAwait(false)).Total;
+                }
 
                 token.ThrowIfCancellationRequested();
                 Schedule(() =>
@@ -117,17 +132,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
                     if (attributes.Value.PerformanceAttributes?.Total is > 0 and var maxPP && double.IsFinite(maxPP))
                         maximumText.Text = $"/{Math.Round(maxPP, MidpointRounding.AwayFromZero):0}";
 
-                    if (estimatePP is { } estimate && double.IsFinite(estimate))
-                    {
-                        double rounded = Math.Round(estimate, MidpointRounding.AwayFromZero);
-
-                        if (estimateIsPerfect)
-                            fullComboText.Text = rankWouldCarryHidden(score)
-                                ? ResultsScreenStrings.IfPerfectHidden(rounded)
-                                : ResultsScreenStrings.IfPerfect(rounded);
-                        else
-                            fullComboText.Text = ResultsScreenStrings.IfFullCombo(rounded);
-                    }
+                    updateEstimateDisplay();
                 });
             }
             catch (OperationCanceledException)
@@ -199,6 +204,65 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
 
             return rank is ScoreRank.XH or ScoreRank.SH;
         }
+
+        /// <summary>
+        /// Whether the FC/SS estimate line can switch between the two cases. A play that is already a full
+        /// combo has no meaningful FC case to switch away from, so only the perfect (SS) case is shown.
+        /// </summary>
+        private bool canSwitchEstimateCase
+            => !score.IsPerfect() && fullComboPP is { } fc && perfectPP is { } perfect
+               && double.IsFinite(fc) && double.IsFinite(perfect);
+
+        private void toggleEstimateCase()
+        {
+            showPerfectEstimate = !showPerfectEstimate;
+            updateEstimateText();
+        }
+
+        private void updateEstimateDisplay()
+        {
+            if (!canSwitchEstimateCase)
+                showPerfectEstimate = true;
+
+            fullComboArea.Enabled.Value = canSwitchEstimateCase;
+            updateEstimateText();
+        }
+
+        private void updateEstimateText()
+        {
+            double? estimate = showPerfectEstimate ? perfectPP : fullComboPP;
+
+            if (estimate is not { } pp || !double.IsFinite(pp))
+            {
+                fullComboText.Text = string.Empty;
+                fullComboArea.TooltipText = string.Empty;
+                return;
+            }
+
+            double rounded = Math.Round(pp, MidpointRounding.AwayFromZero);
+
+            if (showPerfectEstimate)
+            {
+                // When the perfect case was switched to from FC, keep the switch hint visible.
+                LocalisableString tooltip = canSwitchEstimateCase
+                    ? LocalisableString.Format(@"{0} {1}", perfectTooltip(score), ResultsScreenStrings.ClickToFullComboTooltip)
+                    : perfectTooltip(score);
+
+                fullComboText.Text = rankWouldCarryHidden(score)
+                    ? ResultsScreenStrings.IfPerfectHidden(rounded)
+                    : ResultsScreenStrings.IfPerfect(rounded);
+                fullComboArea.TooltipText = tooltip;
+            }
+            else
+            {
+                fullComboText.Text = ResultsScreenStrings.IfFullCombo(rounded);
+                fullComboArea.TooltipText = ResultsScreenStrings.IfFullComboTooltip;
+            }
+        }
+
+        private static LocalisableString perfectTooltip(ScoreInfo scoreInfo) => rankWouldCarryHidden(scoreInfo)
+            ? ResultsScreenStrings.IfPerfectHiddenTooltip
+            : ResultsScreenStrings.IfPerfectTooltip;
 
         public override void Appear()
         {
