@@ -18,6 +18,8 @@ permissions:
 
 jobs:
   localisation:
+    # A version bumped in the csproj before the matching tag exists stops the run with the tag it
+    # looked for and the tags that do exist listed, rather than a bare checkout failure.
     uses: GooGuTeam/g0v0-l10n-checker/.github/workflows/localisation-check.yml@main
     permissions:
       contents: read
@@ -25,9 +27,3 @@ jobs:
       # its caller grants; without this the upload is rejected with a 403 and the findings are left in
       # the job log. Missing it never fails the check — publishing is best effort.
       security-events: write
-    with:
-      # The resources the build consumes, as a git ref — and the ref is a *tag*, not the version
-      # number: the repository tags its releases `v<version>-g0v0`, and its release workflow strips
-      # the `v` and the suffix before publishing. `G0V0ResourcesVersion` in osu.Game/osu.Game.csproj
-      # is therefore `v` + that value + `-g0v0`. Pasting the version in as-is fails the checkout.
-      resources-ref: "v2026.1012.0-g0v0"
