@@ -18,6 +18,7 @@ using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Difficulty;
+using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Screens.Ranking.Expanded.Statistics;
@@ -30,9 +31,10 @@ namespace osu.Game.Tests.Visual.Ranking
         [Cached(typeof(BeatmapDifficultyCache))]
         private readonly TestDifficultyCache difficultyCache = new TestDifficultyCache();
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void TestFullComboEstimate(bool perfect)
+        [TestCase(false, false, "FC")]
+        [TestCase(true, false, "SS")]
+        [TestCase(true, true, "SSH")]
+        public void TestFullComboEstimate(bool perfect, bool hidden, string expectedLabel)
         {
             PerformanceStatistic statistic = null!;
             ScoreInfo score = null!;
@@ -40,7 +42,7 @@ namespace osu.Game.Tests.Visual.Ranking
             AddStep("load score and local difficulty", () =>
             {
                 score = TestResources.CreateTestScoreInfo();
-                score.Mods = Array.Empty<Mod>();
+                score.Mods = hidden ? new Mod[] { new OsuModHidden() } : Array.Empty<Mod>();
                 score.Statistics = new Dictionary<HitResult, int>
                 {
                     [HitResult.Great] = perfect ? 100 : 85,
@@ -51,10 +53,10 @@ namespace osu.Game.Tests.Visual.Ranking
                 score.Accuracy = perfect ? 1 : 26500.0 / 30000;
                 score.MaxCombo = perfect ? 100 : 30;
                 score.PP = 12;
-                score.Rank = perfect ? ScoreRank.X : ScoreRank.B;
+                score.Rank = perfect ? (hidden ? ScoreRank.XH : ScoreRank.X) : ScoreRank.B;
                 var attributes = new OsuDifficultyAttributes { MaxCombo = 100, HitCircleCount = 100 };
                 var calculator = new OsuRuleset().CreatePerformanceCalculator();
-                expected = calculator.Calculate(FullComboScoreInfo.Create(score)!, attributes).Total;
+                expected = calculator.Calculate(perfect ? PerfectScoreInfo.Create(score)! : FullComboScoreInfo.Create(score)!, attributes).Total;
                 difficultyCache.Difficulty = new StarDifficulty(attributes, new PerformanceAttributes { Total = 123 });
                 Child = new Container
                 {
@@ -64,12 +66,12 @@ namespace osu.Game.Tests.Visual.Ranking
                     Child = statistic = new PerformanceStatistic(score) { UseV2Style = true },
                 };
             });
-            AddUntilStep("if FC calculated", () => statistic.ChildrenOfType<SpriteText>().Any(t => t.Text.ToString() == $"if FC {Math.Round(expected, MidpointRounding.AwayFromZero)}pp"));
+            AddUntilStep("estimate calculated", () => statistic.ChildrenOfType<SpriteText>().Any(t => t.Text.ToString() == $"if {expectedLabel} {Math.Round(expected, MidpointRounding.AwayFromZero)}pp"));
             AddStep("show values", () => statistic.Appear());
             AddUntilStep("server PP preserved", () => statistic.ChildrenOfType<StatisticCounter>().Single().DisplayedCount, () => Is.EqualTo(12));
             AddAssert("maximum PP retained", () => statistic.ChildrenOfType<SpriteText>().Any(t => t.Text.ToString() == "/123"));
             AddAssert("FC sits above PP", () => statistic.ChildrenOfType<SpriteText>().Single(t => t.Name == "If FC performance").ScreenSpaceDrawQuad.AABBFloat.Bottom
-                                    <= statistic.ScreenSpaceDrawQuad.AABBFloat.Top);
+                                           <= statistic.ScreenSpaceDrawQuad.AABBFloat.Top);
             AddAssert("original miss count unchanged", () => score.Statistics[HitResult.Miss], () => Is.EqualTo(perfect ? 0 : 5));
         }
 
@@ -95,7 +97,7 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("loaded", () => statistic.IsLoaded);
             AddStep("show values", () => statistic.Appear());
             AddUntilStep("PP delta is relative to beatmap PB", () => statistic.ChildrenOfType<osu.Game.Screens.Ranking.V2StatisticChange>().Single()
-                                                                  .ChildrenOfType<SpriteText>().Single().Text.ToString(), () => Is.EqualTo(expected));
+                                                                              .ChildrenOfType<SpriteText>().Single().Text.ToString(), () => Is.EqualTo(expected));
         }
 
         [Test]

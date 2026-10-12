@@ -115,6 +115,16 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString IfFullCombo(double pp) => new TranslatableString(getKey(@"if_full_combo"), @"if FC {0}pp", pp);
 
+        /// <summary>
+        /// "if SS {0}pp"
+        /// </summary>
+        public static LocalisableString IfPerfect(double pp) => new TranslatableString(getKey(@"if_ss"), @"if SS {0}pp", pp);
+
+        /// <summary>
+        /// "if SSH {0}pp"
+        /// </summary>
+        public static LocalisableString IfPerfectHidden(double pp) => new TranslatableString(getKey(@"if_ssh"), @"if SSH {0}pp", pp);
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

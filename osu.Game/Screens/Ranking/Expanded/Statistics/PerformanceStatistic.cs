@@ -99,9 +99,13 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
 
                 double pp = score.PP ?? (await calculator.CalculateAsync(score, attributes.Value.DifficultyAttributes, token).ConfigureAwait(false)).Total;
 
-                double? fullComboPP = null;
-                if (UseV2Style && FullComboScoreInfo.Create(score) is { } fullComboScore)
-                    fullComboPP = (await calculator.CalculateAsync(fullComboScore, attributes.Value.DifficultyAttributes, token).ConfigureAwait(false)).Total;
+                // Once the play is already a full combo, an FC estimate adds nothing over the achieved pp —
+                // switch to the perfect (SS) estimate instead, labelled SSH when the mod setup would grant the rank its H suffix.
+                bool estimateIsPerfect = score.IsPerfect();
+
+                double? estimatePP = null;
+                if (UseV2Style && (estimateIsPerfect ? PerfectScoreInfo.Create(score) : FullComboScoreInfo.Create(score)) is { } estimateScore)
+                    estimatePP = (await calculator.CalculateAsync(estimateScore, attributes.Value.DifficultyAttributes, token).ConfigureAwait(false)).Total;
 
                 token.ThrowIfCancellationRequested();
                 Schedule(() =>
@@ -113,8 +117,17 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
                     if (attributes.Value.PerformanceAttributes?.Total is > 0 and var maxPP && double.IsFinite(maxPP))
                         maximumText.Text = $"/{Math.Round(maxPP, MidpointRounding.AwayFromZero):0}";
 
-                    if (fullComboPP is { } fc && double.IsFinite(fc))
-                        fullComboText.Text = ResultsScreenStrings.IfFullCombo(Math.Round(fc, MidpointRounding.AwayFromZero));
+                    if (estimatePP is { } estimate && double.IsFinite(estimate))
+                    {
+                        double rounded = Math.Round(estimate, MidpointRounding.AwayFromZero);
+
+                        if (estimateIsPerfect)
+                            fullComboText.Text = rankWouldCarryHidden(score)
+                                ? ResultsScreenStrings.IfPerfectHidden(rounded)
+                                : ResultsScreenStrings.IfPerfect(rounded);
+                        else
+                            fullComboText.Text = ResultsScreenStrings.IfFullCombo(rounded);
+                    }
                 });
             }
             catch (OperationCanceledException)
@@ -171,6 +184,20 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
                 modsToCheck = modsToCheck.Where(m => m is not ModClassic);
 
             return modsToCheck.Any(m => !m.Ranked);
+        }
+
+        /// <summary>
+        /// Whether the score's mod setup would grant an "H" rank suffix (e.g. SSH) for a perfect play,
+        /// mirroring how the rank is derived during gameplay.
+        /// </summary>
+        private static bool rankWouldCarryHidden(ScoreInfo scoreInfo)
+        {
+            var rank = ScoreRank.X;
+
+            foreach (var mod in scoreInfo.Mods.OfType<IApplicableToScoreProcessor>())
+                rank = mod.AdjustRank(rank, 1);
+
+            return rank is ScoreRank.XH or ScoreRank.SH;
         }
 
         public override void Appear()
