@@ -110,18 +110,8 @@ namespace osu.Game.Screens.Ranking
                 Direction = FillDirection.Horizontal,
             };
 
-            // los botones de accion torii (render video, nota) + coleccion/favorito, sin el
-            // backing gris de la barra stock. retry y watch-replay NO van aca: viven EN el
-            // panel legacy (debajo del grade), como stable.
-            buttons.Add(new RenderVideoButton(screen.SelectedScore.Value)
-            {
-                Score = { BindTarget = screen.SelectedScore },
-            });
-            buttons.Add(new AddNoteButton(screen.SelectedScore.Value)
-            {
-                Score = { BindTarget = screen.SelectedScore },
-            });
-
+            // los botones de coleccion/favorito, sin el backing gris de la barra stock.
+            // retry y watch-replay NO van aca: viven EN el panel legacy (debajo del grade), como stable.
             if (screen.Score?.BeatmapInfo != null)
                 buttons.Add(new CollectionButton(screen.Score.BeatmapInfo));
 

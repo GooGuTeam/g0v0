@@ -1309,9 +1309,6 @@ namespace osu.Game
             loadComponentSingleFile(new AccountCreationOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile<IDialogOverlay>(dialogOverlay = new DialogOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new MedalOverlay(), topMostOverlayContent.Add);
-            loadComponentSingleFile(new osu.Game.Overlays.ReplayRender.ReplayRenderOverlay(), topMostOverlayContent.Add, true);
-            loadComponentSingleFile(new osu.Game.Online.ScoreNotes.ScoreNoteStore(), Add, true);
-            loadComponentSingleFile(new osu.Game.Overlays.ScoreNotes.ScoreNoteOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new MedalAwarderContainer(), Add, true);
 
             loadComponentSingleFile(new BackgroundDataStoreProcessor(), Add);
