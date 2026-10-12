@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.ComponentModel;
 
@@ -7,9 +7,10 @@ namespace osu.Game.Configuration
 {
     public enum ReleaseStream
     {
-        Lazer,
+        [Description("g0v0")]
+        G0V0,
 
-        [Description("Tachyon (Unstable)")]
-        Tachyon
+        [Description("robin (Unstable)")]
+        Robin
     }
 }

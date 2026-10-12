@@ -149,7 +149,7 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 | 自定义 API 服务器设置 | `osu.Game/OsuGameBase.cs`、`osu.Game/Configuration/OsuConfigManager.cs`、`osu.Game/Online/TrustedDomainOnlineStore.cs`、`osu.Game/Overlays/Settings/Sections/Online/ContentDownloadSettings.cs` |
 | 规则集哈希校验 | `osu.Game/Rulesets/RulesetHashCache.cs`、`osu.Game/Online/API/APIAccess.cs`、`osu.Game/Online/HubClientConnector.cs`、`osu.Game/Screens/Play/{SubmittingPlayer,SoloPlayer,RoomSubmittingPlayer}.cs` |
 | Relax / Autopilot | `osu.Game/Rulesets/Mods/ModRelax.cs`、`osu.Game.Rulesets.Osu/Difficulty/Skills/Relax.cs`、`osu.Game.Rulesets.Osu/Difficulty/Evaluators/Relax{Aim,Rhythm}Evaluator.cs` |
-| 更新源（指向 GooGuTeam/osu） | `osu.Game/Updater/{MobileUpdateNotifier,NoActionUpdateManager}.cs`，桌面侧用 Velopack（`osu.Desktop`） |
+| 更新源（GooGuTeam/g0v0，双通道 g0v0/robin） | `osu.Game/Updater/{MobileUpdateNotifier,NoActionUpdateManager}.cs`（查 `GooGuTeam/g0v0` Releases），桌面侧用 Velopack（`osu.Desktop`） |
 | 错误上报 | `osu.Game/Utils/SentryLogger.cs`（仅当连接的是 g0v0.top 时启用） |
 | 程序名 / 图标 | `osu.Desktop/osu.Desktop.csproj`（`AssemblyName` = `g0v0!`） |
 | 奖章素材与新增奖章 | `osu.Game/Users/Medal.cs`（`lazer-data.g0v0.top`）、`osu.Game/Medals/Awarders/` |
@@ -162,7 +162,7 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 
 - `.github/workflows/ci.yml`：`inspect-code`（构建 + CheckSanity + InspectCode）、`test`（Windows/Linux × 两种线程模型，120 分钟超时）、`build-only-android` 等。
 - 主仓库 `.github/workflows/release.yml`：
-  - **完整发布**：`v*-g0v0` 标签（如 `v2026.913.1-g0v0`）触发全平台构建 + NuGet + GitHub Release。NuGet 任务会先校验 `g0v0.osu.Game.Resources` 的 `G0V0ResourcesVersion` 固定版本包已发布，再发 `g0v0.osu.Game` 和全部 ruleset（`Osu` / `Catch` / `Mania` / `Taiko`）。
+  - **完整发布**：`v*-g0v0` 标签（如 `v2026.913.1-g0v0`，稳定通道）或 `v*-robin` 标签（如 `v2026.1013.0-robin`，不稳定通道，GitHub Release 会标记为 prerelease）触发全平台构建 + NuGet + GitHub Release。双通道的实现与上游 lazer/tachyon 同构：通道编码进版本后缀，Velopack nupkg 版本带 `-g0v0`/`-robin` 后缀。NuGet 任务会先校验 `g0v0.osu.Game.Resources` 的 `G0V0ResourcesVersion` 固定版本包已发布，再发 `g0v0.osu.Game` 和全部 ruleset（`Osu` / `Catch` / `Mania` / `Taiko`）。
   - **仅 NuGet / 不重跑平台构建**：`v*-g0v0-nuget-only` 标签（如 `v2026.913.2-g0v0-nuget-only`）只跑 `version` 和 `nuget` 两个 job，**不跑平台构建、不创建 GitHub Release**。版本号同样取 tag 中的数字（仍要取下一个可用版本号；`g0v0.osu.Game.Resources` 的 `G0V0ResourcesVersion` 固定版本必须已发布，可与本 tag 版本不同）。
 - 资源仓库 `GooGuTeam/g0v0-resources` 的 `.github/workflows/release.yml`：同样由 **`v*-g0v0`** 标签触发（发布资源包时也手动 dispatch 版本），使用 NuGet trusted publisher 发布 `g0v0.osu.Game.Resources`。**固定版本资源包首次使用时先发资源包；之后的规则集/主包发布无需每次重新发资源包。**
 - **推送标签时只推 `-g0v0` 的发布标签。** 绝不要用 `git push --tags`：本地约 930 个标签里绝大多数是随 `upstream` 一起 fetch 下来的上游历史标签，一条命令就会把它们全部推到 `origin`。始终用显式标签名：

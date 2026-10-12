@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.IO;
@@ -115,7 +115,7 @@ namespace osu.Desktop
             // This ensures that if a user is trying to recover from a failed startup, it will keep them
             // on the stream which is imminently being reinstalled.
             if (IsFirstRun)
-                LocalConfig.SetValue(OsuSetting.ReleaseStream, Version.Contains("-tachyon") ? ReleaseStream.Tachyon : ReleaseStream.Lazer);
+                LocalConfig.SetValue(OsuSetting.ReleaseStream, Version.Contains("-robin") ? ReleaseStream.Robin : ReleaseStream.G0V0);
 
             if (IsPackageManaged)
                 return new NoActionUpdateManager();

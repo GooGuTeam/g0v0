@@ -31,7 +31,8 @@
 
 ### Update source
 
-- Desktop update checks and mobile update notifications point to the **GooGuTeam/osu** GitHub repository.
+- Desktop update checks and mobile update notifications point to the **GooGuTeam/g0v0** GitHub repository.
+- Dual update channels are supported: **g0v0** (stable) and **robin** (unstable, prerelease), selectable in the update settings on desktop. Release tags use the `v*-g0v0` / `v*-robin` naming convention.
 - A new **Disable automatic updates** option is available in the update settings.
 
 ### Error reporting

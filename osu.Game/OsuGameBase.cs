@@ -156,12 +156,12 @@ namespace osu.Game
                     .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
                     .InformationalVersion;
 
-                // Example: [assembly: AssemblyInformationalVersion("2025.613.0-tachyon+d934e574b2539e8787956c3c9ecce9dadebb10ee")]
+                // Example: [assembly: AssemblyInformationalVersion("2026.1013.0-robin+d934e574b2539e8787956c3c9ecce9dadebb10ee")]
                 if (!string.IsNullOrEmpty(informationalVersion))
                     return informationalVersion.Split('+').First();
 
                 Version version = AssemblyVersion;
-                return $@"{version.Major}.{version.Minor}.{version.Build}-lazer";
+                return $@"{version.Major}.{version.Minor}.{version.Build}-g0v0";
             }
         }
 

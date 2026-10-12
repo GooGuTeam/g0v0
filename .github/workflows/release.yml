@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*-g0v0'
+      - 'v*-robin'
       - 'v*-g0v0-nuget-only'
   workflow_dispatch:
 
@@ -23,6 +24,7 @@ jobs:
       fileVersion: ${{ steps.version.outputs.fileVersion }}
       androidVersionCode: ${{ steps.version.outputs.androidVersionCode }}
       nugetOnly: ${{ steps.version.outputs.nugetOnly }}
+      channel: ${{ steps.version.outputs.channel }}
     steps:
       - name: Determine version
         id: version
@@ -34,6 +36,10 @@ jobs:
 
           NUGET_ONLY="false"
           if [[ "$VERSION" == *-nuget-only ]]; then NUGET_ONLY="true"; fi
+
+          # g0v0 is the stable channel; robin is the unstable (prerelease) channel.
+          CHANNEL="g0v0"
+          if [[ "$SEMVER" == *-robin ]]; then CHANNEL="robin"; fi
           PARTS=$(echo "$NUMERIC" | awk -F. '{print NF}')
           if [[ $PARTS -eq 1 ]]; then NUMERIC="$NUMERIC.0.0.0"; fi
           if [[ $PARTS -eq 2 ]]; then NUMERIC="$NUMERIC.0.0"; fi
@@ -44,8 +50,9 @@ jobs:
 
           # nugetVersion uses 3-part version from the tag date (e.g. v2026.321.1-g0v0 -> 2026.321.1)
           NUGET_VERSION=$(echo "${SEMVER%%-*}" | awk -F. '{print $1"."$2"."$3}')
-          # Velopack requires 3-part semver without pre-release
-          VELOPACK_VERSION=$(echo "$NUMERIC" | awk -F. '{print $1"."$2"."$3}')
+          # Velopack version: 3-part numeric plus the channel suffix (e.g. 2026.1013.0-g0v0 / 2026.1013.0-robin).
+          # The suffix keeps channel switching deterministic when g0v0 and robin share a numeric version (mirrors upstream lazer/tachyon).
+          VELOPACK_VERSION=$(echo "$NUMERIC" | awk -F. -v ch="$CHANNEL" '{print $1"."$2"."$3"-"ch}')
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "semver=$SEMVER" >> $GITHUB_OUTPUT
@@ -55,7 +62,8 @@ jobs:
           echo "fileVersion=$NUMERIC" >> $GITHUB_OUTPUT
           echo "androidVersionCode=$ANDROID_VERSION_CODE" >> $GITHUB_OUTPUT
           echo "nugetOnly=$NUGET_ONLY" >> $GITHUB_OUTPUT
-          echo "Computed version: $VERSION (semver: $SEMVER, nuget: $NUGET_VERSION, velopack: $VELOPACK_VERSION, assembly/file: $NUMERIC, android: $ANDROID_VERSION_CODE)"
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+          echo "Computed version: $VERSION (semver: $SEMVER, nuget: $NUGET_VERSION, velopack: $VELOPACK_VERSION, channel: $CHANNEL, assembly/file: $NUMERIC, android: $ANDROID_VERSION_CODE)"
 
   nuget:
     name: Pack & Publish NuGet
@@ -790,7 +798,7 @@ jobs:
           name: g0v0! ${{ needs.version.outputs.version }}
           files: release-files/**
           draft: false
-          prerelease: ${{ contains(needs.version.outputs.version, 'alpha') || contains(needs.version.outputs.version, 'beta') || contains(needs.version.outputs.version, 'rc') }}
+          prerelease: ${{ needs.version.outputs.channel == 'robin' || contains(needs.version.outputs.version, 'alpha') || contains(needs.version.outputs.version, 'beta') || contains(needs.version.outputs.version, 'rc') }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

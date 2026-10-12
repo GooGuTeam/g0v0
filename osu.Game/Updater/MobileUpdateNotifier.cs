@@ -35,16 +35,16 @@ namespace osu.Game.Updater
         private void load(OsuGameBase game)
         {
             version = game.Version.TrimStart('v').Split('-').First();
-            stream = Enum.TryParse(game.Version.Split('-').Last(), true, out ReleaseStream s) ? s : Configuration.ReleaseStream.Lazer;
+            stream = Enum.TryParse(game.Version.Split('-').Last(), true, out ReleaseStream s) ? s : Configuration.ReleaseStream.G0V0;
         }
 
         protected override async Task<bool> PerformUpdateCheck(CancellationToken cancellationToken)
         {
             try
             {
-                bool includePrerelease = stream == Configuration.ReleaseStream.Tachyon;
+                bool includePrerelease = stream == Configuration.ReleaseStream.Robin;
 
-                OsuJsonWebRequest<GitHubRelease[]> releasesRequest = new OsuJsonWebRequest<GitHubRelease[]>("https://api.github.com/repos/GooGuTeam/osu/releases?per_page=10&page=1");
+                OsuJsonWebRequest<GitHubRelease[]> releasesRequest = new OsuJsonWebRequest<GitHubRelease[]>("https://api.github.com/repos/GooGuTeam/g0v0/releases?per_page=10&page=1");
                 await releasesRequest.PerformAsync(cancellationToken).ConfigureAwait(false);
 
                 GitHubRelease[] releases = releasesRequest.ResponseObject;
@@ -89,9 +89,8 @@ namespace osu.Game.Updater
             {
                 case RuntimeInfo.Platform.iOS:
                     if (release.Assets?.Exists(f => f.Name.EndsWith(".ipa", StringComparison.Ordinal)) == true)
-                        // iOS releases are available via testflight. this link seems to work well enough for now.
-                        // see https://stackoverflow.com/a/32960501
-                        url = "itms-beta://beta.itunes.apple.com/v1/app/1447765923";
+                        // g0v0! distributes the IPA directly on the GitHub release page.
+                        url = release.HtmlUrl;
 
                     break;
 
