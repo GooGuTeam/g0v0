@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Collections.Generic;
+using System.IO;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics.Sprites;
@@ -20,15 +21,7 @@ namespace osu.Game.Overlays.Notifications
         {
             foreach (var e in causes)
             {
-                // Those exceptions are thrown at runtime.
-                if (e.RulesetInfo != null)
-                {
-                    this.causes.Add(e.RulesetInfo.Name);
-                    continue;
-                }
-
-                // Most exceptions are thrown upon loading, and they don't have an associated RulesetInfo.
-                string? name = e.Assembly?.GetName().Name;
+                string? name = getDisplayName(e);
 
                 if (name != null)
                 {
@@ -41,6 +34,24 @@ namespace osu.Game.Overlays.Notifications
             }
 
             IsCritical = true;
+        }
+
+        /// <summary>
+        /// Get the name to display for the ruleset a load error originated from.
+        /// </summary>
+        /// <remarks>
+        /// The assembly (i.e. the ruleset's dll file name) is preferred over the ruleset's own display name,
+        /// as a ruleset which failed to load cannot necessarily be trusted to report its name correctly.
+        /// </remarks>
+        private static string? getDisplayName(RulesetErrorEvent e)
+        {
+            if (e.Assembly != null)
+                return e.Assembly.GetName().Name;
+
+            if (!string.IsNullOrEmpty(e.Location))
+                return Path.GetFileNameWithoutExtension(e.Location);
+
+            return e.RulesetInfo?.Name;
         }
 
         [BackgroundDependencyLoader]

@@ -127,10 +127,16 @@ namespace osu.Game.Rulesets
                     catch (Exception ex)
                     {
                         r.Available = false;
-                        AddEvent(new RulesetErrorEvent(rulesetAssembly, ex, rulesetAssembly?.Location ?? string.Empty)
+
+                        // The assembly scan has already reported this ruleset if its assembly failed to load.
+                        // Don't report the same failure a second time, under a different name.
+                        if (rulesetAssembly == null || !Events.OfType<RulesetErrorEvent>().Any(e => e.Assembly == rulesetAssembly))
                         {
-                            RulesetInfo = r.Clone()
-                        });
+                            AddEvent(new RulesetErrorEvent(rulesetAssembly, ex, rulesetAssembly?.Location ?? string.Empty)
+                            {
+                                RulesetInfo = r.Clone()
+                            });
+                        }
                     }
                 }
 
