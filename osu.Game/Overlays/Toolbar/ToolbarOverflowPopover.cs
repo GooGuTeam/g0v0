@@ -106,29 +106,6 @@ namespace osu.Game.Overlays.Toolbar
                 Height = row_height;
                 Action = action;
 
-                var textFlow = new FillFlowContainer
-                {
-                    Direction = FillDirection.Vertical,
-                    AutoSizeAxes = Axes.Both,
-                    Anchor = Anchor.CentreLeft,
-                    Origin = Anchor.CentreLeft,
-                    Spacing = new Vector2(0, -2),
-                    Children = new Drawable[]
-                    {
-                        new OsuSpriteText
-                        {
-                            Text = main,
-                            Font = OsuFont.GetFont(size: 14, weight: FontWeight.SemiBold),
-                        },
-                        new OsuSpriteText
-                        {
-                            Text = sub,
-                            Font = OsuFont.GetFont(size: 11),
-                            Alpha = 0.65f,
-                        },
-                    },
-                };
-
                 var content = new FillFlowContainer
                 {
                     Direction = FillDirection.Horizontal,
@@ -142,11 +119,31 @@ namespace osu.Game.Overlays.Toolbar
                         new SpriteIcon
                         {
                             Icon = icon,
-                            Size = new Vector2(16),
+                            Size = new Vector2(20),
                             Anchor = Anchor.CentreLeft,
                             Origin = Anchor.CentreLeft,
                         },
-                        textFlow,
+                        new FillFlowContainer
+                        {
+                            Direction = FillDirection.Vertical,
+                            AutoSizeAxes = Axes.Both,
+                            Anchor = Anchor.CentreLeft,
+                            Origin = Anchor.CentreLeft,
+                            Children = new Drawable[]
+                            {
+                                new OsuSpriteText
+                                {
+                                    Text = main,
+                                    Font = OsuFont.GetFont(size: 14, weight: FontWeight.SemiBold),
+                                },
+                                new OsuSpriteText
+                                {
+                                    Text = sub,
+                                    Font = OsuFont.GetFont(size: 11),
+                                    Alpha = 0.65f,
+                                },
+                            },
+                        },
                     },
                 };
 

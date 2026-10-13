@@ -105,32 +105,48 @@ namespace osu.Game.Overlays.Toolbar
                         {
                             new Drawable[]
                             {
-                                new Container
+                                new GridContainer
                                 {
                                     RelativeSizeAxes = Axes.X,
                                     AutoSizeAxes = Axes.Y,
-                                    Children = new Drawable[]
+                                    Padding = new MarginPadding { Horizontal = 12, Vertical = 10 },
+                                    RowDimensions = [new Dimension(GridSizeMode.AutoSize)],
+                                    ColumnDimensions =
+                                    [
+                                        new Dimension(GridSizeMode.AutoSize),
+                                        new Dimension(),
+                                        new Dimension(GridSizeMode.AutoSize),
+                                    ],
+                                    Content = new Drawable[][]
                                     {
-                                        new OsuSpriteText
-                                        {
-                                            Anchor = Anchor.Centre,
-                                            Origin = Anchor.Centre,
-                                            Text = ToolbarStrings.ManageToolbarIcons,
-                                            Font = OsuFont.GetFont(size: 30),
-                                            Padding = new MarginPadding { Vertical = 10 },
-                                        },
-                                        new IconButton
-                                        {
-                                            Anchor = Anchor.CentreRight,
-                                            Origin = Anchor.CentreRight,
-                                            Icon = FontAwesome.Solid.Times,
-                                            Colour = colourProvider.Content1,
-                                            Scale = new Vector2(0.8f),
-                                            X = -10,
-                                            Action = () => State.Value = Visibility.Hidden
-                                        }
-                                    }
-                                }
+                                        [
+                                            new SpriteIcon
+                                            {
+                                                Anchor = Anchor.CentreLeft,
+                                                Origin = Anchor.CentreLeft,
+                                                Size = new Vector2(24),
+                                                Icon = FontAwesome.Solid.Cog,
+                                            },
+                                            new OsuSpriteText
+                                            {
+                                                Anchor = Anchor.CentreLeft,
+                                                Origin = Anchor.CentreLeft,
+                                                Text = ToolbarStrings.ManageToolbarIcons,
+                                                Font = OsuFont.Style.Heading2,
+                                                Padding = new MarginPadding { Horizontal = 10 },
+                                            },
+                                            new IconButton
+                                            {
+                                                Anchor = Anchor.CentreRight,
+                                                Origin = Anchor.CentreRight,
+                                                Icon = FontAwesome.Solid.Times,
+                                                Colour = colourProvider.Content1,
+                                                Scale = new Vector2(0.8f),
+                                                Action = () => State.Value = Visibility.Hidden,
+                                            },
+                                        ],
+                                    },
+                                },
                             },
                             new Drawable[]
                             {

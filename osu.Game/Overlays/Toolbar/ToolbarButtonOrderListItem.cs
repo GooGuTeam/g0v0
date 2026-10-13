@@ -7,7 +7,6 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
-using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
@@ -24,7 +23,7 @@ namespace osu.Game.Overlays.Toolbar
     public partial class ToolbarButtonOrderListItem : OsuRearrangeableListItem<string>
     {
         private const float item_height = 56;
-        private const float switch_area_width = 170;
+        private const float content_padding = 10;
 
         /// <summary>
         /// How bright the flash shown when this item was moved by a swap is.
@@ -46,7 +45,7 @@ namespace osu.Game.Overlays.Toolbar
         private ItemContent? content;
 
         public ToolbarButtonOrderListItem(string item, Func<string, ToolbarButton?>? buttonLookup, Func<string, bool>? isHidden, Action<string, bool>? hiddenChanged)
-            : base(item)
+            : base(item, true)
         {
             this.buttonLookup = buttonLookup;
             id = item;
@@ -86,10 +85,6 @@ namespace osu.Game.Overlays.Toolbar
                 Masking = true;
                 CornerRadius = 10;
 
-                LocalisableString title = button?.TooltipMain ?? fallbackId;
-                LocalisableString description = button?.TooltipSub ?? fallbackId;
-                IconUsage icon = button?.Icon ?? FontAwesome.Solid.QuestionCircle;
-
                 InternalChildren = new Drawable[]
                 {
                     hoverBackground = new Box
@@ -105,62 +100,59 @@ namespace osu.Game.Overlays.Toolbar
                         Colour = Color4.White,
                         Alpha = 0,
                     },
-                    new Container
+                    new GridContainer
                     {
                         RelativeSizeAxes = Axes.Both,
-                        Padding = new MarginPadding { Right = switch_area_width },
-                        Children = new Drawable[]
+                        Padding = new MarginPadding { Horizontal = content_padding },
+                        RowDimensions = [new Dimension()],
+                        ColumnDimensions =
+                        [
+                            new Dimension(GridSizeMode.AutoSize),
+                            new Dimension(),
+                            new Dimension(GridSizeMode.AutoSize),
+                        ],
+                        Content = new Drawable[][]
                         {
-                            new SpriteIcon
-                            {
-                                Icon = icon,
-                                Size = new Vector2(18),
-                                Anchor = Anchor.CentreLeft,
-                                Origin = Anchor.CentreLeft,
-                                X = 15,
-                            },
-                            new FillFlowContainer
-                            {
-                                Direction = FillDirection.Vertical,
-                                RelativeSizeAxes = Axes.X,
-                                AutoSizeAxes = Axes.Y,
-                                Anchor = Anchor.CentreLeft,
-                                Origin = Anchor.CentreLeft,
-                                Padding = new MarginPadding { Left = 45, Right = 15 },
-                                Children = new Drawable[]
+                            [
+                                new SpriteIcon
                                 {
-                                    new OsuSpriteText
+                                    Icon = button?.Icon ?? OsuIcon.EllipsisHorizontal,
+                                    Size = new Vector2(24),
+                                    Anchor = Anchor.CentreLeft,
+                                    Origin = Anchor.CentreLeft,
+                                },
+                                new FillFlowContainer
+                                {
+                                    Anchor = Anchor.CentreLeft,
+                                    Origin = Anchor.CentreLeft,
+                                    RelativeSizeAxes = Axes.X,
+                                    AutoSizeAxes = Axes.Y,
+                                    Direction = FillDirection.Vertical,
+                                    Padding = new MarginPadding { Horizontal = 15 },
+                                    Children = new Drawable[]
                                     {
-                                        Text = title,
-                                        Font = OsuFont.GetFont(size: 16, weight: FontWeight.SemiBold),
-                                    },
-                                    new OsuTextFlowContainer(t => t.Font = OsuFont.GetFont(size: 12))
-                                    {
-                                        RelativeSizeAxes = Axes.X,
-                                        AutoSizeAxes = Axes.Y,
-                                        Alpha = 0.6f,
-                                        Text = description,
+                                        new OsuSpriteText
+                                        {
+                                            Text = button?.TooltipMain ?? fallbackId,
+                                            Font = OsuFont.GetFont(size: 16, weight: FontWeight.SemiBold),
+                                        },
+                                        new OsuTextFlowContainer(t => t.Font = OsuFont.GetFont(size: 12))
+                                        {
+                                            RelativeSizeAxes = Axes.X,
+                                            AutoSizeAxes = Axes.Y,
+                                            Alpha = 0.6f,
+                                            Text = button?.TooltipSub ?? fallbackId,
+                                        },
                                     },
                                 },
-                            },
-                        },
-                    },
-                    new Container
-                    {
-                        Anchor = Anchor.CentreRight,
-                        Origin = Anchor.CentreRight,
-                        Width = switch_area_width,
-                        Height = item_height,
-                        Children = new Drawable[]
-                        {
-                            visibilitySwitch = new VisibilitySwitch
-                            {
-                                Anchor = Anchor.CentreRight,
-                                Origin = Anchor.CentreRight,
-                                X = -15,
-                                Current = { Value = !hidden },
-                                Changed = visibleChanged,
-                            },
+                                visibilitySwitch = new VisibilitySwitch
+                                {
+                                    Anchor = Anchor.CentreRight,
+                                    Origin = Anchor.CentreRight,
+                                    Current = { Value = !hidden },
+                                    Changed = visibleChanged,
+                                },
+                            ],
                         },
                     },
                 };
