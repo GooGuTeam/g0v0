@@ -51,11 +51,15 @@ namespace osu.Game.Graphics.Containers
         private Container handleContainer;
         private PlaylistItemHandle handle;
 
-        protected OsuRearrangeableListItem(TModel item)
+        private readonly bool keepRightPadding;
+
+        protected OsuRearrangeableListItem(TModel item, bool keepRightPadding = false)
             : base(item)
         {
             RelativeSizeAxes = Axes.X;
             AutoSizeAxes = Axes.Y;
+
+            this.keepRightPadding = keepRightPadding;
         }
 
         [BackgroundDependencyLoader]
@@ -86,10 +90,16 @@ namespace osu.Game.Graphics.Containers
                                     Alpha = 0
                                 }
                             },
-                            CreateContent()
+                            CreateContent(),
+                            Empty(),
                         }
                     },
-                    ColumnDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
+                    ColumnDimensions =
+                    [
+                        new Dimension(GridSizeMode.AutoSize),
+                        new Dimension(),
+                        new Dimension(GridSizeMode.Absolute, keepRightPadding ? 12 + 5 * 2 : 0),
+                    ],
                     RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) }
                 },
             };
