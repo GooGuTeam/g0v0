@@ -31,6 +31,16 @@ namespace osu.Game.Graphics.Containers
         /// </summary>
         protected virtual bool DimMainContent => true;
 
+        /// <summary>
+        /// Whether the floating overlay columns (which hold the notifications, the login panel, the now playing
+        /// panel and the volume meter) are dimmed along with the main content while this overlay is visible.
+        /// </summary>
+        /// <remarks>
+        /// Off by default, as those columns are deliberately left at full brightness while another overlay is open,
+        /// so that a notification which arrives while one is being used can still be read.
+        /// </remarks>
+        public virtual bool DimFloatingOverlays => false;
+
         [Resolved]
         private IOverlayManager? overlayManager { get; set; }
 

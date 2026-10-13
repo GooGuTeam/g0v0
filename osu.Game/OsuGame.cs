@@ -288,8 +288,20 @@ namespace osu.Game
 
         IBindable<OverlayActivation> IOverlayManager.OverlayActivationMode => OverlayActivationMode;
 
-        private void updateBlockingOverlayFade() =>
+        private void updateBlockingOverlayFade()
+        {
             ScreenContainer.FadeColour(visibleBlockingOverlays.Any() ? OsuColour.Gray(0.5f) : Color4.White, 500, Easing.OutQuint);
+
+            // the floating overlay columns sit outside the screen layer, so they have to be faded separately.
+            // they are only faded for overlays which ask for it, as they are otherwise deliberately left legible
+            // for the duration - a notification arriving while an overlay is open should still be readable.
+            Color4 floatingOverlayColour = visibleBlockingOverlays.Any(overlay => overlay is OsuFocusedOverlayContainer { DimFloatingOverlays: true })
+                ? OsuColour.Gray(0.5f)
+                : Color4.White;
+
+            leftFloatingOverlayContent.FadeColour(floatingOverlayColour, 500, Easing.OutQuint);
+            rightFloatingOverlayContent.FadeColour(floatingOverlayColour, 500, Easing.OutQuint);
+        }
 
         IDisposable IOverlayManager.RegisterBlockingOverlay(OverlayContainer overlayContainer)
         {
