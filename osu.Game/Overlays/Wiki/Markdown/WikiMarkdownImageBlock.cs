@@ -7,6 +7,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Containers.Markdown;
 using osu.Framework.Graphics.Sprites;
+using osu.Game.Overlays.ImagePreview;
 using osuTK;
 
 namespace osu.Game.Overlays.Wiki.Markdown
@@ -60,18 +61,23 @@ namespace osu.Game.Overlays.Wiki.Markdown
 
             private partial class BlockImageContainer : ImageContainer
             {
+                private readonly string url;
+
                 public BlockImageContainer(string url)
                     : base(url)
                 {
+                    this.url = url;
+
                     AutoSizeAxes = Axes.Y;
                     RelativeSizeAxes = Axes.X;
                 }
 
-                protected override Sprite CreateImageSprite() => new ImageSprite();
+                protected override Sprite CreateImageSprite() => new ImageSprite(url);
 
-                private partial class ImageSprite : Sprite
+                private partial class ImageSprite : PreviewableSprite
                 {
-                    public ImageSprite()
+                    public ImageSprite(string url)
+                        : base(url)
                     {
                         Anchor = Anchor.TopCentre;
                         Origin = Anchor.TopCentre;
