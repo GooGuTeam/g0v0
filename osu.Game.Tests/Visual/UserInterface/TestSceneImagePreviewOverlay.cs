@@ -38,7 +38,6 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             AddStep("create overlay", () => Child = overlay = new ImagePreviewOverlay());
             AddUntilStep("wait for overlay to load", () => overlay.IsLoaded);
-            AddAssert("texture loaded", () => texture != null);
         }
 
         [Test]

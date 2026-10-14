@@ -45,11 +45,14 @@ namespace osu.Game.Overlays.ImagePreview
         /// </summary>
         private const float display_padding = 100;
 
-        private readonly BindableFloat zoom = new BindableFloat(1) { MinValue = min_zoom, MaxValue = max_zoom };
+        private readonly BindableFloat zoom = new BindableFloat(1)
+        {
+            MinValue = min_zoom,
+            MaxValue = max_zoom,
+        };
 
         private Box background = null!;
         private Container imageArea = null!;
-        private Container imageHolder = null!;
         private Sprite image = null!;
         private Container toolbar = null!;
         private OsuSpriteText zoomText = null!;
@@ -80,7 +83,7 @@ namespace osu.Game.Overlays.ImagePreview
         /// The container the image is drawn into.
         /// Exposed internally so tests can verify transition behaviour.
         /// </summary>
-        internal Container ImageHolder => imageHolder;
+        internal Container ImageHolder { get; private set; } = null!;
 
         public ImagePreviewOverlay()
         {
@@ -105,7 +108,7 @@ namespace osu.Game.Overlays.ImagePreview
                 imageArea = new Container
                 {
                     RelativeSizeAxes = Axes.Both,
-                    Child = imageHolder = new Container
+                    Child = ImageHolder = new Container
                     {
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
@@ -121,7 +124,7 @@ namespace osu.Game.Overlays.ImagePreview
 
             zoom.BindValueChanged(v =>
             {
-                imageHolder.ScaleTo(new Vector2(v.NewValue), 100, Easing.OutQuint);
+                ImageHolder.ScaleTo(new Vector2(v.NewValue), 100, Easing.OutQuint);
                 zoomText.Text = $@"{v.NewValue * 100:0}%";
             }, true);
         }
@@ -135,13 +138,13 @@ namespace osu.Game.Overlays.ImagePreview
             image.Texture = request.Texture;
 
             zoom.Value = zoom.Default;
-            imageHolder.Position = Vector2.Zero;
+            ImageHolder.Position = Vector2.Zero;
             updateFittedSize();
 
             if (State.Value == Visibility.Visible)
             {
                 // already displaying an image, just swap the content out.
-                imageHolder.Scale = Vector2.One;
+                ImageHolder.Scale = Vector2.One;
                 return;
             }
 
@@ -171,20 +174,20 @@ namespace osu.Game.Overlays.ImagePreview
             float fitScale = Math.Min(area.X / nativeSize.X, area.Y / nativeSize.Y);
             Vector2 fitted = nativeSize * fitScale;
 
-            if (imageHolder.Size != fitted)
-                imageHolder.Size = fitted;
+            if (ImageHolder.Size != fitted)
+                ImageHolder.Size = fitted;
         }
 
         private void clampPosition()
         {
-            Vector2 scaledSize = imageHolder.Size * zoom.Value;
+            Vector2 scaledSize = ImageHolder.Size * zoom.Value;
             Vector2 maxOffset = new Vector2(
                 Math.Max((scaledSize.X - imageArea.DrawWidth) / 2, 0),
                 Math.Max((scaledSize.Y - imageArea.DrawHeight) / 2, 0));
-            Vector2 clamped = Vector2.Clamp(imageHolder.Position, -maxOffset, maxOffset);
+            Vector2 clamped = Vector2.Clamp(ImageHolder.Position, -maxOffset, maxOffset);
 
-            if (clamped != imageHolder.Position)
-                imageHolder.Position = clamped;
+            if (clamped != ImageHolder.Position)
+                ImageHolder.Position = clamped;
         }
 
         protected override void PopIn()
@@ -199,14 +202,14 @@ namespace osu.Game.Overlays.ImagePreview
 
             transitionInProgress = true;
 
-            imageHolder.Position = hasSource ? ToLocalSpace(sourceQuad.Centre) - DrawSize / 2 : Vector2.Zero;
-            imageHolder.Scale = new Vector2(hasSource ? sourceQuad.Width / imageHolder.Size.X : 0.9f);
-            imageHolder.Alpha = hasSource ? 1 : 0;
+            ImageHolder.Position = hasSource ? ToLocalSpace(sourceQuad.Centre) - DrawSize / 2 : Vector2.Zero;
+            ImageHolder.Scale = new Vector2(hasSource ? sourceQuad.Width / ImageHolder.Size.X : 0.9f);
+            ImageHolder.Alpha = hasSource ? 1 : 0;
 
-            imageHolder.FadeIn(transition_duration, Easing.OutQuint)
-                        .MoveTo(Vector2.Zero, transition_duration, Easing.OutQuint)
-                        .ScaleTo(Vector2.One, transition_duration, Easing.OutQuint)
-                        .OnComplete(_ => transitionInProgress = false);
+            ImageHolder.FadeIn(transition_duration, Easing.OutQuint)
+                       .MoveTo(Vector2.Zero, transition_duration, Easing.OutQuint)
+                       .ScaleTo(Vector2.One, transition_duration, Easing.OutQuint)
+                       .OnComplete(_ => transitionInProgress = false);
         }
 
         protected override void PopOut()
@@ -222,16 +225,16 @@ namespace osu.Game.Overlays.ImagePreview
 
             transitionInProgress = true;
 
-            imageHolder.FadeTo(hasSource ? 1 : 0, transition_duration, Easing.OutQuint)
-                        .MoveTo(hasSource ? ToLocalSpace(sourceQuad.Centre) - DrawSize / 2 : Vector2.Zero, transition_duration, Easing.OutQuint)
-                        .ScaleTo(new Vector2(hasSource ? sourceQuad.Width / imageHolder.Size.X : 0.9f), transition_duration, Easing.OutQuint)
-                        .OnComplete(_ =>
-                        {
-                            transitionInProgress = false;
+            ImageHolder.FadeTo(hasSource ? 1 : 0, transition_duration, Easing.OutQuint)
+                       .MoveTo(hasSource ? ToLocalSpace(sourceQuad.Centre) - DrawSize / 2 : Vector2.Zero, transition_duration, Easing.OutQuint)
+                       .ScaleTo(new Vector2(hasSource ? sourceQuad.Width / ImageHolder.Size.X : 0.9f), transition_duration, Easing.OutQuint)
+                       .OnComplete(_ =>
+                       {
+                           transitionInProgress = false;
 
-                            // fully hide once the image has returned to its origin, otherwise it would be clamped back to the centre.
-                            Alpha = 0;
-                        });
+                           // fully hide once the image has returned to its origin, otherwise it would be clamped back to the centre.
+                           Alpha = 0;
+                       });
         }
 
         /// <summary>
@@ -246,7 +249,7 @@ namespace osu.Game.Overlays.ImagePreview
 
             Quad sourceQuad = source.ScreenSpaceDrawQuad;
 
-            if (sourceQuad.Width <= 0 || imageHolder.Size.X <= 0)
+            if (sourceQuad.Width <= 0 || ImageHolder.Size.X <= 0)
                 return false;
 
             quad = sourceQuad;
@@ -270,7 +273,7 @@ namespace osu.Game.Overlays.ImagePreview
 
         protected override void OnDrag(DragEvent e)
         {
-            imageHolder.Position += e.Delta;
+            ImageHolder.Position += e.Delta;
             clampPosition();
         }
 
@@ -298,7 +301,7 @@ namespace osu.Game.Overlays.ImagePreview
             {
                 try
                 {
-                    byte[] data;
+                    byte[]? data;
 
                     using (var webRequest = new WebRequest(request.Url))
                     {

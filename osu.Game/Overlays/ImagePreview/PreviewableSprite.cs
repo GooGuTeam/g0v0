@@ -20,18 +20,13 @@ namespace osu.Game.Overlays.ImagePreview
         private readonly string url;
         private readonly LocalisableString? title;
 
-        private IImagePreviewOverlay? previewOverlay;
+        [Resolved]
+        private IImagePreviewOverlay? previewOverlay { get; set; }
 
         public PreviewableSprite(string url, LocalisableString? title = null)
         {
             this.url = url;
             this.title = title;
-        }
-
-        [BackgroundDependencyLoader]
-        private void load(IImagePreviewOverlay? previewOverlay)
-        {
-            this.previewOverlay = previewOverlay;
         }
 
         protected override bool OnClick(ClickEvent e)

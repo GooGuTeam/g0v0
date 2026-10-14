@@ -18,7 +18,7 @@ namespace osu.Game.Overlays.Wiki.Markdown
 
         protected override ImageContainer CreateImageContainer(string url)
         {
-            // The idea is replace "https://website.url/wiki/{path-to-image}" to "https://website.url/wiki/images/{path-to-image}"
+            // The idea is to replace "https://website.url/wiki/{path-to-image}" to "https://website.url/wiki/images/{path-to-image}"
             // "/wiki/images/*" is route to fetch wiki image from osu!web server (see: https://github.com/ppy/osu-web/blob/4205eb66a4da86bdee7835045e4bf28c35456e04/routes/web.php#L289)
             url = url.Replace("/wiki/", "/wiki/images/");
 
