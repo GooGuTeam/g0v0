@@ -41,9 +41,15 @@ namespace osu.Game.Overlays.ImagePreview
         private const float max_zoom = 10f;
 
         /// <summary>
-        /// The padding kept between the image and the edges of the screen when fitting it to the display area.
+        /// The empty space kept around the image when fitting it to the display area.
+        /// This keeps the image clear of the edges of the screen (and of the toolbar at the bottom),
+        /// so that its edges are never viewed flush against them.
         /// </summary>
-        private const float display_padding = 100;
+        /// <remarks>
+        /// Exposed internally so tests can verify the padding is actually applied.
+        /// Note that this only applies to the fitted size; a zoomed in image can be panned all the way to the edges.
+        /// </remarks>
+        internal const float DISPLAY_PADDING = 150;
 
         private readonly BindableFloat zoom = new BindableFloat(1)
         {
@@ -166,7 +172,7 @@ namespace osu.Game.Overlays.ImagePreview
 
         private void updateFittedSize()
         {
-            Vector2 area = DrawSize - new Vector2(display_padding * 2);
+            Vector2 area = DrawSize - new Vector2(DISPLAY_PADDING * 2);
 
             if (area.X <= 0 || area.Y <= 0)
                 return;
@@ -197,6 +203,15 @@ namespace osu.Game.Overlays.ImagePreview
 
             bool hasSource = tryGetSourceQuad(out Quad sourceQuad);
 
+            // everything fades in from fully transparent, which serves two purposes:
+            // - the moment at which the preview does not line up with the source it was opened from
+            //   (their sizes and positions rarely match exactly) is kept out of sight;
+            // - the very first open of the overlay is a fade rather than a hard cut, as the alpha of the
+            //   background and toolbar is otherwise only reset by a previous close.
+            ImageHolder.Alpha = 0;
+            background.Alpha = 0;
+            toolbar.Alpha = 0;
+
             background.FadeIn(transition_duration, Easing.OutQuint);
             toolbar.Delay(80).FadeIn(transition_duration, Easing.OutQuint);
 
@@ -204,7 +219,6 @@ namespace osu.Game.Overlays.ImagePreview
 
             ImageHolder.Position = hasSource ? ToLocalSpace(sourceQuad.Centre) - DrawSize / 2 : Vector2.Zero;
             ImageHolder.Scale = new Vector2(hasSource ? sourceQuad.Width / ImageHolder.Size.X : 0.9f);
-            ImageHolder.Alpha = hasSource ? 1 : 0;
 
             ImageHolder.FadeIn(transition_duration, Easing.OutQuint)
                        .MoveTo(Vector2.Zero, transition_duration, Easing.OutQuint)
@@ -225,7 +239,10 @@ namespace osu.Game.Overlays.ImagePreview
 
             transitionInProgress = true;
 
-            ImageHolder.FadeTo(hasSource ? 1 : 0, transition_duration, Easing.OutQuint)
+            // the image is faded out along the same curve it is moved back on, which means it is already
+            // almost invisible by the time it lines up with the source again - so the source takes over
+            // without the two ever being seen on top of each other.
+            ImageHolder.FadeOut(transition_duration, Easing.OutQuint)
                        .MoveTo(hasSource ? ToLocalSpace(sourceQuad.Centre) - DrawSize / 2 : Vector2.Zero, transition_duration, Easing.OutQuint)
                        .ScaleTo(new Vector2(hasSource ? sourceQuad.Width / ImageHolder.Size.X : 0.9f), transition_duration, Easing.OutQuint)
                        .OnComplete(_ =>

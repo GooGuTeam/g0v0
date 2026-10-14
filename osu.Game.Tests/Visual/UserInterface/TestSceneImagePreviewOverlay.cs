@@ -1,6 +1,7 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
@@ -153,14 +154,57 @@ namespace osu.Game.Tests.Visual.UserInterface
         }
 
         [Test]
-        public void TestImageFitsWithinDisplayArea()
+        public void TestImageFadesInAndOut()
+        {
+            Sprite source = null!;
+
+            AddStep("create source image", () => Add(source = new Sprite
+            {
+                Texture = texture,
+                Size = new Vector2(100),
+                Anchor = Anchor.TopLeft,
+                Origin = Anchor.TopLeft,
+            }));
+
+            AddStep("show preview", () =>
+            {
+                overlay.ShowImage(createRequest(source));
+
+                // the preview must start out fully transparent, so that the moment at which it does not
+                // line up with the source it was opened from is never visible.
+                Assert.That(overlay.ImageHolder.Alpha, Is.EqualTo(0),
+                    "expected the image to start out invisible when opened from a source");
+            });
+
+            AddUntilStep("image faded in", () => Precision.AlmostEquals(overlay.ImageHolder.Alpha, 1));
+
+            AddStep("hide preview", () => overlay.Hide());
+
+            // this is evaluated 200ms into the 250ms transition, by which point the image should already be
+            // mostly gone - it must not still be opaque when it lines up with the source again.
+            AddAssert("image faded out while returning", () => overlay.ImageHolder.Alpha < 0.5f);
+
+            AddUntilStep("image faded out", () => Precision.AlmostEquals(overlay.ImageHolder.Alpha, 0));
+        }
+
+        [Test]
+        public void TestImageKeepsPaddingAroundIt()
         {
             AddStep("show image", () => overlay.ShowImage(createRequest()));
             AddUntilStep("overlay visible", () => overlay.State.Value == Visibility.Visible);
+            AddUntilStep("transition finished", () => Precision.AlmostEquals(overlay.ImageHolder.Scale, Vector2.One, 0.01f));
 
-            AddUntilStep("image fits within overlay", () =>
-                overlay.ImageHolder.DrawWidth <= overlay.DrawWidth && overlay.ImageHolder.DrawHeight <= overlay.DrawHeight);
+            AddAssert("image inset from the edges", () => Math.Min(horizontalInset(), verticalInset()) >= ImagePreviewOverlay.DISPLAY_PADDING - 1);
+
+            // one axis always uses up all of the space it has been given, otherwise the image would be drawn
+            // smaller than it needs to be.
+            AddAssert("image uses the available area", () => Precision.AlmostEquals(
+                Math.Min(horizontalInset(), verticalInset()), ImagePreviewOverlay.DISPLAY_PADDING, 1));
         }
+
+        private float horizontalInset() => (overlay.DrawWidth - overlay.ImageHolder.DrawWidth) / 2;
+
+        private float verticalInset() => (overlay.DrawHeight - overlay.ImageHolder.DrawHeight) / 2;
 
         private ImagePreviewRequest createRequest(Drawable? source = null) => new ImagePreviewRequest(texture, image_url, null, source);
 
