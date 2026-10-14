@@ -16,6 +16,7 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
 using osu.Game.Overlays.ImagePreview;
 using osuTK;
+using osuTK.Input;
 
 namespace osu.Game.Tests.Visual.UserInterface
 {
@@ -27,6 +28,11 @@ namespace osu.Game.Tests.Visual.UserInterface
         private ImagePreviewOverlay overlay = null!;
 
         private Texture texture = null!;
+
+        /// <summary>
+        /// The position the previewed image was last observed at by <see cref="recordTransitionStartPosition"/>.
+        /// </summary>
+        private Vector2? transitionStartPosition;
 
         [BackgroundDependencyLoader]
         private void load(TextureStore textures)
@@ -200,6 +206,74 @@ namespace osu.Game.Tests.Visual.UserInterface
             // smaller than it needs to be.
             AddAssert("image uses the available area", () => Precision.AlmostEquals(
                 Math.Min(horizontalInset(), verticalInset()), ImagePreviewOverlay.DISPLAY_PADDING, 1));
+        }
+
+        /// <summary>
+        /// Covers the use case a developer would implement in the game: hooking an image up such that clicking it opens
+        /// the preview overlay.
+        /// </summary>
+        /// <remarks>
+        /// The tests above all call <see cref="ImagePreviewOverlay.ShowImage"/> directly, which skips over the wiring
+        /// this test is about - the overlay being resolvable through dependency injection, a click on an image being
+        /// handled, and the preview growing out of the image that was clicked.
+        /// </remarks>
+        [Test]
+        public void TestClickingAnImageOpensThePreview()
+        {
+            PreviewableSprite source = null!;
+
+            // mirrors the wiring done in OsuGame, where the overlay is cached so that any drawable can resolve it.
+            AddStep("cache preview overlay", () => Dependencies.CacheAs<IImagePreviewOverlay>(overlay));
+
+            AddStep("add clickable image", () => Add(source = new PreviewableSprite(image_url)
+            {
+                Texture = texture,
+                Size = new Vector2(120),
+                Position = new Vector2(200),
+                Anchor = Anchor.TopLeft,
+                Origin = Anchor.TopLeft,
+            }));
+
+            AddUntilStep("image displayed", () => source.IsLoaded && source.ScreenSpaceDrawQuad.Width > 0);
+
+            AddStep("move mouse to image", () => InputManager.MoveMouseTo(source));
+
+            AddStep("click image", () =>
+            {
+                recordTransitionStartPosition();
+                InputManager.Click(MouseButton.Left);
+            });
+
+            AddAssert("preview shown", () => overlay.State.Value == Visibility.Visible);
+            AddAssert("preview shows the clicked image", () => displayedImage() != null);
+
+            AddAssert("preview opened from the clicked image", () =>
+            {
+                Vector2 expected = overlay.ToLocalSpace(source.ScreenSpaceDrawQuad.Centre) - overlay.DrawSize / 2;
+
+                return transitionStartPosition != null && Precision.AlmostEquals(transitionStartPosition.Value, expected, 1);
+            });
+
+            AddUntilStep("image settled at the centre", () => Precision.AlmostEquals(overlay.ImageHolder.Position, Vector2.Zero, 0.5f));
+        }
+
+        /// <summary>
+        /// Records where the previewed image is on the first frame the overlay updates on after this is called.
+        /// </summary>
+        /// <remarks>
+        /// A click is only dispatched on the next input poll, which happens after the step issuing it has run, so where
+        /// the transition starts from cannot be observed from within that step itself.
+        /// </remarks>
+        private void recordTransitionStartPosition()
+        {
+            void capture(Drawable _)
+            {
+                overlay.OnUpdate -= capture;
+                transitionStartPosition = overlay.ImageHolder.Position;
+            }
+
+            transitionStartPosition = null;
+            overlay.OnUpdate += capture;
         }
 
         private float horizontalInset() => (overlay.DrawWidth - overlay.ImageHolder.DrawWidth) / 2;
