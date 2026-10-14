@@ -7,6 +7,7 @@ using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Localisation;
@@ -27,6 +28,15 @@ namespace osu.Game.Tests.Visual.UserInterface
 
         private ImagePreviewOverlay overlay = null!;
 
+        /// <summary>
+        /// A layer standing in for the content the preview is opened over (the wiki overlay, in the game).
+        /// </summary>
+        /// <remarks>
+        /// The preview is added above this layer, mirroring how it is placed in the top-most overlay layer of the game,
+        /// so that it covers the content an image was clicked in rather than being covered by it.
+        /// </remarks>
+        private Container contentLayer = null!;
+
         private Texture texture = null!;
 
         /// <summary>
@@ -43,7 +53,8 @@ namespace osu.Game.Tests.Visual.UserInterface
         [SetUpSteps]
         public void SetUpSteps()
         {
-            AddStep("create overlay", () => Child = overlay = new ImagePreviewOverlay());
+            AddStep("create content layer", () => Add(contentLayer = new Container { RelativeSizeAxes = Axes.Both }));
+            AddStep("create overlay", () => Add(overlay = new ImagePreviewOverlay()));
             AddUntilStep("wait for overlay to load", () => overlay.IsLoaded);
         }
 
@@ -107,7 +118,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             Sprite source = null!;
 
-            AddStep("create source image", () => Add(source = new Sprite
+            AddStep("create source image", () => contentLayer.Add(source = new Sprite
             {
                 Texture = texture,
                 Size = new Vector2(100),
@@ -136,7 +147,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             Sprite source = null!;
 
-            AddStep("create source image", () => Add(source = new Sprite
+            AddStep("create source image", () => contentLayer.Add(source = new Sprite
             {
                 Texture = texture,
                 Size = new Vector2(100),
@@ -164,7 +175,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             Sprite source = null!;
 
-            AddStep("create source image", () => Add(source = new Sprite
+            AddStep("create source image", () => contentLayer.Add(source = new Sprite
             {
                 Texture = texture,
                 Size = new Vector2(100),
@@ -225,7 +236,7 @@ namespace osu.Game.Tests.Visual.UserInterface
             // mirrors the wiring done in OsuGame, where the overlay is cached so that any drawable can resolve it.
             AddStep("cache preview overlay", () => Dependencies.CacheAs<IImagePreviewOverlay>(overlay));
 
-            AddStep("add clickable image", () => Add(source = new PreviewableSprite(image_url)
+            AddStep("add clickable image", () => contentLayer.Add(source = new PreviewableSprite(image_url)
             {
                 Texture = texture,
                 Size = new Vector2(120),
@@ -246,6 +257,18 @@ namespace osu.Game.Tests.Visual.UserInterface
 
             AddAssert("preview shown", () => overlay.State.Value == Visibility.Visible);
             AddAssert("preview shows the clicked image", () => displayedImage() != null);
+
+            // in the game the preview lives in the top-most overlay layer, so it has to end up drawn over the content
+            // it was opened from - otherwise the clicked image stays on top of it and is never seen dimmed behind it.
+            AddAssert("preview drawn over the content it was opened from", () => drawnAbove(overlay, contentLayer));
+
+            AddAssert("preview covers the clicked image", () =>
+            {
+                var background = previewBackground().ScreenSpaceDrawQuad;
+                var sourceQuad = source.ScreenSpaceDrawQuad;
+
+                return background.Contains(sourceQuad.TopLeft) && background.Contains(sourceQuad.BottomRight);
+            });
 
             AddAssert("preview opened from the clicked image", () =>
             {
@@ -279,6 +302,20 @@ namespace osu.Game.Tests.Visual.UserInterface
         private float horizontalInset() => (overlay.DrawWidth - overlay.ImageHolder.DrawWidth) / 2;
 
         private float verticalInset() => (overlay.DrawHeight - overlay.ImageHolder.DrawHeight) / 2;
+
+        /// <summary>
+        /// The full-screen background drawn behind the previewed image.
+        /// </summary>
+        private Box previewBackground() => overlay.ChildrenOfType<Box>().First();
+
+        /// <summary>
+        /// Whether <paramref name="upper"/> is drawn over <paramref name="lower"/>.
+        /// </summary>
+        /// <remarks>
+        /// Both are expected to be added to this test scene directly, which is the case for the preview and the layer
+        /// standing in for the content it covers.
+        /// </remarks>
+        private bool drawnAbove(Drawable upper, Drawable lower) => IndexOf(upper) > IndexOf(lower);
 
         private ImagePreviewRequest createRequest(Drawable? source = null) => new ImagePreviewRequest(texture, image_url, null, source);
 
