@@ -115,6 +115,46 @@ namespace osu.Game.Tests.Visual.UserInterface
         }
 
         [Test]
+        public void TestSwappingImageWhileVisibleResetsTheView()
+        {
+            Sprite source = null!;
+
+            AddStep("create source image", () => contentLayer.Add(source = new Sprite
+            {
+                Texture = texture,
+                Size = new Vector2(100),
+                Anchor = Anchor.TopLeft,
+                Origin = Anchor.TopLeft,
+            }));
+
+            AddStep("show preview", () => overlay.ShowImage(createRequest(source)));
+            AddUntilStep("overlay visible", () => overlay.State.Value == Visibility.Visible);
+
+            AddStep("zoom in", () => findButton(ImagePreviewOverlayStrings.ZoomIn)!.TriggerClick());
+            AddUntilStep("zoomed in", () => overlay.CurrentZoom.Value > 1);
+
+            AddStep("show another image", () =>
+            {
+                overlay.ShowImage(createRequest(source));
+
+                // the content is swapped out rather than transitioned in, so the view has to be reset to its resting
+                // state right away - both by the call itself and by cancelling whatever was still animating.
+                Assert.That(Precision.AlmostEquals(overlay.CurrentZoom.Value, 1), Is.True,
+                    $@"expected the zoom to be reset, but it was at {overlay.CurrentZoom.Value}");
+                Assert.That(Precision.AlmostEquals(overlay.ImageHolder.Scale, Vector2.One), Is.True,
+                    $@"expected the image to be back at full scale, but it was at {overlay.ImageHolder.Scale}");
+                Assert.That(Precision.AlmostEquals(overlay.ImageHolder.Position, Vector2.Zero), Is.True,
+                    $@"expected the image to be recentred, but it was at {overlay.ImageHolder.Position}");
+                Assert.That(Precision.AlmostEquals(overlay.ImageHolder.Alpha, 1), Is.True,
+                    $@"expected the image to be fully visible, but it was at alpha {overlay.ImageHolder.Alpha}");
+            });
+
+            AddUntilStep("image stays at rest", () => Precision.AlmostEquals(overlay.ImageHolder.Scale, Vector2.One)
+                                                      && Precision.AlmostEquals(overlay.ImageHolder.Position, Vector2.Zero)
+                                                      && Precision.AlmostEquals(overlay.ImageHolder.Alpha, 1));
+        }
+
+        [Test]
         public void TestTransitionFromSource()
         {
             Sprite source = null!;

@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -36,6 +37,7 @@ namespace osu.Game.Overlays.ImagePreview
     public partial class ImagePreviewOverlay : OsuFocusedOverlayContainer, IImagePreviewOverlay
     {
         private const float transition_duration = 250;
+        private const float quick_transition_duration = 100;
         private const float zoom_step = 1.25f;
         private const float min_zoom = 0.1f;
         private const float max_zoom = 10f;
@@ -62,6 +64,8 @@ namespace osu.Game.Overlays.ImagePreview
         private Sprite image = null!;
         private Container toolbar = null!;
         private OsuSpriteText zoomText = null!;
+        private IconButton saveButton = null!;
+        private LoadingSpinner saveSpinner = null!;
 
         [Resolved]
         private OsuGame? game { get; set; }
@@ -73,6 +77,15 @@ namespace osu.Game.Overlays.ImagePreview
 
         private ImagePreviewRequest? currentRequest;
         private Vector2 nativeSize = Vector2.One;
+
+        /// <summary>
+        /// The in-flight save operation, if any. Non-null exactly while a save is running, which is what the
+        /// save button's busy state is derived from.
+        /// </summary>
+        /// <remarks>
+        /// A save is abandoned when the overlay is closed, as the image it was started for is no longer on screen.
+        /// </remarks>
+        private CancellationTokenSource? saveCancellation;
 
         /// <summary>
         /// Whether an open or close transition is currently playing.
@@ -130,7 +143,7 @@ namespace osu.Game.Overlays.ImagePreview
 
             zoom.BindValueChanged(v =>
             {
-                ImageHolder.ScaleTo(new Vector2(v.NewValue), 100, Easing.OutQuint);
+                ImageHolder.ScaleTo(new Vector2(v.NewValue), quick_transition_duration, Easing.OutQuint);
                 zoomText.Text = $@"{v.NewValue * 100:0}%";
             }, true);
         }
@@ -144,17 +157,36 @@ namespace osu.Game.Overlays.ImagePreview
             image.Texture = request.Texture;
 
             zoom.Value = zoom.Default;
-            ImageHolder.Position = Vector2.Zero;
             updateFittedSize();
 
             if (State.Value == Visibility.Visible)
             {
                 // already displaying an image, just swap the content out.
-                ImageHolder.Scale = Vector2.One;
+                resetContent();
                 return;
             }
 
             Show();
+        }
+
+        /// <summary>
+        /// Puts the displayed content back into its resting state (unzoomed, centred and opaque), and ends any transition
+        /// which is still in flight.
+        /// </summary>
+        /// <remarks>
+        /// The resting state is assigned directly rather than animated towards, because the view is not seen to move when
+        /// the content behind it is swapped - and because the zoom bindable starts its own scale animation as soon as the
+        /// zoom is reset, which would otherwise fight over the scale for the next 100ms.
+        /// </remarks>
+        private void resetContent()
+        {
+            transitionInProgress = false;
+
+            ImageHolder.ClearTransforms();
+
+            ImageHolder.Alpha = 1;
+            ImageHolder.Position = Vector2.Zero;
+            ImageHolder.Scale = Vector2.One;
         }
 
         protected override void Update()
@@ -230,6 +262,8 @@ namespace osu.Game.Overlays.ImagePreview
         {
             base.PopOut();
 
+            cancelSave();
+
             ClearTransforms(true);
 
             bool hasSource = tryGetSourceQuad(out Quad sourceQuad);
@@ -251,6 +285,11 @@ namespace osu.Game.Overlays.ImagePreview
 
                            // fully hide once the image has returned to its origin, otherwise it would be clamped back to the centre.
                            Alpha = 0;
+
+                           // this overlay lives for the lifetime of the game, so the content is released here rather
+                           // than being kept alive until the next image is previewed.
+                           image.Texture = null;
+                           currentRequest = null;
                        });
         }
 
@@ -309,10 +348,13 @@ namespace osu.Game.Overlays.ImagePreview
 
         private void saveImage()
         {
-            if (currentRequest == null)
+            if (currentRequest == null || saveCancellation != null)
                 return;
 
             var request = currentRequest;
+            var cancellation = saveCancellation = new CancellationTokenSource();
+
+            updateSaveState();
 
             Task.Run(async () =>
             {
@@ -322,14 +364,14 @@ namespace osu.Game.Overlays.ImagePreview
 
                     using (var webRequest = new WebRequest(request.Url))
                     {
-                        await webRequest.PerformAsync().ConfigureAwait(false);
+                        await webRequest.PerformAsync(cancellation.Token).ConfigureAwait(false);
                         data = webRequest.GetResponseData();
                     }
 
                     string filename = getFilenameForUrl(request.Url);
 
                     using (var stream = exportStorage.CreateFileSafely(filename))
-                        await stream.WriteAsync(data).ConfigureAwait(false);
+                        await stream.WriteAsync(data, cancellation.Token).ConfigureAwait(false);
 
                     Schedule(() => notifications?.Post(new SimpleNotification
                     {
@@ -342,6 +384,10 @@ namespace osu.Game.Overlays.ImagePreview
                         },
                     }));
                 }
+                catch (OperationCanceledException)
+                {
+                    // the overlay was closed before the image finished downloading, so there is nothing to report.
+                }
                 catch (Exception)
                 {
                     Schedule(() => notifications?.Post(new SimpleNotification
@@ -350,7 +396,49 @@ namespace osu.Game.Overlays.ImagePreview
                         Icon = FontAwesome.Solid.ExclamationTriangle,
                     }));
                 }
-            });
+                finally
+                {
+                    Schedule(() =>
+                    {
+                        // a newer save has taken over (or this one was cancelled) - leave its state alone.
+                        if (saveCancellation != cancellation)
+                            return;
+
+                        saveCancellation = null;
+                        updateSaveState();
+                    });
+                }
+            }, cancellation.Token);
+        }
+
+        /// <summary>
+        /// Abandons an in-flight save, if any.
+        /// </summary>
+        private void cancelSave()
+        {
+            if (saveCancellation == null)
+                return;
+
+            saveCancellation.Cancel();
+            saveCancellation = null;
+
+            updateSaveState();
+        }
+
+        /// <summary>
+        /// Reflects whether a save is currently running in the save button, which turns into a spinner while it is.
+        /// </summary>
+        private void updateSaveState()
+        {
+            bool saving = saveCancellation != null;
+
+            saveButton.Enabled.Value = !saving;
+            saveButton.Alpha = saving ? 0 : 1;
+
+            if (saving)
+                saveSpinner.Show();
+            else
+                saveSpinner.Hide();
         }
 
         private Container createToolbar(OsuColour colours)
@@ -424,13 +512,30 @@ namespace osu.Game.Overlays.ImagePreview
                                 TooltipText = CommonStrings.CopyLink,
                                 Action = copyLink,
                             },
-                            new IconButton
+                            new Container
                             {
                                 Anchor = Anchor.Centre,
                                 Origin = Anchor.Centre,
-                                Icon = FontAwesome.Solid.Download,
-                                TooltipText = ImagePreviewOverlayStrings.SaveImage,
-                                Action = saveImage,
+                                Size = new Vector2(IconButton.DEFAULT_BUTTON_SIZE),
+                                Children = new Drawable[]
+                                {
+                                    saveButton = new IconButton
+                                    {
+                                        Anchor = Anchor.Centre,
+                                        Origin = Anchor.Centre,
+                                        Icon = FontAwesome.Solid.Download,
+                                        TooltipText = ImagePreviewOverlayStrings.SaveImage,
+                                        Action = saveImage,
+                                    },
+                                    // only one of these two is ever visible; the button is swapped for the spinner while saving.
+                                    saveSpinner = new LoadingSpinner
+                                    {
+                                        Anchor = Anchor.Centre,
+                                        Origin = Anchor.Centre,
+                                        Size = new Vector2(16),
+                                        Alpha = 0,
+                                    },
+                                },
                             },
                             new IconButton
                             {
