@@ -53,6 +53,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         [SetUpSteps]
         public void SetUpSteps()
         {
+            AddStep("clean up container", Clear);
             AddStep("create content layer", () => Add(contentLayer = new Container { RelativeSizeAxes = Axes.Both }));
             AddStep("create overlay", () => Add(overlay = new ImagePreviewOverlay()));
             AddUntilStep("wait for overlay to load", () => overlay.IsLoaded);
