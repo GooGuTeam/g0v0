@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+(set -o igncr) 2>/dev/null && set -o igncr # Handle CRLF on Windows with core.autocrlf=true
+
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -ExecutionPolicy Bypass -File ./InspectCode.ps1 -Staged
+elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File ./InspectCode.ps1 -Staged
+else
+    bash ./InspectCode.sh --staged
+fi
