@@ -46,6 +46,8 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Input;
 using osu.Game.Input.Bindings;
 using osu.Game.IO;
+using osu.Game.IPC;
+using osu.Game.IPC.DataSources;
 using osu.Game.Localisation;
 using osu.Game.Medals;
 using osu.Game.Online;
@@ -62,6 +64,8 @@ using osu.Game.Overlays.Notifications;
 using osu.Game.Overlays.OSD;
 using osu.Game.Overlays.SkinEditor;
 using osu.Game.Overlays.Toolbar;
+using osu.Game.Overlays.Volume;
+using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
@@ -122,6 +126,7 @@ namespace osu.Game
         public const float SCREEN_EDGE_MARGIN = 12f;
 
         private const double general_log_debounce = 60000;
+        private const string ruleset_log_prefix = @"[Ruleset] ";
         private const string tablet_log_prefix = @"[Tablet] ";
 
         public Toolbar Toolbar { get; private set; }
@@ -356,10 +361,10 @@ namespace osu.Game
             return userInputManager;
         }
 
-        private DependencyContainer dependencies;
+        protected new DependencyContainer Dependencies { get; private set; }
 
         protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent) =>
-            dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
+            Dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
 
         private readonly List<string> dragDropFiles = new List<string>();
         private ScheduledDelegate dragDropImportSchedule;
@@ -422,9 +427,9 @@ namespace osu.Game
             sentryLogger.AttachUser(API.LocalUser);
 
             if (SeasonalUIConfig.ENABLED)
-                dependencies.CacheAs(osuLogo = new OsuLogoChristmas { Alpha = 0 });
+                Dependencies.CacheAs(osuLogo = new OsuLogoChristmas { Alpha = 0 });
             else
-                dependencies.CacheAs(osuLogo = new OsuLogo { Alpha = 0 });
+                Dependencies.CacheAs(osuLogo = new OsuLogo { Alpha = 0 });
 
             // bind config int to database RulesetInfo
             configRuleset = LocalConfig.GetBindable<string>(OsuSetting.Ruleset);
@@ -617,7 +622,7 @@ namespace osu.Game
 
         public void CopyToClipboard(string value) => waitForReady(() => onScreenDisplay, _ =>
         {
-            dependencies.Get<Clipboard>().SetText(value);
+            Dependencies.Get<Clipboard>().SetText(value);
             onScreenDisplay.Display(new CopiedToClipboardToast());
         });
 
@@ -1094,6 +1099,7 @@ namespace osu.Game
 
             Logger.NewEntry -= forwardGeneralLogToNotifications;
             Logger.NewEntry -= forwardTabletLogToNotifications;
+            RulesetStore.OnError -= forwardRulesetErrorToNotifications;
         }
 
         protected override IDictionary<FrameworkSetting, object> GetFrameworkConfigDefaults()
@@ -1140,7 +1146,7 @@ namespace osu.Game
 
             ScreenFooter.BackReceptor backReceptor;
 
-            dependencies.CacheAs(idleTracker = new GameIdleTracker(6000));
+            Dependencies.CacheAs(idleTracker = new GameIdleTracker(6000));
 
             var sessionIdleTracker = new GameIdleTracker(300000);
             sessionIdleTracker.IsIdle.BindValueChanged(idle =>
@@ -1205,10 +1211,14 @@ namespace osu.Game
                 },
                 topMostOverlayContent = new Container { RelativeSizeAxes = Axes.Both },
                 idleTracker,
-                new ConfineMouseTracker()
+                new ConfineMouseTracker(),
             });
 
-            dependencies.Cache(ScreenFooter);
+            // Load volume overlay before anything else, so users can adjust volume as soon as feasible after startup.
+            loadComponentSingleFile(volume = new VolumeOverlay(), leftFloatingOverlayContent.Add, true);
+            Add(new ScrollAdjustsVolume(requireAltPressed: true));
+
+            Dependencies.Cache(ScreenFooter);
 
             ScreenStack.ScreenPushed += screenPushed;
             ScreenStack.ScreenExited += screenExited;
@@ -1246,8 +1256,6 @@ namespace osu.Game
                         menuScreen.MakeCurrent();
                 },
             }, topMostOverlayContent.Add);
-
-            loadComponentSingleFile(volume = new VolumeOverlay(), leftFloatingOverlayContent.Add, true);
 
             onScreenDisplay = new OnScreenDisplay();
 
@@ -1301,9 +1309,6 @@ namespace osu.Game
             loadComponentSingleFile(new AccountCreationOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile<IDialogOverlay>(dialogOverlay = new DialogOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new MedalOverlay(), topMostOverlayContent.Add);
-            loadComponentSingleFile(new osu.Game.Overlays.ReplayRender.ReplayRenderOverlay(), topMostOverlayContent.Add, true);
-            loadComponentSingleFile(new osu.Game.Online.ScoreNotes.ScoreNoteStore(), Add, true);
-            loadComponentSingleFile(new osu.Game.Overlays.ScoreNotes.ScoreNoteOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new MedalAwarderContainer(), Add, true);
 
             loadComponentSingleFile(new BackgroundDataStoreProcessor(), Add);
@@ -1363,6 +1368,25 @@ namespace osu.Game
             // Importantly, this should be run after binding PostNotification to the import handlers so they can present the import after game startup.
             handleStartupImport();
 
+            var rulesetErrorEvents = RulesetStore.Events.OfType<RulesetErrorEvent>().ToList();
+
+            if (rulesetErrorEvents.Count != 0)
+            {
+                Notifications.Post(new RulesetLoadErrorNotification(rulesetErrorEvents));
+            }
+
+#nullable enable
+            string? rulesetName = RulesetStore.FireAndForgetLastCrash();
+
+            if (rulesetName != null)
+            {
+                Notifications.Post(new LastRulesetCrashNotification(rulesetName));
+            }
+#nullable disable
+
+            // Late subscription here to avoid posting notifications during ruleset loading.
+            RulesetStore.OnError += forwardRulesetErrorToNotifications;
+
             // Show server information notification on startup
             showServerInfoNotification();
 
@@ -1379,6 +1403,16 @@ namespace osu.Game
             // this MUST happen after `applyConfigMigrations()` call, as it relies on comparing the previous version.
             // debug / local compilations will reset to a non-release string.
             LocalConfig.SetValue(OsuSetting.Version, version);
+
+            var webSocketProvider = Dependencies.Get<IWebSocketProvider>();
+
+            if (webSocketProvider != null)
+            {
+                AddRange([
+                    new UserActivityWebSocketDataSource(webSocketProvider),
+                    new BeatmapStateWebSocketDataSource(webSocketProvider)
+                ]);
+            }
         }
 
         /// <summary>
@@ -1434,6 +1468,9 @@ namespace osu.Game
 
                 Audio.UseWasapi.Value = true;
 
+                // TODO: can be removed 20270101.
+                // leave the migration but just stop telling users about it. if they haven't been playing for this long they are more likely
+                // to setup offset again, or even have different hardware.
                 dialogOverlay.Push(new MigrateNewAudioDialog(wasAlreadyUsing));
             }
 
@@ -1507,6 +1544,10 @@ namespace osu.Game
         private void forwardGeneralLogToNotifications(LogEntry entry)
         {
             if (entry.Level < LogLevel.Important || entry.Target > LoggingTarget.Database || entry.Target == null) return;
+
+            // Ruleset logs are handled by events.
+            if (entry.Message.StartsWith(ruleset_log_prefix, StringComparison.OrdinalIgnoreCase))
+                return;
 
             if (entry.Exception is SentryOnlyDiagnosticsException)
                 return;
@@ -1597,6 +1638,15 @@ namespace osu.Game
             }
         }
 
+        private void forwardRulesetErrorToNotifications(RulesetErrorEvent e)
+        {
+            // To reduce annoyance for users.
+            if (e.Exception == null || e.RulesetInfo == null)
+                return;
+
+            Schedule(() => Notifications.Post(new RulesetErrorNotification(e.RulesetInfo, e.Exception)));
+        }
+
         private Task asyncLoadStream;
 
         /// <summary>
@@ -1610,7 +1660,7 @@ namespace osu.Game
             where T : class
         {
             if (cache)
-                dependencies.CacheAs(component);
+                Dependencies.CacheAs(component);
 
             var drawableComponent = component as Drawable ?? throw new ArgumentException($"Component must be a {nameof(Drawable)}", nameof(component));
 

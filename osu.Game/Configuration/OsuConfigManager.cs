@@ -75,10 +75,6 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ToriiStableResults, false);
             SetDefault(OsuSetting.ToriiLegacyFont, false);
             SetDefault(OsuSetting.UnslantedSongSelectUI, false);
-            SetDefault(OsuSetting.ToriiRenderResolution, "1280x720");
-            SetDefault(OsuSetting.ToriiRenderSkin, "default");
-            SetDefault(OsuSetting.ToriiRenderMotionBlur, false);
-            SetDefault(OsuSetting.ToriiRenderShare, true);
 
             // Online settings
             SetDefault(OsuSetting.Username, string.Empty);
@@ -181,7 +177,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.GameplayDisableWinKey, true);
 
             // Update
-            SetDefault(OsuSetting.ReleaseStream, ReleaseStream.Lazer);
+            SetDefault(OsuSetting.ReleaseStream, ReleaseStream.G0V0);
 
             SetDefault(OsuSetting.Version, string.Empty);
 
@@ -522,9 +518,5 @@ namespace osu.Game.Configuration
         ToriiStableResults,
         ToriiLegacyFont,
         UnslantedSongSelectUI,
-        ToriiRenderResolution,
-        ToriiRenderSkin,
-        ToriiRenderMotionBlur,
-        ToriiRenderShare,
     }
 }

@@ -172,11 +172,13 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                     InnerRadius = (UseV2Style ? 0.095f : accuracy_circle_radius) + 0.01f, // Extends a little bit into the circle
                     Progress = 1,
                 },
-                accuracyCircle = (UseV2Style ? new V2AccuracyRing() : new CircularProgress
-                {
-                    Colour = ColourInfo.GradientVertical(Color4Extensions.FromHex("#7CF6FF"), Color4Extensions.FromHex("#BAFFA9")),
-                    InnerRadius = accuracy_circle_radius,
-                }).With(d =>
+                accuracyCircle = (UseV2Style
+                    ? new V2AccuracyRing()
+                    : new CircularProgress
+                    {
+                        Colour = ColourInfo.GradientVertical(Color4Extensions.FromHex("#7CF6FF"), Color4Extensions.FromHex("#BAFFA9")),
+                        InnerRadius = accuracy_circle_radius,
+                    }).With(d =>
                 {
                     d.Name = "Accuracy circle";
                     d.Anchor = d.Origin = Anchor.Centre;
@@ -300,10 +302,10 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                     double stop = v2Scale.RingProgress(accuracyS - GRADE_SPACING_PERCENTAGE / 2);
                     // Push against the top of the A interval and settle just before the S threshold.
                     accuracyCircle.ProgressTo(stop - 0.012, 1050, Easing.OutQuint)
-                        .Then().ProgressTo(stop, 220, Easing.OutSine)
-                        .Then().ProgressTo(stop - 0.008, 180, Easing.OutSine)
-                        .Then().ProgressTo(stop - 0.002, 220, Easing.OutSine)
-                        .Then().ProgressTo(stop, 500, Easing.OutQuint);
+                                  .Then().ProgressTo(stop, 220, Easing.OutSine)
+                                  .Then().ProgressTo(stop - 0.008, 180, Easing.OutSine)
+                                  .Then().ProgressTo(stop - 0.002, 220, Easing.OutSine)
+                                  .Then().ProgressTo(stop, 500, Easing.OutQuint);
                 }
                 else
                     accuracyCircle.ProgressTo(UseV2Style ? v2Scale.RingProgress(targetAccuracy) : targetAccuracy, ACCURACY_TRANSFORM_DURATION, ACCURACY_TRANSFORM_EASING);
@@ -339,7 +341,8 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                             continue;
 
                         using (BeginDelayedSequence(
-                                   inverseEasing(ACCURACY_TRANSFORM_EASING, Math.Min(accuracyX - VIRTUAL_SS_PERCENTAGE, badge.Accuracy) / Math.Max(double.Epsilon, targetAccuracy)) * ACCURACY_TRANSFORM_DURATION))
+                                   inverseEasing(ACCURACY_TRANSFORM_EASING, Math.Min(accuracyX - VIRTUAL_SS_PERCENTAGE, badge.Accuracy) / Math.Max(double.Epsilon, targetAccuracy))
+                                   * ACCURACY_TRANSFORM_DURATION))
                         {
                             badge.Appear();
 
@@ -406,6 +409,9 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                     }
                 }
             }
+
+            if (!withFlair)
+                FinishTransforms(true);
         }
 
         protected override void Update()
@@ -413,6 +419,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
             base.Update();
 
             double now = Time.Current;
+
             if (now >= tickEndTime)
             {
                 scoreTickSound?.Stop();

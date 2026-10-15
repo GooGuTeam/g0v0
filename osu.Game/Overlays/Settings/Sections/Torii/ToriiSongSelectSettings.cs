@@ -51,7 +51,6 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
                     Caption = UserInterfaceStrings.LegacySongSelect,
                     Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyFooterUseSkin),
                     HintText = UserInterfaceStrings.LegacySongSelectDescription,
-                    NewFeatureId = NewFeatureRegistry.LegacyFooterSkin,
                 })
                 {
                     Keywords = new[] { @"footer", @"skin", @"song", @"select", @"legacy", @"bottom", @"buttons", @"torii", @"stable" },
@@ -61,7 +60,6 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
                     Caption = UserInterfaceStrings.UseInterFont,
                     Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyFont),
                     HintText = UserInterfaceStrings.UseInterFontDescription,
-                    NewFeatureId = NewFeatureRegistry.LegacyFont,
                 })
                 {
                     Keywords = new[] { @"font", @"inter", @"typeface", @"stable", @"legacy", @"song", @"select", @"torii" },
@@ -71,7 +69,6 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
                     Caption = UserInterfaceStrings.LegacySongSelectFooter,
                     Current = footerDisplay,
                     HintText = UserInterfaceStrings.LegacySongSelectFooterDescription,
-                    NewFeatureId = NewFeatureRegistry.LegacySongSelectFooter,
                 })
                 {
                     Keywords = new[] { @"footer", @"legacy", @"stable", @"bottom", @"buttons", @"song", @"select", @"torii" },

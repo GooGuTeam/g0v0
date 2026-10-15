@@ -156,12 +156,12 @@ namespace osu.Game
                     .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
                     .InformationalVersion;
 
-                // Example: [assembly: AssemblyInformationalVersion("2025.613.0-tachyon+d934e574b2539e8787956c3c9ecce9dadebb10ee")]
+                // Example: [assembly: AssemblyInformationalVersion("2026.1013.0-robin+d934e574b2539e8787956c3c9ecce9dadebb10ee")]
                 if (!string.IsNullOrEmpty(informationalVersion))
                     return informationalVersion.Split('+').First();
 
                 Version version = AssemblyVersion;
-                return $@"{version.Major}.{version.Minor}.{version.Build}-lazer";
+                return $@"{version.Major}.{version.Minor}.{version.Build}-g0v0";
             }
         }
 
@@ -235,6 +235,7 @@ namespace osu.Game
         public readonly Bindable<Dictionary<ModType, IReadOnlyList<Mod>>> AvailableMods = new Bindable<Dictionary<ModType, IReadOnlyList<Mod>>>(new Dictionary<ModType, IReadOnlyList<Mod>>());
 
         private BeatmapDifficultyCache difficultyCache;
+
         private IBeatmapUpdater beatmapUpdater;
         private OnlineAssetCachingStore onlineAssetStore;
 
@@ -331,7 +332,6 @@ namespace osu.Game
             dependencies.Cache(onlineAssetStore = new OnlineAssetCachingStore(Host, realm));
 
             dependencies.CacheAs(LocalConfig);
-            dependencies.Cache(new NewFeatureTracker(Storage));
             LocalConfig.BindWith(OsuSetting.UnslantedSongSelectUI, unslantedSongSelectUI);
             unslantedSongSelectUI.BindValueChanged(e => OsuGame.SetUnslantedUI(e.NewValue), true);
             LocalConfig.BindWith(OsuSetting.ToriiLegacyFont, legacyFontSetting);

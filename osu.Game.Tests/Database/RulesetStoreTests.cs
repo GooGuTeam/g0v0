@@ -1,11 +1,13 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using NUnit.Framework.Legacy;
+using osu.Framework.Bindables;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
@@ -178,6 +180,54 @@ namespace osu.Game.Tests.Database
                 using var __ = new RealmRulesetStore(realm, storage);
 
                 Assert.That(realm.Run(r => r.Find<RulesetInfo>(second.ShortName)!.Available), Is.True);
+            });
+        }
+
+        [Test]
+        public void TestEventsRecordedForLoadedRulesets()
+        {
+            RunTestWithRealm((realm, storage) =>
+            {
+                using var rulesets = new RealmRulesetStore(realm, storage);
+
+                var loadEvents = rulesets.Events.OfType<RulesetLoadEvent>().ToList();
+
+                ClassicAssert.IsNotEmpty(loadEvents);
+
+                foreach (var ev in loadEvents)
+                {
+                    ClassicAssert.IsNotNull(ev.Assembly);
+                    ClassicAssert.IsNotNull(ev.RulesetInfo);
+                    ClassicAssert.IsNotNull(ev.Location);
+                }
+            });
+        }
+
+        [Test]
+        public void TestRulesetLoadFailureIsOnlyReportedOnce()
+        {
+            RunTestWithRealm((realm, storage) =>
+            {
+                var rulesetStorage = storage.GetStorageForDirectory(@"rulesets");
+
+                // an assembly matching the user ruleset naming convention, but containing no ruleset type.
+                File.Copy(typeof(BindableBool).Assembly.Location, rulesetStorage.GetFullPath(@"osu.Game.Rulesets.Broken.dll"), true);
+
+                // a database entry for the above, as if it had been loaded successfully at some point.
+                realm.Write(r => r.Add(new RulesetInfo(@"broken", @"Broken ruleset", typeof(BindableBool).AssemblyQualifiedName!, -1)
+                {
+                    Available = true,
+                }));
+
+                using var rulesets = new RealmRulesetStore(realm, storage);
+
+                var errors = rulesets.Events.OfType<RulesetErrorEvent>().ToList();
+
+                // the assembly scan reports the failure by assembly (i.e. file) name,
+                // and the database consistency check should not report the same failure again by its display name.
+                ClassicAssert.AreEqual(1, errors.Count);
+                ClassicAssert.IsNull(errors.Single().RulesetInfo);
+                ClassicAssert.IsNotNull(errors.Single().Assembly);
             });
         }
 

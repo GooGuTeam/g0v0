@@ -1,63 +1,60 @@
 # g0v0!
 
-> This is a rhythm game client based on the open-source osu! codebase developed by ppy Pty Ltd and maintained by GooGuTeam.
-> It includes the following changes on top of the upstream client to work with [g0v0-server](https://github.com/GooGuTeam/g0v0-server).
+g0v0! is a rhythm game client built and maintained by GooGuTeam on top of the
+open-source [ppy/osu](https://github.com/ppy/osu) (osu!lazer) codebase, ready to work
+with [g0v0-server](https://github.com/GooGuTeam/g0v0-server) out of the box.
+g0v0! keeps all gameplay, UI, and framework behaviour of osu!lazer intact and only changes the parts that talk to the
+server (for example a custom API server and Relax / Autopilot special rulesets).
 
-## Changes from upstream
+## Differences from upstream
 
-### Custom API server
+The full list of changes is maintained on the
+documentation site: [Differences from osu!(lazer)](https://docs.g0v0.top/g0v0/difference.html).
 
-- Players can specify a custom API server URL in **Settings > Online > Web**, allowing connection to third-party servers.
-- URL validation, debouncing, and a restart-required notice are provided in the settings UI.
+The server-communication changes form the **g0v0! Standard** — a set of server extension conventions defined by
+g0v0-server. Any client that implements the g0v0! Standard is fully compatible with every g0v0!-based
+server, and g0v0! is the reference implementation. g0v0! Standard changes have been flagged in the differences list
+above.
 
-### Special rulesets (Relax / Autopilot)
+## Download
 
-- Added first-class support for **Relax (RX)** and **Autopilot (AP)** as special game modes.
-- Dedicated difficulty and performance (PP) calculators for the Relax mode, including a standalone `RelaxAimEvaluator`, `RelaxRhythmEvaluator`, and `Relax` difficulty skill.
-- Profile and overlay ruleset selectors display special rulesets with a popover menu, and user statistics are fetched per special ruleset.
+g0v0! is available for Windows (x64 / ARM64), macOS (Intel / Apple Silicon), Linux (x64 / ARM64), Android, and iOS. Grab
+the latest build from [GitHub Releases](https://github.com/GooGuTeam/g0v0/releases/latest):
 
-### Ruleset hash validation
+| Platform              | File                                                                   |
+|-----------------------|------------------------------------------------------------------------|
+| Windows x64           | `g0v0-win-Setup.exe` (installer) or `g0v0-win-Portable.zip` (portable) |
+| Windows ARM64         | `g0v0-win-arm64-Setup.exe` or `g0v0-win-arm64-Portable.zip`            |
+| macOS (Intel)         | `g0v0.app.Intel.zip`                                                   |
+| macOS (Apple Silicon) | `g0v0.app.Apple.Silicon.zip` or `g0v0-osx-arm64-Setup.pkg`             |
+| Linux x64             | `g0v0.AppImage`                                                        |
+| Linux ARM64           | `g0v0-arm64.AppImage`                                                  |
+| Android               | `g0v0.apk`                                                             |
+| iOS                   | `g0v0-ios.ipa`                                                         |
 
-- The client computes and sends SHA-256 hashes of loaded rulesets to the server via API requests and SignalR headers, enabling server-side integrity verification.
-- When the server reports a ruleset is outdated, players receive an in-game notification with a direct download link.
+Desktop builds (Windows / macOS / Linux) ship with automatic updates and will follow new releases after installation;
+automatic updates can also be disabled in the update settings. To connect the client to your own server,
+see [Connect from the Client](https://docs.g0v0.top/en/lazer/deploy/login-from-client.html).
 
-### Server info notification
+## Credits
 
-- On startup, a notification is displayed showing the currently connected server information.
-
-### Issue reporting
-
-- The "Report an issue" button now opens a confirmation dialog before redirecting to the GooGuTeam GitHub Issues page.
-
-### Update source
-
-- Desktop update checks and mobile update notifications point to the **GooGuTeam/osu** GitHub repository.
-- A new **Disable automatic updates** option is available in the update settings.
-
-### Error reporting
-
-- Client-side crash reports are sent to a GooGuTeam-hosted Glitchtip instance instead of the upstream Sentry endpoint.
-
----
-
-*All other gameplay, UI, and framework behaviour remains identical to upstream.*
+- [**osu!**](https://osu.ppy.sh) — this client is built on the open-source [ppy/osu](https://github.com/ppy/osu) (osu!
+  lazer) codebase
+  developed by ppy Pty Ltd. Gameplay, rulesets, UI framework and game resources come from the osu! project; our thanks
+  to ppy Pty Ltd and the osu! community for the original work this project is based on.
+- [**Torii**](https://lazer.shikkesora.com) — the optional stable-style legacy interfaces (song select, results, footer)
+  are ported
+  from [torii-osu](https://github.com/ShikkesoraSIM/torii-osu) by ShikkesoraSIM, MIT licensed. Our thanks to
+  ShikkesoraSIM for the
+  legacy interface work.
 
 ## Licence
 
-This project is based on the open-source codebase originally developed by ppy Pty Ltd.
+The code is licensed under the MIT Licence: the upstream ppy parts under [LICENCE-OSU](./LICENCE-OSU), and GooGuTeam's
+additions under [LICENCE](./LICENCE).
 
-GooGuTeam has made modifications, additions, and removals to the original codebase.
-All original osu! code and framework remain licensed under the MIT Licence.
-See [LICENCE-OSU](./LICENCE-OSU) for details.
-
-All modifications and original contributions made by GooGuTeam to the codebase are licensed under the MIT Licence.
-See [LICENCE](./LICENCE) for details.
-
-Game resources (textures, fonts, skins, samples, tracks, shaders, localisation and other asset content)
-are derived from ppy/osu-resources and remain licensed under CC-BY-NC 4.0.
-Original resource content © ppy Pty Ltd; fork modifications © GooGuTeam, both under CC-BY-NC 4.0.
+Game resources are derived from ppy/osu-resources and are licensed under CC-BY-NC 4.0 for non-commercial use only.
 See [LICENCE in g0v0-resources](https://github.com/GooGuTeam/g0v0-resources/blob/master/LICENCE.md) for details.
-Use of the resources is restricted to non-commercial purposes.
 
-The "osu!" or "ppy" name, trademarks, logos, and other brand assets remain the property of ppy Pty Ltd.
-This project is not affiliated with, endorsed by, or sponsored by ppy Pty Ltd.
+The "osu!" name, trademarks, and brand assets remain the property of ppy Pty Ltd; this project is not affiliated with or
+endorsed by ppy Pty Ltd.

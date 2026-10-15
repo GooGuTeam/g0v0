@@ -6,6 +6,7 @@ using System;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
@@ -110,73 +111,72 @@ namespace osu.Game.Screens.Ranking
                 Direction = FillDirection.Horizontal,
             };
 
-            // los botones de accion torii (render video, nota) + coleccion/favorito, sin el
-            // backing gris de la barra stock. retry y watch-replay NO van aca: viven EN el
-            // panel legacy (debajo del grade), como stable.
-            buttons.Add(new RenderVideoButton(screen.SelectedScore.Value)
-            {
-                Score = { BindTarget = screen.SelectedScore },
-            });
-            buttons.Add(new AddNoteButton(screen.SelectedScore.Value)
-            {
-                Score = { BindTarget = screen.SelectedScore },
-            });
-
+            // los botones de coleccion/favorito, sin el backing gris de la barra stock.
+            // retry y watch-replay NO van aca: viven EN el panel legacy (debajo del grade), como stable.
             if (screen.Score?.BeatmapInfo != null)
                 buttons.Add(new CollectionButton(screen.Score.BeatmapInfo));
 
             if (screen.Score?.BeatmapInfo?.BeatmapSet != null && screen.Score.BeatmapInfo.BeatmapSet.OnlineID > 0)
                 buttons.Add(new FavouriteButton(screen.Score.BeatmapInfo.BeatmapSet));
 
-            InternalChildren = new Drawable[]
+            // el boton de colecciones de la barra flotante abre un popover: el overlay vive
+            // FUERA del PopoverContainer del screen (se agrega con AddInternal al screen
+            // por el depth), asi que necesita el suyo propio en la raiz. full-screen, igual
+            // al del screen, para que el popover se posicione igual que en el layout stock
+            // (ShowPopover lanza una excepcion si no hay ningun PopoverContainer arriba).
+            InternalChild = new PopoverContainer
             {
-                // la vista de ranking legacy, toggleada con el estado del statistics panel.
-                panelLayer = new BlockingLayer
+                RelativeSizeAxes = Axes.Both,
+                Children = new Drawable[]
                 {
-                    RelativeSizeAxes = Axes.Both,
-                    Alpha = 0,
-                    Children = new Drawable[]
+                    // la vista de ranking legacy, toggleada con el estado del statistics panel.
+                    panelLayer = new BlockingLayer
                     {
-                        new Box
+                        RelativeSizeAxes = Axes.Both,
+                        Alpha = 0,
+                        Children = new Drawable[]
                         {
-                            RelativeSizeAxes = Axes.Both,
-                            Colour = Color4.Black,
-                            Alpha = 0.8f,
-                        },
-                        new DrawSizePreservingFillContainer
-                        {
-                            RelativeSizeAxes = Axes.Both,
-                            TargetDrawSize = new Vector2(1366, 768),
-                            Strategy = DrawSizePreservationStrategy.Minimum,
-                            Child = panelContainer = new Container { RelativeSizeAxes = Axes.Both },
+                            new Box
+                            {
+                                RelativeSizeAxes = Axes.Both,
+                                Colour = Color4.Black,
+                                Alpha = 0.8f,
+                            },
+                            new DrawSizePreservingFillContainer
+                            {
+                                RelativeSizeAxes = Axes.Both,
+                                TargetDrawSize = new Vector2(1366, 768),
+                                Strategy = DrawSizePreservationStrategy.Minimum,
+                                Child = panelContainer = new Container { RelativeSizeAxes = Axes.Both },
+                            },
                         },
                     },
-                },
-                // botones flotantes centrados (visibilidad manejada en Update) + back button skineado.
-                floatingBar = new Container
-                {
-                    Anchor = Anchor.BottomLeft,
-                    Origin = Anchor.BottomLeft,
-                    RelativeSizeAxes = Axes.X,
-                    Height = TwoLayerButton.SIZE_EXTENDED.Y,
-                    Child = buttons,
-                },
-                new DrawSizePreservingFillContainer
-                {
-                    RelativeSizeAxes = Axes.Both,
-                    TargetDrawSize = new Vector2(1366, 768),
-                    Strategy = DrawSizePreservationStrategy.Minimum,
-                    Child = new LegacyBackButton
+                    // botones flotantes centrados (visibilidad manejada en Update) + back button skineado.
+                    floatingBar = new Container
                     {
                         Anchor = Anchor.BottomLeft,
                         Origin = Anchor.BottomLeft,
-                        // mismo two-stage que Esc: OnBackButton cierra la vista de detalles si
-                        // corresponde (modo browse); en el modo stable directo devuelve false
-                        // y salimos de una (nunca se ve el carousel de scores stock).
-                        Action = () =>
+                        RelativeSizeAxes = Axes.X,
+                        Height = TwoLayerButton.SIZE_EXTENDED.Y,
+                        Child = buttons,
+                    },
+                    new DrawSizePreservingFillContainer
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                        TargetDrawSize = new Vector2(1366, 768),
+                        Strategy = DrawSizePreservationStrategy.Minimum,
+                        Child = new LegacyBackButton
                         {
-                            if (!screen.OnBackButton())
-                                screen.Exit();
+                            Anchor = Anchor.BottomLeft,
+                            Origin = Anchor.BottomLeft,
+                            // mismo two-stage que Esc: OnBackButton cierra la vista de detalles si
+                            // corresponde (modo browse); en el modo stable directo devuelve false
+                            // y salimos de una (nunca se ve el carousel de scores stock).
+                            Action = () =>
+                            {
+                                if (!screen.OnBackButton())
+                                    screen.Exit();
+                            },
                         },
                     },
                 },

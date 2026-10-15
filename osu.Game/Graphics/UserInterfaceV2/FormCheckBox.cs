@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -39,13 +39,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
         /// Hint text containing an extended description of this slider bar, displayed in a tooltip when hovering the caption.
         /// </summary>
         public LocalisableString HintText { get; init; }
-
-        /// <summary>
-        /// When set, a dismissible "NEW" badge is shown on the caption (auto-dismisses
-        /// after a few interactions, tracked by <see cref="osu.Game.Configuration.NewFeatureTracker"/>).
-        /// Use a <see cref="osu.Game.Configuration.NewFeatureRegistry"/> id.
-        /// </summary>
-        public string? NewFeatureId { get; init; }
 
         /// <summary>
         /// When true, a small "+18" pill is appended to the caption (adult-content cue).
@@ -90,7 +83,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
                                 {
                                     Caption = Caption,
                                     TooltipText = HintText,
-                                    NewFeatureId = NewFeatureId,
                                     ShowExplicitContentBadge = ShowExplicitContentBadge,
                                 },
                             },
@@ -136,7 +128,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
         protected override bool OnClick(ClickEvent e)
         {
             switchButton.TriggerClick();
-            caption.RegisterInteraction();
             return true;
         }
 

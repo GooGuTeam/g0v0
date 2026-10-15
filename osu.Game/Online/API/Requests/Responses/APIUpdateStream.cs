@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -41,6 +41,8 @@ namespace osu.Game.Online.API.Requests.Responses
             ["cuttingedge"] = new Color4(238, 170, 0, 255),
             ["lazer"] = new Color4(237, 18, 33, 255),
             ["tachyon"] = new Color4(206, 0, 255, 255),
+            ["g0v0"] = new Color4(92, 169, 229, 255),
+            ["robin"] = new Color4(181, 126, 255, 255),
             ["web"] = new Color4(136, 102, 238, 255)
         };
 

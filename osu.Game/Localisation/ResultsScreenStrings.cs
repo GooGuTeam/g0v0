@@ -1,6 +1,7 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Localisation;
 
 namespace osu.Game.Localisation
@@ -10,14 +11,21 @@ namespace osu.Game.Localisation
         private const string prefix = @"osu.Game.Resources.Localisation.ResultsScreen";
 
         /// <summary>
+        /// "Achieved on {0:g}"
+        /// </summary>
+        public static LocalisableString AchievedOnDate(DateTimeOffset date) => new TranslatableString(getKey(@"achieved_on_date"), @"Achieved on {0:g}", date);
+
+        /// <summary>
         /// "Performance points are not granted for this score because the beatmap is not ranked."
         /// </summary>
-        public static LocalisableString NoPPForUnrankedBeatmaps => new TranslatableString(getKey(@"no_pp_for_unranked_beatmaps"), @"Performance points are not granted for this score because the beatmap is not ranked.");
+        public static LocalisableString NoPPForUnrankedBeatmaps =>
+            new TranslatableString(getKey(@"no_pp_for_unranked_beatmaps"), @"Performance points are not granted for this score because the beatmap is not ranked.");
 
         /// <summary>
         /// "Performance points are not granted for this score because of unranked mods."
         /// </summary>
-        public static LocalisableString NoPPForUnrankedMods => new TranslatableString(getKey(@"no_pp_for_unranked_mods"), @"Performance points are not granted for this score because of unranked mods.");
+        public static LocalisableString NoPPForUnrankedMods =>
+            new TranslatableString(getKey(@"no_pp_for_unranked_mods"), @"Performance points are not granted for this score because of unranked mods.");
 
         /// <summary>
         /// "Performance points are not granted for failed scores."
@@ -90,9 +98,9 @@ namespace osu.Game.Localisation
         public static LocalisableString RetryUnavailable => new TranslatableString(getKey(@"retry_unavailable"), @"Retry is available after playing this beatmap.");
 
         /// <summary>
-        /// "PERSONAL BEST"
+        /// "Personal best"
         /// </summary>
-        public static LocalisableString PersonalBest => new TranslatableString(getKey(@"personal_best"), @"PERSONAL BEST");
+        public static LocalisableString PersonalBest => new TranslatableString(getKey(@"personal_best"), @"Personal best");
 
         /// <summary>
         /// "Combo"
@@ -108,6 +116,36 @@ namespace osu.Game.Localisation
         /// "if FC {0}pp"
         /// </summary>
         public static LocalisableString IfFullCombo(double pp) => new TranslatableString(getKey(@"if_full_combo"), @"if FC {0}pp", pp);
+
+        /// <summary>
+        /// "if SS {0}pp"
+        /// </summary>
+        public static LocalisableString IfPerfect(double pp) => new TranslatableString(getKey(@"if_ss"), @"if SS {0}pp", pp);
+
+        /// <summary>
+        /// "if SSH {0}pp"
+        /// </summary>
+        public static LocalisableString IfPerfectHidden(double pp) => new TranslatableString(getKey(@"if_ssh"), @"if SSH {0}pp", pp);
+
+        /// <summary>
+        /// "PP you can gain if you achieve FC. Click to switch SS case."
+        /// </summary>
+        public static LocalisableString IfFullComboTooltip => new TranslatableString(getKey(@"if_full_combo_tooltip"), @"PP you can gain if you achieve FC. Click to switch SS case.");
+
+        /// <summary>
+        /// "PP you can gain if you achieve SS."
+        /// </summary>
+        public static LocalisableString IfPerfectTooltip => new TranslatableString(getKey(@"if_ss_tooltip"), @"PP you can gain if you achieve SS.");
+
+        /// <summary>
+        /// "PP you can gain if you achieve SSH."
+        /// </summary>
+        public static LocalisableString IfPerfectHiddenTooltip => new TranslatableString(getKey(@"if_ssh_tooltip"), @"PP you can gain if you achieve SSH.");
+
+        /// <summary>
+        /// "Click to switch to FC case."
+        /// </summary>
+        public static LocalisableString ClickToFullComboTooltip => new TranslatableString(getKey(@"click_to_full_combo_tooltip"), @"Click to switch to FC case.");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

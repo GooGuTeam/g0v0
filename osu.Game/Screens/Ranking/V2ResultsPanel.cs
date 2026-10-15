@@ -380,7 +380,7 @@ namespace osu.Game.Screens.Ranking
                         CornerRadius = 4,
                         Children = new Drawable[]
                         {
-                            new UserCoverBackground { RelativeSizeAxes = Axes.Both, User = score.User, Alpha = 0.5f },
+                            new CoverBackground { RelativeSizeAxes = Axes.Both, Model = score.User, Alpha = 0.5f },
                             new Box
                             {
                                 RelativeSizeAxes = Axes.Both,

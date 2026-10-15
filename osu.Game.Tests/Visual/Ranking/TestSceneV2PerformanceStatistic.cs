@@ -13,11 +13,13 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps;
+using osu.Game.Graphics.Containers;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Difficulty;
+using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Screens.Ranking.Expanded.Statistics;
@@ -30,17 +32,21 @@ namespace osu.Game.Tests.Visual.Ranking
         [Cached(typeof(BeatmapDifficultyCache))]
         private readonly TestDifficultyCache difficultyCache = new TestDifficultyCache();
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void TestFullComboEstimate(bool perfect)
+        [TestCase(false, false, "FC", "SS")]
+        [TestCase(false, true, "FC", "SSH")]
+        [TestCase(true, false, "SS", "SS")]
+        [TestCase(true, true, "SSH", "SSH")]
+        public void TestFullComboEstimate(bool perfect, bool hidden, string defaultLabel, string perfectLabel)
         {
             PerformanceStatistic statistic = null!;
+            OsuHoverContainer estimateArea = null!;
             ScoreInfo score = null!;
-            double expected = 0;
+            double fullComboExpected = 0;
+            double perfectExpected = 0;
             AddStep("load score and local difficulty", () =>
             {
                 score = TestResources.CreateTestScoreInfo();
-                score.Mods = Array.Empty<Mod>();
+                score.Mods = hidden ? new Mod[] { new OsuModHidden() } : Array.Empty<Mod>();
                 score.Statistics = new Dictionary<HitResult, int>
                 {
                     [HitResult.Great] = perfect ? 100 : 85,
@@ -51,10 +57,11 @@ namespace osu.Game.Tests.Visual.Ranking
                 score.Accuracy = perfect ? 1 : 26500.0 / 30000;
                 score.MaxCombo = perfect ? 100 : 30;
                 score.PP = 12;
-                score.Rank = perfect ? ScoreRank.X : ScoreRank.B;
+                score.Rank = perfect ? (hidden ? ScoreRank.XH : ScoreRank.X) : ScoreRank.B;
                 var attributes = new OsuDifficultyAttributes { MaxCombo = 100, HitCircleCount = 100 };
                 var calculator = new OsuRuleset().CreatePerformanceCalculator();
-                expected = calculator.Calculate(FullComboScoreInfo.Create(score)!, attributes).Total;
+                fullComboExpected = calculator.Calculate(FullComboScoreInfo.Create(score)!, attributes).Total;
+                perfectExpected = calculator.Calculate(PerfectScoreInfo.Create(score)!, attributes).Total;
                 difficultyCache.Difficulty = new StarDifficulty(attributes, new PerformanceAttributes { Total = 123 });
                 Child = new Container
                 {
@@ -64,13 +71,35 @@ namespace osu.Game.Tests.Visual.Ranking
                     Child = statistic = new PerformanceStatistic(score) { UseV2Style = true },
                 };
             });
-            AddUntilStep("if FC calculated", () => statistic.ChildrenOfType<SpriteText>().Any(t => t.Text.ToString() == $"if FC {Math.Round(expected, MidpointRounding.AwayFromZero)}pp"));
+            AddUntilStep("estimate calculated", () => statistic.ChildrenOfType<SpriteText>().Any(t => t.Text.ToString() == $"if {defaultLabel} {Math.Round(perfect ? perfectExpected : fullComboExpected, MidpointRounding.AwayFromZero)}pp"));
             AddStep("show values", () => statistic.Appear());
             AddUntilStep("server PP preserved", () => statistic.ChildrenOfType<StatisticCounter>().Single().DisplayedCount, () => Is.EqualTo(12));
             AddAssert("maximum PP retained", () => statistic.ChildrenOfType<SpriteText>().Any(t => t.Text.ToString() == "/123"));
-            AddAssert("FC sits above PP", () => statistic.ChildrenOfType<SpriteText>().Single(t => t.Name == "If FC performance").ScreenSpaceDrawQuad.AABBFloat.Bottom
-                                    <= statistic.ScreenSpaceDrawQuad.AABBFloat.Top);
+            AddStep("grab estimate area", () => estimateArea = statistic.ChildrenOfType<OsuHoverContainer>().Single(t => t.Name == "If FC performance"));
+            AddAssert("FC sits above PP", () => estimateArea.ScreenSpaceDrawQuad.AABBFloat.Bottom <= statistic.ScreenSpaceDrawQuad.AABBFloat.Top);
             AddAssert("original miss count unchanged", () => score.Statistics[HitResult.Miss], () => Is.EqualTo(perfect ? 0 : 5));
+
+            if (perfect)
+            {
+                AddAssert("perfect case is not switchable", () => estimateArea.Enabled.Value, () => Is.False);
+                AddAssert("click does not change the case", () =>
+                {
+                    estimateArea.TriggerClick();
+                    return estimateArea.ChildrenOfType<SpriteText>().Single().Text.ToString();
+                }, () => Is.EqualTo($"if {perfectLabel} {Math.Round(perfectExpected, MidpointRounding.AwayFromZero)}pp"));
+                AddAssert("perfect tooltip explains gain only", () => estimateArea.TooltipText.ToString(), () => Is.EqualTo($"PP you can gain if you achieve {perfectLabel}."));
+            }
+            else
+            {
+                AddAssert("FC case is switchable", () => estimateArea.Enabled.Value, () => Is.True);
+                AddAssert("FC tooltip explains gain and switch", () => estimateArea.TooltipText.ToString(), () => Is.EqualTo("PP you can gain if you achieve FC. Click to switch SS case."));
+                AddStep("switch to perfect case", () => estimateArea.TriggerClick());
+                AddUntilStep("perfect estimate shown", () => estimateArea.ChildrenOfType<SpriteText>().Single().Text.ToString(), () => Is.EqualTo($"if {perfectLabel} {Math.Round(perfectExpected, MidpointRounding.AwayFromZero)}pp"));
+                AddAssert("perfect tooltip explains gain and switch back", () => estimateArea.TooltipText.ToString(), () => Is.EqualTo($"PP you can gain if you achieve {perfectLabel}. Click to switch to FC case."));
+                AddStep("switch back to FC case", () => estimateArea.TriggerClick());
+                AddUntilStep("FC estimate restored", () => estimateArea.ChildrenOfType<SpriteText>().Single().Text.ToString(), () => Is.EqualTo($"if FC {Math.Round(fullComboExpected, MidpointRounding.AwayFromZero)}pp"));
+                AddAssert("FC tooltip restored", () => estimateArea.TooltipText.ToString(), () => Is.EqualTo("PP you can gain if you achieve FC. Click to switch SS case."));
+            }
         }
 
         [TestCase(112.34, "+12.34pp")]
@@ -95,7 +124,7 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("loaded", () => statistic.IsLoaded);
             AddStep("show values", () => statistic.Appear());
             AddUntilStep("PP delta is relative to beatmap PB", () => statistic.ChildrenOfType<osu.Game.Screens.Ranking.V2StatisticChange>().Single()
-                                                                  .ChildrenOfType<SpriteText>().Single().Text.ToString(), () => Is.EqualTo(expected));
+                                                                              .ChildrenOfType<SpriteText>().Single().Text.ToString(), () => Is.EqualTo(expected));
         }
 
         [Test]
@@ -112,7 +141,7 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("loaded", () => statistic.IsLoaded);
             AddStep("show values", () => statistic.Appear());
             AddUntilStep("server PP displayed", () => statistic.ChildrenOfType<StatisticCounter>().Single().DisplayedCount, () => Is.EqualTo(42));
-            AddAssert("no fabricated FC estimate", () => statistic.ChildrenOfType<SpriteText>().Single(t => t.Name == "If FC performance").Text.ToString(), () => Is.Empty);
+            AddAssert("no fabricated FC estimate", () => statistic.ChildrenOfType<OsuHoverContainer>().Single(t => t.Name == "If FC performance").ChildrenOfType<SpriteText>().Single().Text.ToString(), () => Is.Empty);
         }
 
         private partial class TestDifficultyCache : BeatmapDifficultyCache
