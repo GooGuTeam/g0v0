@@ -76,7 +76,27 @@ command -v readelf > /dev/null || { echo "ERROR: readelf is required to verify A
 
 tmp_lib=$(mktemp)
 trap 'rm -f "$tmp_lib"' EXIT
-for abi in arm64-v8a armeabi-v7a x86; do
+
+# The shipped ABI set is whatever the build actually packaged: since the move to CoreCLR on Android
+# (upstream #39029) the app is arm64-only, so demanding the old 32-bit/x86 ABIs fails every build.
+# Detect the ABIs that actually carry the audio libraries and verify each of them, while keeping
+# arm64-v8a mandatory so a silently dropped ABI is still caught.
+apk_abis=$(unzip -l Releases/g0v0.apk | tr -d '\r' | sed -n 's|.*lib/\([^/]*\)/libbass\.so$|\1|p' | sort -u | tr '\n' ' ')
+apk_abis="${apk_abis% }"
+
+if [[ -z "$apk_abis" ]]; then
+  echo "ERROR: no libbass.so found in the packaged APK for any ABI."
+  exit 1
+fi
+
+echo "Audio library ABIs found in APK: $apk_abis"
+
+if ! grep -qw arm64-v8a <<< "$apk_abis"; then
+  echo "ERROR: lib/arm64-v8a/libbass.so is missing from the packaged APK."
+  exit 1
+fi
+
+for abi in $apk_abis; do
   for lib in libbass.so libbassmix.so libbass_fx.so; do
     if ! unzip -p Releases/g0v0.apk "lib/$abi/$lib" > "$tmp_lib" || [[ ! -s "$tmp_lib" ]]; then
       rm -f "$tmp_lib"
@@ -102,4 +122,4 @@ for abi in arm64-v8a armeabi-v7a x86; do
 done
 rm -f "$tmp_lib"
 
-echo "Verified that the packaged audio libraries are Android builds for every supported ABI."
+echo "Verified that the packaged audio libraries are Android builds for every shipped ABI ($apk_abis)."
