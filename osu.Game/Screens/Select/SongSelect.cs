@@ -32,6 +32,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Collections;
 using osu.Game.Configuration;
 using osu.Game.Database;
+using osu.Game.Graphics;
 using osu.Game.Graphics.Carousel;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Cursor;
@@ -147,9 +148,6 @@ namespace osu.Game.Screens.Select
 
         public override bool? ApplyModTrackAdjustments => true;
 
-        public override bool ShowFooter => true;
-
-
         private Sample? errorSample;
 
         [Resolved]
@@ -193,6 +191,11 @@ namespace osu.Game.Screens.Select
         private Bindable<bool> showConvertedBeatmaps = null!;
 
         private IDisposable? modSelectOverlayRegistration;
+
+        protected SongSelect()
+        {
+            FooterContent.Value = ScreenFooterContent.Argon(leftButtons: CreateFooterButtons);
+        }
 
         [BackgroundDependencyLoader]
         private void load(AudioManager audio, OsuConfigManager config)
@@ -258,7 +261,6 @@ namespace osu.Game.Screens.Select
                                                     wedgesContainer = new FillFlowContainer
                                                     {
                                                         RelativeSizeAxes = Axes.Both,
-                                                        Spacing = new Vector2(0f, 4f),
                                                         Direction = FillDirection.Vertical,
                                                         Children = new Drawable[]
                                                         {
@@ -266,6 +268,11 @@ namespace osu.Game.Screens.Select
                                                             {
                                                                 TopPadding = TopPadding,
                                                             }),
+                                                            new InputBlockingContainer
+                                                            {
+                                                                RelativeSizeAxes = Axes.X,
+                                                                Height = 4
+                                                            },
                                                             new ShearAligningWrapper(detailsArea = new BeatmapDetailsArea()),
                                                         },
                                                     },
@@ -535,7 +542,7 @@ namespace osu.Game.Screens.Select
         /// </summary>
         protected abstract void OnStart();
 
-        public override IReadOnlyList<ScreenFooterButton> CreateFooterButtons() => new ScreenFooterButton[]
+        public virtual IReadOnlyList<ScreenFooterButton> CreateFooterButtons() => new ScreenFooterButton[]
         {
             new FooterButtonMods(modSelectOverlay)
             {
@@ -956,6 +963,7 @@ namespace osu.Game.Screens.Select
             modSelectOverlay.SelectedMods.UnbindFrom(Mods);
             modSelectOverlay.Ruleset.UnbindFrom(Ruleset);
             modSelectOverlay.Beatmap.UnbindFrom(Beatmap);
+            modSelectOverlay.Hide();
 
             updateWedgeVisibility();
 
@@ -1066,6 +1074,7 @@ namespace osu.Game.Screens.Select
         public bool IsFiltering => carousel.IsFiltering || filterDebounce?.State == ScheduledDelegate.RunState.Waiting;
 
         private const double filter_delay = 250;
+        public const double REVEAL_BACKGROUND_DELAY = 200;
 
         private ScheduledDelegate? filterDebounce;
 
@@ -1182,7 +1191,7 @@ namespace osu.Game.Screens.Select
                     updateBackgroundDim();
 
                     Footer?.Hide();
-                }, 200);
+                }, REVEAL_BACKGROUND_DELAY);
             }
 
             return base.OnMouseDown(e);

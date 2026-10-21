@@ -39,7 +39,9 @@ namespace osu.Game.Screens.Select
         // as those will usually correspond to other interactions like adjusting volume.
         protected override bool OnScroll(ScrollEvent e) => !e.ControlPressed && !e.AltPressed && !e.ShiftPressed && !e.SuperPressed;
 
-        protected override bool OnMouseDown(MouseDownEvent e) => true;
+        // Only claim the mouse-down in legacy (drag-forwarding) mode; otherwise let it fall through to
+        // whatever is underneath, matching upstream's background-preview behaviour.
+        protected override bool OnMouseDown(MouseDownEvent e) => canForwardDrag?.Invoke() == true;
 
         // Only claim the drag when forwarding is allowed (legacy mode); otherwise leave behaviour as-is.
         protected override bool OnDragStart(DragStartEvent e) => canForwardDrag?.Invoke() == true;

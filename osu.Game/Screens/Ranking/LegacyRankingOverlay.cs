@@ -272,10 +272,10 @@ namespace osu.Game.Screens.Ranking
 
             // look de stable: sin el back button rosa de lazer, y la barra stock de abajo ni
             // reserva altura de layout (su fila de grid es auto-size) ni dibuja. va ACA y no en
-            // load(): setear BackButtonVisibility dispara sincronico la animacion del BackButton
-            // global (PopOut), y desde el loader thread async eso es una mutacion ilegal
-            // (InvalidThreadForMutationException). LoadComplete corre siempre en el update thread.
-            screen.BackButtonVisibility.Value = false;
+            // load(): tocar el estado del footer global desde el loader thread async es una
+            // mutacion ilegal (InvalidThreadForMutationException). LoadComplete corre siempre en
+            // el update thread.
+            screen.SetFooterBackButtonVisible(false);
             stockBottomPanel.Height = 0;
 
             if (directModeActive)

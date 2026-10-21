@@ -60,6 +60,11 @@ namespace osu.Game.Localisation
         public static LocalisableString BeatmapHitsounds => new TranslatableString(getKey(@"beatmap_hitsounds"), @"Beatmap hitsounds");
 
         /// <summary>
+        /// "Hitsound volume"
+        /// </summary>
+        public static LocalisableString HitsoundVolume => new TranslatableString(getKey(@"hitsound_volume"), @"Hitsound volume");
+
+        /// <summary>
         /// "Remember a separate skin for each ruleset"
         /// </summary>
         public static LocalisableString RememberSeparateSkinForEachRuleset => new TranslatableString(getKey(@"remember_separate_skin_for_each_ruleset"), @"Remember a separate skin for each ruleset");
