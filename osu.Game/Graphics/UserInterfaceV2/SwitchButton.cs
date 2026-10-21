@@ -4,6 +4,7 @@
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Sample;
+using osu.Framework.Development;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
@@ -101,6 +102,12 @@ namespace osu.Game.Graphics.UserInterfaceV2
 
         private void updateState()
         {
+            if (!ThreadSafety.IsUpdateThread)
+            {
+                Scheduler.AddOnce(updateState);
+                return;
+            }
+
             Color4 fillColour = colourProvider.Background5.Opacity(0);
             Color4 borderColour = colourProvider.Light4;
 

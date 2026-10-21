@@ -3,7 +3,7 @@
 #
 # Environment (set by the workflow):
 #   RUNTIME             RID that was published, e.g. osx-x64 / osx-arm64
-#   VELOPACK_VERSION    three-part version required by Velopack
+#   VELOPACK_VERSION    three-part version plus channel suffix, e.g. 2026.1013.0-robin
 #   EXECUTABLE          published executable name
 set -euo pipefail
 

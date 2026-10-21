@@ -104,10 +104,57 @@ bash InspectCode.sh               # ReSharper 静态检查；Windows: ./InspectC
 
 ### 用户可见字符串（本地化）
 
-1. 在 `osu.Game/Localisation/<X>Strings.cs` 里按现有模式加 `getKey(@"snake_case_key")` + 英文原文；
-2. 同时在资源仓库 `g0v0-resources` 的 `osu.Game.Resources/Localisation/<X>.resx`（英文源文件，无 locale 后缀）补上同名 `<data name="...">` 条目 —— 缺了这个 key，翻译管线拿不到它；
-3. `<X>.<locale>.resx` 由 Crowdin 生成，**不要手写**；
-4. 资源改动在 `g0v0-resources` 仓库提交、打 tag、发布新的 `g0v0.osu.Game.Resources` 包；主仓库再把 `G0V0ResourcesVersion` 更新到该版本。
+**改到用户看得见的文案（标签、提示、tooltip、报错信息……）时，一次改动要同时落到两个仓库**：本仓库里的
+`*Strings.cs` 类，和资源仓库 `g0v0-resources` 里的 `.resx`。只改前者，用户要么继续看到旧译文、要么看到
+英文 fallback；只改后者，那个 key 立刻变成孤儿。
+
+资源仓库是**独立 clone**，不在本仓库里（`osu.Game.Resources.Custom/` 只是遗留的构建产物目录，不是它）。
+动手前先定位：
+
+```bash
+ls -d ../g0v0-resources ../../g0v0-resources ../osu-resources ./osu.Game.Resources 2>/dev/null
+```
+
+**找不到就问用户**——不要在本仓库里自己 clone 一份，也不要凭印象编 resx 路径。请用户执行：
+
+```bash
+git clone https://github.com/GooGuTeam/g0v0-resources.git ../g0v0-resources
+```
+
+找到之后的顺序：
+
+1. **改类**。所有 `*Strings.cs` 都在 `osu.Game/Localisation/` 下（规则集的在
+   `Catch` / `HUD` / `Mania` / `Osu` / `SkinComponents` / `Taiko` 子目录），按现有模式加
+   `getKey(@"snake_case_key")` + 英文原文。类里的 `private const string prefix` 是**唯一权威**的
+   命名空间来源，它最后一段就是目标 resx 的文件名：
+   `osu.Game.Resources.Localisation.Catch.Action` → `Localisation/Catch/Action.resx`。
+2. **补英文条目**。base resx（**文件名里只有一个点**的那个：`Common.resx` 是，`Common.zh.resx` 不是）
+   由 `ppy.localisationanalyser.tools` 生成，不要手抄一遍：
+   ```bash
+   dotnet tool restore
+   DOTNET_ROLL_FORWARD=LatestMajor dotnet localisation to-resx osu.Game/osu.Game.csproj --output /tmp/resx
+   ```
+   `DOTNET_ROLL_FORWARD` 是因为这个工具标的是 net8、开发机上只有 net10 运行时。
+   先输出到临时目录再比着改，别直接 `--output` 到资源仓库：那会重写全部 167 个 base resx，而且这个工具在
+   `2026.611.0` 上**跑不完**——读到 `ChatStrings.cs`（里面有 C# 原始字符串字面量 `"""`）会
+   `NullReferenceException` 崩掉，之前已经写出的十几个文件留在原地。碰到 `ChatStrings.cs` /
+   `GeneralSettingsStrings.cs` 这两处，那一条 `<data>` 手工照格式补。
+3. **补中文**。在 `<X>.zh.resx` 和 `<X>.zh-Hant.resx` 里加同名 `<data name="...">` 并写译文 ——
+   **双语是硬要求**：新 key 至少同时进 base 与 `zh`（fork 现状 base:zh = 167:167 全齐，`zh-Hant`
+   161:167，有把握就一并补）。上游那 40 多种语言由 Crowdin 维护（`l10n_master` 分支），**不要手写**；
+   `zh` / `zh-Hant` 是本 fork 自己维护的，就是要手写。
+   - resx 一律 **UTF-8 带 BOM**；保留 `<data>` 上的 `xml:space="preserve"`，条目顺序与 base 对齐。
+   - 行尾不要操心：两个仓库都没有 `.gitattributes`，本机 `core.autocrlf=true` 会在 checkout 时写出
+     CRLF、提交时收回 LF。**不要**在资源仓库里「顺手修正」行尾，也不要为它新增 `.gitattributes`。
+4. **自查**。`.agents/skills/localisation-sync/` 里有 SKILL.md 和只读脚本
+   `scripts/check-strings.sh`：它从 diff 里取出本次新增/改动的 key，逐个核对两个仓库是否都有。
+   交叉校验器也能在本地跑：
+   ```bash
+   dotnet run --project ../g0v0-l10n-checker/src/g0v0.LocalisationChecker -- \
+     --osu . --resources ../g0v0-resources --format human
+   ```
+5. **发版**。资源改动在 `g0v0-resources` 仓库提交、打 `v<version>-g0v0` 标签、发布新的
+   `g0v0.osu.Game.Resources` 包；主仓库再把 `G0V0ResourcesVersion` 更新到该版本（第 7 节）。
 
 ### 测试
 
@@ -149,7 +196,7 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 | 自定义 API 服务器设置 | `osu.Game/OsuGameBase.cs`、`osu.Game/Configuration/OsuConfigManager.cs`、`osu.Game/Online/TrustedDomainOnlineStore.cs`、`osu.Game/Overlays/Settings/Sections/Online/ContentDownloadSettings.cs` |
 | 规则集哈希校验 | `osu.Game/Rulesets/RulesetHashCache.cs`、`osu.Game/Online/API/APIAccess.cs`、`osu.Game/Online/HubClientConnector.cs`、`osu.Game/Screens/Play/{SubmittingPlayer,SoloPlayer,RoomSubmittingPlayer}.cs` |
 | Relax / Autopilot | `osu.Game/Rulesets/Mods/ModRelax.cs`、`osu.Game.Rulesets.Osu/Difficulty/Skills/Relax.cs`、`osu.Game.Rulesets.Osu/Difficulty/Evaluators/Relax{Aim,Rhythm}Evaluator.cs` |
-| 更新源（指向 GooGuTeam/osu） | `osu.Game/Updater/{MobileUpdateNotifier,NoActionUpdateManager}.cs`，桌面侧用 Velopack（`osu.Desktop`） |
+| 更新源（GooGuTeam/g0v0，双通道 g0v0/robin） | `osu.Game/Updater/{MobileUpdateNotifier,NoActionUpdateManager}.cs`（查 `GooGuTeam/g0v0` Releases），桌面侧用 Velopack（`osu.Desktop`） |
 | 错误上报 | `osu.Game/Utils/SentryLogger.cs`（仅当连接的是 g0v0.top 时启用） |
 | 程序名 / 图标 | `osu.Desktop/osu.Desktop.csproj`（`AssemblyName` = `g0v0!`） |
 | 奖章素材与新增奖章 | `osu.Game/Users/Medal.cs`（`lazer-data.g0v0.top`）、`osu.Game/Medals/Awarders/` |
@@ -161,8 +208,9 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 ## 7. CI 与发布
 
 - `.github/workflows/ci.yml`：`inspect-code`（构建 + CheckSanity + InspectCode）、`test`（Windows/Linux × 两种线程模型，120 分钟超时）、`build-only-android` 等。
+- `.github/workflows/localisation.yml`：把本仓库的 `*Strings.cs` 与资源仓库的 `.resx` 交叉校验（实现放在 `GooGuTeam/g0v0-l10n-checker`，本文件只说谁在什么时机调用它）。结果同时给出行内注解、job summary 和 code scanning 告警；资源仓库侧有一份镜像调用，两边各自上传自己那一半。历史上已知的差异记在 `.localisation-baseline.json`，只挡新增问题。
 - 主仓库 `.github/workflows/release.yml`：
-  - **完整发布**：`v*-g0v0` 标签（如 `v2026.913.1-g0v0`）触发全平台构建 + NuGet + GitHub Release。NuGet 任务会先校验 `g0v0.osu.Game.Resources` 的 `G0V0ResourcesVersion` 固定版本包已发布，再发 `g0v0.osu.Game` 和全部 ruleset（`Osu` / `Catch` / `Mania` / `Taiko`）。
+  - **完整发布**：`v*-g0v0` 标签（如 `v2026.913.1-g0v0`，稳定通道）或 `v*-robin` 标签（如 `v2026.1013.0-robin`，不稳定通道，GitHub Release 会标记为 prerelease）触发全平台构建 + NuGet + GitHub Release。双通道的实现与上游 lazer/tachyon 同构：通道编码进版本后缀，Velopack nupkg 版本带 `-g0v0`/`-robin` 后缀。NuGet 任务会先校验 `g0v0.osu.Game.Resources` 的 `G0V0ResourcesVersion` 固定版本包已发布，再发 `g0v0.osu.Game` 和全部 ruleset（`Osu` / `Catch` / `Mania` / `Taiko`）。
   - **仅 NuGet / 不重跑平台构建**：`v*-g0v0-nuget-only` 标签（如 `v2026.913.2-g0v0-nuget-only`）只跑 `version` 和 `nuget` 两个 job，**不跑平台构建、不创建 GitHub Release**。版本号同样取 tag 中的数字（仍要取下一个可用版本号；`g0v0.osu.Game.Resources` 的 `G0V0ResourcesVersion` 固定版本必须已发布，可与本 tag 版本不同）。
 - 资源仓库 `GooGuTeam/g0v0-resources` 的 `.github/workflows/release.yml`：同样由 **`v*-g0v0`** 标签触发（发布资源包时也手动 dispatch 版本），使用 NuGet trusted publisher 发布 `g0v0.osu.Game.Resources`。**固定版本资源包首次使用时先发资源包；之后的规则集/主包发布无需每次重新发资源包。**
 - **推送标签时只推 `-g0v0` 的发布标签。** 绝不要用 `git push --tags`：本地约 930 个标签里绝大多数是随 `upstream` 一起 fetch 下来的上游历史标签，一条命令就会把它们全部推到 `origin`。始终用显式标签名：
@@ -189,4 +237,5 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 
 - 改完先跑 `bash CheckSanity.sh <改动目录>`，涉及公共 API 或分析器规则时再加 `bash InspectCode.sh`（Windows 用 `./InspectCode.ps1`），然后跑与改动相关的测试项目，不要动辄全量。
 - 判断某处差异是不是「fork 有意为之」时，查 `git log`、同步基线标签、`.agents/skills/trademark-check/references/known-outstanding.md`，别凭感觉改回去。
+- 碰到用户可见文案，先按第 3 节「用户可见字符串」把类、base resx、`zh` 三处一起改；资源仓库没 clone 就直接问用户要路径，别跳过、也别自己往本仓库里 clone。核对时用 `.agents/skills/localisation-sync/`。
 - 上游大版本升级后，优先核对 `global.json`、csproj 的 `TargetFramework` 与 CI 里的 SDK / framework 版本三者一致。

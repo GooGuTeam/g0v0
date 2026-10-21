@@ -430,8 +430,8 @@ namespace osu.Game.Tests.Beatmaps.Formats
 
             Assert.Multiple(() =>
             {
-                // In stable this would be an A because there are over 1% 50s. But that's not a thing in lazer.
-                Assert.That(decoded.ScoreInfo.Rank, Is.EqualTo(ScoreRank.SH));
+                // In stable this is an A because there are over 1% 50s (classic grade simulation).
+                Assert.That(decoded.ScoreInfo.Rank, Is.EqualTo(ScoreRank.A));
             });
         }
 

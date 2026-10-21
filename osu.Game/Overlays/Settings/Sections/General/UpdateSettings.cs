@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Threading.Tasks;
@@ -80,7 +80,7 @@ namespace osu.Game.Overlays.Settings.Sections.General
                 {
                     configReleaseStream.BindValueChanged(s =>
                     {
-                        releaseStreamDropdownNote.Value = s.NewValue != ReleaseStream.Lazer
+                        releaseStreamDropdownNote.Value = s.NewValue != ReleaseStream.G0V0
                             ? new SettingsNote.Data(GeneralSettingsStrings.ReleaseStreamNonStableUpgradeInformation, SettingsNote.Type.Informational)
                             : null;
                     }, true);
@@ -100,7 +100,7 @@ namespace osu.Game.Overlays.Settings.Sections.General
         {
             switch (stream.NewValue)
             {
-                case ReleaseStream.Lazer:
+                case ReleaseStream.G0V0:
                     configReleaseStream.Value = stream.NewValue;
                     break;
 

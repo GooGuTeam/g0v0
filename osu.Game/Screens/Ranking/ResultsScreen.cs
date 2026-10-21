@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -19,6 +19,7 @@ using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Screens;
 using osu.Game.Audio;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
@@ -26,7 +27,6 @@ using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osu.Game.Online.Placeholders;
 using osu.Game.Overlays;
-using osu.Game.Overlays.Volume;
 using osu.Game.Scoring;
 using osu.Game.Screens.Play;
 using osu.Game.Screens.Ranking.Expanded.Accuracy;
@@ -50,6 +50,19 @@ namespace osu.Game.Screens.Ranking
 
         public readonly Bindable<ScoreInfo?> SelectedScore = new Bindable<ScoreInfo?>();
 
+        /// <summary>
+        /// Set only when the leaderboard confirms that the presented score is the local user's best.
+        /// </summary>
+        public readonly BindableBool IsPersonalBest = new BindableBool();
+
+        /// <summary>
+        /// The pre-play personal best by PP on this beatmap. Null when no reliable baseline is available.
+        /// </summary>
+        public readonly Bindable<ScoreInfo?> ComparisonScore = new Bindable<ScoreInfo?>();
+
+        public readonly BindableBool V2DetailsVisible = new BindableBool();
+        public readonly BindableBool V2LeaderboardVisible = new BindableBool();
+
         public readonly ScoreInfo? Score;
 
         protected ScorePanelList ScorePanelList { get; private set; } = null!;
@@ -64,9 +77,35 @@ namespace osu.Game.Screens.Ranking
         protected StatisticsPanel StatisticsPanel { get; private set; } = null!;
 
         private Drawable bottomPanel = null!;
+        private V2ResultsFooter v2Footer = null!;
+        private Box classicFooterBackground = null!;
+        private FillFlowContainer buttons = null!;
         private Container<ScorePanel> detachedPanelContainer = null!;
 
         private Task lastFetchTask = Task.CompletedTask;
+
+        private readonly Bindable<bool> useV2ResultsScreen = new Bindable<bool>();
+        private Container v2PanelContainer = null!;
+        private ShearedButton layoutButton = null!;
+        private ShearedButton backButton = null!;
+        private bool showingOriginalLayout;
+        private bool v2PanelLoading;
+        private bool hasEntered;
+
+        internal bool LegacyStableDirectMode;
+        private LegacyRankingOverlay? legacyOverlay;
+        private bool useLegacyResults;
+
+        private bool v2LayoutEnabled => !useLegacyResults && useV2ResultsScreen.Value && this is SoloResultsScreen && Score?.BeatmapInfo != null;
+        private bool showingV2Layout => v2LayoutEnabled && !showingOriginalLayout;
+
+        /// <summary>
+        /// Whether the current score should play the full flair sequence (sound + animation),
+        /// matching the original expanded result screen behaviour.
+        /// </summary>
+        private bool shouldFlairForCurrentScore => player != null && Score?.User.IsBot == false && !(useLegacyResults && this is SoloResultsScreen);
+
+        public bool IsV2Overview => showingV2Layout;
 
         /// <summary>
         /// Whether the user can retry the beatmap from the results screen.
@@ -97,9 +136,11 @@ namespace osu.Game.Screens.Ranking
         }
 
         [BackgroundDependencyLoader]
-        private void load(AudioManager audio)
+        private void load(AudioManager audio, OsuConfigManager config)
         {
-            FillFlowContainer buttons;
+            // Bind directly: a temporary GetBindable() copy may be collected and break live setting updates.
+            config.BindWith(OsuSetting.UseV2ResultsScreen, useV2ResultsScreen);
+            useLegacyResults = config.Get<bool>(OsuSetting.ToriiStableResults);
 
             popInSample = audio.Samples.Get(@"UI/overlay-pop-in");
 
@@ -122,7 +163,6 @@ namespace osu.Game.Screens.Ranking
                                     RelativeSizeAxes = Axes.Both,
                                     Children = new Drawable[]
                                     {
-                                        new GlobalScrollAdjustsVolume(),
                                         StatisticsPanel = new StatisticsPanel
                                         {
                                             RelativeSizeAxes = Axes.Both,
@@ -139,6 +179,11 @@ namespace osu.Game.Screens.Ranking
                                         {
                                             RelativeSizeAxes = Axes.Both
                                         },
+                                        v2PanelContainer = new Container
+                                        {
+                                            RelativeSizeAxes = Axes.Both,
+                                            Alpha = 0,
+                                        },
                                     }
                                 }
                             },
@@ -154,7 +199,7 @@ namespace osu.Game.Screens.Ranking
                                 Alpha = 0,
                                 Children = new Drawable[]
                                 {
-                                    new Box
+                                    classicFooterBackground = new Box
                                     {
                                         RelativeSizeAxes = Axes.Both,
                                         Colour = Color4Extensions.FromHex("#333")
@@ -179,17 +224,69 @@ namespace osu.Game.Screens.Ranking
                 }
             };
 
+            ((Container)bottomPanel).Add(v2Footer = new V2ResultsFooter
+            {
+                Alpha = 0,
+                Score = Score,
+                AllowWatchingReplay = AllowWatchingReplay,
+                BackAction = () =>
+                {
+                    if (!OnBackButton())
+                        this.Exit();
+                },
+                RankingAction = () =>
+                {
+                    foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                        panel.ToggleLeaderboard();
+                },
+                DetailsAction = () =>
+                {
+                    foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                        panel.ToggleDetails();
+                },
+                RetryAction = player != null && AllowRetry ? restartPlayer : null,
+            });
+
+            v2Footer.DetailsVisible.BindTo(V2DetailsVisible);
+            v2Footer.LeaderboardVisible.BindTo(V2LeaderboardVisible);
+
             if (Score != null)
             {
                 // only show flair / animation when arriving after watching a play that isn't autoplay.
-                bool shouldFlair = player != null && !Score.User.IsBot;
+                bool shouldFlair = shouldFlairForCurrentScore;
 
-                ScorePanelList.AddScore(Score, shouldFlair);
+                ScorePanelList.AddScore(Score, shouldFlair && !v2LayoutEnabled);
+
+                if (v2LayoutEnabled)
+                    v2PanelContainer.Add(new V2ResultsPanel(Score, shouldFlair));
                 // this is mostly for medal display.
                 // we don't want the medal animation to trample on the results screen animation, so we (ab)use `OverlayActivationMode`
                 // to give the results screen enough time to play the animation out before the medals can be shown.
-                Scheduler.AddDelayed(() => OverlayActivationMode.Value = OverlayActivation.All, shouldFlair ? AccuracyCircle.TOTAL_DURATION + 1000 : 0);
+                Scheduler.AddDelayed(() => OverlayActivationMode.Value = OverlayActivation.All, shouldFlair ? AccuracyCircle.TOTAL_DURATION + 1000 : useLegacyResults && this is SoloResultsScreen ? 4000 : 0);
             }
+
+            buttons.Add(backButton = new ShearedButton
+            {
+                Text = CommonStrings.Back,
+                Width = 140,
+                Height = 30,
+                DarkerColour = Color4Extensions.FromHex("#CF2BA5"),
+                Action = this.Exit,
+                Alpha = 0,
+            });
+
+            buttons.Add(layoutButton = new ShearedButton
+            {
+                Width = 220,
+                Height = 30,
+                Action = () =>
+                {
+                    StatisticsPanel.Hide();
+                    showingOriginalLayout = !showingOriginalLayout;
+                    updateResultsLayout();
+                },
+                Alpha = 0,
+            });
 
             bool allowHotkeyRetry = false;
 
@@ -222,6 +319,12 @@ namespace osu.Game.Screens.Ranking
                     {
                         if (!this.IsCurrentScreen()) return;
 
+                        if (showingV2Layout && v2Footer.RetryButton.Enabled.Value)
+                        {
+                            v2Footer.RetryButton.TriggerClick();
+                            return;
+                        }
+
                         skipExitTransition = true;
                         player?.Restart(true);
                     },
@@ -233,6 +336,9 @@ namespace osu.Game.Screens.Ranking
 
             if (Score?.BeatmapInfo?.BeatmapSet != null && Score.BeatmapInfo.BeatmapSet.OnlineID > 0)
                 buttons.Add(new FavouriteButton(Score.BeatmapInfo.BeatmapSet));
+
+            if (useLegacyResults)
+                AddInternal(legacyOverlay = new LegacyRankingOverlay(this, StatisticsPanel, VerticalScrollContent, bottomPanel, autoShowDetails: this is SoloResultsScreen) { Depth = float.MinValue });
         }
 
         protected override void LoadComplete()
@@ -240,13 +346,113 @@ namespace osu.Game.Screens.Ranking
             base.LoadComplete();
 
             StatisticsPanel.State.BindValueChanged(onStatisticsStateChanged, true);
+            useV2ResultsScreen.BindValueChanged(_ =>
+            {
+                showingOriginalLayout = false;
+                updateResultsLayout();
+            }, true);
 
             fetchScores(null);
+        }
+
+        private void restartPlayer()
+        {
+            skipExitTransition = true;
+            player!.Restart(true);
+        }
+
+        public IEnumerable<ScoreInfo> GetOverviewScores() => ScorePanelList.GetScorePanels().Select(p => p.Score);
+
+        public void SelectOverviewScore(ScoreInfo score)
+        {
+            Schedule(() =>
+            {
+                V2LeaderboardVisible.Value = false;
+                V2DetailsVisible.Value = false;
+                SelectedScore.Value = score;
+                v2PanelContainer.Clear();
+                v2PanelContainer.Add(new V2ResultsPanel(score));
+            });
+        }
+
+        private void showOriginalResults(bool showStatistics)
+        {
+            V2LeaderboardVisible.Value = false;
+            V2DetailsVisible.Value = false;
+
+            foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+            {
+                panel.CloseLeaderboard();
+                panel.CloseDetails();
+            }
+
+            showingOriginalLayout = true;
+            updateResultsLayout();
+            if (showStatistics && SelectedScore.Value != null)
+                StatisticsPanel.Show();
+        }
+
+        private void updateResultsLayout()
+        {
+            if (showingV2Layout)
+            {
+                VerticalScrollContent.ScrollToStart(false);
+                StatisticsPanel.Hide();
+                SelectedScore.Value = Score;
+            }
+            else
+            {
+                V2LeaderboardVisible.Value = false;
+                V2DetailsVisible.Value = false;
+
+                foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                {
+                    panel.CloseLeaderboard();
+                    panel.CloseDetails();
+                }
+            }
+
+            BackButtonVisibility.Value = !showingV2Layout && !useLegacyResults;
+            VerticalScrollContent.FitToViewport = showingV2Layout;
+            v2Footer.Alpha = showingV2Layout ? 1 : 0;
+            classicFooterBackground.Alpha = showingV2Layout ? 0 : 1;
+            buttons.Alpha = showingV2Layout ? 0 : 1;
+            bottomPanel.Height = useLegacyResults ? 0 : showingV2Layout ? DrawWidth * V2ResultsFooter.DESIGN_HEIGHT / 1280 : TwoLayerButton.SIZE_EXTENDED.Y;
+
+            ScorePanelList.Alpha = showingV2Layout ? 0 : 1;
+            ScorePanelList.HandleInput = !showingV2Layout;
+            detachedPanelContainer.Alpha = showingV2Layout ? 0 : 1;
+            v2PanelContainer.Alpha = showingV2Layout ? 1 : 0;
+            layoutButton.Alpha = v2LayoutEnabled ? 1 : 0;
+            backButton.Alpha = v2LayoutEnabled ? 1 : 0;
+            layoutButton.Text = showingV2Layout ? ResultsScreenStrings.LeaderboardAndDetails : ResultsScreenStrings.ScoreOverview;
+
+            foreach (var button in buttons.Children.OfType<ReplayDownloadButton>())
+                button.Width = v2LayoutEnabled ? 180 : 300;
+
+            foreach (var button in buttons.Children.OfType<RetryButton>())
+                button.Width = v2LayoutEnabled ? 180 : 300;
+
+            if (showingV2Layout && v2PanelContainer.Count == 0 && !v2PanelLoading)
+            {
+                v2PanelLoading = true;
+                LoadComponentAsync(new V2ResultsPanel(Score!, shouldFlairForCurrentScore), panel =>
+                {
+                    v2PanelContainer.Add(panel);
+                    v2PanelLoading = false;
+                });
+            }
+
+            if (hasEntered && this.IsCurrentScreen())
+                ApplyToBackground(b => b.BlurAmount.Value = showingV2Layout ? 0 : BACKGROUND_BLUR);
         }
 
         protected override void Update()
         {
             base.Update();
+
+            if (showingV2Layout)
+                bottomPanel.Height = DrawWidth * V2ResultsFooter.DESIGN_HEIGHT / 1280;
 
             if (ScorePanelList.IsScrolledToStart)
                 fetchScores(-1);
@@ -395,10 +601,11 @@ namespace osu.Game.Screens.Ranking
         public override void OnEntering(ScreenTransitionEvent e)
         {
             base.OnEntering(e);
+            hasEntered = true;
 
             ApplyToBackground(b =>
             {
-                b.BlurAmount.Value = BACKGROUND_BLUR;
+                b.BlurAmount.Value = showingV2Layout ? 0 : BACKGROUND_BLUR;
                 b.FadeColour(OsuColour.Gray(0.5f), 250);
             });
 
@@ -426,6 +633,19 @@ namespace osu.Game.Screens.Ranking
 
         public override bool OnBackButton()
         {
+            if (LegacyStableDirectMode)
+                return legacyOverlay?.HandleBackScroll() == true;
+
+            if (showingV2Layout && v2PanelContainer.Children.OfType<V2ResultsPanel>().Any(p => p.CloseLeaderboard() || p.CloseDetails()))
+                return true;
+
+            if (v2LayoutEnabled && showingOriginalLayout && StatisticsPanel.State.Value != Visibility.Visible)
+            {
+                showingOriginalLayout = false;
+                updateResultsLayout();
+                return true;
+            }
+
             if (StatisticsPanel.State.Value == Visibility.Visible)
             {
                 StatisticsPanel.Hide();
@@ -509,6 +729,17 @@ namespace osu.Game.Screens.Ranking
                     break;
 
                 case GlobalAction.Select:
+                    if (LegacyStableDirectMode)
+                        return true;
+
+                    if (showingV2Layout)
+                    {
+                        foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                            panel.ToggleDetails();
+
+                        return true;
+                    }
+
                     if (SelectedScore.Value != null)
                         StatisticsPanel.ToggleVisibility();
                     return true;
@@ -521,18 +752,10 @@ namespace osu.Game.Screens.Ranking
         {
         }
 
-        protected override bool OnScroll(ScrollEvent e)
-        {
-            // Match stable behaviour of only alt-scroll adjusting volume.
-            // This is the same behaviour as the song selection screen.
-            if (!e.CurrentState.Keyboard.AltPressed)
-                return true;
-
-            return base.OnScroll(e);
-        }
-
         protected partial class VerticalScrollContainer : OsuScrollContainer
         {
+            public bool FitToViewport { get; set; }
+
             protected override Container<Drawable> Content => content;
 
             private readonly Container content;
@@ -549,7 +772,7 @@ namespace osu.Game.Screens.Ranking
             protected override void Update()
             {
                 base.Update();
-                content.Height = Math.Max(screen_height, DrawHeight);
+                content.Height = FitToViewport ? DrawHeight : Math.Max(screen_height, DrawHeight);
             }
         }
     }

@@ -89,18 +89,7 @@ jobs:
         run: dotnet build -c Debug -warnaserror osu.Desktop.slnf
 
       - name: Test
-        run: >
-          dotnet test
-          osu.Game.Tests/bin/Debug/**/osu.Game.Tests.dll
-          osu.Game.Rulesets.Osu.Tests/bin/Debug/**/osu.Game.Rulesets.Osu.Tests.dll
-          osu.Game.Rulesets.Taiko.Tests/bin/Debug/**/osu.Game.Rulesets.Taiko.Tests.dll
-          osu.Game.Rulesets.Catch.Tests/bin/Debug/**/osu.Game.Rulesets.Catch.Tests.dll
-          osu.Game.Rulesets.Mania.Tests/bin/Debug/**/osu.Game.Rulesets.Mania.Tests.dll
-          osu.Game.Tournament.Tests/bin/Debug/**/osu.Game.Tournament.Tests.dll
-          Templates/**/*.Tests/bin/Debug/**/*.Tests.dll
-          --logger "trx;LogFileName=TestResults-${{matrix.os.prettyname}}-${{matrix.threadingMode}}.trx"
-          --
-          NUnit.ConsoleOut=0
+        run: dotnet test osu.Desktop.slnf --logger "trx;LogFileName=TestResults-${{matrix.os.prettyname}}-${{matrix.threadingMode}}.trx" -- NUnit.ConsoleOut=0
 
       # Attempt to upload results even if test fails.
       # https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#cancelled
@@ -109,7 +98,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: osu-test-results-${{matrix.os.prettyname}}-${{matrix.threadingMode}}
-          path: ${{github.workspace}}/TestResults/TestResults-${{matrix.os.prettyname}}-${{matrix.threadingMode}}.trx
+          path: ${{github.workspace}}/**/TestResults/TestResults-${{matrix.os.prettyname}}-${{matrix.threadingMode}}.trx
 
   test-results:
     name: Test results
@@ -133,7 +122,7 @@ jobs:
         uses: dorny/test-reporter@v3.0.0
         with:
           name: Results
-          path: "*.trx"
+          path: "**/*.trx"
           reporter: dotnet-trx
           list-suites: 'failed'
           list-tests: 'failed'
@@ -166,7 +155,7 @@ jobs:
 
   build-only-ios:
     name: Build only (iOS)
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -180,8 +169,22 @@ jobs:
       - name: Install .NET Workloads
         run: dotnet workload install ios
 
-      - name: Use Xcode 26.6
-        run: sudo xcode-select -switch /Applications/Xcode_26.6.app
+      - name: Select Xcode
+        run: |
+          # The iOS projects target net10.0-ios26.0 (the newest platform version the .NET iOS
+          # workload supports alongside 27.0). Any Xcode shipping an iOS SDK >= 26.0 works;
+          # Xcode 26.6 (SDK 26.5) is pinned for deterministic builds. Do not bump this ahead
+          # of the workload's valid TargetPlatformVersion list or the build fails (NETSDK1140).
+          for xcode in Xcode_26.6.app Xcode_26.5.app Xcode_26.0.1.app; do
+            if [ -d "/Applications/$xcode" ]; then
+              sudo xcode-select -switch "/Applications/$xcode"
+              xcodebuild -version
+              exit 0
+            fi
+          done
+          echo "No suitable Xcode (>= iOS 26.0 SDK) found; available versions:" >&2
+          ls /Applications | grep -i xcode >&2 || true
+          exit 1
 
       - name: Build
-        run: dotnet build -c Debug osu.iOS.slnf
+        run: dotnet build -c Debug osu.iOS.slnf -p:ValidateXcodeVersion=false -p:_SuppressXcodeRequirementCheck=true

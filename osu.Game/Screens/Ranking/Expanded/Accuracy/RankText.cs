@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -19,8 +19,11 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
     /// </summary>
     public partial class RankText : CompositeDrawable
     {
+        public bool UseV2Style { get; init; }
+
         private readonly ScoreRank rank;
 
+        private V2RankEmblem? emblem;
         private BufferedContainer flash = null!;
         private BufferedContainer superFlash = null!;
         private GlowingSpriteText rankText = null!;
@@ -39,6 +42,12 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
         [BackgroundDependencyLoader]
         private void load()
         {
+            if (UseV2Style)
+            {
+                InternalChild = emblem = new V2RankEmblem(rank);
+                return;
+            }
+
             InternalChildren = new Drawable[]
             {
                 rankText = new GlowingSpriteText
@@ -100,6 +109,12 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
         public void Appear()
         {
             this.FadeIn();
+
+            if (UseV2Style)
+            {
+                emblem?.Appear();
+                return;
+            }
 
             if (rank < ScoreRank.A)
             {

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -8,6 +8,16 @@ namespace osu.Game.Localisation
     public static class UserInterfaceStrings
     {
         private const string prefix = @"osu.Game.Resources.Localisation.UserInterface";
+
+        /// <summary>
+        /// "Strictly vertical UI (no slant)"
+        /// </summary>
+        public static LocalisableString UnslantedSongSelectUI => new TranslatableString(getKey(@"unslanted_song_select_ui"), @"Strictly vertical UI (no slant)");
+
+        /// <summary>
+        /// "Re-render the slanted Song Select panels (wedges, leaderboard, dropdowns) as straight rectangles. Takes effect on next entry to song select."
+        /// </summary>
+        public static LocalisableString UnslantedSongSelectUIDescription => new TranslatableString(getKey(@"unslanted_song_select_ui_description"), @"Re-render the slanted Song Select panels (wedges, leaderboard, dropdowns) as straight rectangles. Takes effect on next entry to song select.");
 
         /// <summary>
         /// "User Interface"
@@ -204,6 +214,82 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString UserSearch => new TranslatableString(getKey(@"user_search"), @"User search");
 
+        /// <summary>
+        /// "Use V2 results screen"
+        /// </summary>
+        public static LocalisableString UseV2ResultsScreen => new TranslatableString(getKey(@"use_v2_results_screen"), @"Use V2 results screen");
+
+        /// <summary>
+        /// "Show solo results with a large score and rank ring. Disable to use the original layout."
+        /// </summary>
+        public static LocalisableString UseV2ResultsScreenDescription => new TranslatableString(getKey(@"use_v2_results_screen_description"), @"Show solo results with a large score and rank ring. Disable to use the original layout.");
+
+        /// <summary>
+        /// "Song Select Appearance"
+        /// </summary>
+        public static LocalisableString SongSelectAppearanceHeader => new TranslatableString(getKey(@"song_select_appearance_header"), @"Song Select Appearance");
+
+        /// <summary>
+        /// "Legacy song select"
+        /// </summary>
+        public static LocalisableString LegacySongSelect => new TranslatableString(getKey(@"legacy_song_select"), @"Legacy song select");
+
+        /// <summary>
+        /// "Use a stable-style song select with a skinnable footer and rank panel, without the modern filter bar or information wedges. Includes the legacy footer. Reopen song select to apply."
+        /// </summary>
+        public static LocalisableString LegacySongSelectDescription => new TranslatableString(getKey(@"legacy_song_select_description"), @"Use a stable-style song select with a skinnable footer and rank panel, without the modern filter bar or information wedges. Includes the legacy footer. Reopen song select to apply.");
+
+        /// <summary>
+        /// "Use Inter font in legacy song select"
+        /// </summary>
+        public static LocalisableString UseInterFont => new TranslatableString(getKey(@"use_inter_font"), @"Use Inter font in legacy song select");
+
+        /// <summary>
+        /// "Use Inter instead of the default UI font in legacy song select components. Reopen song select to apply."
+        /// </summary>
+        public static LocalisableString UseInterFontDescription => new TranslatableString(getKey(@"use_inter_font_description"), @"Use Inter instead of the default UI font in legacy song select components. Reopen song select to apply.");
+
+        /// <summary>
+        /// "Legacy song select footer"
+        /// </summary>
+        public static LocalisableString LegacySongSelectFooter => new TranslatableString(getKey(@"legacy_song_select_footer"), @"Legacy song select footer");
+
+        /// <summary>
+        /// "Show the stable-style footer and rank panel over the standard song select interface. Always enabled when legacy song select is on; your separate footer preference is preserved. Reopen song select to apply."
+        /// </summary>
+        public static LocalisableString LegacySongSelectFooterDescription => new TranslatableString(getKey(@"legacy_song_select_footer_description"), @"Show the stable-style footer and rank panel over the standard song select interface. Always enabled when legacy song select is on; your separate footer preference is preserved. Reopen song select to apply.");
+
+        /// <summary>
+        /// "Results"
+        /// </summary>
+        public static LocalisableString ResultsHeader => new TranslatableString(getKey(@"results_header"), @"Results");
+
+        /// <summary>
+        /// "Results screen style"
+        /// </summary>
+        public static LocalisableString ResultsScreenStyle => new TranslatableString(getKey(@"results_screen_style"), @"Results screen style");
+
+        /// <summary>
+        /// "Choose the default layout, the modern score and rank ring, or the skinnable stable-style ranking panel. Applies to newly opened results screens."
+        /// </summary>
+        public static LocalisableString ResultsScreenStyleDescription => new TranslatableString(getKey(@"results_screen_style_description"), @"Choose the default layout, the modern score and rank ring, or the skinnable stable-style ranking panel. Applies to newly opened results screens.");
+
+        /// <summary>
+        /// "Default"
+        /// </summary>
+        public static LocalisableString DefaultResultsStyle => new TranslatableString(getKey(@"default_results_style"), @"Default");
+
+        /// <summary>
+        /// "g0v0 V2"
+        /// </summary>
+        public static LocalisableString V2ResultsStyle => new TranslatableString(getKey(@"v2_results_style"), @"g0v0 V2");
+
+        /// <summary>
+        /// "Torii (Legacy)"
+        /// </summary>
+        public static LocalisableString LegacyResultsStyle => new TranslatableString(getKey(@"legacy_results_style"), @"Torii (Legacy)");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }
+

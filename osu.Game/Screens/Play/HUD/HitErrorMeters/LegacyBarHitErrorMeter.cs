@@ -97,12 +97,18 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
             if (!judgement.Type.IsScorable() || judgement.Type.IsBonus())
                 return;
 
+            if (ShouldIgnoreJudgement(judgement))
+                return;
+
+            HitResult displayResult = GetDisplayHitResult(judgement);
+
             float relativePosition = getRelativeJudgementPosition(judgement.TimeOffset);
 
             judgementLinePool.Get(drawableJudgement =>
             {
                 drawableJudgement.X = relativePosition;
-                drawableJudgement.Colour = GetColourForHitResult(judgement.Type);
+                drawableJudgement.Width = 3 / Math.Abs(Scale.X);
+                drawableJudgement.Colour = GetColourForHitResult(displayResult);
 
                 judgementContainer.Add(drawableJudgement);
             });

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -165,20 +165,28 @@ namespace osu.Game.Rulesets.Scoring
         /// </summary>
         private double maximumComboPortion;
 
+        public double MaximumComboPortion => maximumComboPortion;
+
         /// <summary>
         /// The combo score at the current point in time.
         /// </summary>
         private double currentComboPortion;
+
+        public double CurrentComboPortion => currentComboPortion;
 
         /// <summary>
         /// The bonus score at the current point in time.
         /// </summary>
         private double currentBonusPortion;
 
+        public double CurrentBonusPortion => currentBonusPortion;
+
         /// <summary>
         /// The total score multiplier.
         /// </summary>
         private double scoreMultiplier = 1;
+
+        public double ScoreMultiplier => scoreMultiplier;
 
         public Dictionary<HitResult, int> MaximumStatistics
         {
@@ -203,20 +211,68 @@ namespace osu.Game.Rulesets.Scoring
 
         public bool ApplyNewJudgementsWhenFailed { get; set; }
 
+        private bool scoreV2Active;
+
+        public bool ScoreV2Active
+        {
+            get => scoreV2Active;
+            set
+            {
+                if (scoreV2Active == value)
+                    return;
+
+                scoreV2Active = value;
+                if (beatmapApplied && Beatmap.Value != null && JudgedHits == 0)
+                    ApplyBeatmap(Beatmap.Value);
+                else
+                {
+                    updateScoreMultiplier();
+                    updateScore();
+                    updateRank();
+                }
+            }
+        }
+
+        private bool scoreV1Active;
+
+        public bool ScoreV1Active
+        {
+            get => scoreV1Active;
+            set
+            {
+                if (scoreV1Active == value)
+                    return;
+
+                scoreV1Active = value;
+                if (beatmapApplied && Beatmap.Value != null && JudgedHits == 0)
+                    ApplyBeatmap(Beatmap.Value);
+                else
+                {
+                    updateScoreMultiplier();
+                    updateScore();
+                    updateRank();
+                }
+            }
+        }
+
+        protected virtual bool CheckScoreV1Active(IReadOnlyList<Mod> mods) => mods.Any(m => m is ModScoreV1);
+
         public ScoreProcessor(Ruleset ruleset)
         {
             Ruleset = ruleset;
 
             Accuracy.ValueChanged += _ => updateRank();
 
-            Mods.ValueChanged += mods =>
+            Mods.ValueChanged += e =>
             {
+                ScoreV2Active = e.NewValue.Any(m => m is ModScoreV2);
+                ScoreV1Active = !ScoreV2Active && CheckScoreV1Active(e.NewValue);
                 updateScoreMultiplier();
                 updateScore();
                 updateRank();
             };
 
-            Beatmap.ValueChanged += beatmap =>
+            Beatmap.ValueChanged += _ =>
             {
                 updateScoreMultiplier();
             };
@@ -256,13 +312,13 @@ namespace osu.Game.Rulesets.Scoring
             result.ComboAfterJudgement = Combo.Value;
             result.HighestComboAfterJudgement = HighestCombo.Value;
 
-            if (result.Judgement.MaxResult.AffectsAccuracy())
+            if (ResultAffectsAccuracy(result.Judgement.MaxResult))
             {
                 currentMaximumBaseScore += GetBaseScoreForResult(result.Judgement.MaxResult);
                 currentAccuracyJudgementCount++;
             }
 
-            if (result.Type.AffectsAccuracy())
+            if (ResultAffectsAccuracy(result.Type))
                 currentBaseScore += GetBaseScoreForResult(result.Type);
 
             if (result.Type.IsBonus())
@@ -271,6 +327,9 @@ namespace osu.Game.Rulesets.Scoring
                 currentComboPortion += GetComboScoreChange(result);
 
             ApplyScoreChange(result);
+
+            result.ComboAfterJudgement = Combo.Value;
+            result.HighestComboAfterJudgement = HighestCombo.Value;
 
             if (!IsSimulating)
             {
@@ -308,13 +367,13 @@ namespace osu.Game.Rulesets.Scoring
 
             ScoreResultCounts[result.Type] = ScoreResultCounts.GetValueOrDefault(result.Type) - 1;
 
-            if (result.Judgement.MaxResult.AffectsAccuracy())
+            if (ResultAffectsAccuracy(result.Judgement.MaxResult))
             {
                 currentMaximumBaseScore -= GetBaseScoreForResult(result.Judgement.MaxResult);
                 currentAccuracyJudgementCount--;
             }
 
-            if (result.Type.AffectsAccuracy())
+            if (ResultAffectsAccuracy(result.Type))
                 currentBaseScore -= GetBaseScoreForResult(result.Type);
 
             if (result.Type.IsBonus())
@@ -380,6 +439,17 @@ namespace osu.Game.Rulesets.Scoring
             }
         }
 
+        /// <summary>
+        /// Whether a <see cref="HitResult"/> affects accuracy under the current scoring rules.
+        /// </summary>
+        public virtual bool ResultAffectsAccuracy(HitResult result)
+        {
+            if (ScoreV1Active || ScoreV2Active)
+                return result.IsBasic();
+
+            return result.AffectsAccuracy();
+        }
+
         protected virtual void ApplyScoreChange(JudgementResult result)
         {
         }
@@ -388,7 +458,9 @@ namespace osu.Game.Rulesets.Scoring
         {
         }
 
-        private void updateScore()
+        private void updateScore() => UpdateScore();
+
+        protected virtual void UpdateScore()
         {
             Accuracy.Value = currentMaximumBaseScore > 0 ? currentBaseScore / currentMaximumBaseScore : 1;
             MinimumAccuracy.Value = maximumBaseScore > 0 ? currentBaseScore / maximumBaseScore : 0;
@@ -420,8 +492,22 @@ namespace osu.Game.Rulesets.Scoring
             if (Beatmap.Value == null)
                 return;
 
+            var mods = Mods.Value;
+            if (ScoreV2Active && !mods.Any(m => m is ModScoreV2))
+            {
+                var sv2Mod = Ruleset.CreateMod<ModScoreV2>();
+                if (sv2Mod != null)
+                    mods = mods.Append(sv2Mod).ToArray();
+            }
+            else if (ScoreV1Active && !mods.Any(m => m is ModScoreV1))
+            {
+                var sv1Mod = Ruleset.CreateMod<ModScoreV1>();
+                if (sv1Mod != null)
+                    mods = mods.Append(sv1Mod).ToArray();
+            }
+
             var calculator = Ruleset.CreateScoreMultiplierCalculator(new ScoreMultiplierContext(Beatmap.Value.BeatmapInfo.Difficulty));
-            scoreMultiplier = calculator.CalculateFor(Mods.Value);
+            scoreMultiplier = calculator.CalculateFor(mods);
         }
 
         protected virtual double ComputeTotalScore(double comboProgress, double accuracyProgress, double bonusPortion)
@@ -496,6 +582,9 @@ namespace osu.Game.Rulesets.Scoring
             // Populate total score after everything else.
             score.TotalScoreWithoutMods = TotalScoreWithoutMods.Value;
             score.TotalScore = TotalScore.Value;
+
+            if (ScoreV1Active)
+                score.LegacyTotalScore = TotalScore.Value;
         }
 
         /// <summary>

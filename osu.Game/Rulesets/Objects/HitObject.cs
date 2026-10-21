@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
@@ -97,6 +97,12 @@ namespace osu.Game.Rulesets.Objects
         public SlimReadOnlyListWrapper<HitObject> NestedHitObjects => nestedHitObjects.AsSlimReadOnly();
 
         /// <summary>
+        /// The parent <see cref="HitObject"/> if this is a nested hitobject.
+        /// </summary>
+        [JsonIgnore]
+        public HitObject Parent { get; internal set; }
+
+        /// <summary>
         /// Applies default values to this HitObject.
         /// </summary>
         /// <param name="controlPointInfo">The control points.</param>
@@ -107,6 +113,9 @@ namespace osu.Game.Rulesets.Objects
             cancellationToken.ThrowIfCancellationRequested();
 
             ApplyDefaultsToSelf(controlPointInfo, difficulty);
+
+            foreach (var h in nestedHitObjects)
+                h.Parent = null;
 
             nestedHitObjects.Clear();
 
@@ -165,7 +174,11 @@ namespace osu.Game.Rulesets.Objects
         {
         }
 
-        protected void AddNested(HitObject hitObject) => nestedHitObjects.Add(hitObject);
+        protected void AddNested(HitObject hitObject)
+        {
+            hitObject.Parent = this;
+            nestedHitObjects.Add(hitObject);
+        }
 
         /// <summary>
         /// The <see cref="Judgement"/> that represents the scoring information for this <see cref="HitObject"/>.

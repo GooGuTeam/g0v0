@@ -6,6 +6,7 @@
 using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Game.Graphics.UserInterfaceV2;
@@ -47,6 +48,18 @@ namespace osu.Game.Tests.Visual.UserInterface
             AddStep("bind bindable", () => switchButton.Current.BindTo(bindable = new BindableBool()));
             AddStep("toggle bindable", () => bindable.Toggle());
             AddStep("toggle bindable", () => bindable.Toggle());
+        }
+
+        [Test]
+        public void TestChangeThroughBindableFromBackgroundThread()
+        {
+            BindableBool bindable = null;
+
+            AddStep("bind bindable", () => switchButton.Current.BindTo(bindable = new BindableBool()));
+            AddStep("toggle bindable from thread", () => System.Threading.Tasks.Task.Run(() => bindable.Toggle()).WaitSafely());
+            AddAssert("current value is true", () => switchButton.Current.Value);
+            AddStep("toggle bindable from thread again", () => System.Threading.Tasks.Task.Run(() => bindable.Toggle()).WaitSafely());
+            AddAssert("current value is false", () => !switchButton.Current.Value);
         }
 
         [Test]

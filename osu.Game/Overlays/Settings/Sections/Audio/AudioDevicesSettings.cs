@@ -1,17 +1,20 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Graphics;
+using osu.Framework.Graphics.Containers;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework;
 using osu.Framework.Bindables;
+using osu.Framework.Development;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Localisation;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osuTK;
 
 namespace osu.Game.Overlays.Settings.Sections.Audio
 {
@@ -25,6 +28,11 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         private AudioDeviceDropdown dropdown = null!;
 
         private FormCheckBox? legacyAudio;
+        private FormCheckBox? exclusive;
+        private FormCheckBox? autoSharedOnBackground;
+        private FormSliderBar<double>? buffer;
+        private FormSliderBar<double>? period;
+        private FillFlowContainer? wasapiSettings;
 
         [BackgroundDependencyLoader]
         private void load()
@@ -46,6 +54,69 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                 {
                     Keywords = new[] { "wasapi", "latency", "exclusive", "legacy", "experimental" },
                 });
+                Add(new SettingsButtonV2
+                {
+                    Keywords = new[] { "audio" },
+                    Action = () =>
+                    {
+                        audio.RestartAudioEngine();
+                        onDeviceChanged(string.Empty);
+                    },
+                    Text = AudioSettingsStrings.RestartAudioEngine,
+                });
+
+                wasapiSettings = new FillFlowContainer
+                {
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
+                    Direction = FillDirection.Vertical,
+                    Spacing = new Vector2(0, SettingsSection.ITEM_SPACING_V2),
+                    Masking = true,
+                    Children = new Drawable[]
+                    {
+                        new SettingsItemV2(exclusive = new FormCheckBox
+                        {
+                            Current = audio.WasapiIsExclusive,
+                            Caption = AudioSettingsStrings.ExclusiveAudioMode,
+                            HintText = AudioSettingsStrings.ExclusiveAudioModeTooltip,
+                        })
+                        {
+                            Keywords = new[] { "wasapi", "latency", "exclusive" },
+                            CanBeShown = { BindTarget = audio.UseWasapi },
+                        },
+                        new SettingsItemV2(autoSharedOnBackground = new FormCheckBox
+                        {
+                            Current = audio.WasapiAutoSharedOnBackground,
+                            Caption = AudioSettingsStrings.AutoSharedAudioOnBackground,
+                            HintText = AudioSettingsStrings.AutoSharedAudioOnBackgroundTooltip,
+                        })
+                        {
+                            Keywords = new[] { "wasapi", "latency", "exclusive", "background", "shared" },
+                            CanBeShown = { BindTarget = audio.UseWasapi },
+                        },
+                        new SettingsItemV2(buffer = new FormSliderBar<double>
+                        {
+                            Current = audio.WasapiBufferSize,
+                            Caption = AudioSettingsStrings.BufferSize,
+                            HintText = AudioSettingsStrings.BufferSizeTooltip,
+                        })
+                        {
+                            Keywords = new[] { "wasapi", "latency", "exclusive" },
+                            CanBeShown = { BindTarget = audio.UseWasapi },
+                        },
+                        new SettingsItemV2(period = new FormSliderBar<double>
+                        {
+                            Current = audio.WasapiPeriod,
+                            Caption = AudioSettingsStrings.Period,
+                            HintText = AudioSettingsStrings.PeriodTooltip,
+                        })
+                        {
+                            Keywords = new[] { "wasapi", "latency", "exclusive" },
+                            CanBeShown = { BindTarget = audio.UseWasapi },
+                        },
+                    }
+                };
+                Add(wasapiSettings);
 
                 legacyAudio.Current.ValueChanged += _ => onDeviceChanged(string.Empty);
             }
@@ -55,6 +126,41 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
             dropdown.Current = audio.AudioDevice;
 
             onDeviceChanged(string.Empty);
+        }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            if (wasapiSettings != null)
+            {
+                audio.UseWasapi.BindValueChanged(updateWasapiVisibility, true);
+
+                if (autoSharedOnBackground != null)
+                    audio.WasapiIsExclusive.BindValueChanged(v => autoSharedOnBackground.Current.Disabled = !v.NewValue, true);
+            }
+        }
+
+        private void updateWasapiVisibility(ValueChangedEvent<bool> state)
+        {
+            wasapiSettings!.ClearTransforms();
+
+            if (!state.NewValue)
+            {
+                wasapiSettings.AutoSizeAxes = Axes.None;
+                if (state.NewValue == state.OldValue)
+                    wasapiSettings.Height = 0;
+                else
+                    wasapiSettings.ResizeHeightTo(0, 300, Easing.OutQuint);
+            }
+            else
+            {
+                wasapiSettings.AutoSizeDuration = state.NewValue == state.OldValue ? 0 : 300;
+                wasapiSettings.AutoSizeEasing = Easing.OutQuint;
+                wasapiSettings.AutoSizeAxes = Axes.Y;
+
+                ScheduleAfterChildren(() => wasapiSettings.AutoSizeDuration = 0);
+            }
         }
 
         private void onDeviceChanged(string _) => Scheduler.AddOnce(updateItems);
@@ -112,7 +218,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         [BackgroundDependencyLoader]
         private void load(AudioManager audio)
         {
-            configExperimentalAudio = audio.UseExperimentalWasapi.GetBoundCopy();
+            configExperimentalAudio = audio.UseWasapi.GetBoundCopy();
         }
 
         protected override void LoadComplete()
@@ -127,8 +233,13 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
 
             configExperimentalAudio.BindValueChanged(experimental =>
             {
-                Current.Value = !experimental.NewValue;
+                if (ThreadSafety.IsUpdateThread)
+                    Current.Value = !experimental.NewValue;
+                else
+                    Scheduler.AddOnce(updateValue, !experimental.NewValue);
             }, true);
         }
+
+        private void updateValue(bool value) => Current.Value = value;
     }
 }

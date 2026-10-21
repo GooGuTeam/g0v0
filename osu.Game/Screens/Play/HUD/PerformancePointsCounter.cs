@@ -114,6 +114,8 @@ namespace osu.Game.Screens.Play.HUD
             int attribIndex = timedAttributes.BinarySearch(new TimedDifficultyAttributes(judgement.HitObject.GetEndTime(), null));
             if (attribIndex < 0)
                 attribIndex = ~attribIndex - 1;
+            else if (judgement.HitObject.Parent != null)
+                attribIndex--;
 
             return timedAttributes[Math.Clamp(attribIndex, 0, timedAttributes.Count - 1)].Attributes;
         }

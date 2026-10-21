@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
@@ -59,6 +59,12 @@ namespace osu.Game.Rulesets.Osu.UI
                 {
                     Caption = RulesetSettingsStrings.PlayfieldBorderStyle,
                     Current = config.GetBindable<PlayfieldBorderStyle>(OsuRulesetSetting.PlayfieldBorderStyle),
+                }),
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = RulesetSettingsStrings.ShowSliderHeadJudgements,
+                    HintText = RulesetSettingsStrings.ShowSliderHeadJudgementsDescription,
+                    Current = config.GetBindable<bool>(OsuRulesetSetting.ShowSliderHeadJudgements),
                 }),
             };
         }

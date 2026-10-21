@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*-g0v0'
+      - 'v*-robin'
       - 'v*-g0v0-nuget-only'
   workflow_dispatch:
 
@@ -23,6 +24,7 @@ jobs:
       fileVersion: ${{ steps.version.outputs.fileVersion }}
       androidVersionCode: ${{ steps.version.outputs.androidVersionCode }}
       nugetOnly: ${{ steps.version.outputs.nugetOnly }}
+      channel: ${{ steps.version.outputs.channel }}
     steps:
       - name: Determine version
         id: version
@@ -34,6 +36,10 @@ jobs:
 
           NUGET_ONLY="false"
           if [[ "$VERSION" == *-nuget-only ]]; then NUGET_ONLY="true"; fi
+
+          # g0v0 is the stable channel; robin is the unstable (prerelease) channel.
+          CHANNEL="g0v0"
+          if [[ "$SEMVER" == *-robin ]]; then CHANNEL="robin"; fi
           PARTS=$(echo "$NUMERIC" | awk -F. '{print NF}')
           if [[ $PARTS -eq 1 ]]; then NUMERIC="$NUMERIC.0.0.0"; fi
           if [[ $PARTS -eq 2 ]]; then NUMERIC="$NUMERIC.0.0"; fi
@@ -44,8 +50,9 @@ jobs:
 
           # nugetVersion uses 3-part version from the tag date (e.g. v2026.321.1-g0v0 -> 2026.321.1)
           NUGET_VERSION=$(echo "${SEMVER%%-*}" | awk -F. '{print $1"."$2"."$3}')
-          # Velopack requires 3-part semver without pre-release
-          VELOPACK_VERSION=$(echo "$NUMERIC" | awk -F. '{print $1"."$2"."$3}')
+          # Velopack version: 3-part numeric plus the channel suffix (e.g. 2026.1013.0-g0v0 / 2026.1013.0-robin).
+          # The suffix keeps channel switching deterministic when g0v0 and robin share a numeric version (mirrors upstream lazer/tachyon).
+          VELOPACK_VERSION=$(echo "$NUMERIC" | awk -F. -v ch="$CHANNEL" '{print $1"."$2"."$3"-"ch}')
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "semver=$SEMVER" >> $GITHUB_OUTPUT
@@ -55,7 +62,8 @@ jobs:
           echo "fileVersion=$NUMERIC" >> $GITHUB_OUTPUT
           echo "androidVersionCode=$ANDROID_VERSION_CODE" >> $GITHUB_OUTPUT
           echo "nugetOnly=$NUGET_ONLY" >> $GITHUB_OUTPUT
-          echo "Computed version: $VERSION (semver: $SEMVER, nuget: $NUGET_VERSION, velopack: $VELOPACK_VERSION, assembly/file: $NUMERIC, android: $ANDROID_VERSION_CODE)"
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+          echo "Computed version: $VERSION (semver: $SEMVER, nuget: $NUGET_VERSION, velopack: $VELOPACK_VERSION, channel: $CHANNEL, assembly/file: $NUMERIC, android: $ANDROID_VERSION_CODE)"
 
   nuget:
     name: Pack & Publish NuGet
@@ -619,11 +627,15 @@ jobs:
     if: needs.version.outputs.nugetOnly != 'true'
     runs-on: macos-26
     # Release iOS builds AOT compile (see osu.iOS.props), which takes far longer
-    # than the Debug compile done by the CI workflow.
-    timeout-minutes: 180
+    # than the Debug compile done by the CI workflow. The job additionally waits
+    # up to 2 hours for the GitHub Release to appear before attaching the IPA,
+    # so the timeout must cover build time + the wait window.
+    timeout-minutes: 240
     concurrency:
       group: build-ios
       cancel-in-progress: false
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -638,8 +650,22 @@ jobs:
       - name: Install .NET iOS workload
         run: dotnet workload install ios
 
-      - name: Use Xcode 26.6
-        run: sudo xcode-select -switch /Applications/Xcode_26.6.app
+      - name: Select Xcode
+        run: |
+          # The iOS projects target net10.0-ios26.0 (the newest platform version the .NET iOS
+          # workload supports alongside 27.0). Any Xcode shipping an iOS SDK >= 26.0 works;
+          # Xcode 26.6 (SDK 26.5) is pinned for deterministic builds. Do not bump this ahead
+          # of the workload's valid TargetPlatformVersion list or the build fails (NETSDK1140).
+          for xcode in Xcode_26.6.app Xcode_26.5.app Xcode_26.0.1.app; do
+            if [ -d "/Applications/$xcode" ]; then
+              sudo xcode-select -switch "/Applications/$xcode"
+              xcodebuild -version
+              exit 0
+            fi
+          done
+          echo "No suitable Xcode (>= iOS 26.0 SDK) found; available versions:" >&2
+          ls /Applications | grep -i xcode >&2 || true
+          exit 1
 
       - name: Validate Sentry DSN
         shell: bash
@@ -671,6 +697,8 @@ jobs:
         run: |
           dotnet restore osu.iOS/osu.iOS.csproj \
             --runtime ios-arm64 \
+            -p:ValidateXcodeVersion=false \
+            -p:_SuppressXcodeRequirementCheck=true \
             --verbosity normal \
             --no-cache \
             --force
@@ -692,9 +720,51 @@ jobs:
           path: Releases/*.ipa
           retention-days: 90
 
+      - name: Wait for GitHub Release (up to 2 hours)
+        # The release job intentionally does not depend on this job, so the
+        # release may not exist yet when the iOS build finishes. Poll for it;
+        # bail out early if the release job completed without publishing one
+        # (that means another platform build failed).
+        timeout-minutes: 125
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          DEADLINE=$((SECONDS + 7200))
+          while (( SECONDS < DEADLINE )); do
+            if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+              echo "Release $VERSION is available."
+              exit 0
+            fi
+
+            RELEASE_JOB="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" \
+              --jq '.jobs[] | select(.name == "Create GitHub Release") | .status + ":" + (.conclusion // "")')"
+            if [[ "$RELEASE_JOB" == completed:* ]]; then
+              echo "::error::Release job finished as '$RELEASE_JOB' without publishing the release - another platform build failed. Cancelling iOS asset upload."
+              exit 1
+            fi
+
+            echo "Release $VERSION not published yet ($(printf '%02d:%02d' $((SECONDS/60)) $((SECONDS%60))) elapsed); retrying in 30s..."
+            sleep 30
+          done
+          echo "::error::Timed out after 2 hours waiting for release $VERSION."
+          exit 1
+
+      - name: Attach IPA to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          gh release upload "$VERSION" Releases/*.ipa --repo "$GITHUB_REPOSITORY" --clobber
+          echo "Attached IPA to release $VERSION:" && gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
+
   release:
     name: Create GitHub Release
-    needs: [version, nuget, build-windows, build-linux, build-macos, build-android, build-ios]
+    # iOS builds in the background and attaches its IPA to the release on its
+    # own; the release only waits for the other platform builds.
+    needs: [version, nuget, build-windows, build-linux, build-macos, build-android]
 
     if: needs.version.outputs.nugetOnly != 'true'
     runs-on: ubuntu-latest
@@ -728,7 +798,7 @@ jobs:
           name: g0v0! ${{ needs.version.outputs.version }}
           files: release-files/**
           draft: false
-          prerelease: ${{ contains(needs.version.outputs.version, 'alpha') || contains(needs.version.outputs.version, 'beta') || contains(needs.version.outputs.version, 'rc') }}
+          prerelease: ${{ needs.version.outputs.channel == 'robin' || contains(needs.version.outputs.version, 'alpha') || contains(needs.version.outputs.version, 'beta') || contains(needs.version.outputs.version, 'rc') }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

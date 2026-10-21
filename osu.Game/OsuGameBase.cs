@@ -35,6 +35,7 @@ using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Timing;
 using osu.Game.Audio;
+using OsuLoadErrorPlaceholder = osu.Game.Graphics.Containers.LoadErrorPlaceholder;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Beatmaps.Formats;
@@ -155,12 +156,12 @@ namespace osu.Game
                     .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
                     .InformationalVersion;
 
-                // Example: [assembly: AssemblyInformationalVersion("2025.613.0-tachyon+d934e574b2539e8787956c3c9ecce9dadebb10ee")]
+                // Example: [assembly: AssemblyInformationalVersion("2026.1013.0-robin+d934e574b2539e8787956c3c9ecce9dadebb10ee")]
                 if (!string.IsNullOrEmpty(informationalVersion))
                     return informationalVersion.Split('+').First();
 
                 Version version = AssemblyVersion;
-                return $@"{version.Major}.{version.Minor}.{version.Build}-lazer";
+                return $@"{version.Major}.{version.Minor}.{version.Build}-g0v0";
             }
         }
 
@@ -171,6 +172,9 @@ namespace osu.Game
         protected virtual Edges SafeAreaOverrideEdges => Edges.None;
 
         protected OsuConfigManager LocalConfig { get; private set; }
+
+        private readonly Bindable<bool> legacyFontSetting = new Bindable<bool>();
+        private readonly Bindable<bool> unslantedSongSelectUI = new Bindable<bool>();
 
         protected SessionStatics SessionStatics { get; private set; }
 
@@ -231,6 +235,7 @@ namespace osu.Game
         public readonly Bindable<Dictionary<ModType, IReadOnlyList<Mod>>> AvailableMods = new Bindable<Dictionary<ModType, IReadOnlyList<Mod>>>(new Dictionary<ModType, IReadOnlyList<Mod>>());
 
         private BeatmapDifficultyCache difficultyCache;
+
         private IBeatmapUpdater beatmapUpdater;
         private OnlineAssetCachingStore onlineAssetStore;
 
@@ -286,6 +291,10 @@ namespace osu.Game
             Name = GAME_NAME;
 
             allowableExceptions = UnhandledExceptionsBeforeCrash;
+
+            // A component which throws while loading is replaced by an inline placeholder rather than taking the whole game down with it.
+            // The failure is still logged and reported as usual.
+            LoadErrorHandling.PlaceholderFactory = (failedDrawable, exception) => new OsuLoadErrorPlaceholder(failedDrawable, exception);
         }
 
         [BackgroundDependencyLoader]
@@ -304,6 +313,7 @@ namespace osu.Game
             }
 
             Resources.AddStore(new DllResourceStore(OsuResources.ResourceAssembly));
+            Resources.AddStore(new NamespacedResourceStore<byte[]>(new DllResourceStore(typeof(OsuGameBase).Assembly), "Resources"));
 
             dependencies.Cache(realm = new RealmAccess(Storage, CLIENT_DATABASE_FILENAME, Host.UpdateThread));
 
@@ -323,6 +333,10 @@ namespace osu.Game
             dependencies.Cache(onlineAssetStore = new OnlineAssetCachingStore(Host, realm));
 
             dependencies.CacheAs(LocalConfig);
+            LocalConfig.BindWith(OsuSetting.UnslantedSongSelectUI, unslantedSongSelectUI);
+            unslantedSongSelectUI.BindValueChanged(e => OsuGame.SetUnslantedUI(e.NewValue), true);
+            LocalConfig.BindWith(OsuSetting.ToriiLegacyFont, legacyFontSetting);
+            legacyFontSetting.BindValueChanged(e => Screens.Select.LegacyFonts.UseInterFont = e.NewValue, true);
             dependencies.CacheAs<IGameplaySettings>(LocalConfig);
 
             InitialiseFonts();

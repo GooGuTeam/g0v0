@@ -12,6 +12,8 @@ set -euo pipefail
 dotnet build osu.iOS/osu.iOS.csproj \
   --configuration Release \
   --runtime ios-arm64 \
+  -p:ValidateXcodeVersion=false \
+  -p:_SuppressXcodeRequirementCheck=true \
   -p:BuildIpa=true \
   -p:CodesignKey="-" \
   --no-restore \

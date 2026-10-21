@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -23,12 +23,12 @@ namespace osu.Game.Graphics.UserInterfaceV2
     public partial class FormDropdown<T> : OsuDropdown<T>, IFormControl
     {
         /// <summary>
-        /// Caption describing this control, displayed on top of the controls.
+        /// Caption describing this slider bar, displayed on top of the controls.
         /// </summary>
         public LocalisableString Caption { get; init; }
 
         /// <summary>
-        /// Hint text containing an extended description of this control, displayed in a tooltip when hovering the caption.
+        /// Hint text containing an extended description of this slider bar, displayed in a tooltip when hovering the caption.
         /// </summary>
         public LocalisableString HintText
         {
@@ -66,7 +66,6 @@ namespace osu.Game.Graphics.UserInterfaceV2
             get
             {
                 yield return Caption;
-                yield return HintText;
 
                 foreach (var item in MenuItems)
                     yield return item.Text.Value;
@@ -165,7 +164,8 @@ namespace osu.Game.Graphics.UserInterfaceV2
                     {
                         RelativeSizeAxes = Axes.X,
                         AutoSizeAxes = Axes.Y,
-                        Padding = new MarginPadding(9),
+                        // Adjustments made to match height of `FormCheckbox` in most compact format (when no labels are present).
+                        Padding = new MarginPadding { Horizontal = 9, Top = 5, Bottom = 9 },
                         Children = new Drawable[]
                         {
                             new FillFlowContainer
@@ -206,9 +206,10 @@ namespace osu.Game.Graphics.UserInterfaceV2
             {
                 base.LoadComplete();
 
+                colourProvider.ColoursChanged += updateState;
                 Dropdown.Current.BindDisabledChanged(_ => updateState());
                 SearchBar.SearchTerm.BindValueChanged(_ => updateState(), true);
-                Dropdown.Menu.StateChanged += _ =>
+                Dropdown.Menu.StateChanged += state =>
                 {
                     updateState();
                     updateChevron();
@@ -263,6 +264,14 @@ namespace osu.Game.Graphics.UserInterfaceV2
                 chevron.ScaleTo(open ? new Vector2(1f, -1f) : Vector2.One, 300, Easing.OutQuint);
                 chevron.MoveToY(open ? -chevron.DrawHeight : 0, 300, Easing.OutQuint);
             }
+
+            protected override void Dispose(bool isDisposing)
+            {
+                if (isDisposing)
+                    colourProvider.ColoursChanged -= updateState;
+
+                base.Dispose(isDisposing);
+            }
         }
 
         private partial class FormDropdownSearchBar : DropdownSearchBar
@@ -289,14 +298,20 @@ namespace osu.Game.Graphics.UserInterfaceV2
 
         private partial class FormDropdownMenu : OsuDropdownMenu
         {
+            private OverlayColourProvider colourProvider = null!;
+
             [BackgroundDependencyLoader]
             private void load(OverlayColourProvider colourProvider)
             {
+                this.colourProvider = colourProvider;
+
                 ItemsContainer.Padding = new MarginPadding(9);
 
                 MaskingContainer.BorderThickness = FormControlBackground.BORDER_THICKNESS;
                 MaskingContainer.CornerExponent = FormControlBackground.CORNER_EXPONENT;
                 MaskingContainer.BorderColour = colourProvider.Highlight1;
+
+                colourProvider.ColoursChanged += updateTheme;
             }
 
             protected override void AnimateOpen()
@@ -313,6 +328,16 @@ namespace osu.Game.Graphics.UserInterfaceV2
             {
                 base.AnimateClose();
                 this.TransformTo(nameof(Margin), new MarginPadding(), 300, Easing.OutQuint);
+            }
+
+            private void updateTheme() => MaskingContainer.BorderColour = colourProvider.Highlight1;
+
+            protected override void Dispose(bool isDisposing)
+            {
+                if (isDisposing && colourProvider != null)
+                    colourProvider.ColoursChanged -= updateTheme;
+
+                base.Dispose(isDisposing);
             }
         }
     }

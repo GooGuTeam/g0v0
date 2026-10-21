@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Humanizer;
 using JetBrains.Annotations;
+using Newtonsoft.Json;
 using osu.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
@@ -45,6 +46,8 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Input;
 using osu.Game.Input.Bindings;
 using osu.Game.IO;
+using osu.Game.IPC;
+using osu.Game.IPC.DataSources;
 using osu.Game.Localisation;
 using osu.Game.Medals;
 using osu.Game.Online;
@@ -61,6 +64,8 @@ using osu.Game.Overlays.Notifications;
 using osu.Game.Overlays.OSD;
 using osu.Game.Overlays.SkinEditor;
 using osu.Game.Overlays.Toolbar;
+using osu.Game.Overlays.Volume;
+using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
@@ -111,7 +116,9 @@ namespace osu.Game
         /// <summary>
         /// A common shear factor applied to most components of the game.
         /// </summary>
-        public static readonly Vector2 SHEAR = new Vector2(0.2f, 0);
+        public static readonly Vector2 DEFAULT_SHEAR = new Vector2(0.2f, 0);
+        public static Vector2 SHEAR { get; private set; } = new Vector2(0.2f, 0);
+        public static void SetUnslantedUI(bool unslanted) => SHEAR = unslanted ? Vector2.Zero : DEFAULT_SHEAR;
 
         /// <summary>
         /// For elements placed close to the screen edge, this is the margin to leave to the edge.
@@ -119,6 +126,7 @@ namespace osu.Game
         public const float SCREEN_EDGE_MARGIN = 12f;
 
         private const double general_log_debounce = 60000;
+        private const string ruleset_log_prefix = @"[Ruleset] ";
         private const string tablet_log_prefix = @"[Tablet] ";
 
         public Toolbar Toolbar { get; private set; }
@@ -161,6 +169,8 @@ namespace osu.Game
         private Container footerBasedOverlayContent;
 
         protected ScalingContainer ScreenContainer { get; private set; }
+
+        public void SetLegacyScreenAspectLock(float? aspectRatio) => ScreenContainer.SetForcedAspectRatio(aspectRatio);
 
         protected Container ScreenOffsetContainer { get; private set; }
 
@@ -351,10 +361,10 @@ namespace osu.Game
             return userInputManager;
         }
 
-        private DependencyContainer dependencies;
+        protected new DependencyContainer Dependencies { get; private set; }
 
         protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent) =>
-            dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
+            Dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
 
         private readonly List<string> dragDropFiles = new List<string>();
         private ScheduledDelegate dragDropImportSchedule;
@@ -417,9 +427,9 @@ namespace osu.Game
             sentryLogger.AttachUser(API.LocalUser);
 
             if (SeasonalUIConfig.ENABLED)
-                dependencies.CacheAs(osuLogo = new OsuLogoChristmas { Alpha = 0 });
+                Dependencies.CacheAs(osuLogo = new OsuLogoChristmas { Alpha = 0 });
             else
-                dependencies.CacheAs(osuLogo = new OsuLogo { Alpha = 0 });
+                Dependencies.CacheAs(osuLogo = new OsuLogo { Alpha = 0 });
 
             // bind config int to database RulesetInfo
             configRuleset = LocalConfig.GetBindable<string>(OsuSetting.Ruleset);
@@ -444,11 +454,56 @@ namespace osu.Game
 
             configSkin = LocalConfig.GetBindable<string>(OsuSetting.Skin);
 
-            // Transfer skin from config to realm instance once on startup.
-            SkinManager.SetSkinFromConfiguration(configSkin.Value);
+            var useRulesetSkins = LocalConfig.GetBindable<bool>(OsuSetting.UseRulesetSkins);
+            var configRulesetSkins = LocalConfig.GetBindable<string>(OsuSetting.RulesetSkins);
+            Dictionary<string, string> rulesetSkins;
 
-            // Transfer any runtime changes back to configuration file.
-            SkinManager.CurrentSkinInfo.ValueChanged += skin => configSkin.Value = skin.NewValue.ID.ToString();
+            try
+            {
+                rulesetSkins = JsonConvert.DeserializeObject<Dictionary<string, string>>(configRulesetSkins.Value) ?? new Dictionary<string, string>();
+            }
+            catch (JsonException e)
+            {
+                Logger.Error(e, "Failed to load ruleset skin preferences.");
+                rulesetSkins = new Dictionary<string, string>();
+            }
+
+            bool switchingSkin = false;
+
+            void restoreSkin()
+            {
+                switchingSkin = true;
+                try
+                {
+                    string skin = useRulesetSkins.Value && rulesetSkins.TryGetValue(Ruleset.Value.ShortName, out string preferredSkin)
+                        ? preferredSkin
+                        : configSkin.Value;
+                    SkinManager.SetSkinFromConfiguration(skin);
+                }
+                finally
+                {
+                    switchingSkin = false;
+                }
+            }
+
+            // Automatic switches must not overwrite either the global skin or another ruleset's preference.
+            SkinManager.CurrentSkinInfo.ValueChanged += skin =>
+            {
+                if (switchingSkin || skin.NewValue.ID == SkinInfo.RANDOM_SKIN)
+                    return;
+
+                if (useRulesetSkins.Value)
+                {
+                    rulesetSkins[Ruleset.Value.ShortName] = skin.NewValue.ID.ToString();
+                    configRulesetSkins.Value = JsonConvert.SerializeObject(rulesetSkins);
+                }
+                else
+                    configSkin.Value = skin.NewValue.ID.ToString();
+            };
+
+            Ruleset.ValueChanged += _ => restoreSkin();
+            useRulesetSkins.BindValueChanged(_ => restoreSkin());
+            restoreSkin();
 
             UserPlayingState.BindValueChanged(p =>
             {
@@ -567,7 +622,7 @@ namespace osu.Game
 
         public void CopyToClipboard(string value) => waitForReady(() => onScreenDisplay, _ =>
         {
-            dependencies.Get<Clipboard>().SetText(value);
+            Dependencies.Get<Clipboard>().SetText(value);
             onScreenDisplay.Display(new CopiedToClipboardToast());
         });
 
@@ -1044,6 +1099,7 @@ namespace osu.Game
 
             Logger.NewEntry -= forwardGeneralLogToNotifications;
             Logger.NewEntry -= forwardTabletLogToNotifications;
+            RulesetStore.OnError -= forwardRulesetErrorToNotifications;
         }
 
         protected override IDictionary<FrameworkSetting, object> GetFrameworkConfigDefaults()
@@ -1056,7 +1112,7 @@ namespace osu.Game
                 { FrameworkSetting.VolumeUniversal, 0.6 },
                 { FrameworkSetting.VolumeMusic, 0.6 },
                 { FrameworkSetting.VolumeEffect, 0.6 },
-                { FrameworkSetting.AudioUseExperimentalWasapi, true },
+                { FrameworkSetting.AudioUseWasapi, true },
             };
         }
 
@@ -1090,7 +1146,7 @@ namespace osu.Game
 
             ScreenFooter.BackReceptor backReceptor;
 
-            dependencies.CacheAs(idleTracker = new GameIdleTracker(6000));
+            Dependencies.CacheAs(idleTracker = new GameIdleTracker(6000));
 
             var sessionIdleTracker = new GameIdleTracker(300000);
             sessionIdleTracker.IsIdle.BindValueChanged(idle =>
@@ -1155,10 +1211,14 @@ namespace osu.Game
                 },
                 topMostOverlayContent = new Container { RelativeSizeAxes = Axes.Both },
                 idleTracker,
-                new ConfineMouseTracker()
+                new ConfineMouseTracker(),
             });
 
-            dependencies.Cache(ScreenFooter);
+            // Load volume overlay before anything else, so users can adjust volume as soon as feasible after startup.
+            loadComponentSingleFile(volume = new VolumeOverlay(), leftFloatingOverlayContent.Add, true);
+            Add(new ScrollAdjustsVolume(requireAltPressed: true));
+
+            Dependencies.Cache(ScreenFooter);
 
             ScreenStack.ScreenPushed += screenPushed;
             ScreenStack.ScreenExited += screenExited;
@@ -1196,8 +1256,6 @@ namespace osu.Game
                         menuScreen.MakeCurrent();
                 },
             }, topMostOverlayContent.Add);
-
-            loadComponentSingleFile(volume = new VolumeOverlay(), leftFloatingOverlayContent.Add, true);
 
             onScreenDisplay = new OnScreenDisplay();
 
@@ -1310,6 +1368,25 @@ namespace osu.Game
             // Importantly, this should be run after binding PostNotification to the import handlers so they can present the import after game startup.
             handleStartupImport();
 
+            var rulesetErrorEvents = RulesetStore.Events.OfType<RulesetErrorEvent>().ToList();
+
+            if (rulesetErrorEvents.Count != 0)
+            {
+                Notifications.Post(new RulesetLoadErrorNotification(rulesetErrorEvents));
+            }
+
+#nullable enable
+            string? rulesetName = RulesetStore.FireAndForgetLastCrash();
+
+            if (rulesetName != null)
+            {
+                Notifications.Post(new LastRulesetCrashNotification(rulesetName));
+            }
+#nullable disable
+
+            // Late subscription here to avoid posting notifications during ruleset loading.
+            RulesetStore.OnError += forwardRulesetErrorToNotifications;
+
             // Show server information notification on startup
             showServerInfoNotification();
 
@@ -1326,6 +1403,16 @@ namespace osu.Game
             // this MUST happen after `applyConfigMigrations()` call, as it relies on comparing the previous version.
             // debug / local compilations will reset to a non-release string.
             LocalConfig.SetValue(OsuSetting.Version, version);
+
+            var webSocketProvider = Dependencies.Get<IWebSocketProvider>();
+
+            if (webSocketProvider != null)
+            {
+                AddRange([
+                    new UserActivityWebSocketDataSource(webSocketProvider),
+                    new BeatmapStateWebSocketDataSource(webSocketProvider)
+                ]);
+            }
         }
 
         /// <summary>
@@ -1371,7 +1458,7 @@ namespace osu.Game
 
             if (combined < 20260521 && RuntimeInfo.OS == RuntimeInfo.Platform.Windows)
             {
-                bool wasAlreadyUsing = Audio.UseExperimentalWasapi.Value;
+                bool wasAlreadyUsing = Audio.UseWasapi.Value;
 
                 // see application of FramedBeatmapClock.WINDOWS_EXPERIMENTAL_AUDIO_OFFSET in FramedBeatmapClock.
                 // this basically undoes this new offset assuming that users which have been using this setting for a while
@@ -1379,8 +1466,11 @@ namespace osu.Game
                 if (wasAlreadyUsing)
                     LocalConfig.SetValue(OsuSetting.AudioOffset, LocalConfig.Get<double>(OsuSetting.AudioOffset) - FramedBeatmapClock.WINDOWS_EXPERIMENTAL_AUDIO_OFFSET);
 
-                Audio.UseExperimentalWasapi.Value = true;
+                Audio.UseWasapi.Value = true;
 
+                // TODO: can be removed 20270101.
+                // leave the migration but just stop telling users about it. if they haven't been playing for this long they are more likely
+                // to setup offset again, or even have different hardware.
                 dialogOverlay.Push(new MigrateNewAudioDialog(wasAlreadyUsing));
             }
 
@@ -1454,6 +1544,10 @@ namespace osu.Game
         private void forwardGeneralLogToNotifications(LogEntry entry)
         {
             if (entry.Level < LogLevel.Important || entry.Target > LoggingTarget.Database || entry.Target == null) return;
+
+            // Ruleset logs are handled by events.
+            if (entry.Message.StartsWith(ruleset_log_prefix, StringComparison.OrdinalIgnoreCase))
+                return;
 
             if (entry.Exception is SentryOnlyDiagnosticsException)
                 return;
@@ -1544,6 +1638,15 @@ namespace osu.Game
             }
         }
 
+        private void forwardRulesetErrorToNotifications(RulesetErrorEvent e)
+        {
+            // To reduce annoyance for users.
+            if (e.Exception == null || e.RulesetInfo == null)
+                return;
+
+            Schedule(() => Notifications.Post(new RulesetErrorNotification(e.RulesetInfo, e.Exception)));
+        }
+
         private Task asyncLoadStream;
 
         /// <summary>
@@ -1557,7 +1660,7 @@ namespace osu.Game
             where T : class
         {
             if (cache)
-                dependencies.CacheAs(component);
+                Dependencies.CacheAs(component);
 
             var drawableComponent = component as Drawable ?? throw new ArgumentException($"Component must be a {nameof(Drawable)}", nameof(component));
 
@@ -1743,6 +1846,9 @@ namespace osu.Game
         protected override void UpdateAfterChildren()
         {
             base.UpdateAfterChildren();
+
+            if (Toolbar != null)
+                Toolbar.UseV2ResultsStyle.Value = ScreenStack.CurrentScreen is ResultsScreen { IsV2Overview: true };
 
             ScreenOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };
             overlayOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };

@@ -94,7 +94,7 @@ namespace osu.Game.Screens.Ranking.Statistics
                         ? Empty()
                         : new StatisticItemHeader
                         {
-                            Text = item.Name
+                            Text = item.Name,
                         },
                 }
             };

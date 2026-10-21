@@ -1,8 +1,9 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Game.Beatmaps;
@@ -80,7 +81,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             isRelax = score.Mods.Any(m => m is OsuModRelax);
 
-            usingClassicSliderAccuracy = score.Mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value);
+            usingClassicSliderAccuracy = score.Mods.Any(m => m is ModScoreV1) || score.Mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value);
             usingScoreV2 = score.Mods.Any(m => m is ModScoreV2);
 
             accuracy = Math.Clamp(score.Accuracy, 0, 1);
@@ -204,7 +205,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             {
                 double estimateImproperlyFollowedDifficultSliders;
 
-                if (usingClassicSliderAccuracy)
+                if (usingClassicSliderAccuracy || usingScoreV2)
                 {
                     // When the score is considered classic (regardless if it was made on old client or not) we consider all missing combo to be dropped difficult sliders
                     int maximumPossibleDroppedSliders = totalImperfectHits;
@@ -335,7 +336,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             if (!score.Mods.Any(h => h is OsuModFlashlight))
                 return 0.0;
 
-            double flashlightValue = Flashlight.DifficultyToPerformance(attributes.FlashlightDifficulty);
+            Debug.Assert(attributes.FlashlightDifficulty != null);
+
+            double flashlightValue = Flashlight.DifficultyToPerformance(attributes.FlashlightDifficulty.Value);
 
             // Penalize misses by assessing # of misses relative to the total # of objects. Default a 3% reduction for any # of misses.
             if (effectiveMissCount > 0)
@@ -369,7 +372,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double missCount = countMiss;
 
-            if (usingClassicSliderAccuracy)
+            if (usingClassicSliderAccuracy || usingScoreV2)
             {
                 // If sliders in the map are hard - it's likely for player to drop sliderends
                 // If map has easy sliders - it's more likely for player to sliderbreak
@@ -414,7 +417,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         {
             int nonMissMistakes = countOk + countMeh;
 
-            if (!usingClassicSliderAccuracy || nonMissMistakes == 0)
+            if ((!usingClassicSliderAccuracy && !usingScoreV2) || nonMissMistakes == 0)
                 return 0;
 
             double missedComboPercent = 1.0 - (double)scoreMaxCombo / attributes.MaxCombo;

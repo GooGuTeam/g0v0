@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
@@ -298,19 +298,43 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (HitObject.ClassicSliderBehaviour)
             {
                 // Classic behaviour means a slider is judged proportionally to the number of nested hitobjects hit. This is the classic osu!stable scoring.
-                ApplyResult(static (r, hitObject) =>
+                ApplyResult(static (r, dho) =>
                 {
-                    int totalTicks = hitObject.NestedHitObjects.Count;
-                    int hitTicks = hitObject.NestedHitObjects.Count(h => h.IsHit);
+                    var drawableSlider = (DrawableSlider)dho;
+                    var slider = drawableSlider.HitObject;
+
+                    int totalTicks = drawableSlider.NestedHitObjects.Count;
+                    int hitTicks = drawableSlider.NestedHitObjects.Count(h => h.IsHit);
+
+                    HitResult trackingResult;
 
                     if (hitTicks == totalTicks)
-                        r.Type = HitResult.Great;
+                        trackingResult = HitResult.Great;
                     else if (hitTicks == 0)
-                        r.Type = HitResult.Miss;
+                        trackingResult = HitResult.Miss;
                     else
                     {
                         double hitFraction = (double)hitTicks / totalTicks;
-                        r.Type = hitFraction >= 0.5 ? HitResult.Ok : HitResult.Meh;
+                        trackingResult = hitFraction >= 0.5 ? HitResult.Ok : HitResult.Meh;
+                    }
+
+                    if (slider.ScoreV2SliderBehaviour)
+                    {
+                        var headResult = slider.HeadCircle?.RawHitResult ?? HitResult.Miss;
+                        if (headResult == HitResult.None)
+                            headResult = drawableSlider.HeadCircle?.IsHit == true ? HitResult.Great : HitResult.Miss;
+
+                        if (headResult == HitResult.Miss)
+                            r.Type = HitResult.Meh; // You will get a 50 when SB in sv2.
+                        else
+                            r.Type = (HitResult)Math.Min((int)headResult, (int)trackingResult);
+
+                        if (trackingResult == HitResult.Miss)
+                            r.Type = HitResult.Miss;
+                    }
+                    else
+                    {
+                        r.Type = trackingResult;
                     }
                 });
             }

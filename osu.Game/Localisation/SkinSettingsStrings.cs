@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -58,6 +58,11 @@ namespace osu.Game.Localisation
         /// "Beatmap hitsounds"
         /// </summary>
         public static LocalisableString BeatmapHitsounds => new TranslatableString(getKey(@"beatmap_hitsounds"), @"Beatmap hitsounds");
+
+        /// <summary>
+        /// "Remember a separate skin for each ruleset"
+        /// </summary>
+        public static LocalisableString RememberSeparateSkinForEachRuleset => new TranslatableString(getKey(@"remember_separate_skin_for_each_ruleset"), @"Remember a separate skin for each ruleset");
 
         private static string getKey(string key) => $"{prefix}:{key}";
     }
