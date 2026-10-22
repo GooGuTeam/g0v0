@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -225,7 +225,7 @@ namespace osu.Game.Overlays.SkinEditor
                 // Create a new skin instance to ensure the skin is reloaded
                 // If there's a better way to reload the skin, this should be replaced with it.
                 setGlobalSkinDisabled(false);
-                skinManager.CurrentSkin.Value = newSkinInfo.CreateInstance(skinManager);
+                skinManager.CurrentSkin.Value = skinManager.GetSkin(newSkinInfo);
 
                 oldSkin.Dispose();
 

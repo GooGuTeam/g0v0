@@ -27,7 +27,6 @@ using osu.Game.Overlays.Dialog;
 using osu.Game.Overlays.SkinEditor;
 using osu.Game.Skinning;
 using osuTK;
-using Realms;
 using WebCommonStrings = osu.Game.Resources.Localisation.Web.CommonStrings;
 
 namespace osu.Game.Overlays.Settings.Sections
@@ -45,15 +44,10 @@ namespace osu.Game.Overlays.Settings.Sections
 
         public override IEnumerable<LocalisableString> FilterTerms => base.FilterTerms.Concat(new LocalisableString[] { "skins" });
 
-        private readonly List<Live<SkinInfo>> dropdownItems = new List<Live<SkinInfo>>();
-
         [Resolved]
         private SkinManager skins { get; set; }
 
-        [Resolved]
-        private RealmAccess realm { get; set; }
-
-        private IDisposable realmSubscription;
+        private IDisposable storeSubscription;
 
         [BackgroundDependencyLoader(permitNulls: true)]
         private void load([CanBeNull] SkinEditorOverlay skinEditor, OsuConfigManager config)
@@ -98,9 +92,7 @@ namespace osu.Game.Overlays.Settings.Sections
         {
             base.LoadComplete();
 
-            realmSubscription = realm.RegisterForNotifications(_ => realm.Realm.All<SkinInfo>()
-                                                                         .Where(s => !s.DeletePending)
-                                                                         .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase), skinsChanged);
+            storeSubscription = skins.Store.Subscribe(skinsChanged);
 
             skinDropdown.Current.BindValueChanged(skin =>
             {
@@ -115,24 +107,23 @@ namespace osu.Game.Overlays.Settings.Sections
             });
         }
 
-        private void skinsChanged(IRealmCollection<SkinInfo> sender, ChangeSet changes)
+        private void skinsChanged()
         {
-            // This can only mean that realm is recycling, else we would see the protected skins.
-            // Because we are using `Live<>` in this class, we don't need to worry about this scenario too much.
-            if (!sender.Any())
-                return;
-            // For simplicity repopulate the full list.
-            dropdownItems.Clear();
-            dropdownItems.AddRange(skins.GetAllUsableSkins());
-
-            Schedule(() => skinDropdown.Items = dropdownItems);
+            // The store callback may run off the update thread and is an invalidation hint only.
+            // Snapshot the full list and apply it on the update scheduler so the dropdown is only
+            // ever mutated on the update thread.
+            Schedule(() =>
+            {
+                // For simplicity repopulate the full list.
+                skinDropdown.Items = skins.GetAllUsableSkins().ToList();
+            });
         }
 
         protected override void Dispose(bool isDisposing)
         {
             base.Dispose(isDisposing);
 
-            realmSubscription?.Dispose();
+            storeSubscription?.Dispose();
         }
 
         private partial class SkinDropdown : FormDropdown<Live<SkinInfo>>

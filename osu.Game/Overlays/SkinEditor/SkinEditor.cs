@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -721,16 +721,21 @@ namespace osu.Game.Overlays.SkinEditor
                 var file = new FileInfo(paths.First());
 
                 // import to skin
-                currentSkin.Value.SkinInfo.PerformWrite(skinInfo =>
+                void addFile(SkinInfo skinInfo)
                 {
                     using (var contents = file.OpenRead())
                         skins.AddFile(skinInfo, contents, file.Name);
-                });
+                }
 
-                // Even though we are 100% on an update thread, we need to wait for realm callbacks to fire (to correctly invalidate caches in RealmBackedResourceStore).
-                // See https://github.com/realm/realm-dotnet/discussions/2634#discussioncomment-2483573 for further discussion.
-                // This is the best we can do for now.
-                realm.Run(r => r.Refresh());
+                if (skins.Store is RealmSkinStore)
+                    currentSkin.Value.SkinInfo.PerformWrite(addFile);
+                else
+                    currentSkin.Value.SkinInfo.PerformRead(addFile);
+
+                // Realm notifications need a refresh before the newly imported resource can be used.
+                // SQLite mappings are refreshed synchronously by the skin store subscription.
+                if (skins.Store is RealmSkinStore)
+                    realm.Run(r => r.Refresh());
 
                 var skinnableTarget = getFirstTarget();
 
