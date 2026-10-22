@@ -1,12 +1,11 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
 using System.Linq;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
-using osu.Game.Collections;
 using osu.Game.Database;
 using osu.Game.Models;
 using osu.Game.Online.API.Requests.Responses;
@@ -188,16 +187,20 @@ namespace osu.Game.Beatmaps
         /// When updating a beatmap, its hashes will change. Collections currently track beatmaps by hash, so they need to be updated.
         /// This method will handle updating
         /// </summary>
-        /// <param name="realm">A realm instance in an active write transaction.</param>
+        /// <param name="collections">The selected collection store.</param>
         /// <param name="previousMD5Hash">The previous MD5 hash of the beatmap before update.</param>
-        public void TransferCollectionReferences(Realm realm, string previousMD5Hash)
+        public void TransferCollectionReferences(IBeatmapCollectionStore collections, string previousMD5Hash)
         {
-            var collections = realm.All<BeatmapCollection>().AsEnumerable().Where(c => c.BeatmapMD5Hashes.Contains(previousMD5Hash));
-
-            foreach (var c in collections)
+            foreach (var collection in collections.GetAllDetached())
             {
-                c.BeatmapMD5Hashes.Remove(previousMD5Hash);
-                c.BeatmapMD5Hashes.Add(MD5Hash);
+                if (!collection.BeatmapMD5Hashes.Contains(previousMD5Hash))
+                    continue;
+
+                collections.Update(collection.ID, c =>
+                {
+                    c.BeatmapMD5Hashes.Remove(previousMD5Hash);
+                    c.BeatmapMD5Hashes.Add(MD5Hash);
+                });
             }
         }
 

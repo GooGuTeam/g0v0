@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -13,7 +13,6 @@ using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps.Formats;
-using osu.Game.Collections;
 using osu.Game.Database;
 using osu.Game.Extensions;
 using osu.Game.IO;
@@ -36,9 +35,12 @@ namespace osu.Game.Beatmaps
 
         public ProcessBeatmapDelegate? ProcessBeatmap { private get; set; }
 
-        public BeatmapImporter(Storage storage, RealmAccess realm)
+        private readonly IBeatmapCollectionStore collections;
+
+        public BeatmapImporter(Storage storage, RealmAccess realm, IBeatmapCollectionStore? collections = null)
             : base(storage, realm)
         {
+            this.collections = collections ?? new RealmBeatmapCollectionStore(realm);
         }
 
         public override async Task<Live<BeatmapSetInfo>?> ImportAsUpdate(ProgressNotification notification, ImportTask importTask, BeatmapSetInfo original)
@@ -46,6 +48,7 @@ namespace osu.Game.Beatmaps
             var originalDateAdded = original.DateAdded;
 
             Guid originalId = original.ID;
+            var originalBeatmaps = original.Beatmaps.Select(b => (Hash: b.MD5Hash, b.DifficultyName, Ruleset: b.Ruleset.ShortName)).ToArray();
 
             var imported = await Import(notification, new[] { importTask }).ConfigureAwait(false);
 
@@ -85,8 +88,6 @@ namespace osu.Game.Beatmaps
 
                     // Transfer local values which should be persisted across a beatmap update.
                     updated.DateAdded = originalDateAdded;
-
-                    transferCollectionReferences(realm, original, updated);
 
                     foreach (var beatmap in original.Beatmaps.ToArray())
                     {
@@ -134,31 +135,39 @@ namespace osu.Game.Beatmaps
                 }
             });
 
+            // Collection stores own their transactions; update only after the beatmap transaction commits.
+            first.PerformRead(updated => transferCollectionReferences(originalBeatmaps, updated));
+
             return first;
         }
 
-        private static void transferCollectionReferences(Realm realm, BeatmapSetInfo original, BeatmapSetInfo updated)
+        private void transferCollectionReferences((string Hash, string DifficultyName, string Ruleset)[] originalBeatmaps, BeatmapSetInfo updated)
         {
-            // First check if every beatmap in the original set is in any collections.
-            // In this case, we will assume they also want any newly added difficulties added to the collection.
-            foreach (var c in realm.All<BeatmapCollection>())
+            // A collection containing the whole original set also receives newly added difficulties.
+            foreach (var collection in collections.GetAllDetached())
             {
-                if (original.Beatmaps.Select(b => b.MD5Hash).All(c.BeatmapMD5Hashes.Contains))
-                {
-                    foreach (var b in original.Beatmaps)
-                        c.BeatmapMD5Hashes.Remove(b.MD5Hash);
+                if (!originalBeatmaps.All(b => collection.BeatmapMD5Hashes.Contains(b.Hash)))
+                    continue;
 
-                    foreach (var b in updated.Beatmaps)
-                        c.BeatmapMD5Hashes.Add(b.MD5Hash);
-                }
+                collections.Update(collection.ID, c =>
+                {
+                    foreach (var beatmap in originalBeatmaps)
+                        c.BeatmapMD5Hashes.Remove(beatmap.Hash);
+
+                    foreach (var beatmap in updated.Beatmaps)
+                    {
+                        if (!c.BeatmapMD5Hashes.Contains(beatmap.MD5Hash))
+                            c.BeatmapMD5Hashes.Add(beatmap.MD5Hash);
+                    }
+                });
             }
 
-            // Handle collections using permissive difficulty name to track difficulties.
-            foreach (var originalBeatmap in original.Beatmaps)
+            // Partial collections track matching difficulty names within the same ruleset across changes.
+            foreach (var originalBeatmap in originalBeatmaps)
             {
                 updated.Beatmaps
-                       .FirstOrDefault(b => b.DifficultyName == originalBeatmap.DifficultyName)?
-                       .TransferCollectionReferences(realm, originalBeatmap.MD5Hash);
+                       .FirstOrDefault(b => b.DifficultyName == originalBeatmap.DifficultyName && b.Ruleset.ShortName == originalBeatmap.Ruleset)?
+                       .TransferCollectionReferences(collections, originalBeatmap.Hash);
             }
         }
 

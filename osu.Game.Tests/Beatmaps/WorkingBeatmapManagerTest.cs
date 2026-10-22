@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using NUnit.Framework;
@@ -98,12 +98,17 @@ namespace osu.Game.Tests.Beatmaps
             Assert.That(first, Is.Not.SameAs(second));
         });
 
-        [Test]
-        public void TestSavePreservesCollections() => AddStep("run test", () =>
+        [TestCase(DataStoreBackend.Realm)]
+        [TestCase(DataStoreBackend.SQLite)]
+        public void TestSavePreservesCollections(DataStoreBackend backend) => AddStep("run test", () =>
         {
+            using var selector = new DataStoreSelector(Realm, LocalStorage, backend);
+            var collections = selector.GetBeatmapCollectionStore();
+            var manager = new BeatmapManager(LocalStorage, Realm, null, Dependencies.Get<AudioManager>(), Resources,
+                Dependencies.Get<GameHost>(), Beatmap.Default, collections: collections);
             var beatmap = Realm.Run(r => r.Find<BeatmapInfo>(importedSet.Beatmaps.First().ID)!.Detach());
 
-            var working = beatmaps.GetWorkingBeatmap(beatmap);
+            var working = manager.GetWorkingBeatmap(beatmap);
 
             Assert.That(working.BeatmapInfo.BeatmapSet?.Files, Has.Count.GreaterThan(0));
 
@@ -114,24 +119,17 @@ namespace osu.Game.Tests.Beatmaps
 
             var noNewCollection = new BeatmapCollection("test not contained");
 
-            Realm.Write(r =>
-            {
-                r.Add(preserveCollection);
-                r.Add(noNewCollection);
-            });
+            collections.Add(preserveCollection);
+            collections.Add(noNewCollection);
 
-            Assert.That(preserveCollection.BeatmapMD5Hashes, Does.Contain(initialHash));
-            Assert.That(noNewCollection.BeatmapMD5Hashes, Does.Not.Contain(initialHash));
-
-            beatmaps.Save(working.BeatmapInfo, working.GetPlayableBeatmap(new OsuRuleset().RulesetInfo));
+            manager.Save(working.BeatmapInfo, working.GetPlayableBeatmap(new OsuRuleset().RulesetInfo));
 
             string finalHash = working.BeatmapInfo.MD5Hash;
 
-            Assert.That(finalHash, Is.Not.SameAs(initialHash));
+            Assert.That(finalHash, Is.Not.EqualTo(initialHash));
 
-            Assert.That(preserveCollection.BeatmapMD5Hashes, Does.Not.Contain(initialHash));
-            Assert.That(preserveCollection.BeatmapMD5Hashes, Does.Contain(finalHash));
-            Assert.That(noNewCollection.BeatmapMD5Hashes, Does.Not.Contain(finalHash));
+            Assert.That(collections.GetDetached(preserveCollection.ID)!.BeatmapMD5Hashes, Is.EqualTo(new[] { finalHash }));
+            Assert.That(collections.GetDetached(noNewCollection.ID)!.BeatmapMD5Hashes, Is.Empty);
         });
     }
 }

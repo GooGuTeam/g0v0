@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -48,6 +48,8 @@ namespace osu.Game.Beatmaps
 
         private readonly LegacyBeatmapExporter legacyBeatmapExporter;
 
+        private readonly IBeatmapCollectionStore collections;
+
         public ProcessBeatmapDelegate? ProcessBeatmap { private get; set; }
 
         public override bool PauseImports
@@ -61,9 +63,12 @@ namespace osu.Game.Beatmaps
         }
 
         public BeatmapManager(Storage storage, RealmAccess realm, IAPIProvider? api, AudioManager audioManager, IResourceStore<byte[]> gameResources, GameHost? host = null,
-                              WorkingBeatmap? defaultBeatmap = null, BeatmapDifficultyCache? difficultyCache = null, bool performOnlineLookups = false)
+                              WorkingBeatmap? defaultBeatmap = null, BeatmapDifficultyCache? difficultyCache = null, bool performOnlineLookups = false,
+                              IBeatmapCollectionStore? collections = null)
             : base(storage, realm)
         {
+            this.collections = collections ?? new RealmBeatmapCollectionStore(realm);
+
             if (performOnlineLookups)
             {
                 if (api == null)
@@ -100,7 +105,7 @@ namespace osu.Game.Beatmaps
             return new WorkingBeatmapCache(BeatmapTrackStore, audioManager, resources, storage, defaultBeatmap, host, Realm);
         }
 
-        protected virtual BeatmapImporter CreateBeatmapImporter(Storage storage, RealmAccess realm) => new BeatmapImporter(storage, realm);
+        protected virtual BeatmapImporter CreateBeatmapImporter(Storage storage, RealmAccess realm) => new BeatmapImporter(storage, realm, collections);
 
         /// <summary>
         /// Create a new beatmap set, backed by a <see cref="BeatmapSetInfo"/> model,
@@ -544,6 +549,7 @@ namespace osu.Game.Beatmaps
             // Since now this is a locally-modified beatmap, we also set all relevant flags to indicate this.
             beatmapInfo.LastLocalUpdate = DateTimeOffset.Now;
             beatmapInfo.Status = BeatmapOnlineStatus.LocallyModified;
+            string oldMd5Hash = beatmapInfo.MD5Hash;
 
             Realm.Write(r =>
             {
@@ -564,8 +570,6 @@ namespace osu.Game.Beatmaps
                 if (existingFileInfo != null)
                     DeleteFile(setInfo, existingFileInfo);
 
-                string oldMd5Hash = beatmapInfo.MD5Hash;
-
                 beatmapInfo.MD5Hash = stream.ComputeMD5Hash();
                 beatmapInfo.Hash = stream.ComputeSHA2Hash();
 
@@ -577,9 +581,6 @@ namespace osu.Game.Beatmaps
 
                 setInfo.CopyChangesToRealm(liveBeatmapSet);
 
-                if (transferCollections)
-                    beatmapInfo.TransferCollectionReferences(r, oldMd5Hash);
-
                 liveBeatmapSet.Beatmaps.Single(b => b.ID == beatmapInfo.ID)
                               .UpdateLocalScores(r);
 
@@ -587,6 +588,9 @@ namespace osu.Game.Beatmaps
                 // this is a locally-modified set now, so looking up metadata is busy work at best and harmful at worst.
                 ProcessBeatmap?.Invoke(liveBeatmapSet, MetadataLookupScope.None);
             });
+
+            if (transferCollections)
+                beatmapInfo.TransferCollectionReferences(collections, oldMd5Hash);
 
             Debug.Assert(beatmapInfo.BeatmapSet != null);
 
