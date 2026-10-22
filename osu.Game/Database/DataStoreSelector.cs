@@ -18,6 +18,7 @@ namespace osu.Game.Database
         private const string mod_presets_database = @"mod-presets.db";
         private const string ruleset_settings_database = @"ruleset-settings.db";
         private const string beatmap_collections_database = @"beatmap-collections.db";
+        private const string scores_database = @"scores.db";
 
         private readonly RealmAccess realm;
         private readonly Storage? storage;
@@ -28,6 +29,7 @@ namespace osu.Game.Database
         private SqliteModPresetStore? sqliteModPresetStore;
         private SqliteRulesetSettingStore? sqliteRulesetSettingStore;
         private SqliteBeatmapCollectionStore? sqliteBeatmapCollectionStore;
+        private SqliteScoreStore? sqliteScoreStore;
 
         public DataStoreSelector(RealmAccess realm, Storage? storage, DataStoreBackend backend, RulesetStore? rulesets = null)
         {
@@ -86,6 +88,16 @@ namespace osu.Game.Database
             _ => throw new ArgumentOutOfRangeException(nameof(backend), backend, null)
         };
 
+        /// <summary>
+        /// Resolves the selected score store. Its lifetime is owned by this selector.
+        /// </summary>
+        public IScoreStore GetScoreStore() => backend switch
+        {
+            DataStoreBackend.Realm => new RealmScoreStore(realm),
+            DataStoreBackend.SQLite => sqliteScoreStore ??= new SqliteScoreStore(getDatabasePath(scores_database), realm),
+            _ => throw new ArgumentOutOfRangeException(nameof(backend), backend, null)
+        };
+
         private RulesetStore getRulesetStore()
         {
             if (rulesets == null)
@@ -108,6 +120,7 @@ namespace osu.Game.Database
             sqliteModPresetStore?.Dispose();
             sqliteRulesetSettingStore?.Dispose();
             sqliteBeatmapCollectionStore?.Dispose();
+            sqliteScoreStore?.Dispose();
         }
     }
 }

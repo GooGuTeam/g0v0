@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.IO;
 using System.Linq;
@@ -13,9 +13,12 @@ namespace osu.Game.Database
 {
     public class LegacyScoreExporter : LegacyExporter<ScoreInfo>
     {
-        public LegacyScoreExporter(Storage storage)
+        private readonly Storage replayStorage;
+
+        public LegacyScoreExporter(Storage storage, string fileStorageDirectory = @"files")
             : base(storage)
         {
+            replayStorage = storage.GetStorageForDirectory(fileStorageDirectory);
         }
 
         protected override string GetFilename(ScoreInfo score)
@@ -34,7 +37,7 @@ namespace osu.Game.Database
             if (file == null)
                 return;
 
-            using (var inputStream = UserFileStorage.GetStream(file.File.GetStoragePath()))
+            using (var inputStream = replayStorage.GetStream(file.File.GetStoragePath()))
                 inputStream.CopyTo(outputStream);
         }
     }

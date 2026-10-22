@@ -1,17 +1,21 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
+using osu.Framework.Extensions;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
 using osu.Game.IO.Archives;
+using osu.Game.Models;
+using osu.Game.Overlays.Notifications;
 using osu.Game.Rulesets;
 using osu.Game.Scoring.Legacy;
 using osu.Game.Online.API;
@@ -32,13 +36,78 @@ namespace osu.Game.Scoring
         private readonly Func<BeatmapManager> beatmaps;
 
         private readonly IAPIProvider api;
+        private readonly IScoreStore scoreStore;
+        private readonly Lock importLock = new Lock();
 
-        public ScoreImporter(RulesetStore rulesets, Func<BeatmapManager> beatmaps, Storage storage, RealmAccess realm, IAPIProvider api)
-            : base(storage, realm)
+        public ScoreImporter(RulesetStore rulesets, Func<BeatmapManager> beatmaps, Storage storage, RealmAccess realm, IAPIProvider api, IScoreStore? scoreStore = null)
+            : base(storage, realm, scoreStore?.FileStorageDirectory ?? @"files")
         {
             this.rulesets = rulesets;
             this.beatmaps = beatmaps;
             this.api = api;
+            this.scoreStore = scoreStore ?? new RealmScoreStore(realm);
+        }
+
+        public override Live<ScoreInfo>? ImportModel(ScoreInfo item, ArchiveReader? archive = null, ImportParameters parameters = default, CancellationToken cancellationToken = default)
+        {
+            if (scoreStore is RealmScoreStore)
+                return base.ImportModel(item, archive, parameters, cancellationToken);
+
+            // Both import schedulers can enter here. Duplicate detection and insertion must be serialised together.
+            lock (importLock)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                item = item.Detach();
+
+                if (archive != null)
+                {
+                    item.Files.Clear();
+                    var filenames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (string filename in archive.Filenames)
+                    {
+                        string path = filename.ToStandardisedPath();
+
+                        if (FilesystemSanityCheckHelpers.IncursPathTraversalRisk(path) || !filenames.Add(path))
+                            throw new InvalidOperationException($"Invalid or duplicate replay filename: {filename}");
+
+                        using var stream = archive.GetStream(filename);
+                        item.Files.Add(new RealmNamedFileUsage(Files.AddUnmanaged(stream, parameters.PreferHardLinks), path));
+                    }
+                }
+
+                item.Hash = ComputeHash(item);
+                var existing = scoreStore.FindByHash(item.Hash);
+
+                if (existing != null && CanReuseExisting(existing, item))
+                {
+                    scoreStore.Undelete(existing.ID);
+                    return scoreStore.GetDetached(existing.ID)!.ToLiveUnmanaged();
+                }
+
+                Realm.Write(r =>
+                {
+                    Populate(item, archive, r, cancellationToken);
+                    PostImport(item, r, parameters);
+                    item.BeatmapInfo = item.BeatmapInfo!.Detach();
+                    item.Ruleset = item.Ruleset.Detach();
+                });
+                cancellationToken.ThrowIfCancellationRequested();
+
+                scoreStore.Add(item);
+                if (existing != null)
+                    scoreStore.Delete(existing.ID);
+
+                return scoreStore.GetDetached(item.ID)!.ToLiveUnmanaged();
+            }
+        }
+
+        public override async Task<Live<ScoreInfo>?> ImportAsUpdate(ProgressNotification notification, ImportTask task, ScoreInfo original)
+        {
+            var imported = (await Import(notification, new[] { task }).ConfigureAwait(false)).FirstOrDefault();
+            if (imported != null && imported.ID != original.ID)
+                scoreStore.Delete(original.ID);
+            return imported;
         }
 
         protected override ScoreInfo? CreateModel(ArchiveReader archive, ImportParameters parameters)

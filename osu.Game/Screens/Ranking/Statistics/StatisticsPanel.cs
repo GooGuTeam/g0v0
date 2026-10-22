@@ -1,4 +1,4 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 using System.Collections.Generic;
@@ -26,7 +26,6 @@ using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Screens.Ranking.Statistics.User;
 using osuTK;
-using Realms;
 
 namespace osu.Game.Screens.Ranking.Statistics
 {
@@ -49,7 +48,7 @@ namespace osu.Game.Screens.Ranking.Statistics
         private BeatmapManager beatmapManager { get; set; } = null!;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IScoreStore scoreStore { get; set; } = null!;
 
         [Resolved]
         private IAPIProvider api { get; set; } = null!;
@@ -238,24 +237,26 @@ namespace osu.Game.Screens.Ranking.Statistics
                 });
             }
 
-            if (newScore.BeatmapInfo!.OnlineID > 0
+            var beatmapInfo = newScore.BeatmapInfo;
+
+            if (beatmapInfo != null
+                && beatmapInfo.OnlineID > 0
                 && api.IsLoggedIn)
             {
                 string? preventTaggingReason = null;
 
                 // We may want to iterate on the following conditions further in the future
 
-                var localUserScore = AchievedScore ?? realm.Run(r =>
-                    r.GetAllLocalScoresForUser(api.LocalUser.Value.Id)
-                     .Filter($@"{nameof(ScoreInfo.BeatmapInfo)}.{nameof(BeatmapInfo.ID)} == $0", newScore.BeatmapInfo.ID)
-                     .AsEnumerable()
-                     .OrderByDescending(score => score.Ruleset.MatchesOnlineID(newScore.BeatmapInfo.Ruleset))
-                     .ThenByDescending(score => score.Rank)
-                     .FirstOrDefault());
+                var localUserScore = AchievedScore ?? scoreStore.GetForBeatmap(beatmapInfo.Hash)
+                                                                  .Where(s => s.UserID == api.LocalUser.Value.Id || s.UserID <= 1)
+                                                                  .Where(s => s.BeatmapInfo?.ID == beatmapInfo.ID)
+                                                                  .OrderByDescending(s => s.Ruleset.MatchesOnlineID(beatmapInfo.Ruleset))
+                                                                  .ThenByDescending(s => s.Rank)
+                                                                  .FirstOrDefault();
 
                 if (localUserScore == null)
                     preventTaggingReason = "Play the beatmap to contribute to beatmap tags!";
-                else if (localUserScore.Ruleset.OnlineID != newScore.BeatmapInfo!.Ruleset.OnlineID)
+                else if (localUserScore.Ruleset.OnlineID != beatmapInfo.Ruleset.OnlineID)
                     preventTaggingReason = "Play the beatmap in its original ruleset to contribute to beatmap tags!";
                 else if (localUserScore.Rank < ScoreRank.C)
                     preventTaggingReason = "Set a better score to contribute to beatmap tags!";
@@ -264,7 +265,7 @@ namespace osu.Game.Screens.Ranking.Statistics
 
                 if (preventTaggingReason == null)
                 {
-                    yield return new StatisticItem("Beatmap tags", () => new UserTagControl(newScore.BeatmapInfo)
+                    yield return new StatisticItem("Beatmap tags", () => new UserTagControl(beatmapInfo)
                     {
                         Writable = true,
                         RelativeSizeAxes = Axes.X,
@@ -278,7 +279,7 @@ namespace osu.Game.Screens.Ranking.Statistics
                     {
                         Children = new Drawable[]
                         {
-                            new UserTagControl(newScore.BeatmapInfo)
+                            new UserTagControl(beatmapInfo)
                             {
                                 Writable = false,
                                 RelativeSizeAxes = Axes.X,

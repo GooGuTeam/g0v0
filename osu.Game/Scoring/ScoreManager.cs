@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -30,6 +30,8 @@ namespace osu.Game.Scoring
         private readonly ScoreImporter scoreImporter;
         private readonly LegacyScoreExporter scoreExporter;
 
+        public IScoreStore Store { get; }
+
         public override bool PauseImports
         {
             get => base.PauseImports;
@@ -41,18 +43,19 @@ namespace osu.Game.Scoring
         }
 
         public ScoreManager(RulesetStore rulesets, Func<BeatmapManager> beatmaps, Storage storage, RealmAccess realm, IAPIProvider api,
-                            OsuConfigManager? configManager = null)
+                            OsuConfigManager? configManager = null, IScoreStore? scores = null)
             : base(storage, realm)
         {
             this.beatmaps = beatmaps;
             this.configManager = configManager;
+            Store = scores ?? new RealmScoreStore(realm);
 
-            scoreImporter = new ScoreImporter(rulesets, beatmaps, storage, realm, api)
+            scoreImporter = new ScoreImporter(rulesets, beatmaps, storage, realm, api, Store)
             {
                 PostNotification = obj => PostNotification?.Invoke(obj)
             };
 
-            scoreExporter = new LegacyScoreExporter(storage)
+            scoreExporter = new LegacyScoreExporter(storage, Store.FileStorageDirectory)
             {
                 PostNotification = obj => PostNotification?.Invoke(obj)
             };
@@ -74,34 +77,21 @@ namespace osu.Game.Scoring
             return databasedScoreInfo == null ? null : scoreImporter.GetScore(databasedScoreInfo);
         }
 
-        /// <summary>
-        /// Perform a lookup query on available <see cref="ScoreInfo"/>s.
-        /// </summary>
-        /// <param name="query">The query.</param>
-        /// <returns>The first result for the provided query in its detached form, or null if no results were found.</returns>
-        public ScoreInfo? Query(Expression<Func<ScoreInfo, bool>> query)
-        {
-            return Realm.Run(r => r.All<ScoreInfo>().FirstOrDefault(query)?.Detach());
-        }
-
         private ScoreInfo? getDatabasedScoreInfo(IScoreInfo originalScoreInfo)
         {
-            ScoreInfo? databasedScoreInfo = null;
+            ScoreInfo? databasedScoreInfo = originalScoreInfo is ScoreInfo local ? Store.GetDetached(local.ID) : null;
 
             if (originalScoreInfo is ScoreInfo scoreInfo)
             {
-                if (scoreInfo.IsManaged)
-                    return scoreInfo.Detach();
-
-                if (!string.IsNullOrEmpty(scoreInfo.Hash))
-                    databasedScoreInfo = Query(s => s.Hash == scoreInfo.Hash);
+                if (databasedScoreInfo == null && !string.IsNullOrEmpty(scoreInfo.Hash))
+                    databasedScoreInfo = Store.FindByHash(scoreInfo.Hash);
             }
 
             if (originalScoreInfo.OnlineID > 0)
-                databasedScoreInfo ??= Query(s => s.OnlineID == originalScoreInfo.OnlineID);
+                databasedScoreInfo ??= Store.FindByOnlineId(originalScoreInfo.OnlineID);
 
             if (originalScoreInfo.LegacyOnlineID > 0)
-                databasedScoreInfo ??= Query(s => s.LegacyOnlineID == originalScoreInfo.LegacyOnlineID);
+                databasedScoreInfo ??= Store.FindByLegacyOnlineId(originalScoreInfo.LegacyOnlineID);
 
             if (databasedScoreInfo == null)
             {
@@ -168,36 +158,29 @@ namespace osu.Game.Scoring
 
         public void Delete(Expression<Func<ScoreInfo, bool>>? filter = null, bool silent = false)
         {
-            Realm.Run(r =>
-            {
-                var items = r.All<ScoreInfo>()
-                             .Where(s => !s.DeletePending);
-
-                if (filter != null)
-                    items = items.Where(filter);
-
-                Delete(items.ToList(), silent);
-            });
+            IEnumerable<ScoreInfo> items = Store.GetAllDetached().Where(s => !s.DeletePending);
+            if (filter != null)
+                items = items.Where(filter.Compile());
+            Delete(items.ToList(), silent);
         }
 
         public void Delete(BeatmapInfo beatmap, bool silent = false)
         {
-            Realm.Run(r =>
-            {
-                var beatmapScores = r.Find<BeatmapInfo>(beatmap.ID)!.Scores.ToList();
-                Delete(beatmapScores, silent);
-            });
+            Delete(Store.GetForBeatmap(beatmap.Hash), silent);
         }
+
+        public override bool Delete(ScoreInfo item) => Store.Delete(item.ID);
+
+        public override void Undelete(ScoreInfo item) => Store.Undelete(item.ID);
 
         public Task Import(params string[] paths) => scoreImporter.Import(paths);
 
         public Task Import(ImportTask[] imports, ImportParameters parameters = default) => scoreImporter.Import(imports, parameters);
 
         public override bool IsAvailableLocally(ScoreInfo model)
-            => Realm.Run(realm => realm.All<ScoreInfo>()
-                                       // this basically inlines `ModelExtension.MatchesOnlineID(IScoreInfo, IScoreInfo)`,
-                                       // because that method can't be used here, as realm can't translate it to its query language.
-                                       .Any(s => s.OnlineID == model.OnlineID || s.LegacyOnlineID == model.LegacyOnlineID));
+            => (model.OnlineID > 0 && Store.FindByOnlineId(model.OnlineID) != null)
+               || (model.LegacyOnlineID > 0 && Store.FindByLegacyOnlineId(model.LegacyOnlineID) != null)
+               || (!string.IsNullOrEmpty(model.Hash) && Store.FindByHash(model.Hash) is { DeletePending: false });
 
         public IEnumerable<string> HandledExtensions => scoreImporter.HandledExtensions;
 
@@ -216,7 +199,7 @@ namespace osu.Game.Scoring
         {
             ScoreInfo? databasedScoreInfo = getDatabasedScoreInfo(scoreInfo);
 
-            return databasedScoreInfo == null ? Task.CompletedTask : scoreExporter.ExportAsync(databasedScoreInfo.ToLive(Realm));
+            return databasedScoreInfo == null ? Task.CompletedTask : scoreExporter.ExportAsync(databasedScoreInfo.ToLiveUnmanaged());
         }
 
         public Task<Live<ScoreInfo>?> ImportAsUpdate(ProgressNotification notification, ImportTask task, ScoreInfo original) => scoreImporter.ImportAsUpdate(notification, task, original);

@@ -16,6 +16,21 @@ g0v0-server. Any client that implements the g0v0! Standard is fully compatible w
 server, and g0v0! is the reference implementation. g0v0! Standard changes have been flagged in the differences list
 above.
 
+## Experimental SQLite storage
+
+The debug settings backend selector requires a restart. Key bindings, mod presets,
+ruleset settings, beatmap collections, and local scores use the selected backend.
+Beatmaps, skins, and the remaining domains still use Realm.
+
+SQLite scores are stored in `scores.db`, with replay content in the separate
+`score-files/` directory so Realm file cleanup cannot remove SQLite-owned replays.
+Local score lists, replay availability, deletion/restore, replay export, and background
+score reprocessing use the selected score store. Beatmap associations are resolved
+from the stored beatmap hash against the current Realm beatmap database.
+
+Switching backends does not copy existing Realm data into SQLite. Each backend keeps
+its own scores and replay files; switching back restores access to the original data.
+
 ## Download
 
 g0v0! is available for Windows (x64 / ARM64), macOS (Intel / Apple Silicon), Linux (x64 / ARM64), Android, and iOS. Grab

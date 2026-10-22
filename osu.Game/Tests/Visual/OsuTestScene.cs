@@ -136,6 +136,7 @@ namespace osu.Game.Tests.Visual
             var isolatedBaseDependencies = new DependencyContainer(baseDependencies);
             isolatedBaseDependencies.CacheAs(RulesetConfigs = new TestRulesetConfigCache());
             isolatedBaseDependencies.CacheAs<IBeatmapCollectionStore>(new RealmBeatmapCollectionStore(Realm));
+            isolatedBaseDependencies.CacheAs<IScoreStore>(new RealmScoreStore(Realm));
             baseDependencies = isolatedBaseDependencies;
 
             var providedRuleset = CreateRuleset();

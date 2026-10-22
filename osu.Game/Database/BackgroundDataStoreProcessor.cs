@@ -1,4 +1,4 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -46,6 +46,9 @@ namespace osu.Game.Database
 
         [Resolved]
         private ScoreManager scoreManager { get; set; } = null!;
+
+        [Resolved]
+        private IScoreStore scoreStore { get; set; } = null!;
 
         [Resolved]
         private RealmAccess realmAccess { get; set; } = null!;
@@ -356,18 +359,16 @@ namespace osu.Game.Database
 
             Logger.Log("Querying for scores to reprocess...");
 
-            realmAccess.Run(r =>
+            foreach (var score in scoreStore.GetAllDetached())
             {
-                foreach (var score in r.All<ScoreInfo>().Where(s => !s.BackgroundReprocessingFailed))
+                if (!score.BackgroundReprocessingFailed
+                    && score.BeatmapInfo != null
+                    && score.Statistics.Sum(kvp => kvp.Value) > 0
+                    && score.MaximumStatistics.Sum(kvp => kvp.Value) == 0)
                 {
-                    if (score.BeatmapInfo != null
-                        && score.Statistics.Sum(kvp => kvp.Value) > 0
-                        && score.MaximumStatistics.Sum(kvp => kvp.Value) == 0)
-                    {
-                        scoreIds.Add(score.ID);
-                    }
+                    scoreIds.Add(score.ID);
                 }
-            });
+            }
 
             if (scoreIds.Count == 0)
                 return;
@@ -390,18 +391,15 @@ namespace osu.Game.Database
 
                 try
                 {
-                    var score = scoreManager.Query(s => s.ID == id);
+                    var score = scoreStore.GetDetached(id);
 
                     if (score != null)
                     {
                         scoreManager.PopulateMaximumStatistics(score);
 
-                        // Can't use async overload because we're not on the update thread.
-                        // ReSharper disable once MethodHasAsyncOverload
-                        realmAccess.Write(r =>
-                        {
-                            r.Find<ScoreInfo>(id)!.MaximumStatisticsJson = JsonConvert.SerializeObject(score.MaximumStatistics);
-                        });
+                        string maximumStatisticsJson = JsonConvert.SerializeObject(score.MaximumStatistics);
+
+                        scoreStore.Update(id, s => s.MaximumStatisticsJson = maximumStatisticsJson);
                     }
 
                     ++processedCount;
@@ -413,7 +411,7 @@ namespace osu.Game.Database
                 catch (Exception e)
                 {
                     Logger.Log(@$"Failed to populate maximum statistics for {id}: {e}");
-                    realmAccess.Write(r => r.Find<ScoreInfo>(id)!.BackgroundReprocessingFailed = true);
+                    scoreStore.Update(id, s => s.BackgroundReprocessingFailed = true);
                     ++failedCount;
                 }
             }
@@ -425,17 +423,15 @@ namespace osu.Game.Database
         {
             Logger.Log("Querying for scores that need mod multiplier upgrade...");
 
-            HashSet<Guid> scoreIds = realmAccess.Run(r => new HashSet<Guid>(
-                r.All<ScoreInfo>()
-                 .Where(s => !s.BackgroundReprocessingFailed
-                             && s.BeatmapInfo != null
-                             && s.TotalScoreVersion < 30000017 // version number represents version with latest mod multiplier change
-                             && s.TotalScoreWithoutMods > 0)
-                 .AsEnumerable()
-                 // must be done after materialisation, as realm doesn't want to support
-                 // nested property predicates
-                 .Where(s => s.Ruleset.IsLegacyRuleset())
-                 .Select(s => s.ID)));
+            HashSet<Guid> scoreIds = new HashSet<Guid>(
+                scoreStore.GetAllDetached()
+                          .Where(s => !s.BackgroundReprocessingFailed
+                                      && s.BeatmapInfo != null
+                                      && s.TotalScoreVersion < 30000017 // version number represents version with latest mod multiplier change
+                                      && s.TotalScoreWithoutMods > 0)
+                          // must be done after retrieval, as ruleset implementation checks cannot be translated to a store query
+                          .Where(s => s.Ruleset.IsLegacyRuleset())
+                          .Select(s => s.ID));
 
             Logger.Log($"Found {scoreIds.Count} scores which require mod multiplier upgrade.");
 
@@ -458,17 +454,18 @@ namespace osu.Game.Database
 
                 try
                 {
-                    // Can't use async overload because we're not on the update thread.
-                    // ReSharper disable once MethodHasAsyncOverload
-                    realmAccess.Write(r =>
-                    {
-                        ScoreInfo s = r.Find<ScoreInfo>(id)!;
-                        if (s.BeatmapInfo == null)
-                            return;
+                    var score = scoreStore.GetDetached(id);
 
-                        StandardisedScoreMigrationTools.UpdateToLatestScoreMultipliers(s, s.BeatmapInfo.Difficulty);
-                        s.TotalScoreVersion = LegacyScoreEncoder.LATEST_VERSION;
-                    });
+                    if (score?.BeatmapInfo != null)
+                    {
+                        StandardisedScoreMigrationTools.UpdateToLatestScoreMultipliers(score, score.BeatmapInfo.Difficulty);
+
+                        scoreStore.Update(id, s =>
+                        {
+                            s.TotalScore = score.TotalScore;
+                            s.TotalScoreVersion = LegacyScoreEncoder.LATEST_VERSION;
+                        });
+                    }
 
                     ++processedCount;
                 }
@@ -479,7 +476,7 @@ namespace osu.Game.Database
                 catch (Exception e)
                 {
                     Logger.Log($"Failed to upgrade mod multipliers for {id}: {e}");
-                    realmAccess.Write(r => r.Find<ScoreInfo>(id)!.BackgroundReprocessingFailed = true);
+                    scoreStore.Update(id, s => s.BackgroundReprocessingFailed = true);
                     ++failedCount;
                 }
             }
@@ -491,17 +488,15 @@ namespace osu.Game.Database
         {
             Logger.Log("Querying for scores that need total score conversion...");
 
-            HashSet<Guid> scoreIds = realmAccess.Run(r => new HashSet<Guid>(
-                r.All<ScoreInfo>()
-                 .Where(s => !s.BackgroundReprocessingFailed
-                             && s.BeatmapInfo != null
-                             && s.IsLegacyScore
-                             && s.TotalScoreVersion < LegacyScoreEncoder.LATEST_VERSION)
-                 .AsEnumerable()
-                 // must be done after materialisation, as realm doesn't want to support
-                 // nested property predicates
-                 .Where(s => s.Ruleset.IsLegacyRuleset())
-                 .Select(s => s.ID)));
+            HashSet<Guid> scoreIds = new HashSet<Guid>(
+                scoreStore.GetAllDetached()
+                          .Where(s => !s.BackgroundReprocessingFailed
+                                      && s.BeatmapInfo != null
+                                      && s.IsLegacyScore
+                                      && s.TotalScoreVersion < LegacyScoreEncoder.LATEST_VERSION)
+                          // must be done after retrieval, as ruleset implementation checks cannot be translated to a store query
+                          .Where(s => s.Ruleset.IsLegacyRuleset())
+                          .Select(s => s.ID));
 
             Logger.Log($"Found {scoreIds.Count} scores which require total score conversion.");
 
@@ -524,14 +519,23 @@ namespace osu.Game.Database
 
                 try
                 {
-                    // Can't use async overload because we're not on the update thread.
-                    // ReSharper disable once MethodHasAsyncOverload
-                    realmAccess.Write(r =>
+                    var score = scoreStore.GetDetached(id);
+
+                    if (score != null)
                     {
-                        ScoreInfo s = r.Find<ScoreInfo>(id)!;
-                        StandardisedScoreMigrationTools.UpdateFromLegacy(s, beatmapManager.GetWorkingBeatmap(s.BeatmapInfo));
-                        s.TotalScoreVersion = LegacyScoreEncoder.LATEST_VERSION;
-                    });
+                        // Expensive beatmap processing is performed outside of the store's update lock.
+                        var workingBeatmap = beatmapManager.GetWorkingBeatmap(score.BeatmapInfo);
+                        StandardisedScoreMigrationTools.UpdateFromLegacy(score, workingBeatmap);
+
+                        scoreStore.Update(id, s =>
+                        {
+                            s.Accuracy = score.Accuracy;
+                            s.Rank = score.Rank;
+                            s.TotalScoreWithoutMods = score.TotalScoreWithoutMods;
+                            s.TotalScore = score.TotalScore;
+                            s.TotalScoreVersion = LegacyScoreEncoder.LATEST_VERSION;
+                        });
+                    }
 
                     ++processedCount;
                 }
@@ -542,7 +546,7 @@ namespace osu.Game.Database
                 catch (Exception e)
                 {
                     Logger.Log($"Failed to convert total score for {id}: {e}");
-                    realmAccess.Write(r => r.Find<ScoreInfo>(id)!.BackgroundReprocessingFailed = true);
+                    scoreStore.Update(id, s => s.BackgroundReprocessingFailed = true);
                     ++failedCount;
                 }
             }
@@ -554,14 +558,11 @@ namespace osu.Game.Database
         {
             Logger.Log("Querying for scores that need rank upgrades...");
 
-            HashSet<Guid> scoreIds = realmAccess.Run(r => new HashSet<Guid>(
-                r.All<ScoreInfo>()
-                 .Where(s => s.TotalScoreVersion < 30000013 && !s.BackgroundReprocessingFailed) // last total score version with a significant change to ranks
-                 .AsEnumerable()
-                 // must be done after materialisation, as realm doesn't support
-                 // filtering on nested property predicates or projection via `.Select()`
-                 .Where(s => s.Ruleset.IsLegacyRuleset())
-                 .Select(s => s.ID)));
+            HashSet<Guid> scoreIds = new HashSet<Guid>(
+                scoreStore.GetAllDetached()
+                          .Where(s => s.TotalScoreVersion < 30000013 && !s.BackgroundReprocessingFailed) // last total score version with a significant change to ranks
+                          .Where(s => s.Ruleset.IsLegacyRuleset())
+                          .Select(s => s.ID));
 
             Logger.Log($"Found {scoreIds.Count} scores which require rank upgrades.");
 
@@ -584,14 +585,18 @@ namespace osu.Game.Database
 
                 try
                 {
-                    // Can't use async overload because we're not on the update thread.
-                    // ReSharper disable once MethodHasAsyncOverload
-                    realmAccess.Write(r =>
+                    var score = scoreStore.GetDetached(id);
+
+                    if (score != null)
                     {
-                        ScoreInfo s = r.Find<ScoreInfo>(id)!;
-                        s.Rank = StandardisedScoreMigrationTools.ComputeRank(s);
-                        s.TotalScoreVersion = LegacyScoreEncoder.LATEST_VERSION;
-                    });
+                        var rank = StandardisedScoreMigrationTools.ComputeRank(score);
+
+                        scoreStore.Update(id, s =>
+                        {
+                            s.Rank = rank;
+                            s.TotalScoreVersion = LegacyScoreEncoder.LATEST_VERSION;
+                        });
+                    }
 
                     ++processedCount;
                 }
@@ -602,7 +607,7 @@ namespace osu.Game.Database
                 catch (Exception e)
                 {
                     Logger.Log($"Failed to update rank score {id}: {e}");
-                    realmAccess.Write(r => r.Find<ScoreInfo>(id)!.BackgroundReprocessingFailed = true);
+                    scoreStore.Update(id, s => s.BackgroundReprocessingFailed = true);
                     ++failedCount;
                 }
             }

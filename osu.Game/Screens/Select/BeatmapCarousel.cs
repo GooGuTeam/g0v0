@@ -1,4 +1,4 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -29,9 +29,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Carousel;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.API;
-using osu.Game.Rulesets;
 using osu.Game.Scoring;
-using Realms;
 
 namespace osu.Game.Screens.Select
 {
@@ -867,6 +865,9 @@ namespace osu.Game.Screens.Select
         private IBeatmapCollectionStore collectionStore { get; set; } = null!;
 
         [Resolved]
+        private IScoreStore scoreStore { get; set; } = null!;
+
+        [Resolved]
         private IAPIProvider api { get; set; } = null!;
 
         /// <remarks>
@@ -875,14 +876,20 @@ namespace osu.Game.Screens.Select
         /// </remarks>
         protected virtual List<BeatmapCollection> GetAllCollections() => collectionStore.GetAllDetached().OrderBy(c => c.Name).ToList();
 
-        protected virtual Dictionary<Guid, ScoreRank> GetBeatmapInfoGuidToTopRankMapping(FilterCriteria criteria) => realm.Run(r =>
+        protected virtual Dictionary<Guid, ScoreRank> GetBeatmapInfoGuidToTopRankMapping(FilterCriteria criteria)
         {
             var topRankMapping = new Dictionary<Guid, ScoreRank>();
 
-            var allLocalScores = r.GetAllLocalScoresForUser(criteria.LocalUserId)
-                                  .Filter($@"{nameof(ScoreInfo.Ruleset)}.{nameof(RulesetInfo.ShortName)} == $0", criteria.Ruleset?.ShortName)
-                                  .OrderByDescending(s => s.TotalScore)
-                                  .ThenBy(s => s.Date);
+            // The store snapshot includes soft-deleted scores for undo/background use, so filter them here.
+            // The stored beatmap hash is the source of truth for which beatmap a score was set on; the
+            // resolved BeatmapInfo may be null when no local beatmap matches.
+            var allLocalScores = scoreStore.GetAllDetached()
+                                           .Where(s => !s.DeletePending)
+                                           .Where(s => s.UserID == criteria.LocalUserId || s.UserID <= 1)
+                                           .Where(s => s.BeatmapInfo != null && s.BeatmapInfo.Hash == s.BeatmapHash)
+                                           .Where(s => s.Ruleset.ShortName == criteria.Ruleset?.ShortName)
+                                           .OrderByDescending(s => s.TotalScore)
+                                           .ThenBy(s => s.Date);
 
             foreach (var score in allLocalScores)
             {
@@ -895,7 +902,7 @@ namespace osu.Game.Screens.Select
             }
 
             return topRankMapping;
-        });
+        }
 
         /// <remarks>
         /// Note that calling <c>.ToHashSet()</c> below has two purposes:

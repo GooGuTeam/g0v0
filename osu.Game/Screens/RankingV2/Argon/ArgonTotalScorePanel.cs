@@ -14,7 +14,6 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Localisation;
-using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Extensions;
@@ -30,7 +29,6 @@ using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
 using osu.Game.Skinning;
 using osuTK;
-using Realms;
 
 namespace osu.Game.Screens.RankingV2.Argon
 {
@@ -48,7 +46,7 @@ namespace osu.Game.Screens.RankingV2.Argon
         private IBindable<IScoreInfo> score { get; set; } = null!;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IScoreStore scoreStore { get; set; } = null!;
 
         [Resolved]
         private IAPIProvider api { get; set; } = null!;
@@ -178,19 +176,20 @@ namespace osu.Game.Screens.RankingV2.Argon
 
         private bool isScorePersonalBest(IScoreInfo newScore)
         {
-            if (newScore.Beatmap == null)
+            var beatmap = newScore.Beatmap;
+
+            if (beatmap == null)
                 return false;
 
             if (api.LocalUser.Value.OnlineID > 0 && !newScore.User.MatchesOnlineID(api.LocalUser.Value))
                 return false;
 
-            var personalBest = realm.Run(r =>
-                r.GetAllLocalScoresForUser(api.LocalUser.Value.Id)
-                 .Filter($@"{nameof(ScoreInfo.BeatmapInfo)}.{nameof(BeatmapInfo.OnlineID)} == $0", newScore.Beatmap.OnlineID)
-                 .AsEnumerable()
-                 .OrderByDescending(score => score.TotalScore)
-                 .ThenBy(score => score.Date)
-                 .FirstOrDefault());
+            var personalBest = scoreStore.GetForBeatmap(beatmap.Hash)
+                                         .Where(s => s.UserID == api.LocalUser.Value.Id || s.UserID <= 1)
+                                         .Where(s => s.BeatmapInfo?.OnlineID == beatmap.OnlineID)
+                                         .OrderByDescending(s => s.TotalScore)
+                                         .ThenBy(s => s.Date)
+                                         .FirstOrDefault();
 
             return newScore.MatchesOnlineID(personalBest) || (newScore is ScoreInfo localScore && localScore.Equals(personalBest));
         }

@@ -367,10 +367,16 @@ namespace osu.Game
 
             dependencies.Cache(difficultyCache = new BeatmapDifficultyCache());
 
-            // ordering is important here to ensure foreign keys rules are not broken in ModelStore.Cleanup()
-            dependencies.Cache(ScoreManager = new ScoreManager(RulesetStore, () => BeatmapManager, Storage, realm, API, LocalConfig));
+            // Select storage before creating managers which update backend-owned data.
+            dataStoreSelector = new DataStoreSelector(realm, Storage, LocalConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend).Value, RulesetStore);
 
-            dependencies.Cache(BeatmapManager = new BeatmapManager(Storage, realm, API, Audio, Resources, Host, defaultBeatmap, difficultyCache, performOnlineLookups: true));
+            // ordering is important here to ensure foreign keys rules are not broken in ModelStore.Cleanup()
+            dependencies.Cache(ScoreManager = new ScoreManager(RulesetStore, () => BeatmapManager, Storage, realm, API, LocalConfig,
+                scores: dataStoreSelector.GetScoreStore()));
+            dependencies.CacheAs(ScoreManager.Store);
+
+            dependencies.Cache(BeatmapManager = new BeatmapManager(Storage, realm, API, Audio, Resources, Host, defaultBeatmap, difficultyCache,
+                performOnlineLookups: true, collections: dataStoreSelector.GetBeatmapCollectionStore()));
             dependencies.CacheAs<IWorkingBeatmapCache>(BeatmapManager);
 
             dependencies.Cache(BeatmapDownloader = new BeatmapModelDownloader(BeatmapManager, API));
@@ -394,9 +400,6 @@ namespace osu.Game
 
             dependencies.Cache(beatmapCache = new BeatmapLookupCache());
             base.Content.Add(beatmapCache);
-
-            // must be created before the ruleset config cache and any drawables which resolve stores below.
-            dataStoreSelector = new DataStoreSelector(realm, Storage, LocalConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend).Value, RulesetStore);
 
             dependencies.CacheAs<IRulesetConfigCache>(rulesetConfigCache = new RulesetConfigCache(realm, RulesetStore, dataStoreSelector.GetRulesetSettingStore()));
 

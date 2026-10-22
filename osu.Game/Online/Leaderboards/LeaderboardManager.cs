@@ -1,9 +1,8 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -19,7 +18,6 @@ using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Screens.Play.Leaderboards;
-using Realms;
 
 namespace osu.Game.Online.Leaderboards
 {
@@ -41,7 +39,7 @@ namespace osu.Game.Online.Leaderboards
         private IAPIProvider api { get; set; } = null!;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IScoreStore scoreStore { get; set; } = null!;
 
         [Resolved]
         private RulesetStore rulesets { get; set; } = null!;
@@ -73,12 +71,10 @@ namespace osu.Game.Online.Leaderboards
             {
                 case BeatmapLeaderboardScope.Local:
                 {
-                    localScoreSubscription = realm.RegisterForNotifications(r =>
-                        r.All<ScoreInfo>().Filter($"{nameof(ScoreInfo.BeatmapInfo)}.{nameof(BeatmapInfo.ID)} == $0"
-                                                  + $" AND {nameof(ScoreInfo.BeatmapInfo)}.{nameof(BeatmapInfo.Hash)} == {nameof(ScoreInfo.BeatmapHash)}"
-                                                  + $" AND {nameof(ScoreInfo.Ruleset)}.{nameof(RulesetInfo.ShortName)} == $1"
-                                                  + $" AND {nameof(ScoreInfo.DeletePending)} == false"
-                            , newCriteria.Beatmap.ID, newCriteria.Ruleset.ShortName), localScoresChanged);
+                    // The store callback is an invalidation hint which may arrive on an arbitrary thread,
+                    // so recompute from the current criteria on the update thread rather than using the
+                    // criteria active at subscription time.
+                    localScoreSubscription = scoreStore.Subscribe(() => Schedule(updateLocalScores));
                     return;
                 }
 
@@ -164,20 +160,24 @@ namespace osu.Game.Online.Leaderboards
             }
         }
 
-        private void localScoresChanged(IRealmCollection<ScoreInfo> sender, ChangeSet? changes)
+        private void updateLocalScores()
         {
-            Debug.Assert(CurrentCriteria != null);
+            // Fetch the current criteria on the update thread so callbacks queued for a previous
+            // criteria can't overwrite the leaderboard with stale results.
+            var criteria = CurrentCriteria;
 
-            // This subscription may fire from changes to linked beatmaps, which we don't care about.
-            // It's currently not possible for a score to be modified after insertion, so we can safely ignore callbacks with only modifications.
-            if (changes?.HasCollectionChanges() == false)
+            if (criteria?.Beatmap == null || criteria.Ruleset == null || criteria.Scope != BeatmapLeaderboardScope.Local)
                 return;
 
-            var newScores = sender.AsEnumerable();
+            string beatmapHash = criteria.Beatmap.Hash;
+            string rulesetShortName = criteria.Ruleset.ShortName;
 
-            if (CurrentCriteria.ExactMods != null)
+            IEnumerable<ScoreInfo> newScores = scoreStore.GetForBeatmap(beatmapHash)
+                                                         .Where(s => s.Ruleset.ShortName == rulesetShortName);
+
+            if (criteria.ExactMods != null)
             {
-                if (!CurrentCriteria.ExactMods.Any())
+                if (!criteria.ExactMods.Any())
                 {
                     // we need to filter out all scores that have any mods to get all local nomod scores
                     newScores = newScores.Where(s => !s.Mods.Any());
@@ -185,14 +185,13 @@ namespace osu.Game.Online.Leaderboards
                 else
                 {
                     // otherwise find all the scores that have all of the currently selected mods (similar to how web applies mod filters)
-                    // we're creating and using a string HashSet representation of selected mods so that it can be translated into the DB query itself
-                    var selectedMods = CurrentCriteria.ExactMods.Select(m => m.Acronym).ToHashSet();
+                    var selectedMods = criteria.ExactMods.Select(m => m.Acronym).ToHashSet();
 
                     newScores = newScores.Where(s => selectedMods.SetEquals(s.Mods.Select(m => m.Acronym)));
                 }
             }
 
-            newScores = newScores.Detach().OrderByCriteria(CurrentCriteria.Sorting);
+            newScores = newScores.OrderByCriteria(criteria.Sorting);
 
             var newScoresArray = newScores.ToArray();
             scores.Value = LeaderboardScores.Success(newScoresArray, scoresRequested: newScoresArray.Length, totalScores: newScoresArray.Length, null);

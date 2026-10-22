@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -26,11 +26,11 @@ namespace osu.Game.Database
 
         public readonly Storage Storage;
 
-        public RealmFileStore(RealmAccess realm, Storage storage)
+        public RealmFileStore(RealmAccess realm, Storage storage, string directory = @"files")
         {
             this.realm = realm;
 
-            Storage = storage.GetStorageForDirectory(@"files");
+            Storage = storage.GetStorageForDirectory(directory);
             Store = new StorageBackedResourceStore(Storage);
         }
 
@@ -55,6 +55,17 @@ namespace osu.Game.Database
             if (addToRealm && !file.IsManaged)
                 realm.Add(file);
 
+            return file;
+        }
+
+        /// <summary>
+        /// Stores file content without registering Realm ownership. The caller owns its lifetime.
+        /// </summary>
+        public RealmFile AddUnmanaged(Stream data, bool preferHardLinks = false)
+        {
+            var file = new RealmFile { Hash = data.ComputeSHA2Hash() };
+            if (!checkFileExistsAndMatchesHash(file))
+                copyToStore(file, data, preferHardLinks);
             return file;
         }
 

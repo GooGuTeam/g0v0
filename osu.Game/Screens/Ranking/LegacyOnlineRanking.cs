@@ -40,7 +40,6 @@ using osu.Game.Skinning.Select;
 using osu.Game.Users;
 using osuTK;
 using osuTK.Graphics;
-using Realms;
 
 namespace osu.Game.Screens.Ranking
 {
@@ -78,7 +77,7 @@ namespace osu.Game.Screens.Ranking
         private IAPIProvider api { get; set; } = null!;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IScoreStore scoreStore { get; set; } = null!;
 
         [Resolved]
         private SkinManager skins { get; set; } = null!;
@@ -401,24 +400,19 @@ namespace osu.Game.Screens.Ranking
 
         private void fetchLocalRank()
         {
-            var beatmapId = score.BeatmapInfo?.ID;
+            var beatmap = score.BeatmapInfo;
 
-            if (beatmapId == null)
+            if (beatmap == null)
                 return;
 
             // posicion de este score entre los locales del mapa (mismo ruleset, por total score),
             // como el ScoreManager.InsertScore de stable.
-            int rank = realm.Run(r =>
-            {
-                var localScores = r.All<ScoreInfo>()
-                                   .Filter(@"BeatmapInfo.ID == $0 AND DeletePending == false", beatmapId.Value)
-                                   .ToList()
-                                   .Where(s => s.Ruleset.ShortName == score.Ruleset.ShortName)
-                                   .OrderByDescending(s => s.TotalScore)
-                                   .ToList();
+            var localScores = scoreStore.GetForBeatmap(beatmap.Hash)
+                                        .Where(s => s.Ruleset.ShortName == score.Ruleset.ShortName)
+                                        .OrderByDescending(s => s.TotalScore)
+                                        .ToList();
 
-                return localScores.FindIndex(s => s.ID == score.ID) + 1;
-            });
+            int rank = localScores.FindIndex(s => s.ID == score.ID) + 1;
 
             if (rank >= 1)
             {

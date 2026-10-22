@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -589,9 +589,7 @@ namespace osu.Game.Tests.Scores.IO
 
             var scoreManager = osu.Dependencies.Get<ScoreManager>();
 
-            scoreManager.Import(score, archive);
-
-            return scoreManager.Query(_ => true);
+            return scoreManager.Import(score, archive)?.PerformRead(s => s.Detach());
         }
 
         internal class TestArchiveReader : ArchiveReader

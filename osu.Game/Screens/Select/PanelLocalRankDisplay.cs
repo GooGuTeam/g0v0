@@ -15,7 +15,6 @@ using osu.Game.Online.Leaderboards;
 using osu.Game.Rulesets;
 using osu.Game.Scoring;
 using osuTK;
-using Realms;
 
 namespace osu.Game.Screens.Select
 {
@@ -42,7 +41,7 @@ namespace osu.Game.Screens.Select
         private IBindable<RulesetInfo> ruleset { get; set; } = null!;
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IScoreStore scoreStore { get; set; } = null!;
 
         private readonly IBindable<APIUser> localUser = new Bindable<APIUser>();
 
@@ -82,26 +81,30 @@ namespace osu.Game.Screens.Select
         private void updateSubscription()
         {
             scoreSubscription?.Dispose();
+            scoreSubscription = null;
             setRankFromScore(null);
 
             if (beatmap == null)
                 return;
 
-            scoreSubscription = realm.RegisterForNotifications(r => r.All<ScoreInfo>().Where(s => s.BeatmapHash == beatmap.Hash && !s.DeletePending), localScoresChanged);
+            // The store callback only signals that scores changed and may arrive on a background thread.
+            // Fetch the current beatmap/ruleset/user on the update thread so stale callbacks can't
+            // publish a rank for outdated criteria.
+            scoreSubscription = scoreStore.Subscribe(() => Schedule(updateRank));
         }
 
-        private void localScoresChanged(IRealmCollection<ScoreInfo> sender, ChangeSet? changes)
+        private void updateRank()
         {
-            // This subscription may fire from changes to linked beatmaps, which we don't care about.
-            // It's currently not possible for a score to be modified after insertion, so we can safely ignore callbacks with only modifications.
-            if (changes?.HasCollectionChanges() == false)
+            var currentBeatmap = beatmap;
+
+            if (currentBeatmap == null)
                 return;
 
-            ScoreInfo? topScore = sender
-                                  // doing these post realm filter is most efficient.
-                                  .Where(s => s.UserID == localUser.Value.Id || s.UserID <= 1)
-                                  .Where(s => ruleset.Value.Equals(s.Ruleset))
-                                  .MaxBy(info => (info.TotalScore, -info.Date.UtcDateTime.Ticks));
+            ScoreInfo? topScore = scoreStore.GetForBeatmap(currentBeatmap.Hash)
+                                            // doing these post-store filters is most efficient.
+                                            .Where(s => s.UserID == localUser.Value.Id || s.UserID <= 1)
+                                            .Where(s => ruleset.Value.Equals(s.Ruleset))
+                                            .MaxBy(info => (info.TotalScore, -info.Date.UtcDateTime.Ticks));
 
             setRankFromScore(topScore);
         }

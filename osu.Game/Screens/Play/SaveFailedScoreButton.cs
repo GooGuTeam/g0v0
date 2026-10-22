@@ -23,7 +23,7 @@ namespace osu.Game.Screens.Play
     public partial class SaveFailedScoreButton : CompositeDrawable, IKeyBindingHandler<GlobalAction>
     {
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private IScoreStore scoreStore { get; set; } = null!;
 
         [Resolved]
         private ScoreManager scoreManager { get; set; } = null!;
@@ -65,7 +65,7 @@ namespace osu.Game.Screens.Play
                             {
                                 Task.Run(importFailedScore).ContinueWith(t =>
                                 {
-                                    importedScore = realm.Run<Live<ScoreInfo>?>(r => r.Find<ScoreInfo>(t.GetResultSafely().ID)?.ToLive(realm));
+                                    importedScore = scoreStore.GetDetached(t.GetResultSafely().ID)?.ToLiveUnmanaged();
                                     Schedule(() => state.Value = importedScore != null ? DownloadState.LocallyAvailable : DownloadState.NotDownloaded);
                                 }).FireAndForget();
                             }
@@ -77,7 +77,7 @@ namespace osu.Game.Screens.Play
 
             if (player != null)
             {
-                importedScore = realm.Run(r => r.Find<ScoreInfo>(player.Score.ScoreInfo.ID)?.ToLive(realm));
+                importedScore = scoreStore.GetDetached(player.Score.ScoreInfo.ID)?.ToLiveUnmanaged();
                 state.Value = importedScore != null ? DownloadState.LocallyAvailable : DownloadState.NotDownloaded;
             }
 
