@@ -106,6 +106,7 @@ namespace osu.Game.Graphics.Containers.Markdown
                     {
                         t.Colour = colourProvider.Light1;
                         t.Text = Text;
+                        t.Font = OsuFont.MapleMono.With(size: t.Font.Size);
                         t.Padding = new MarginPadding
                         {
                             Vertical = 1,
