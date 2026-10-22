@@ -19,6 +19,7 @@ namespace osu.Game.Database
         private const string ruleset_settings_database = @"ruleset-settings.db";
         private const string beatmap_collections_database = @"beatmap-collections.db";
         private const string scores_database = @"scores.db";
+        private const string skins_database = @"skins.db";
 
         private readonly RealmAccess realm;
         private readonly Storage? storage;
@@ -30,6 +31,7 @@ namespace osu.Game.Database
         private SqliteRulesetSettingStore? sqliteRulesetSettingStore;
         private SqliteBeatmapCollectionStore? sqliteBeatmapCollectionStore;
         private SqliteScoreStore? sqliteScoreStore;
+        private SqliteSkinStore? sqliteSkinStore;
 
         public DataStoreSelector(RealmAccess realm, Storage? storage, DataStoreBackend backend, RulesetStore? rulesets = null)
         {
@@ -98,6 +100,16 @@ namespace osu.Game.Database
             _ => throw new ArgumentOutOfRangeException(nameof(backend), backend, null)
         };
 
+        /// <summary>
+        /// Resolves the selected skin store. Its lifetime is owned by this selector.
+        /// </summary>
+        public ISkinStore GetSkinStore() => backend switch
+        {
+            DataStoreBackend.Realm => new RealmSkinStore(realm),
+            DataStoreBackend.SQLite => sqliteSkinStore ??= new SqliteSkinStore(getDatabasePath(skins_database)),
+            _ => throw new ArgumentOutOfRangeException(nameof(backend), backend, null)
+        };
+
         private RulesetStore getRulesetStore()
         {
             if (rulesets == null)
@@ -121,6 +133,7 @@ namespace osu.Game.Database
             sqliteRulesetSettingStore?.Dispose();
             sqliteBeatmapCollectionStore?.Dispose();
             sqliteScoreStore?.Dispose();
+            sqliteSkinStore?.Dispose();
         }
     }
 }

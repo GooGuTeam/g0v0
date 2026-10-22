@@ -345,8 +345,12 @@ namespace osu.Game
 
             Audio.Samples.PlaybackConcurrency = SAMPLE_CONCURRENCY;
 
-            dependencies.Cache(SkinManager = new SkinManager(Storage, realm, Host, Resources, Audio, Scheduler));
+            // Select storage before creating managers which update backend-owned data.
+            dataStoreSelector = new DataStoreSelector(realm, Storage, LocalConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend).Value, RulesetStore);
+
+            dependencies.Cache(SkinManager = new SkinManager(Storage, realm, Host, Resources, Audio, Scheduler, dataStoreSelector.GetSkinStore()));
             dependencies.CacheAs<ISkinSource>(SkinManager);
+            dependencies.CacheAs(SkinManager.Store);
 
             EndpointConfiguration endpoints = CreateEndpoints();
 
@@ -366,9 +370,6 @@ namespace osu.Game
             var defaultBeatmap = new DummyWorkingBeatmap(Audio, Textures);
 
             dependencies.Cache(difficultyCache = new BeatmapDifficultyCache());
-
-            // Select storage before creating managers which update backend-owned data.
-            dataStoreSelector = new DataStoreSelector(realm, Storage, LocalConfig.GetBindable<DataStoreBackend>(OsuSetting.DataStoreBackend).Value, RulesetStore);
 
             // ordering is important here to ensure foreign keys rules are not broken in ModelStore.Cleanup()
             dependencies.Cache(ScoreManager = new ScoreManager(RulesetStore, () => BeatmapManager, Storage, realm, API, LocalConfig,
