@@ -62,11 +62,11 @@ namespace osu.Game.Overlays.Comments
 
                 private DelayedLoadWrapper wrapper = null!;
 
-                protected override Drawable CreateContent(string url) => wrapper = new DelayedLoadWrapper(CreateImageContainer(url));
+                protected override Drawable CreateContent(string url) => wrapper = new DelayedLoadWrapper(() => CreateImageContainer(url));
 
-                protected override ImageContainer CreateImageContainer(string url)
+                protected override ImageContainer CreateImageContainerCore(string mediaUrl)
                 {
-                    var container = new CommentImageContainer(url);
+                    var container = new CommentImageContainer(mediaUrl);
                     container.OnLoadComplete += d =>
                     {
                         // The size of DelayedLoadWrapper depends on AutoSizeAxes of it's content.
