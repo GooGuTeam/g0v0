@@ -1,4 +1,4 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -35,13 +35,13 @@ namespace osu.Game.Database
             Realm = realm;
         }
 
-        public void DeleteFile(TModel item, RealmNamedFileUsage file) =>
+        public virtual void DeleteFile(TModel item, RealmNamedFileUsage file) =>
             performFileOperation(item, managed => DeleteFile(managed, managed.Files.First(f => f.Filename == file.Filename), managed.Realm!));
 
-        public void ReplaceFile(TModel item, RealmNamedFileUsage file, Stream contents) =>
+        public virtual void ReplaceFile(TModel item, RealmNamedFileUsage file, Stream contents) =>
             performFileOperation(item, managed => ReplaceFile(file, contents, managed.Realm!));
 
-        public void AddFile(TModel item, Stream contents, string filename) =>
+        public virtual void AddFile(TModel item, Stream contents, string filename) =>
             performFileOperation(item, managed => AddFile(managed, contents, filename, managed.Realm!));
 
         private void performFileOperation(TModel item, Action<TModel> operation)

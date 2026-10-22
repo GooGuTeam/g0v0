@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -42,7 +42,7 @@ namespace osu.Game.Skinning
         /// </summary>
         protected internal ISampleStore? Samples { get; private set; }
 
-        public readonly Live<SkinInfo> SkinInfo;
+        public Live<SkinInfo> SkinInfo { get; private set; }
 
         public SkinConfiguration Configuration { get; set; }
 
@@ -63,6 +63,14 @@ namespace osu.Game.Skinning
 
         private readonly ResourceStore<byte[]> store = new ResourceStore<byte[]>();
 
+        private readonly SkinStoreResourceStore? skinFiles;
+
+        internal void BindStore(ISkinStore skinStore)
+        {
+            SkinInfo = new SkinStoreLive(skinStore, SkinInfo.ID);
+            skinFiles?.BindStore(skinStore, SkinInfo.ID);
+        }
+
         public string Name { get; }
 
         protected IResourceStore<byte[]>? FallbackStore { get; }
@@ -82,9 +90,17 @@ namespace osu.Game.Skinning
 
             if (resources != null)
             {
-                SkinInfo = skin.ToLive(resources.RealmAccess);
-
-                store.AddStore(new RealmBackedResourceStore<SkinInfo>(SkinInfo, resources.Files, resources.RealmAccess));
+                if (resources is SkinManager manager && manager.Store is not RealmSkinStore)
+                {
+                    // Import candidates are not persisted yet. Read their own files until explicitly bound.
+                    SkinInfo = skin.ToLiveUnmanaged();
+                    store.AddStore(skinFiles = new SkinStoreResourceStore(skin, resources.Files));
+                }
+                else
+                {
+                    SkinInfo = skin.ToLive(resources.RealmAccess);
+                    store.AddStore(new RealmBackedResourceStore<SkinInfo>(SkinInfo, resources.Files, resources.RealmAccess));
+                }
 
                 RecycleSamples();
                 Textures = new TextureStore(resources.Renderer, CreateTextureLoaderStore(resources, store));

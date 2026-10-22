@@ -1,11 +1,12 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
@@ -24,6 +25,7 @@ using osu.Framework.Utils;
 using osu.Game.Audio;
 using osu.Game.Database;
 using osu.Game.IO;
+using osu.Game.Models;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Utils;
 
@@ -61,6 +63,8 @@ namespace osu.Game.Skinning
 
         private readonly IResourceStore<byte[]> userFiles;
 
+        public ISkinStore Store { get; }
+
         private Skin argonSkin { get; }
 
         private Skin trianglesSkin { get; }
@@ -81,17 +85,18 @@ namespace osu.Game.Skinning
             }
         }
 
-        public SkinManager(Storage storage, RealmAccess realm, GameHost host, IResourceStore<byte[]> resources, AudioManager audio, Scheduler scheduler)
+        public SkinManager(Storage storage, RealmAccess realm, GameHost host, IResourceStore<byte[]> resources, AudioManager audio, Scheduler scheduler, ISkinStore skins = null)
             : base(storage, realm)
         {
             this.audio = audio;
             this.scheduler = scheduler;
             this.host = host;
             this.resources = resources;
+            Store = skins ?? new RealmSkinStore(realm);
 
-            userFiles = new StorageBackedResourceStore(storage.GetStorageForDirectory("files"));
+            userFiles = new StorageBackedResourceStore(storage.GetStorageForDirectory(Store.FileStorageDirectory));
 
-            skinImporter = new SkinImporter(storage, realm, this)
+            skinImporter = new SkinImporter(storage, realm, this, Store)
             {
                 PostNotification = obj => PostNotification?.Invoke(obj),
             };
@@ -105,14 +110,14 @@ namespace osu.Game.Skinning
             };
 
             // Ensure the default entries are present.
-            realm.Write(r =>
+            foreach (var skin in defaultSkins)
             {
-                foreach (var skin in defaultSkins)
-                {
-                    if (r.Find<SkinInfo>(skin.SkinInfo.ID) == null)
-                        r.Add(skin.SkinInfo.Value);
-                }
-            });
+                if (Store.GetDetached(skin.SkinInfo.ID) == null)
+                    Store.Add(skin.SkinInfo.Value);
+
+                if (Store is not RealmSkinStore)
+                    skin.BindStore(Store);
+            }
 
             CurrentSkinInfo.ValueChanged += skin =>
             {
@@ -128,7 +133,7 @@ namespace osu.Game.Skinning
                 SourceChanged?.Invoke();
             };
 
-            skinExporter = new LegacySkinExporter(storage)
+            skinExporter = new LegacySkinExporter(storage, Store.FileStorageDirectory)
             {
                 PostNotification = obj => PostNotification?.Invoke(obj)
             };
@@ -141,56 +146,33 @@ namespace osu.Game.Skinning
         /// </summary>
         public IList<Live<SkinInfo>> GetAllUsableSkins()
         {
-            var skins = new List<Live<SkinInfo>>();
-
-            Realm.Run(realm =>
+            var skins = new List<Live<SkinInfo>>
             {
-                skins.Add(realm.Find<SkinInfo>(SkinInfo.ARGON_SKIN).ToLive(Realm));
-                skins.Add(realm.Find<SkinInfo>(SkinInfo.ARGON_PRO_SKIN).ToLive(Realm));
-                skins.Add(realm.Find<SkinInfo>(SkinInfo.TRIANGLES_SKIN).ToLive(Realm));
-                skins.Add(realm.Find<SkinInfo>(SkinInfo.CLASSIC_SKIN).ToLive(Realm));
+                GetLive(Store.GetDetached(SkinInfo.ARGON_SKIN)),
+                GetLive(Store.GetDetached(SkinInfo.ARGON_PRO_SKIN)),
+                GetLive(Store.GetDetached(SkinInfo.TRIANGLES_SKIN)),
+                GetLive(Store.GetDetached(SkinInfo.CLASSIC_SKIN)),
+                random_skin_info,
+            };
 
-                skins.Add(random_skin_info);
-
-                var userSkins = realm.All<SkinInfo>()
-                                     .Where(s => !s.DeletePending && !s.Protected)
-                                     .AsEnumerable()
-                                     .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
-                                     .Select(s => s.ToLive(Realm));
-
-                foreach (var s in userSkins)
-                    skins.Add(s);
-            });
-
+            skins.AddRange(Store.GetAllUsableDetached()
+                                .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                                .Select(GetLive));
             return skins;
         }
 
         public void SelectRandomSkin()
         {
-            Realm.Run(r =>
-            {
-                // can be the case when the current skin is externally mounted for editing
-                if (CurrentSkinInfo.Disabled)
-                    return;
+            // Can be disabled while the current skin is externally mounted for editing.
+            if (CurrentSkinInfo.Disabled)
+                return;
 
-                // Required local for iOS. Will cause runtime crash if inlined.
-                Guid currentSkinId = CurrentSkinInfo.Value.ID;
+            Guid currentSkinId = CurrentSkinInfo.Value.ID;
+            var randomChoices = Store.GetAllDetached().Where(s => !s.DeletePending && s.ID != currentSkinId).ToArray();
 
-                // choose from only user skins, removing the current selection to ensure a new one is chosen.
-                var randomChoices = r.All<SkinInfo>()
-                                     .Where(s => !s.DeletePending && s.ID != currentSkinId)
-                                     .ToArray();
-
-                if (randomChoices.Length == 0)
-                {
-                    CurrentSkinInfo.Value = ArgonSkin.CreateInfo().ToLiveUnmanaged();
-                    return;
-                }
-
-                var chosen = randomChoices.ElementAt(RNG.Next(0, randomChoices.Length));
-
-                CurrentSkinInfo.Value = chosen.ToLive(Realm);
-            });
+            CurrentSkinInfo.Value = randomChoices.Length == 0
+                ? GetLive(Store.GetDetached(SkinInfo.ARGON_SKIN))
+                : GetLive(randomChoices[RNG.Next(0, randomChoices.Length)]);
         }
 
         private void cycleSkins(int direction)
@@ -232,7 +214,21 @@ namespace osu.Game.Skinning
         /// </summary>
         /// <param name="skinInfo">The skin to lookup.</param>
         /// <returns>A <see cref="Skin"/> instance correlating to the provided <see cref="SkinInfo"/>.</returns>
-        public Skin GetSkin(SkinInfo skinInfo) => skinInfo.CreateInstance(this);
+        public Skin GetSkin(SkinInfo skinInfo)
+        {
+            var skin = skinInfo.CreateInstance(this);
+            if (Store is not RealmSkinStore && Store.GetDetached(skinInfo.ID) != null)
+                skin.BindStore(Store);
+            return skin;
+        }
+
+        internal Live<SkinInfo> GetLive(SkinInfo skin)
+        {
+            if (Store is not RealmSkinStore)
+                return new SkinStoreLive(Store, skin.ID);
+
+            return Realm.Run(r => r.Find<SkinInfo>(skin.ID)?.ToLive(Realm) ?? skin.ToLiveUnmanaged());
+        }
 
         /// <summary>
         /// Ensure that the current skin is in a state it can accept user modifications.
@@ -248,10 +244,7 @@ namespace osu.Game.Skinning
                 if (!s.Protected)
                     return false;
 
-                string[] existingSkinNames = Realm.Run(r => r.All<SkinInfo>()
-                                                             .Where(skin => !skin.DeletePending)
-                                                             .AsEnumerable()
-                                                             .Select(skin => skin.Name).ToArray());
+                string[] existingSkinNames = Store.GetAllDetached().Where(skin => !skin.DeletePending).Select(skin => skin.Name).ToArray();
 
                 // if the user is attempting to save one of the default skin implementations, create a copy first.
                 var skinInfo = new SkinInfo
@@ -270,7 +263,7 @@ namespace osu.Game.Skinning
                 {
                     // save once to ensure the required json content is populated.
                     // currently this only happens on save.
-                    result.PerformRead(skin => Save(skin.CreateInstance(this)));
+                    result.PerformRead(skin => Save(GetSkin(skin)));
                     CurrentSkinInfo.Value = result;
                     return true;
                 }
@@ -298,7 +291,8 @@ namespace osu.Game.Skinning
         /// <returns>The first result for the provided query, or null if no results were found.</returns>
         public Live<SkinInfo> Query(Expression<Func<SkinInfo, bool>> query)
         {
-            return Realm.Run(r => r.All<SkinInfo>().FirstOrDefault(query)?.ToLive(Realm));
+            var skin = Store.GetAllDetached().FirstOrDefault(query.Compile());
+            return skin == null ? null : GetLive(skin);
         }
 
         public event Action SourceChanged;
@@ -404,21 +398,64 @@ namespace osu.Game.Skinning
 
         public void Delete([CanBeNull] Expression<Func<SkinInfo, bool>> filter = null, bool silent = false)
         {
-            Realm.Run(r =>
+            var items = Store.GetAllUsableDetached().AsEnumerable();
+            if (filter != null)
+                items = items.Where(filter.Compile());
+            Delete(items.ToList(), silent);
+        }
+
+        public override bool Delete(SkinInfo item)
+        {
+            if (!Store.Delete(item.ID))
+                return false;
+
+            if (CurrentSkinInfo.Value.ID == item.ID)
+                scheduler.Add(() => CurrentSkinInfo.Value = GetLive(Store.GetDetached(SkinInfo.ARGON_SKIN)));
+            return true;
+        }
+
+        public override void Undelete(SkinInfo item) => Store.Undelete(item.ID);
+
+        public override void AddFile(SkinInfo item, Stream contents, string filename)
+        {
+            if (Store is RealmSkinStore)
+                base.AddFile(item, contents, filename);
+            else
+                updateFiles(item, s => skinImporter.AddFile(s, contents, filename));
+        }
+
+        public override void ReplaceFile(SkinInfo item, RealmNamedFileUsage file, Stream contents)
+        {
+            if (Store is RealmSkinStore)
+                base.ReplaceFile(item, file, contents);
+            else
+                updateFiles(item, s => skinImporter.ReplaceFile(s, file, contents));
+        }
+
+        public override void DeleteFile(SkinInfo item, RealmNamedFileUsage file)
+        {
+            if (Store is RealmSkinStore)
+                base.DeleteFile(item, file);
+            else
+                updateFiles(item, s => skinImporter.DeleteFile(s, file));
+        }
+
+        private void updateFiles(SkinInfo item, Action<SkinInfo> update)
+        {
+            Store.Update(item.ID, s =>
             {
-                var items = r.All<SkinInfo>()
-                             .Where(s => !s.Protected && !s.DeletePending);
-                if (filter != null)
-                    items = items.Where(filter);
-
-                // check the removed skin is not the current user choice. if it is, switch back to default.
-                Guid currentUserSkin = CurrentSkinInfo.Value.ID;
-
-                if (items.Any(s => s.ID == currentUserSkin))
-                    scheduler.Add(() => CurrentSkinInfo.Value = ArgonSkin.CreateInfo().ToLiveUnmanaged());
-
-                Delete(items.ToList(), silent);
+                update(s);
+                s.Hash = skinImporter.ComputeHash(s);
             });
+
+            var stored = Store.GetDetached(item.ID);
+            if (stored == null)
+                return;
+
+            item.Files.Clear();
+            foreach (var file in stored.Files)
+                item.Files.Add(file);
+            item.Hash = stored.Hash;
         }
 
         public void Rename(Live<SkinInfo> skin, string newName)
