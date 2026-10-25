@@ -493,7 +493,7 @@ namespace osu.Game.Screens.Ranking
             if (score.PP != null || score.BeatmapInfo == null)
                 return;
 
-            var calculator = score.Ruleset.CreateInstance().CreatePerformanceCalculator();
+            var calculator = score.Ruleset.CreateInstance().CreateModSpecificPerformanceCalculator();
 
             if (calculator == null)
                 return;

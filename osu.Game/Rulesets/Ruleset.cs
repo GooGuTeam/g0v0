@@ -279,10 +279,31 @@ namespace osu.Game.Rulesets
         public abstract DifficultyCalculator CreateDifficultyCalculator(IWorkingBeatmap beatmap);
 
         /// <summary>
+        /// Optionally creates a mod-specific <see cref="DifficultyCalculator"/> for this <see cref="Ruleset"/>.
+        /// </summary>
+        /// <param name="beatmap">The beatmap to calculate the difficulty for.</param>
+        /// <returns>The mod-specific difficulty calculator.</returns>
+        /// <remarks>
+        /// Overriding this is optional. The default implementation falls back to
+        /// <see cref="CreateDifficultyCalculator(IWorkingBeatmap)"/>.
+        /// </remarks>
+        public virtual DifficultyCalculator CreateModSpecificDifficultyCalculator(IWorkingBeatmap beatmap) => CreateDifficultyCalculator(beatmap);
+
+        /// <summary>
         /// Optionally creates a <see cref="PerformanceCalculator"/> to generate performance data from the provided score.
         /// </summary>
         /// <returns>A performance calculator instance for the provided score.</returns>
         public virtual PerformanceCalculator? CreatePerformanceCalculator() => null;
+
+        /// <summary>
+        /// Optionally creates a mod-specific <see cref="PerformanceCalculator"/> to generate performance data from the provided score.
+        /// </summary>
+        /// <returns>A mod-specific performance calculator instance for the provided score.</returns>
+        /// <remarks>
+        /// Overriding this is optional. The default implementation falls back to
+        /// <see cref="CreatePerformanceCalculator"/>.
+        /// </remarks>
+        public virtual PerformanceCalculator? CreateModSpecificPerformanceCalculator() => CreatePerformanceCalculator();
 
         public virtual HitObjectComposer? CreateHitObjectComposer() => null;
 

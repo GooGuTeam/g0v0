@@ -58,7 +58,7 @@ namespace osu.Game.Beatmaps
                     difficultyCache.Invalidate(beatmap, working.BeatmapInfo);
 
                     var ruleset = working.BeatmapInfo.Ruleset.CreateInstance();
-                    var calculator = ruleset.CreateDifficultyCalculator(working);
+                    var calculator = ruleset.CreateModSpecificDifficultyCalculator(working);
 
                     beatmap.StarRating = calculator.Calculate().StarRating;
                     beatmap.UpdateStatisticsFromBeatmap(working.Beatmap);

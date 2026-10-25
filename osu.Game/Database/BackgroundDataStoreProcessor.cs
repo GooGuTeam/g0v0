@@ -127,7 +127,7 @@ namespace osu.Game.Database
             foreach (var ruleset in rulesetStore.AvailableRulesets)
             {
                 // beatmap being passed in is arbitrary here. just needs to be non-null.
-                int currentVersion = ruleset.CreateInstance().CreateDifficultyCalculator(gameBeatmap.Value).Version;
+                int currentVersion = ruleset.CreateInstance().CreateModSpecificDifficultyCalculator(gameBeatmap.Value).Version;
 
                 if (ruleset.LastAppliedDifficultyVersion < currentVersion)
                 {
@@ -212,7 +212,7 @@ namespace osu.Game.Database
 
                     Debug.Assert(ruleset != null);
 
-                    var calculator = ruleset.CreateDifficultyCalculator(working);
+                    var calculator = ruleset.CreateModSpecificDifficultyCalculator(working);
 
                     double starRating = calculator.Calculate().StarRating;
                     realmAccess.Write(r =>

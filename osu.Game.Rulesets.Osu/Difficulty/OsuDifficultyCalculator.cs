@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
-// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -37,7 +37,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             var aimWithoutSliders = skills.OfType<Aim>().Single(a => !a.IncludeSliders);
             var speed = skills.OfType<Speed>().Single();
             var flashlight = skills.OfType<Flashlight>().SingleOrDefault();
-            var relax = skills.OfType<Relax>().SingleOrDefault();
             var reading = skills.OfType<Reading>().Single();
 
             double aimDifficultyValue = aim.DifficultyValue();
@@ -66,12 +65,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             int spinnerCount = beatmap.HitObjects.Count(h => h is Spinner);
 
             int totalHits = beatmap.HitObjects.Count;
-
-            if (relax is not null)
-            {
-                aimDifficultyValue = relax.DifficultyValue();
-                difficultSliders = relax.GetDifficultSliders();
-            }
 
             double aimRating = calculateAimDifficultyRating(aimDifficultyValue);
             double aimNoSlidersRating = calculateAimDifficultyRating(aimNoSlidersDifficultyValue);
@@ -186,9 +179,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             if (mods.Any(h => h is OsuModFlashlight))
                 skills.Add(new Flashlight(mods, beatmap.HitObjects.Count));
 
-            if (mods.Any(h => h is OsuModRelax))
-                skills.Add(new Relax(mods, true));
-
             return skills.ToArray();
         }
 
@@ -199,7 +189,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             new OsuModHalfTime(),
             new OsuModEasy(),
             new OsuModHardRock(),
-            new OsuModRelax(),
             new OsuModFlashlight(),
             new OsuModHidden(),
         };

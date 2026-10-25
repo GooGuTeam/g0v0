@@ -245,7 +245,7 @@ namespace osu.Game.Scoring.Legacy
 #pragma warning disable CS0618
             // In osu! and mania, some judgements affect combo but aren't stored to scores.
             // A special hit result is used to pad out the combo value to match, based on the max combo from the difficulty attributes.
-            var calculator = rulesetInstance.CreateDifficultyCalculator(workingBeatmap);
+            var calculator = rulesetInstance.CreateModSpecificDifficultyCalculator(workingBeatmap);
             var attributes = calculator.Calculate(score.Mods);
 
             int maxComboFromStatistics = score.MaximumStatistics.Where(kvp => kvp.Key.AffectsCombo()).Select(kvp => kvp.Value).DefaultIfEmpty(0).Sum();

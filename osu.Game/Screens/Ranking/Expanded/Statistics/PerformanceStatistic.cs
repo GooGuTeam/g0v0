@@ -105,7 +105,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
             try
             {
                 var attributes = await difficultyCache.GetDifficultyAsync(score.BeatmapInfo!, score.Ruleset, score.Mods, token).ConfigureAwait(false);
-                var calculator = score.Ruleset.CreateInstance().CreatePerformanceCalculator();
+                var calculator = score.Ruleset.CreateInstance().CreateModSpecificPerformanceCalculator();
 
                 if (attributes?.DifficultyAttributes == null || calculator == null)
                     return;

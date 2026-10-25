@@ -158,7 +158,7 @@ namespace osu.Game.Screens.Ranking.Statistics
 
         private async Task<PerformanceBreakdown?> computePerformance(CancellationToken token)
         {
-            var performanceCalculator = score.Ruleset.CreateInstance().CreatePerformanceCalculator();
+            var performanceCalculator = score.Ruleset.CreateInstance().CreateModSpecificPerformanceCalculator();
             if (performanceCalculator == null)
                 return null;
 
