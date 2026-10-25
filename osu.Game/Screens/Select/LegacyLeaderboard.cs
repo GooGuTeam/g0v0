@@ -38,40 +38,40 @@ using CommonStrings = osu.Game.Localisation.CommonStrings;
 namespace osu.Game.Screens.Select
 {
     /// <summary>
-    /// torii: el panel de ranking abajo a la izquierda estilo osu!stable para la UI legacy. dropdown
-    /// de scope ("Local Ranking") mas la lista de scores del beatmap (badge de rank / player / score /
-    /// accuracy), y el grafico "selection-norecords" de stable cuando no hay nada. usa el
-    /// <see cref="LeaderboardManager"/> compartido solo mientras la UI legacy esta activa asi no se
-    /// pelea con los fetches del leaderboard moderno.
+    /// The osu!stable style leaderboard panel at the bottom left of the legacy song select UI.
+    /// A scope dropdown ("Local Ranking") plus the beatmap's score list (rank badge / player / score /
+    /// accuracy), and stable's "selection-norecords" graphic when there is nothing to show. Uses the
+    /// shared <see cref="LeaderboardManager"/> only while the legacy UI is active so it doesn't fight
+    /// the modern leaderboard's fetches.
     /// </summary>
     public partial class LegacyLeaderboard : CompositeDrawable
     {
         public readonly Bindable<BeatmapLeaderboardScope> Scope = new Bindable<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Local);
 
         /// <summary>
-        /// torii: lo dispara SongSelect (con carousel.ScrollToSelection). hoverear la leaderboard hace
-        /// volver el carousel a la cancion seleccionada, como en el modo normal. solo se dispara sobre
-        /// la region real de la leaderboard (scores/dropdown/PB), no sobre la zona vacia de al lado.
+        /// Fired by SongSelect (via carousel.ScrollToSelection). Hovering the leaderboard brings the
+        /// carousel back to the selected song, as in normal mode. Only fires over the leaderboard's real
+        /// region (scores/dropdown/PB), not over the empty area next to it.
         /// </summary>
         public Action? HoverScrollRequested { get; init; }
 
         private InputManager inputManager = null!;
         private bool wasLeaderboardHovered;
 
-        // el scope que el usuario quiere para mapas con leaderboard online (Global por default si
-        // esta logueado, como stable); los mapas sin leaderboard fuerzan Local sin pisar esta preferencia.
+        // The scope the user wants for maps with an online leaderboard (Global by default when logged
+        // in, like stable); maps without one force Local without clobbering this preference.
         private BeatmapLeaderboardScope preferredScope = BeatmapLeaderboardScope.Local;
         private bool updatingScopeProgrammatically;
 
-        // el ultimo criteria que pedimos nosotros: si otro componente le pide otra cosa al
-        // LeaderboardManager compartido mientras estamos visibles, lo re-reclamamos una vez.
+        // The last criteria we requested: if another component asks the shared LeaderboardManager for
+        // something else while we're visible, we reclaim ours once.
         private LeaderboardCriteria? lastFetchedCriteria;
         private bool reclaimedForeignFetch;
 
         [Resolved]
         private OsuConfigManager config { get; set; } = null!;
 
-        /// <summary>si la UI legacy (y por ende este leaderboard) esta visible ahora.</summary>
+        /// <summary>Whether the legacy UI (and therefore this leaderboard) is currently visible.</summary>
         private Bindable<bool> legacyActive = null!;
 
         [Resolved]
@@ -96,15 +96,17 @@ namespace osu.Game.Screens.Select
         private LoadingSpinner loadingSpinner = null!;
 
         private const float row_step = 52;
-        // en stable el contenido de la fila llega a ~x258 (time-ago) / x236 (acc) en espacio 480; la
-        // carta es un poco mas ancha que eso -> ~430 en el espacio x1.6.
+
+        // In stable the row content reaches ~x258 (time-ago) / x236 (acc) in 480 space; the card is a
+        // little wider than that -> ~430 in the x1.6 space.
         private const float list_width = 410;
         private const int max_rows = 8;
 
-        // la lista muestra max_rows a la vez (como stable); si hay mas, scrollean.
+        // The list shows max_rows at a time (like stable); anything beyond that scrolls.
         private const float list_top = 150;
         private const float scroll_height = max_rows * row_step;
-        // el Personal Best va pegado abajo del scroll (no forma parte), con un huequito.
+
+        // Personal Best sits right below the scroll (it isn't part of it), with a small gap.
         private const float pb_top = list_top + scroll_height + 12;
 
         [BackgroundDependencyLoader]
@@ -114,10 +116,10 @@ namespace osu.Game.Screens.Select
 
             InternalChildren = new Drawable[]
             {
-                // lista de scores con drag-scroll. las filas las posiciono a mano (Y = i * step)
-                // adentro del scroll asi cada una hace su propio slide-in sin pelearse con el flow.
-                // alto fijo (max_rows) para que la zona de abajo a la izquierda siempre se quede con
-                // el input (el carousel no dragea ahi) y los scores de mas scrollean.
+                // Drag-scrollable score list. Rows are positioned by hand (Y = i * step) inside the
+                // scroll so each one can do its own slide-in without fighting the flow. Fixed height
+                // (max_rows) so the bottom left area always keeps the input (the carousel doesn't drag
+                // there) and any extra scores scroll.
                 scoreScroll = new OsuScrollContainer
                 {
                     Anchor = Anchor.TopLeft,
@@ -146,7 +148,7 @@ namespace osu.Game.Screens.Select
                     Texture = skin.GetTexture(@"selection-norecords"),
                     Alpha = 0,
                 },
-                // seccion Personal Best, pegada abajo del scroll (no scrollea con la lista).
+                // Personal Best section, pinned below the scroll (doesn't scroll with the list).
                 personalBest = new Container
                 {
                     Anchor = Anchor.TopLeft,
@@ -155,7 +157,7 @@ namespace osu.Game.Screens.Select
                     Width = list_width,
                     AutoSizeAxes = Axes.Y,
                 },
-                // se dibuja ultimo asi el menu abierto del dropdown queda arriba de los scores / "no records".
+                // Drawn last so the dropdown's open menu stays above the scores / "no records" graphic.
                 scopeDropdown = new LegacyStableDropdown<BeatmapLeaderboardScope>
                 {
                     Anchor = Anchor.TopLeft,
@@ -171,8 +173,8 @@ namespace osu.Game.Screens.Select
             };
         }
 
-        // overlay de pantalla completa, pero solo el contenido del leaderboard (scores / dropdown)
-        // tiene que capturar input. el lado derecho vacio deja pasar asi se puede dragear el carousel.
+        // A full-screen overlay, but only the leaderboard's content (scores / dropdown) should capture
+        // input. The empty right-hand side lets input through so the carousel can be dragged.
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos)
         {
             foreach (var child in InternalChildren)
@@ -188,10 +190,11 @@ namespace osu.Game.Screens.Select
         {
             base.Update();
 
-            // torii: cuando el mouse entra a la region real de la leaderboard (la misma que captura
-            // input) disparamos el scroll-a-la-seleccion una sola vez. la zona vacia de al lado no
-            // entra aca (RPIAt da false ahi), asi sigue siendo solo para drag-scroll.
-            bool over = HoverScrollRequested != null && inputManager != null
+            // When the mouse enters the leaderboard's real region (the same one that captures input) we
+            // fire the scroll-to-selection once. The empty area next to it doesn't count (RPIAt returns
+            // false there), so that stays for drag-scrolling only.
+            bool over = HoverScrollRequested != null
+                        && inputManager != null
                         && ReceivePositionalInputAt(inputManager.CurrentState.Mouse.Position);
 
             if (over && !wasLeaderboardHovered)
@@ -211,8 +214,8 @@ namespace osu.Game.Screens.Select
             scores.BindTo(leaderboardManager.Scores);
             scores.BindValueChanged(_ => updateScores());
 
-            // como stable: si estas logueado arrancamos mostrando el ranking Global en los mapas
-            // que tienen leaderboard online; sin login queda Local.
+            // As in stable: when logged in we start on the Global ranking for maps that have an online
+            // leaderboard; without login it stays Local.
             preferredScope = api.IsLoggedIn ? BeatmapLeaderboardScope.Global : BeatmapLeaderboardScope.Local;
 
             beatmap.BindValueChanged(_ =>
@@ -223,8 +226,8 @@ namespace osu.Game.Screens.Select
             ruleset.BindValueChanged(_ => refetch());
             Scope.BindValueChanged(scope =>
             {
-                // solo los cambios del usuario actualizan la preferencia; los forzados a Local
-                // (mapa sin leaderboard online) no la pisan.
+                // Only user changes update the preference; forced Local ones (map without an online
+                // leaderboard) don't clobber it.
                 if (!updatingScopeProgrammatically)
                     preferredScope = scope.NewValue;
 
@@ -242,8 +245,8 @@ namespace osu.Game.Screens.Select
             updateScores();
         }
 
-        // mapas sin leaderboard online (unranked / sin online id): forzar Local; en los demas,
-        // volver al scope preferido del usuario.
+        // Maps without an online leaderboard (unranked / no online ID): force Local. Otherwise go back
+        // to the user's preferred scope.
         private void applyScopeForBeatmap()
         {
             var target = hasOnlineLeaderboard() ? preferredScope : BeatmapLeaderboardScope.Local;
@@ -278,8 +281,8 @@ namespace osu.Game.Screens.Select
 
         private void refetch()
         {
-            // solo me adueño del leaderboard mientras la UI legacy esta visible; si no, se lo dejo al
-            // leaderboard moderno asi no se pisan los fetches.
+            // Only take over the leaderboard while the legacy UI is visible; otherwise leave it to the
+            // modern leaderboard so the fetches don't clobber each other.
             if (!legacyActive.Value)
                 return;
 
@@ -293,10 +296,10 @@ namespace osu.Game.Screens.Select
             if (IsDisposed)
                 return;
 
-            // fetch ajeno: otro componente le pidio otra cosa al LeaderboardManager compartido
-            // mientras la UI legacy sigue activa (ej. un lookup del modo moderno). esos scores no
-            // son nuestros: no los mostramos, y re-reclamamos nuestro criteria UNA vez (sin loop:
-            // si el otro vuelve a pedir, le toca a el).
+            // Foreign fetch: another component asked the shared LeaderboardManager for something else
+            // while the legacy UI is still active (e.g. a modern mode lookup). Those scores aren't
+            // ours: don't display them, and reclaim our criteria ONCE (no loop: if the other one asks
+            // again, it's their turn).
             if (legacyActive.Value && lastFetchedCriteria != null && leaderboardManager.CurrentCriteria != null
                 && !leaderboardManager.CurrentCriteria.Equals(lastFetchedCriteria))
             {
@@ -311,7 +314,7 @@ namespace osu.Game.Screens.Select
 
             var result = scores.Value;
 
-            // null == hay un fetch en curso: limpio, muestro el spinner y espero los resultados.
+            // null == a fetch is in flight: clear, show the spinner and wait for the results.
             if (result == null)
             {
                 scoreContainer.Clear();
@@ -338,7 +341,7 @@ namespace osu.Game.Screens.Select
 
             noRecords.FadeOut(80);
 
-            // hasta 50 (el tope de stable); lo que pase de max_rows scrollea adentro de la lista.
+            // Up to 50 (stable's cap); anything past max_rows scrolls inside the list.
             var list = top.Take(50).ToList();
             int cascade = 0;
 
@@ -348,7 +351,7 @@ namespace osu.Game.Screens.Select
                 addAnimated(scoreContainer, new LegacyScoreRow(list[i], list[i].User.Username, diff) { Y = i * row_step }, cascade++);
             }
 
-            // seccion Personal Best, pegada abajo del scroll (las posiciones son relativas a personalBest).
+            // Personal Best section, pinned below the scroll (positions are relative to personalBest).
             addAnimated(personalBest, new StrokedLegacyText
             {
                 Anchor = Anchor.TopLeft,
@@ -368,7 +371,7 @@ namespace osu.Game.Screens.Select
             }
             else
             {
-                // el placeholder vacio igual lleva la misma caja oscura, como si hubiera un score ahi.
+                // The empty placeholder gets the same dark box, as if a score were there.
                 addAnimated(personalBest, new Container
                 {
                     RelativeSizeAxes = Axes.X,
@@ -400,9 +403,9 @@ namespace osu.Game.Screens.Select
         }
 
         /// <summary>
-        /// agrega un elemento al <paramref name="target"/> con el pop-in en cascada de stable: entra
-        /// deslizandose desde la izquierda y aparece, escalonado 50ms por elemento, con rebote OutBack.
-        /// la "ola" de arriba hacia abajo.
+        /// Adds an element to <paramref name="target"/> with stable's cascading pop-in: it slides in from
+        /// the left and fades in, staggered 50ms per element, with an OutBack bounce. The "wave" runs
+        /// top to bottom.
         /// </summary>
         private void addAnimated(Container target, Drawable d, int cascadeIndex)
         {
@@ -487,7 +490,7 @@ namespace osu.Game.Screens.Select
                         CornerRadius = 4,
                         Children = new Drawable[]
                         {
-                            // mas claro que antes; la fila de stable es ~negro 0.47, desvaneciendose a la derecha.
+                            // Lighter than before; stable's row is ~black 0.47, fading out to the right.
                             new Box
                             {
                                 RelativeSizeAxes = Axes.Both,
@@ -501,7 +504,7 @@ namespace osu.Game.Screens.Select
                             },
                         },
                     },
-                    // orden de stable: primero el avatar (a la izquierda del todo), despues el badge de grade, despues el nombre.
+                    // stable's order: avatar first (all the way left), then the grade badge, then the name.
                     new UpdateableAvatar(score.User, isInteractive: false)
                     {
                         Anchor = Anchor.CentreLeft,
@@ -511,9 +514,9 @@ namespace osu.Game.Screens.Select
                         Masking = true,
                         CornerRadius = 4,
                     },
-                    // FillMode solo aplica con RelativeSizeAxes = Both; en un sprite de tamano fijo
-                    // es no-op y los badges de rank no cuadrados salian estirados a lo ancho. lo
-                    // envolvemos en un slot fijo y dejamos que el sprite se ajuste adentro.
+                    // FillMode only applies with RelativeSizeAxes = Both; on a fixed-size sprite it is a
+                    // no-op and the non-square rank badges came out stretched horizontally. Wrap it in a
+                    // fixed slot and let the sprite fit inside instead.
                     new Container
                     {
                         Anchor = Anchor.CentreLeft,
@@ -568,7 +571,7 @@ namespace osu.Game.Screens.Select
                 {
                     var items = new List<MenuItem>();
 
-                    // los system mods nunca se copian.
+                    // System mods are never copied.
                     var copyableMods = score.Mods.Where(m => m.Type != ModType.System).ToArray();
 
                     if (copyableMods.Length > 0 && selectedMods != null)
@@ -593,9 +596,9 @@ namespace osu.Game.Screens.Select
                 }
             }
 
-            // estilo stable: texto con un contorno oscuro finito asi se lee sobre fondos claros o
-            // cargados (stable contornea el texto en vez de ponerle drop-shadow).
-            private static StrokedLegacyText shadowed(string text, float size, FontWeight weight, Anchor anchor, Color4? colour = null) => new StrokedLegacyText
+            // stable style: text with a thin dark outline so it reads over light or busy backgrounds
+            // (stable outlines the text instead of applying a drop shadow).
+            private static StrokedLegacyText shadowed(LocalisableString text, float size, FontWeight weight, Anchor anchor, Color4? colour = null) => new StrokedLegacyText
             {
                 Anchor = anchor,
                 Origin = anchor,

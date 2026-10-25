@@ -57,8 +57,8 @@ namespace osu.Game.Graphics.Containers
 
         private ITabletHandler? tabletHandler;
 
-        // torii: recalcula el letterbox forzado cuando cambia el tamanio (el rect depende del aspecto
-        // del area, asi que hay que rehacerlo en cada resize / toggle de la nav-bar).
+        // Torii: recompute the forced letterbox on size change (the rect depends on the area's aspect
+        // ratio, so it has to be rebuilt on every resize / nav bar toggle).
         private readonly LayoutValue aspectLayout = new LayoutValue(Invalidation.DrawSize);
 
         /// <summary>
@@ -75,10 +75,10 @@ namespace osu.Game.Graphics.Containers
         }
 
         /// <summary>
-        /// torii: fuerza un letterbox a un aspect ratio fijo, centrado, tapando lo que sobra con el
-        /// fondo dimmeado (igual que el screen scaling). lo usa el song select legacy: cuando la nav-bar
-        /// arriba achica la altura y el area queda mas ancha que 16:9, en vez de estirarse el chrome
-        /// deja barras iguales a los dos costados. <c>null</c> limpia y vuelve al scaling normal.
+        /// Torii: force a centred letterbox at a fixed aspect ratio, covering the overflow with the
+        /// dimmed background (same as screen scaling). Used by the legacy song select: when the nav bar
+        /// at the top shrinks the height and the area becomes wider than 16:9, instead of stretching the
+        /// chrome it leaves equal bars on both sides. <c>null</c> clears it and returns to normal scaling.
         /// </summary>
         public void SetForcedAspectRatio(float? aspectRatio)
         {
@@ -115,8 +115,8 @@ namespace osu.Game.Graphics.Containers
         {
             base.Update();
 
-            // torii: el rect del letterbox forzado depende del aspecto del area, asi que lo rehacemos
-            // cuando cambia el tamanio (resize de ventana, toggle de la nav-bar, etc).
+            // Torii: the forced letterbox rect depends on the area's aspect ratio, so rebuild it when
+            // the size changes (window resize, nav bar toggle, etc).
             if (!aspectLayout.IsValid)
             {
                 if (forcedAspectRatio != null)
@@ -237,14 +237,14 @@ namespace osu.Game.Graphics.Containers
 
             if (forcedAspectRatio is float aspect && aspect > 0 && DrawWidth > 0 && DrawHeight > 0)
             {
-                // torii: letterbox a un aspect fijo, centrado. el rect mas grande de ese aspecto que
-                // entra en el area, centrado, y lo que sobra queda de barras (mismo bg dimmeado atras).
+                // Torii: letterbox at a fixed aspect ratio, centred. The largest rect of that aspect that
+                // fits the area, centred, with the remainder left as bars (same dimmed background behind).
                 sizableContainer.RelativePositionAxes = Axes.Both;
 
                 float areaAspect = DrawWidth / DrawHeight;
                 Vector2 size = areaAspect > aspect
-                    ? new Vector2(aspect / areaAspect, 1) // area mas ancha: barras a los costados
-                    : new Vector2(1, areaAspect / aspect); // area mas alta: barras arriba/abajo
+                    ? new Vector2(aspect / areaAspect, 1) // area is wider: bars on the sides
+                    : new Vector2(1, areaAspect / aspect); // area is taller: bars top/bottom
 
                 targetRect = new RectangleF((Vector2.One - size) / 2, size);
             }
@@ -293,8 +293,8 @@ namespace osu.Game.Graphics.Containers
         {
             protected override bool AllowStoryboardBackground => false;
 
-            // torii: el fondo del dim de layout busca layout-background primero (fallback a menu-background)
-            // asi el skinner puede shippear una imagen distinta para esta capa.
+            // Torii: the layout dim background looks up layout-background first (falling back to
+            // menu-background) so a skinner can ship a different image for this layer.
             protected override string SkinBackgroundLookupName => @"layout-background";
 
             public override void OnEntering(ScreenTransitionEvent e)

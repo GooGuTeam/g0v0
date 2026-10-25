@@ -1,16 +1,15 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
-// el RankingDialog de osu!stable 1:1 (la pagina "below the fold" del ranking): el fondo es
-// el 3-slice ranking-dialog-left/middle/right (las bandas LOCAL/ONLINE/BEATMAP con sus
-// watermarks son ARTE, no cajas dibujadas), y encima van — con las coords del RankingDialog.cs
-// de stable x1.6 — el texto de local ranking (y=20, gold), el panel de usuario (leftCentre-100,
-// 60), los checkboxes de save-replay/favourite (WidthScaled-160, 10/35), la tabla compacta
-// (LEFT_PADDING=3+(W-640)/2, headers y=170 font 9, filas y=180 font 11, cell-boxes de 24
-// unidades alternando (40,40,40)/(20,20,20), verde/rojo en los deltas), el texto del beatmap
-// en (170, 301) y el logo del modo aditivo en TopRight (100, 230) al 10%. columnas del
-// cuttingedge actual: Overall/Accuracy/Max Combo/Ranked Score/Total Score/Performance.
-// el rate-beatmap de stable queda afuera a proposito. solo para plays propias.
+// osu!stable's RankingDialog 1:1 (the "below the fold" page of the ranking view): the background is
+// the ranking-dialog-left/middle/right 3-slice (the LOCAL/ONLINE/BEATMAP bands with their watermarks
+// are ART, not drawn boxes), and on top of it - using stable's RankingDialog.cs coordinates x1.6 - go
+// the local ranking text (y=20, gold), the user panel (leftCentre-100, 60), the save-replay/favourite
+// checkboxes (WidthScaled-160, 10/35), the compact table (LEFT_PADDING=3+(W-640)/2, headers y=170
+// font 9, rows y=180 font 11, 24-unit cell boxes alternating (40,40,40)/(20,20,20), green/red on the
+// deltas), the beatmap text at (170, 301) and the mode logo additively in the TopRight (100, 230) at
+// 10%. Columns of the current cuttingedge: Overall/Accuracy/Max Combo/Ranked Score/Total Score/
+// Performance. stable's rate-beatmap is deliberately left out. Only for the player's own plays.
 
 using System;
 using System.Linq;
@@ -47,12 +46,12 @@ namespace osu.Game.Screens.Ranking
     public partial class LegacyOnlineRanking : CompositeDrawable
     {
         /// <summary>
-        /// la altura del dialog de stable: las texturas ranking-dialog-* miden 709px (443
-        /// unidades x1.6). la pagina es fija, como el BaseOffset de una pantalla de stable.
+        /// stable's dialog height: the ranking-dialog-* textures are 709px tall (443 units x1.6). The
+        /// page is fixed, like the BaseOffset of a stable screen.
         /// </summary>
         public const float DIALOG_HEIGHT = 709;
 
-        // paleta de stable (RankingDialog.cs).
+        // stable's palette (RankingDialog.cs).
         private static readonly Color4 gold = new Color4(255, 203, 33, 255);
         private static readonly Color4 colour_increase = new Color4(103, 157, 17, 255);
         private static readonly Color4 delta_green = new Color4(150, 207, 70, 255);
@@ -61,7 +60,7 @@ namespace osu.Game.Screens.Ranking
         private static readonly Color4 row_dark = new Color4(40, 40, 40, 255);
         private static readonly Color4 row_darker = new Color4(20, 20, 20, 255);
 
-        // tabla (RankingDialog.cs x1.6): LEFT_PADDING = (3 + (853.75-640)/2) * 1.6.
+        // Table (RankingDialog.cs x1.6): LEFT_PADDING = (3 + (853.75-640)/2) * 1.6.
         private const float table_x = 176;
         private const float label_width = 160;
         private static readonly float[] column_widths = { 112, 112, 112, 176, 176, 160 };
@@ -99,13 +98,13 @@ namespace osu.Game.Screens.Ranking
 
         private OsuSpriteText localRankText = null!;
 
-        // celdas de la tabla: [columna] para cada fila, con su linea "sub" abajo.
+        // Table cells: [column] for each row, with its "sub" line underneath.
         private readonly OsuSpriteText[] beatmapMain = new OsuSpriteText[6];
         private readonly OsuSpriteText[] beatmapSub = new OsuSpriteText[6];
         private readonly OsuSpriteText[] overallMain = new OsuSpriteText[6];
         private readonly OsuSpriteText[] overallSub = new OsuSpriteText[6];
 
-        // el highlight verde del total score cuando el submit sumo puntos (como stable).
+        // The green highlight on total score when the submit gained points (as in stable).
         private Box totalScoreHighlight = null!;
 
         private OsuSpriteText beatmapInfoLine = null!;
@@ -122,7 +121,7 @@ namespace osu.Game.Screens.Ranking
         {
             RelativeSizeAxes = Axes.X;
 
-            // solo para plays del usuario local: el dialog habla de TU perfil.
+            // Only for the local user's plays: the dialog is about YOUR profile.
             if (api.LocalUser.Value == null || score.UserID != api.LocalUser.Value.OnlineID)
             {
                 Height = 0;
@@ -136,7 +135,7 @@ namespace osu.Game.Screens.Ranking
 
             var children = new System.Collections.Generic.List<Drawable>();
 
-            // fondo: el 3-slice del dialog de stable, blanco al 86% (Color(255,255,255,220)).
+            // Background: stable's dialog 3-slice, white at 86% (Color(255,255,255,220)).
             var bgLeft = tex(@"ranking-dialog-left");
             var bgMiddle = tex(@"ranking-dialog-middle");
             var bgRight = tex(@"ranking-dialog-right");
@@ -165,8 +164,8 @@ namespace osu.Game.Screens.Ranking
                 Alpha = 220 / 255f,
             });
 
-            // "You achieved the #N score on local rankings!" — sobre la franja dorada
-            // (stable: leftCentre, y=20, font 22, gold, origen centro).
+            // "You achieved the #N score on local rankings!" - over the gold band
+            // (stable: leftCentre, y=20, font 22, gold, origin centre).
             children.Add(localRankText = new OsuSpriteText
             {
                 Anchor = Anchor.TopCentre,
@@ -178,15 +177,15 @@ namespace osu.Game.Screens.Ranking
                 Alpha = 0,
             });
 
-            // el panel de usuario de stable, reusado del footer del song select
+            // stable's user panel, reused from the song select footer
             // (stable: GameBase.User.DrawAt(leftCentre - 100, 60)).
             children.Add(new LegacyFooterUser
             {
                 Position = new Vector2(523, 96),
             });
 
-            // checkboxes de la esquina superior derecha (stable: WidthScaled-160, y 10 / 35).
             children.Add(new LegacyCheckbox(@"Save replay to Replays folder", onExportReplay)
+            // Checkboxes in the top right corner (stable: WidthScaled-160, y 10 / 35).
             {
                 Anchor = Anchor.TopRight,
                 X = -256,
@@ -203,8 +202,8 @@ namespace osu.Game.Screens.Ranking
                 });
             }
 
-            // logo del modo, aditivo y sutil (stable: TopRight origen centro (100, 230),
-            // scale 0.8, fade a 0.1, rotacion leve).
+            // Mode logo, additive and subtle (stable: TopRight origin centre (100, 230),
+            // scale 0.8, fade to 0.1, slight rotation).
             var modeTex = tex($@"mode-{score.Ruleset.ShortName}");
 
             if (modeTex != null)
@@ -229,7 +228,7 @@ namespace osu.Game.Screens.Ranking
 
             buildTable(children);
 
-            // texto del beatmap sobre la franja BEATMAP (stable: (170, 301), dos lineas).
+            // Beatmap text over the BEATMAP band (stable: (170, 301), two lines).
             var meta = score.BeatmapInfo?.Metadata;
 
             children.Add(new OsuSpriteText
@@ -257,8 +256,8 @@ namespace osu.Game.Screens.Ranking
             fetchBeatmapInfo();
             computeAchievedPp();
 
-            // deltas post-submit (el watcher lo registra SubmittingPlayer): cuando llega el
-            // update de ESTE score, refrescamos la fila Overall con before/after.
+            // Post-submit deltas (the watcher registers them in SubmittingPlayer): when THIS score's
+            // update arrives, we refresh the Overall row with before/after.
             if (statisticsWatcher != null)
             {
                 latestUpdate.BindTo(statisticsWatcher.LatestUpdate);
@@ -272,7 +271,7 @@ namespace osu.Game.Screens.Ranking
             }
         }
 
-        #region tabla
+        #region table
 
         private static float columnX(int column)
         {
@@ -288,7 +287,7 @@ namespace osu.Game.Screens.Ranking
         {
             var table = new System.Collections.Generic.List<Drawable>();
 
-            // headers (stable: font 9 bold, centrados por columna, sin fondo, y=170).
+            // Headers (stable: font 9 bold, centred per column, no background, y=170).
             for (int i = 0; i < column_headers.Length; i++)
             {
                 table.Add(new OsuSpriteText
@@ -302,8 +301,8 @@ namespace osu.Game.Screens.Ranking
                 });
             }
 
-            // cell-boxes: cada celda su caja oscura con 2px de aire, alternando el tono por
-            // fila como stable (row1 (40,40,40), row2 (20,20,20)).
+            // Cell boxes: each cell its own dark box with 2px of breathing room, alternating the shade
+            // per row like stable (row1 (40,40,40), row2 (20,20,20)).
             for (int row = 0; row < 2; row++)
             {
                 float y = row == 0 ? 0 : row2_y - row1_y;
@@ -329,7 +328,7 @@ namespace osu.Game.Screens.Ranking
                 }
             }
 
-            // highlight verde del total score (colourIncrease de stable) — tapa la caja gris.
+            // Green total score highlight (stable's colourIncrease) - covers the grey box.
             table.Add(totalScoreHighlight = new Box
             {
                 Position = new Vector2(columnX(4), row2_y - row1_y),
@@ -338,7 +337,7 @@ namespace osu.Game.Screens.Ranking
                 Alpha = 0,
             });
 
-            // labels naranjas bold (stable: chartName, font 11 bold, Color.Orange).
+            // Orange bold labels (stable: chartName, font 11 bold, Color.Orange).
             table.Add(new OsuSpriteText
             {
                 Origin = Anchor.TopCentre,
@@ -369,8 +368,8 @@ namespace osu.Game.Screens.Ranking
                 overallSub[i].Text = @"-";
             }
 
-            // fila Beatmap Ranking: los valores de ESTA play (el rank del mapa de esta play no
-            // lo sabemos client-side: "-"; el score de la play va en Ranked Score, como stable).
+            // Beatmap Ranking row: THIS play's values (the map rank of this play isn't known
+            // client-side: "-"; the play's score goes in Ranked Score, as in stable).
             beatmapMain[0].Text = @"-";
             beatmapMain[1].Text = $"{score.Accuracy:0.00%}";
             beatmapMain[2].Text = $"{score.MaxCombo:N0}x";
@@ -406,8 +405,8 @@ namespace osu.Game.Screens.Ranking
             if (beatmapId == null)
                 return;
 
-            // posicion de este score entre los locales del mapa (mismo ruleset, por total score),
-            // como el ScoreManager.InsertScore de stable.
+            // Position of this score among the map's local ones (same ruleset, by total score), like
+            // stable's ScoreManager.InsertScore.
             int rank = realm.Run(r =>
             {
                 var localScores = r.All<ScoreInfo>()
@@ -441,8 +440,8 @@ namespace osu.Game.Screens.Ranking
                 if (best?.Score == null)
                     return;
 
-                // el rank del mapa de la play sale del best: si esta play ES el best, el
-                // position aplica a la fila principal tambien.
+                // The map rank of the play comes from the best: if this play IS the best, the position
+                // applies to the main row too.
                 if (best.Position != null && best.Score.MatchesOnlineID(score))
                     beatmapMain[0].Text = $"#{best.Position:N0}";
 
@@ -485,8 +484,8 @@ namespace osu.Game.Screens.Ranking
         }
 
         /// <summary>
-        /// el pp conseguido por ESTA play para la celda Performance de la fila Beatmap Ranking.
-        /// los scores frescos todavia no traen pp del server, asi que lo calculamos local.
+        /// The pp earned by THIS play, for the Performance cell of the Beatmap Ranking row. Fresh scores
+        /// don't carry server-side pp yet, so we compute it locally.
         /// </summary>
         private void computeAchievedPp()
         {
@@ -531,7 +530,7 @@ namespace osu.Game.Screens.Ranking
             if (update == null)
                 return;
 
-            // deltas before -> after, "(+N)" verde / rojo como stable.
+            // Deltas before -> after, "(+N)" green / red as in stable.
             setDelta(overallSub[0], (update.Before.GlobalRank ?? 0) - (update.After.GlobalRank ?? 0), @"#");
             setDelta(overallSub[1], Math.Round((update.After.Accuracy - update.Before.Accuracy) / 100, 4), @"%");
             setDelta(overallSub[2], update.After.MaxCombo - update.Before.MaxCombo, @"x");
@@ -539,8 +538,8 @@ namespace osu.Game.Screens.Ranking
             setDelta(overallSub[4], update.After.TotalScore - update.Before.TotalScore, string.Empty);
             setDelta(overallSub[5], (double)((update.After.PP ?? 0) - (update.Before.PP ?? 0)), @"pp");
 
-            // el total score sumado se resalta con la caja verde de stable; el delta pasa a
-            // blanco para que se lea sobre el verde.
+            // The total score gained is highlighted with stable's green box; the delta turns white so it
+            // reads on top of the green.
             bool gainedScore = update.After.TotalScore - update.Before.TotalScore > 0;
             totalScoreHighlight.Alpha = gainedScore ? 0.9f : 0;
 
@@ -572,14 +571,14 @@ namespace osu.Game.Screens.Ranking
 
         #endregion
 
-        #region acciones
+        #region actions
 
         private bool replayExported;
 
         private void onExportReplay(bool ticked)
         {
-            // stable exporta el replay al cerrar el dialog si el checkbox quedo marcado;
-            // nosotros exportamos al tildar (una sola vez).
+            // stable exports the replay when the dialog closes if the checkbox stayed ticked; we export
+            // on tick (only once).
             if (!ticked || replayExported)
                 return;
 
@@ -600,8 +599,8 @@ namespace osu.Game.Screens.Ranking
         #endregion
 
         /// <summary>
-        /// el pCheckbox de stable: circulito + label, click togglea. minimalista pero suficiente
-        /// para las dos opciones de la esquina del dialog.
+        /// stable's pCheckbox: little circle + label, click toggles. Minimal but enough for the two
+        /// options in the dialog's corner.
         /// </summary>
         private partial class LegacyCheckbox : OsuClickableContainer
         {

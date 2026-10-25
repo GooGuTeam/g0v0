@@ -40,8 +40,8 @@ namespace osu.Game.Skinning.Select
                 BypassAutoSizeAxes = Axes.Both,
                 X = 57.6f / 2 * 1.6f,
                 Y = -35 * 1.6f,
-                // stable lo dibuja aditivo (s_modeSprite.Additive = true); los skins con iconos de
-                // mode sobre fondo negro dependen de que el negro quede invisible.
+                // stable draws it additively (s_modeSprite.Additive = true); skins with mode icons on a
+                // black background rely on the black turning invisible.
                 Blending = BlendingParameters.Additive,
             });
         }
@@ -54,9 +54,9 @@ namespace osu.Game.Skinning.Select
 
             ruleset.BindValueChanged(r =>
             {
-                // si el skin trae los iconos de mode como decoracion gigante skinnable-top (igual que
-                // selection-mode), no los dibujamos como icono del boton: clampeados al slot quedan como una
-                // mini-decoracion rara al lado del footer. la decoracion la dibuja aparte LegacyFooter.
+                // If the skin ships the mode icons as the giant skinnable-top decoration (same as
+                // selection-mode), we don't draw them as the button icon: clamped to the slot they look
+                // like a weird mini-decoration next to the footer. LegacyFooter draws the decoration separately.
                 if (SuppressBaseGlyph)
                 {
                     modeIcon.Texture = null;
@@ -66,10 +66,10 @@ namespace osu.Game.Skinning.Select
                 string name = $@"mode-{r.NewValue.ShortName}-small";
                 var tex = source.GetTexture(name) ?? skins.DefaultClassicSkin.GetTexture(name);
 
-                // algunos skins traen un mode-*-small gigante como decoracion "skinnable top" (lo
-                // dibuja aparte y atras del chrome el LegacyTopDecoration); para eso caemos al icono
-                // classic bundleado en vez de redibujar la decoracion sobre el footer. los iconos
-                // normales van a tamaño natural como stable, aunque sobresalgan un poco del slot.
+                // Some skins ship a giant mode-*-small as the "skinnable top" decoration (drawn separately
+                // behind the chrome by LegacyTopDecoration); for those we fall back to the bundled classic
+                // icon instead of redrawing the decoration over the footer. Normal icons go at their natural
+                // size as in stable, even if they stick out of the slot a little.
                 if (tex != null && Math.Max(tex.DisplayWidth, tex.DisplayHeight) > 250)
                     tex = skins.DefaultClassicSkin.GetTexture(name);
 

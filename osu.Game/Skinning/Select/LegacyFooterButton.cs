@@ -22,24 +22,23 @@ namespace osu.Game.Skinning.Select
         private SkinnableSound hoverSound = null!;
         private SkinnableSound clickSound = null!;
 
-        /// <summary>de donde salen las texturas del boton. null = el skin actual.</summary>
+        /// <summary>Where this button's textures come from. null = the current skin.</summary>
         public ISkin? TextureSource { get; init; }
 
         /// <summary>
-        /// cuando el glyph base de este boton es en realidad la decoracion skinnable-top gigante del skin
-        /// (tipico de selection-mode), no lo dibujamos como glyph del boton: clampeado al slot saldria una
-        /// mini version rara de toda la decoracion. la decoracion la dibuja aparte LegacyFooter.
+        /// When this button's base glyph is actually the skin's giant skinnable-top decoration
+        /// (typically selection-mode), we don't draw it as the button glyph: clamped to the slot it would
+        /// come out as a weird mini version of the whole decoration. LegacyFooter draws it separately.
         /// </summary>
         public bool SuppressBaseGlyph { get; init; }
 
-        // el slot del boton de stable. el hit area clickeable es COMO MINIMO esto, asi una textura que
-        // falta / es 0x0 nunca deja el boton sin click; y crece hasta cubrir el glyph de hover cuando el
-        // skin trae botones mas grandes (stable toma el input del sprite -over, o sea que su hit area
-        // tambien escala con la textura).
+        // stable's button slot. The clickable hit area is AT LEAST this, so a missing / 0x0 texture never
+        // leaves the button unclickable; and it grows to cover the hover glyph when the skin ships larger
+        // buttons (stable takes input from the -over sprite, i.e. its hit area scales with the texture too).
         private const float slot_width = 74;
         private const float slot_height = 90;
 
-        // mas alla de esto la textura es arte de decoracion del footer, no un glyph de boton.
+        // Beyond this the texture is footer decoration art, not a button glyph.
         private const float max_glyph_dimension = 250;
 
         public LegacyFooterButton(string kind)
@@ -52,8 +51,8 @@ namespace osu.Game.Skinning.Select
         [BackgroundDependencyLoader]
         private void load(ISkinSource skin, SkinManager skins)
         {
-            // los botones pueden quedar de alturas distintas cuando el skin trae glyphs oversized;
-            // anclados abajo quedan alineados por la base dentro de la fila del footer.
+            // Buttons can end up with different heights when the skin ships oversized glyphs; anchored
+            // to the bottom they stay baseline-aligned inside the footer row.
             Anchor = Anchor.BottomLeft;
             Origin = Anchor.BottomLeft;
 
@@ -64,22 +63,22 @@ namespace osu.Game.Skinning.Select
             {
                 var tex = source.GetTexture(name) ?? skins.DefaultClassicSkin.GetTexture(name);
 
-                // una textura tamaño-decoracion no sirve como glyph de boton (hay skins que meten
-                // el arte entero del footer en estos slots); caemos al glyph classic bundleado en
-                // vez de dibujarla gigante encima de todo.
+                // A decoration-sized texture is no good as a button glyph (some skins stuff the whole
+                // footer art into these slots); fall back to the bundled classic glyph instead of drawing
+                // it huge over everything.
                 if (tex != null && Math.Max(tex.DisplayWidth, tex.DisplayHeight) > max_glyph_dimension)
                     tex = skins.DefaultClassicSkin.GetTexture(name);
 
                 return tex;
             }
 
-            // las dos texturas: el glyph base (siempre visible) y el "-over" (glow aditivo de hover, como
-            // en stable). si el skin no trae el "-over" caemos al base asi igual hay feedback en hover.
+            // The two textures: the base glyph (always visible) and the "-over" one (additive hover glow,
+            // as in stable). If the skin has no "-over" we fall back to the base so hover still gives feedback.
             var baseTex = texture($"selection-{kind}");
             var overTex = texture($"selection-{kind}-over") ?? baseTex;
 
-            // si este boton lleva en realidad la decoracion gigante (ej: selection-mode usado como
-            // skinnable-top), no la dibujamos como glyph ni como hover: la dibuja aparte LegacyFooter.
+            // If this button actually carries the giant decoration (e.g. selection-mode used as the
+            // skinnable top), we draw it neither as glyph nor as hover: LegacyFooter draws it separately.
             if (SuppressBaseGlyph)
             {
                 baseTex = null;
@@ -99,8 +98,8 @@ namespace osu.Game.Skinning.Select
                     BypassAutoSizeAxes = Axes.Both,
                     Size = sizeFor(baseTex),
                 },
-                // stable dibuja el -over EXACTAMENTE en la misma posicion que el base (mismo
-                // field/origin/position), solo fadeado por alpha en hover. nada de nudges.
+                // stable draws the -over EXACTLY at the same position as the base (same
+                // field/origin/position), only faded in by alpha on hover. No nudges.
                 hoverSprite = new Sprite
                 {
                     Anchor = sprite_anchor,
@@ -116,7 +115,7 @@ namespace osu.Game.Skinning.Select
                 clickSound = new SkinnableSound(new SampleInfo("click-short-confirm")),
             };
 
-            // tamaño natural, como stable: un boton grande simplemente sobresale de la barra del footer.
+            // Natural size, as in stable: a large button simply sticks out of the footer bar.
             Vector2 sizeFor(Texture? tex) => tex == null ? Vector2.Zero : new Vector2(tex.DisplayWidth, tex.DisplayHeight);
         }
 

@@ -15,17 +15,17 @@ using osuTK;
 namespace osu.Game.Screens.Select
 {
     /// <summary>
-    /// torii: el truco de skinning del "mode button" de osu!stable. los skins traen un selection-mode
-    /// grande + mode-*-small asi la parte de ARRIBA del song select se vuelve skinneable. stable dibuja
-    /// ese grafico mode-button DETRAS del texto/controles del song select. el footer de torii dibuja las
-    /// mismas texturas, pero el footer queda arriba de la pantalla, asi que tapaban la info del beatmap /
-    /// Group / Sort / Rankings. aca dibujamos el mismo grafico mode-button, como capa ADELANTE del carousel
-    /// pero DETRAS del chrome legacy, asi los labels/cajas se leen por encima (el mode button propio del
-    /// footer queda clampeado a tamano normal asi no vuelve a tapar). posicionado para coincidir con el del footer.
+    /// osu!stable's "mode button" skinning trick. Skins ship a large selection-mode plus a
+    /// mode-*-small so the TOP part of song select becomes skinnable. stable draws that mode-button
+    /// graphic BEHIND the song select text/controls. torii's footer draws the same textures, but the
+    /// footer sits at the top of the screen, so it covered the beatmap info / Group / Sort / Rankings.
+    /// Here we draw the same mode-button graphic as a layer IN FRONT of the carousel but BEHIND the
+    /// legacy chrome, so the labels/boxes read on top of it (the footer's own mode button stays clamped
+    /// to normal size so it can't cover them again). Positioned to match the footer's.
     /// </summary>
     public partial class LegacyTopDecoration : CompositeDrawable
     {
-        // coincide con LegacyFooter.buttons_pos_16_9 (140 * 1.6), la X del cluster de botones del footer.
+        // Matches LegacyFooter.buttons_pos_16_9 (140 * 1.6), the X of the footer's button cluster.
         private const float components_x = 140 * 1.6f;
 
         [Resolved]
@@ -44,20 +44,20 @@ namespace osu.Game.Screens.Select
 
             InternalChildren = new Drawable[]
             {
-                // bg selection-mode: va en el bottom-left del mode button (como LegacyFooterButton).
+                // selection-mode background: sits at the mode button's bottom-left (like LegacyFooterButton).
                 background = new Sprite
                 {
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.BottomLeft,
                     Position = new Vector2(components_x, 0),
                 },
-                // icono mode-*-small: con offset desde el bottom-left del boton (como LegacyRulesetFooterButton).
+                // mode-*-small icon: offset from the button's bottom-left (like LegacyRulesetFooterButton).
                 icon = new Sprite
                 {
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.Centre,
                     Position = new Vector2(components_x + 57.6f / 2 * 1.6f, -35 * 1.6f),
-                    // stable dibuja el iconito de modo aditivo (brilla sobre la decoracion).
+                    // stable draws the little mode icon additively (it glows over the decoration).
                     Blending = BlendingParameters.Additive,
                 },
             };

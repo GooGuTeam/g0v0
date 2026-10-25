@@ -65,8 +65,8 @@ namespace osu.Game.Screens.Footer
 
         private readonly IBindable<Skin> currentSkin = new Bindable<Skin>();
         private Bindable<bool> footerUseSkin = null!;
-        // torii: toggle independiente del footer legacy. el footer legacy se muestra si el stable esta
-        // prendido (footerUseSkin) O si este toggle standalone esta prendido.
+        // Torii: independent toggle for the legacy footer. The legacy footer shows when the stable UI is
+        // on (footerUseSkin) OR this standalone toggle is on.
         private Bindable<bool> legacyFooterStandalone = null!;
         private DrawSizePreservingFillContainer? legacyFooterContainer;
         private LegacyFooter? legacyFooter;
@@ -139,9 +139,9 @@ namespace osu.Game.Screens.Footer
 
         private void updateLegacyFooter()
         {
-            // torii: el footer legacy se muestra cuando la pantalla lo permite Y (el stable song select
-            // esta prendido O el toggle standalone del footer esta prendido) Y no hay overlay activo.
-            // antes el gate era "hay un skin legacy activo", lo que mostraba el footer ignorando el toggle.
+            // Torii: the legacy footer shows when the screen allows it AND (the stable song select is on
+            // OR the footer's standalone toggle is on) AND no overlay is active. The gate used to be
+            // "a legacy skin is active", which showed the footer regardless of the toggle.
             bool active = allowLegacyFooterSkinning
                           && (footerUseSkin.Value || legacyFooterStandalone.Value)
                           && !Footer.HasActiveOverlay;
@@ -175,8 +175,8 @@ namespace osu.Game.Screens.Footer
                 BackAction = () => BackButtonPressed?.Invoke(),
                 ModsAction = () => Footer.TriggerFooterButton(0),
                 RandomAction = () => Footer.TriggerFooterButton(1),
-                // el boton options abre el popup estilo stable del propio footer (las mismas
-                // acciones forward del song select que el menu contextual del carousel).
+                // The options button opens the footer's own stable-style popup (the same song select
+                // actions the carousel's context menu forwards).
                 OptionsMenuItems = getStableOptionsMenuItems,
             };
 

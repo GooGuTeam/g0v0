@@ -32,25 +32,25 @@ namespace osu.Game.Skinning.Select
         private const float buttons_pos_16_9 = 140 * 1.6f;
         private const float footer_bar_height = 96;
 
-        // torii: el footer de arriba engancha esto para que el chrome legacy
-        // dispare las acciones reales del song-select. el PR de upstream las deja sueltas.
+        // Torii: the screen-level footer hooks these up so the legacy chrome can trigger the real
+        // song select actions. The upstream PR leaves them dangling.
         public Action? BackAction { get; init; }
         public Action? ModsAction { get; init; }
         public Action? RandomAction { get; init; }
         public Action? OptionsAction { get; init; }
 
         /// <summary>
-        /// items para el popup de opciones estilo stable (el menucito que sale arriba del boton
-        /// options con las acciones del beatmap). si esta seteado y OptionsAction es null, el boton
-        /// abre este menu en vez del overlay moderno.
+        /// Items for the stable-style options popup (the little menu that opens above the options button
+        /// with the beatmap actions). If set and OptionsAction is null, the button opens this menu instead
+        /// of the modern overlay.
         /// </summary>
         public Func<MenuItem[]>? OptionsMenuItems { get; init; }
 
         private OsuMenu optionsMenu = null!;
 
         /// <summary>
-        /// abre/cierra el popup de opciones estilo stable (tambien lo dispara el hotkey F3 del
-        /// song select cuando el chrome legacy esta activo).
+        /// Opens/closes the stable-style options popup (also triggered by song select's F3 hotkey while
+        /// the legacy chrome is active).
         /// </summary>
         public void ShowOptions()
         {
@@ -79,28 +79,27 @@ namespace osu.Game.Skinning.Select
             const float options_button_off = random_button_off + 48 * 1.6f;
             const float user_pos_off = options_button_off + 48 * 2 * 1.6f;
 
-            // torii: skin vs footer bundleado.
-            // toggle de "skinear el footer del song-select". prendido: usa el songselect-bottom
-            // del skin activo + los glyphs selection-* del skin. apagado: una barra limpia y pareja
-            // con los botones classic bundleados.
+            // Torii: skin vs bundled footer.
+            // The "skin the song select footer" toggle. On: uses the active skin's songselect-bottom plus
+            // the skin's selection-* glyphs. Off: a clean, even bar with the bundled classic buttons.
             bool useSkin = config.Get<bool>(OsuSetting.ToriiLegacyFooterUseSkin);
 
-            // null = agarra las texturas del skin actual asi se ven los footers skineados, si no el
-            // classic bundleado. el fallback por textura al classic vive en LegacyFooterButton, y cada
-            // boton tiene un hit area FIJO de 74x90 que no depende de la textura del skin. asi un skin
-            // que no trae selection-* o lo trae con un tamaño raro igual te da un boton clickeable en
-            // vez de colapsar o irse de pantalla.
+            // null = take the textures from the current skin so skinned footers show up, otherwise the
+            // bundled classic one. The per-texture fallback to classic lives in LegacyFooterButton, and
+            // every button has a FIXED 74x90 hit area that doesn't depend on the skin's texture. That way
+            // a skin without selection-* (or with an oddly sized one) still gives a clickable button
+            // instead of collapsing or flying off screen.
             ISkin? buttonSource = useSkin ? null : skins.DefaultClassicSkin;
-            // cuando skineamos siempre queremos un fondo de footer: el songselect-bottom del skin, si no
-            // el classic bundleado (el default con borde azul). esta es la capa de ATRAS; la tarjeta de
-            // stats del user va encima, y el cosmetic selection-mode del skin encima de eso.
+            // When skinned we always want a footer background: the skin's songselect-bottom, else the
+            // bundled classic one (the default with the blue border). This is the BACK layer; the user's
+            // stats card goes on top, and the skin's selection-mode cosmetic on top of that.
             var bottomTexture = useSkin ? (skin.GetTexture(@"songselect-bottom") ?? skins.DefaultClassicSkin.GetTexture(@"songselect-bottom")) : null;
 
-            // algunos skins meten el footer adentro de un "selection-mode" gigante (la misma textura que
-            // la decoracion skinnable-top, donde la PARTE DE ABAJO es el diseño del footer). esa parte de
-            // abajo la dibujamos como cosmetic ENCIMA de la tarjeta de stats (tapa performance/acc/lvl y
-            // tiene un circulo transparente para el avatar). ojo: usar el lookup `skin` directo, porque
-            // skins.CurrentSkin.Value.GetTexture devuelve null para texturas de skins legacy (no hay transformer).
+            // Some skins pack the footer into a giant "selection-mode" (the same texture as the skinnable
+            // top decoration, where the BOTTOM PART is the footer design). We draw that bottom part as a
+            // cosmetic ON TOP of the stats card (it covers performance/acc/lvl and has a transparent circle
+            // for the avatar). Note: use the `skin` lookup directly, because
+            // skins.CurrentSkin.Value.GetTexture returns null for legacy skin textures (no transformer).
             var modeTexture = useSkin ? skin.GetTexture(@"selection-mode") : null;
             bool skinFooterDecoration = modeTexture != null && Math.Max(modeTexture.DisplayWidth, modeTexture.DisplayHeight) > 90;
 
@@ -108,8 +107,8 @@ namespace osu.Game.Skinning.Select
 
             InternalChildren = new Drawable[]
             {
-                // barra de fallback limpia, se muestra cuando no hay footer de skin que dibujar
-                // (ni songselect-bottom ni una decoracion selection-mode).
+                // Clean fallback bar, shown when there's no skin footer to draw (neither a
+                // songselect-bottom nor a selection-mode decoration).
                 new Box
                 {
                     RelativeSizeAxes = Axes.X,
@@ -119,7 +118,7 @@ namespace osu.Game.Skinning.Select
                     Colour = ColourInfo.GradientVertical(Color4.Black.Opacity(0.5f), Color4.Black.Opacity(0.85f)),
                     Alpha = showCleanBar ? 1 : 0,
                 },
-                // fondo del footer (capa de ATRAS): el songselect-bottom del skin, si no el classic bundleado.
+                // Footer background (BACK layer): the skin's songselect-bottom, else the bundled classic one.
                 new Sprite
                 {
                     Texture = bottomTexture,
@@ -135,8 +134,8 @@ namespace osu.Game.Skinning.Select
                     Origin = Anchor.BottomLeft,
                     Action = BackAction,
                 },
-                // solo la tarjeta de stats del user. los botones salieron a su propia capa (buttonsContainer)
-                // que va DESPUES de la decoracion selection-mode, asi el glow -over del hover no queda tapado.
+                // Just the user's stats card. The buttons moved to their own layer (buttonsContainer),
+                // which comes AFTER the selection-mode decoration so their hover glow isn't covered.
                 components = new Container
                 {
                     Anchor = Anchor.BottomLeft,
@@ -151,11 +150,10 @@ namespace osu.Game.Skinning.Select
                         Y = 2 * 1.6f,
                     },
                 },
-                // capa de ADELANTE: el cosmetic selection-mode del skin, encima de la tarjeta de stats
-                // (tapa performance/acc/lvl, el circulo transparente deja ver el avatar). misma textura y
-                // X que la decoracion de arriba asi queda alineado; recortado a la banda del footer para
-                // que su diseño de arriba no se suba por encima del chrome del song-select. la Y lo acomoda
-                // a la altura de los stats.
+                // FRONT layer: the skin's selection-mode cosmetic, on top of the stats card (it covers
+                // performance/acc/lvl, and the transparent circle lets the avatar show through). Same
+                // texture and X as the top decoration so they line up; clipped to the footer band so its
+                // upper design doesn't ride up over the song select chrome. The Y aligns it with the stats.
                 new Container
                 {
                     RelativeSizeAxes = Axes.X,
@@ -173,8 +171,8 @@ namespace osu.Game.Skinning.Select
                         Position = new Vector2(buttons_pos_16_9, -2),
                     },
                 },
-                // los botones del footer (mode/mods/random/options), ENCIMA de la decoracion selection-mode
-                // asi su glow -over de hover no queda tapado. mismo X que components, sincronizado en Update().
+                // The footer buttons (mode/mods/random/options), ON TOP of the selection-mode decoration so
+                // their hover glow isn't covered. Same X as components, kept in sync in Update().
                 buttonsContainer = new Container
                 {
                     Anchor = Anchor.BottomLeft,
@@ -183,7 +181,7 @@ namespace osu.Game.Skinning.Select
                     X = buttons_pos_16_9,
                     Children = new Drawable[]
                     {
-                        // el popup de opciones estilo stable, anclado arriba del boton options.
+                        // The stable-style options popup, anchored above the options button.
                         optionsMenu = new OsuMenu(Direction.Vertical)
                         {
                             Anchor = Anchor.BottomLeft,
@@ -213,9 +211,9 @@ namespace osu.Game.Skinning.Select
                 {
                     f.Anchor = Anchor.BottomRight;
                     f.Origin = Anchor.Centre;
-                    // todo: lazer posiciona el logo distinto que stable, pero por estetica queda mejor el de lazer.
-                    // que el logo se mueva al cambiar entre un skin lazer y uno legacy quedaria feo.
-                    // de referencia, en stable el logo va cerca de Vector2(-70, -50).
+                    // TODO: lazer positions the logo differently from stable, but aesthetically lazer's
+                    // looks better. Having the logo move when switching between a lazer and a legacy skin
+                    // would look bad. For reference, in stable the logo sits near Vector2(-70, -50).
                     f.Position = new Vector2(-76, -36);
                 })),
             };
@@ -227,7 +225,7 @@ namespace osu.Game.Skinning.Select
 
             bool isWidescreen = Precision.DefinitelyBigger(DrawWidth, 1024);
             components.X = isWidescreen ? buttons_pos_16_9 : buttons_pos_4_3;
-            // los botones (capa de arriba, separada de components) siguen el mismo X.
+            // The buttons (front layer, separate from components) follow the same X.
             buttonsContainer.X = components.X;
         }
 

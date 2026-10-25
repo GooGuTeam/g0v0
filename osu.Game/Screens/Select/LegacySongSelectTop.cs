@@ -24,38 +24,38 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Select
 {
     /// <summary>
-    /// torii: el panel de arriba del song select estilo osu!stable para la UI legacy. dibuja la
-    /// textura "songselect-top" del skin y encima el bloque de info del beatmap (izquierda) y los
-    /// dropdowns Group/Sort, los tabs de grouping y el search (derecha). todo va en las coords
-    /// exactas de stable x1.6 (la UI legacy vive en un container 1366x768 = espacio stable-480 x1.6),
-    /// asi queda alineado con stable y con las texturas de skin.
+    /// The osu!stable style song select top bar for the legacy UI. Draws the skin's "songselect-top"
+    /// texture and, on top of it, the beatmap info block (left) plus the Group/Sort dropdowns, the
+    /// grouping tabs and the search box (right). Everything sits on stable's exact coordinates scaled
+    /// by 1.6 (the legacy UI lives in a 1366x768 container = stable's 480 space x1.6), so it lines up
+    /// with stable and with the skin textures.
     /// </summary>
     public partial class LegacySongSelectTop : CompositeDrawable
     {
-        // colores de highlight de stable (SongSelection.cs:634/623).
+        // stable's highlight colours (SongSelection.cs:634/623).
         private static readonly Color4 group_colour = new Color4(146 / 255f, 195 / 255f, 230 / 255f, 1f);
         private static readonly Color4 sort_colour = new Color4(174 / 255f, 210 / 255f, 139 / 255f, 1f);
 
         private const float dropdown_width = 193;
 
-        // alto de la franja songselect-top de stable en el espacio logico 1366x768 (el art stock es 1366x155).
+        // Height of stable's songselect-top strip in the 1366x768 logical space (the stock art is 1366x155).
         private const float panel_height = 155;
 
-        // ancho logico del espacio de la UI legacy (el TargetDrawSize.X del DrawSizePreservingFillContainer).
+        // Logical width of the legacy UI space (the DrawSizePreservingFillContainer's TargetDrawSize.X).
         private const float logical_width = 1366;
 
         /// <summary>
-        /// el filter control del song select que manejan estos controles legacy (el search query).
-        /// Group/Sort van por config asi quedan sincronizados con los dropdowns modernos (escondidos).
+        /// The song select filter control these legacy controls drive (the search query).
+        /// Group/Sort go through config so they stay in sync with the modern (hidden) dropdowns.
         /// </summary>
         public FilterControl FilterControl { get; init; } = null!;
 
         [Resolved]
         private OsuConfigManager config { get; set; } = null!;
 
-        // solo los controles interactivos agarran input; lo decorativo (la textura songselect-top,
-        // la info del beatmap, los labels Group/Sort) deja pasar el input asi se puede drag-scrollear
-        // el carousel donde sea que asome detras del panel.
+        // Only the interactive controls take input; the decorative parts (the songselect-top texture,
+        // the beatmap info, the Group/Sort labels) let input through so the carousel can be
+        // drag-scrolled wherever it peeks out behind the panel.
         private Drawable groupDropdown = null!;
         private Drawable sortDropdown = null!;
         private Drawable groupTabs = null!;
@@ -64,15 +64,16 @@ namespace osu.Game.Screens.Select
         private ISkinSource skin = null!;
         private SkinManager skins = null!;
 
-        // van como fields (NO locals) asi las copias de config.GetBindable sobreviven al load().
-        // osu!framework bindea con weak references, asi que una copia local se la come el GC apenas
-        // termina load() y desconecta los tabs/dropdowns de la config sin avisar (el click setea el
-        // Current local pero nunca llega a la config, asi que no reagrupa nada). un strong ref lo mantiene vivo.
+        // Kept as fields (NOT locals) so the config.GetBindable copies survive load().
+        // osu!framework binds with weak references, so a local copy gets eaten by the GC as soon as
+        // load() returns and silently disconnects the tabs/dropdowns from config (the click sets the
+        // local Current but never reaches config, so nothing regroups). A strong ref keeps it alive.
         private Bindable<GroupMode> groupBindable = null!;
         private Bindable<SortMode> sortBindable = null!;
 
-        // las capas de la textura songselect-top (el default + la propia del skin). se rearman al
-        // cambiar de skin asi el panel se actualiza al toque en vez de mostrar el top del skin viejo hasta que salis.
+        // The layers of the songselect-top texture (the default one plus the skin's own). They are
+        // rebuilt on skin change so the panel updates instantly instead of showing the previous skin's
+        // top until you leave.
         private readonly List<Drawable> topLayers = new List<Drawable>();
 
         [BackgroundDependencyLoader]
@@ -88,26 +89,26 @@ namespace osu.Game.Screens.Select
 
             InternalChildren = new Drawable[]
             {
-                // la decoracion "mode button" skinneable del skin (selection-mode + mode-*-small), va
-                // ENTRE el songselect-top (atras, lo agrega rebuildTopLayers) y la info del beatmap /
-                // Group / Sort / Rankings (adelante). el orden de stable: labels > skinnable top > default.
+                // The skin's skinnable "mode button" decoration (selection-mode + mode-*-small), drawn
+                // BETWEEN the songselect-top (behind, added by rebuildTopLayers) and the beatmap info /
+                // Group / Sort / Rankings (in front). stable's order: labels > skinnable top > default.
                 new LegacyTopDecoration { Depth = 2 },
                 new LegacyBeatmapInfoPanel
                 {
                     Anchor = Anchor.TopLeft,
                     Origin = Anchor.TopLeft,
-                    // unos px de padding a la izquierda asi el badge de status + el texto no quedan pegados al borde.
+                    // A few px of left padding so the status badge and the text don't stick to the edge.
                     Position = new Vector2(5, 0),
                 },
-                // label Group + dropdown (stable: x = WidthScaled-140-118-sortLabelWidth). todo el
-                // cluster de la derecha tiene que entrar arriba del contorno azul del panel (~y78), asi
-                // que los dropdowns van bien arriba y los tabs se meten justo abajo.
                 label(@"Group", group_colour, x: -481),
+                // Group label + dropdown (stable: x = WidthScaled-140-118-sortLabelWidth). The whole
+                // right-hand cluster has to fit above the panel's blue outline (~y78), so the dropdowns
+                // sit well up top and the tabs tuck in right below.
                 groupDropdown = new LegacyStableDropdown<GroupMode>
                 {
                     Anchor = Anchor.TopRight,
                     Origin = Anchor.TopRight,
-                    // va adelante asi el menu abierto queda por encima de los tabs + el search de abajo.
+                    // In front so the open menu stays above the tabs + the search box below.
                     Depth = -1,
                     Position = new Vector2(-284, 28),
                     AccentColour = group_colour,
@@ -115,8 +116,8 @@ namespace osu.Game.Screens.Select
                     Items = Enum.GetValues<GroupMode>(),
                     Current = { BindTarget = groupBindable },
                 },
-                // label Sort + dropdown (stable: x = WidthScaled-130).
                 label(@"Sort", sort_colour, x: -212),
+                // Sort label + dropdown (stable: x = WidthScaled-130).
                 sortDropdown = new LegacyStableDropdown<SortMode>
                 {
                     Anchor = Anchor.TopRight,
@@ -128,9 +129,10 @@ namespace osu.Game.Screens.Select
                     Items = Enum.GetValues<SortMode>(),
                     Current = { BindTarget = sortBindable },
                 },
-                // tabs de grouping (arriba a la derecha). van DETRAS de la decoracion (Depth 2.5 > 2) asi
-                // el grafico mode-button del skin simula donde estan. stable esconde los botones reales
-                // pero siguen clickeables (la decoracion es un sprite sin input, asi que los clicks pasan).
+                // Grouping tabs (top right). They draw BEHIND the decoration (Depth 2.5 > 2) so the
+                // skin's mode-button graphic can stand in for where they are. stable hides the real
+                // buttons but keeps them clickable (the decoration is an input-less sprite, so clicks
+                // pass through).
                 groupTabs = new LegacyGroupTabs
                 {
                     Anchor = Anchor.TopRight,
@@ -139,7 +141,7 @@ namespace osu.Game.Screens.Select
                     Margin = new MarginPadding { Top = 54, Right = 28 },
                     Current = { BindTarget = groupBindable },
                 },
-                // campo de search (arriba a la derecha, justo abajo del contorno del panel).
+                // Search box (top right, just below the panel's outline).
                 searchBox = new LegacySearchBox
                 {
                     Anchor = Anchor.TopRight,
@@ -156,17 +158,17 @@ namespace osu.Game.Screens.Select
         {
             base.LoadComplete();
 
-            // rearmar las capas songselect-top cuando cambia el skin asi un cambio en vivo actualiza el
-            // panel al toque (la decoracion se refresca sola con su propio handler de SourceChanged).
+            // Rebuild the songselect-top layers on skin change so a live change updates the panel
+            // instantly (the decoration refreshes itself via its own SourceChanged handler).
             skin.SourceChanged += rebuildTopLayers;
         }
 
         /// <summary>
-        /// rearma las dos capas apiladas del songselect-top, como stable:
-        ///   (atras) el top classic "default" bundleado, siempre; su panel opaco a la izquierda banca la
-        ///           info del beatmap asi se lee aunque el top propio del skin sea transparente ahi.
-        ///   (medio) el songselect-top PROPIO del skin, solo si trae uno (muchos skins no traen).
-        /// con su Depth mas alto quedan detras de la decoracion (Depth 2) y del chrome.
+        /// Rebuilds the two stacked songselect-top layers, like stable:
+        ///   (back) the always-present bundled classic top; its opaque left panel backs the beatmap
+        ///          info so it stays readable even when the skin's own top is transparent there.
+        ///   (middle) the skin's OWN songselect-top, only if it ships one (many skins don't).
+        /// With their higher Depth they sit behind the decoration (Depth 2) and the chrome.
         /// </summary>
         private void rebuildTopLayers()
         {
@@ -198,14 +200,14 @@ namespace osu.Game.Screens.Select
         }
 
         /// <summary>
-        /// una capa de textura songselect-top: full-width a su aspecto natural (pegada arriba), recortada
-        /// a la franja de 155px de stable asi una textura de skin alta/opaca no tapa la banda de controles.
-        /// mas <paramref name="depth"/> = mas atras, asi el backing default queda detras del propio del skin.
+        /// A single songselect-top texture layer: full-width at its natural aspect (pinned to the top),
+        /// clipped to stable's 155px strip so a tall/opaque skin texture doesn't cover the controls band.
+        /// Higher <paramref name="depth"/> = further back, so the default backing sits behind the skin's own.
         /// </summary>
         private Drawable topLayer(Texture? tex, float depth)
         {
-            // sin textura (ni la classic bundleada): un gradiente oscuro de fallback asi la info
-            // del beatmap y los controles se leen igual sobre cualquier fondo.
+            // No texture (not even the bundled classic one): fall back to a dark gradient so the beatmap
+            // info and the controls stay legible over any background.
             if (tex == null)
             {
                 return new Container
@@ -250,9 +252,9 @@ namespace osu.Game.Screens.Select
             };
         }
 
-        // este overlay es full-screen, pero solo los controles interactivos tienen que agarrar input.
-        // todo lo demas (incluida la textura decorativa songselect-top / la info del beatmap) deja pasar
-        // asi se puede drag-scrollear el carousel donde sea que asome detras del panel.
+        // This overlay is full-screen, but only the interactive controls should take input. Everything
+        // else (including the decorative songselect-top texture / the beatmap info) lets input through so
+        // the carousel can be drag-scrolled wherever it peeks out behind the panel.
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos)
             => groupDropdown.ReceivePositionalInputAt(screenSpacePos)
                || sortDropdown.ReceivePositionalInputAt(screenSpacePos)
@@ -260,21 +262,21 @@ namespace osu.Game.Screens.Select
                || searchBox.ReceivePositionalInputAt(screenSpacePos);
 
         /// <summary>
-        /// un label coloreado estilo stable ("Group" / "Sort"), anclado por el borde derecho a
-        /// <paramref name="x"/> px del borde derecho de la pantalla, justo arriba de su dropdown (stable y=40 x1.6).
+        /// A stable style coloured label ("Group" / "Sort"), right-edge anchored <paramref name="x"/> px
+        /// from the right edge of the screen, right above its dropdown (stable y=40 x1.6).
         /// </summary>
         private static Drawable label(LocalisableString text, Color4 colour, float x) => new StrokedLegacyText
         {
             Anchor = Anchor.TopRight,
             Origin = Anchor.BottomRight,
-            // stable pone el label grande bien abajo, asi los descendentes (la "p" de Group) se meten
-            // sobre la fila de tabs, igualito a como se ve en stable. detras de la decoracion (2.6 > 2),
-            // como los tabs, asi el grafico mode-button del skin queda por encima.
+            // stable places the large label low enough that the descenders (the "p" in Group) spill over
+            // the tab row, exactly as it looks in stable. Behind the decoration (2.6 > 2), like the tabs,
+            // so the skin's mode-button graphic draws on top.
             Position = new Vector2(x, 56),
             Depth = 2.6f,
             Text = text,
             Font = LegacyFonts.Get(34, FontWeight.Light),
-            // texto tintado con el contorno fino oscuro de stable (reemplaza el drop shadow suave).
+            // Text tinted with stable's thin dark outline (replaces the soft drop shadow).
             Colour = colour,
         };
     }

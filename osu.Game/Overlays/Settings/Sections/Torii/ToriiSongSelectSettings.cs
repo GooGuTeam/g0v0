@@ -18,24 +18,24 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
     {
         protected override LocalisableString Header => UserInterfaceStrings.SongSelectAppearanceHeader;
 
-        // el toggle stable (que ademas trae el footer legacy bundleado). cuando esta prendido, el footer
-        // legacy va si o si, asi que el toggle de abajo queda forzado prendido y deshabilitado.
-        // se asignan en load() con el bindable del config DIRECTO (no new + BindTo a un temporal): las
-        // bindings de osu!framework son weak-ref y un bound-copy temporal sin guardar se lo come el GC,
-        // y ahi el toggle dejaba de reaccionar (quedaba grisado aunque apagaras el stable).
+        // The stable toggle (which also brings the bundled legacy footer with it). When it's on the legacy
+        // footer is mandatory, so the toggle below is forced on and disabled.
+        // They're assigned in load() straight from the config bindable (no new + BindTo to a temporary):
+        // osu!framework bindings are weak-ref, so an unheld temporary bound copy gets eaten by the GC and
+        // the toggle then stopped reacting (it stayed greyed out even after turning stable off).
         private Bindable<bool> stableSongSelect = null!;
 
-        // la preferencia REAL del usuario para el footer legacy standalone (lo que se guarda en config).
+        // The user's REAL preference for the standalone legacy footer (what gets saved to config).
         private Bindable<bool> footerPref = null!;
 
-        // lo que ve el checkbox: refleja la pref cuando stable esta apagado, o queda checked+disabled
-        // cuando stable esta prendido. el writeback a footerPref solo persiste clicks REALES del usuario.
+        // What the checkbox shows: mirrors the preference while stable is off, or stays checked+disabled
+        // while stable is on. The writeback to footerPref only persists REAL user clicks.
         private readonly BindableBool footerDisplay = new BindableBool();
 
-        // suppress flag (mismo patron que PotatoModeToggleAndRestart / ToriiAuraSettings): cuando
-        // syncDisplay() escribe footerDisplay.Value programaticamente, el evento de cambio se dispara
-        // SINCRONO. sin esta bandera, el writeback de abajo correria con Disabled todavia en false
-        // (lo seteamos despues) y pisaria footerPref. con la bandera solo guardamos clicks del usuario.
+        // Suppress flag (same pattern as PotatoModeToggleAndRestart / ToriiAuraSettings): when syncDisplay()
+        // writes footerDisplay.Value programmatically the change event fires SYNCHRONOUSLY. Without this
+        // flag the writeback below would run while Disabled is still false (we set it afterwards) and
+        // clobber footerPref. With the flag we only save user clicks.
         private bool syncingDisplay;
 
         [BackgroundDependencyLoader]
@@ -87,8 +87,8 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
             stableSongSelect.BindValueChanged(_ => syncDisplay(), true);
             footerPref.BindValueChanged(_ => syncDisplay());
 
-            // writeback: solo persistimos cuando el cambio vino de un click real del usuario
-            // (no durante syncDisplay, y solo posible cuando el checkbox no esta disabled).
+            // Writeback: only persist when the change came from a real user click (not during
+            // syncDisplay, and only possible while the checkbox isn't disabled).
             footerDisplay.BindValueChanged(e =>
             {
                 if (!syncingDisplay)
@@ -102,10 +102,10 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
 
             bool stableOn = stableSongSelect.Value;
 
-            // limpiamos Disabled antes de tocar Value asi nunca escribimos sobre un bindable bloqueado.
+            // Clear Disabled before touching Value so we never write to a blocked bindable.
             footerDisplay.Disabled = false;
             footerDisplay.Value = stableOn || footerPref.Value;
-            // con stable prendido el footer va si o si: checked y bloqueado.
+            // With stable on the footer is mandatory: checked and locked.
             footerDisplay.Disabled = stableOn;
 
             syncingDisplay = false;

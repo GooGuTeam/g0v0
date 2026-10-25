@@ -1,13 +1,12 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
-// el HP graph del results legacy: la vida REAL de la play a lo largo del mapa, calculada
-// re-jugando los hit events contra el HealthProcessor posta del ruleset (drain calibrado
-// incluido) — headless, nunca se agrega al arbol. presentacion estilo stable: linea
-// verde/roja con el corte en media vida, reveal de 4s, crosses de miss/50/100 clustereadas
-// ("Nx" en pill) clavadas sobre la linea, y tooltip multi-linea con hit error + unstable
-// rate como el hint de stable. si el beatmap no se puede convertir cae a una simulacion
-// barata para que el graph nunca desaparezca.
+// The legacy results screen's HP graph: the play's REAL health across the map, computed by replaying the
+// hit events against the ruleset's actual HealthProcessor (calibrated drain included) - headless, never
+// added to the tree. stable-style presentation: green/red line with the split at half health, a 4s
+// reveal, clustered miss/50/100 crosses ("Nx" in a pill) pinned on the line, and a multi-line tooltip
+// with hit error + unstable rate like stable's hint. If the beatmap can't be converted it falls back to
+// a cheap simulation so the graph never disappears.
 
 using System;
 using System.Collections.Generic;
@@ -44,8 +43,8 @@ namespace osu.Game.Screens.Ranking
         private const int samples_count = 90;
         private const int marker_columns = 24;
 
-        // margenes internos: con hp=1.0 la linea flota unos px adentro del marco en vez de
-        // pegarse al borde (el "top glue" que se veia roto), y con hp=0 no toca el piso.
+        // Inner margins: at hp=1.0 the line floats a few px inside the frame instead of sticking to the
+        // edge (the "top glue" that looked broken), and at hp=0 it doesn't touch the floor.
         private const float top_inset = 8;
         private const float bottom_inset = 6;
 
@@ -93,8 +92,8 @@ namespace osu.Game.Screens.Ranking
                     unstableRate.Value);
             }
 
-            // la vida se computa off-thread (la conversion del beatmap puede ser pesada);
-            // el beatmap post-mods del gameplay se captura ACA (update thread).
+            // Health is computed off-thread (beatmap conversion can be expensive);
+            // the post-mods gameplay beatmap is captured HERE (update thread).
             var token = (cancellation = new CancellationTokenSource()).Token;
             var gameplayBeatmap = player?.GameplayState?.Beatmap;
 
@@ -110,7 +109,7 @@ namespace osu.Game.Screens.Ranking
             }));
         }
 
-        #region computo
+        #region computing
 
         private GraphData? computeData(IBeatmap? playable, CancellationToken token)
         {
@@ -130,19 +129,19 @@ namespace osu.Game.Screens.Ranking
                 if (gameplayEnd <= drainStart)
                     return fallbackData();
 
-                // el processor posta, como lo arma Player (mods tipo Classic traen el suyo).
+                // The real processor, as Player sets it up (Classic-type mods bring their own).
                 var processor = score.Mods.OfType<IApplicableHealthProcessor>().FirstOrDefault()?.CreateHealthProcessor(drainStart)
                                 ?? score.Ruleset.CreateInstance().CreateHealthProcessor(drainStart);
 
-                // sin esto el primer 0 HP prende HasFailed y ApplyResult ignora el resto:
-                // el graph quedaria plano despues del primer casi-muerto.
+                // Without this the first 0 HP triggers HasFailed and ApplyResult ignores the rest: the
+                // graph would be flat after the first near-death.
                 processor.Failed += () => false;
                 processor.ApplyBeatmap(playable);
 
                 double drainRate = (processor as DrainingHealthProcessor)?.DrainRate ?? 0;
 
-                // los mismos periodos sin drain que arma DrainingHealthProcessor (breaks:
-                // del fin del ultimo objeto previo al arranque del siguiente).
+                // The same drain-free periods DrainingHealthProcessor sets up (breaks: from the end of the
+                // last object before the break starts to the start of the next one).
                 var noDrain = new PeriodTracker(playable.Breaks.Select(b => new Period(
                     playable.HitObjects.Select(h => h.GetEndTime()).Where(t => t <= b.StartTime).DefaultIfEmpty(double.MinValue).Last(),
                     playable.HitObjects.Select(h => h.StartTime).Where(t => t >= b.EndTime).DefaultIfEmpty(double.MaxValue).First())));
@@ -155,7 +154,7 @@ namespace osu.Game.Screens.Ranking
                 void record(double time)
                 {
                     int i = (int)Math.Clamp((time - drainStart) / (gameplayEnd - drainStart) * (samples_count - 1), 0, samples_count - 1);
-                    // minimo por bucket: preserva las V de los miss que un sampleo comun se come.
+                    // Minimum per bucket: preserves the miss V shapes that plain sampling would swallow.
                     samples[i] = Math.Min(samples[i], processor.Health.Value);
                 }
 
@@ -177,8 +176,8 @@ namespace osu.Game.Screens.Ranking
 
                 record(drainStart);
 
-                // re-jugamos los judgements EN ORDEN DE LISTA (el orden real de aplicacion:
-                // los bonus de fin de combo del processor dependen de el, no reordenar).
+                // Replay the judgements IN LIST ORDER (the real application order: the processor's
+                // end-of-combo bonuses depend on it, don't reorder).
                 foreach (var e in score.HitEvents)
                 {
                     token.ThrowIfCancellationRequested();
@@ -206,15 +205,14 @@ namespace osu.Game.Screens.Ranking
             }
             catch
             {
-                // beatmap corrupto / conversion fallida: mejor una simulacion barata que
-                // un marco vacio.
+                // Corrupt beatmap / failed conversion: a cheap simulation beats an empty frame.
                 return fallbackData();
             }
         }
 
         /// <summary>
-        /// simulacion barata (la de antes) para cuando el beatmap no esta disponible:
-        /// sube con los aciertos, se desploma con los miss.
+        /// Cheap simulation (the previous implementation) for when the beatmap isn't available: rises
+        /// with hits, drops on misses.
         /// </summary>
         private GraphData? fallbackData()
         {
@@ -364,11 +362,11 @@ namespace osu.Game.Screens.Ranking
 
         #endregion
 
-        #region dibujo
+        #region drawing
 
         private void buildContent(GraphData data)
         {
-            // suavizado corto para las pendientes suaves de stable.
+            // Short smoothing for stable's gentle slopes.
             double[] smooth = new double[samples_count];
 
             for (int s = 0; s < samples_count; s++)
@@ -385,8 +383,8 @@ namespace osu.Game.Screens.Ranking
 
             Vector2 pointAt(int s) => new Vector2(region.X * s / (samples_count - 1), lineY(smooth[s]));
 
-            // la linea con una pasada de sombra debajo (TODAS las sombras primero, sino la
-            // sombra de un segmento pisa el color del anterior en las uniones).
+            // The line with one shadow pass underneath (ALL shadows first, otherwise a segment's shadow
+            // overrides the previous one's colour at the joints).
             var shadows = new List<Drawable>(samples_count);
             var segments = new List<Drawable>(samples_count);
 
@@ -453,8 +451,8 @@ namespace osu.Game.Screens.Ranking
 
                 if (marker.Count > 1)
                 {
-                    // pill oscuro con el borde del color del cluster; se flipea de lado/arriba
-                    // cuando quedaria afuera del marco.
+                    // Dark pill with the cluster colour as border; flips sideways/upwards when it would
+                    // land outside the frame.
                     string label = $"{marker.Count}x";
                     float pillWidth = 12 + 7 * label.Length;
                     bool flipX = mx + 7.5f + pillWidth > region.X - 2;
@@ -502,8 +500,7 @@ namespace osu.Game.Screens.Ranking
                 Children = content,
             };
 
-            // el reveal arranca ACA (el contenido llega async; LoadComplete puede haber
-            // corrido hace rato).
+            // The reveal starts HERE (the content arrives async; LoadComplete may have run a while ago).
             if (animate)
                 revealMask.Delay(300).ResizeWidthTo(region.X, 4000);
         }
@@ -525,8 +522,8 @@ namespace osu.Game.Screens.Ranking
         public sealed record TooltipData(double NegAvg, double PosAvg, double UnstableRate);
 
         /// <summary>
-        /// el hint boxeado de stable: "Accuracy:" + error medio + unstable rate, tres lineas
-        /// en una cajita oscura. el TooltipContainer del juego lo clampea a la pantalla solo.
+        /// stable's boxed hint: "Accuracy:" + average error + unstable rate, three lines in a little dark
+        /// box. The game's TooltipContainer clamps it to the screen on its own.
         /// </summary>
         public partial class LegacyHintTooltip : VisibilityContainer, ITooltip<TooltipData?>
         {

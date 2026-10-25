@@ -128,8 +128,8 @@ namespace osu.Game.Screens.Select
         // screen reads like osu!stable (carousel + legacy footer). Shares the footer-skin toggle.
         private Bindable<bool> legacyUi = null!;
 
-        // torii: guard de re-entrancy del rebuild del chrome legacy (si un toggle y un cambio de skin
-        // caen en el mismo frame).
+        // Torii: re-entrancy guard for the legacy chrome rebuild (in case a toggle and a skin change
+        // land in the same frame).
         private bool rebuildingLegacyChrome;
 
         // Torii: watches the grouping config so a legacy-tab group change flags the carousel to collapse
@@ -377,14 +377,14 @@ namespace osu.Game.Screens.Select
                             Anchor = Anchor.TopLeft,
                             Origin = Anchor.TopLeft,
                             RelativeSizeAxes = Axes.Both,
-                            // hoverear la leaderboard vuelve el carousel a la seleccion (como el modo normal).
+                            // Hovering the leaderboard scrolls the carousel back to the selection (as in normal mode).
                             HoverScrollRequested = () => carousel.ScrollToSelection(),
                         },
                     },
                 },
-                // Torii: el readout de mods activos estilo stable (texto semi-transparente arriba
-                // del footer), en el mismo espacio 1366x768. no depende del skin, asi que no
-                // participa del rebuild del chrome.
+                // Torii: the stable-style active mod readout (semi-transparent text above the footer),
+                // in the same 1366x768 space. It doesn't depend on the skin, so it takes no part in the
+                // chrome rebuild.
                 legacyModsContainer = new DrawSizePreservingFillContainer
                 {
                     RelativeSizeAxes = Axes.Both,
@@ -412,10 +412,10 @@ namespace osu.Game.Screens.Select
             legacyUi = config.GetBindable<bool>(OsuSetting.ToriiLegacyFooterUseSkin);
             legacyUi.BindValueChanged(e =>
             {
-                // al PRENDER el stable estando ya en la pantalla, reconstruimos el chrome para que las
-                // texturas de skin se resuelvan frescas (sino quedan stale hasta salir y volver). el
-                // invoke inicial (,true) corre durante el load -todavia no somos current- asi que cae al
-                // else y solo hace el fade, como antes.
+                // Toggling legacy ON while already on the screen rebuilds the chrome so the skin
+                // textures resolve fresh (otherwise they stay stale until you leave and come back). The
+                // initial invoke (,true) runs during load - we're not current yet - so it takes the else
+                // branch and only does the fade, as before.
                 if (e.NewValue && this.IsCurrentScreen())
                     rebuildLegacyChrome();
                 else
@@ -452,34 +452,34 @@ namespace osu.Game.Screens.Select
             legacyLeaderboardContainer.FadeTo(legacy ? 1 : 0, 200, Easing.OutQuint);
             legacyModsContainer.FadeTo(legacy ? 1 : 0, 200, Easing.OutQuint);
 
-            // torii: cuando el area es mas ancha que 16:9 (tipico con la nav-bar arriba) letterboxeamos
-            // TODO el screen+footer juntos via el ScalingContainer, asi todo (carousel, chrome, footer,
-            // back button) se achica uniforme y centrado, con el fondo dimmeado del screen-scaling en
-            // los costados. al salir de legacy se limpia (null) y vuelve a full screen.
+            // Torii: when the area is wider than 16:9 (typical with the nav bar at the top) we letterbox
+            // the WHOLE screen+footer together via the ScalingContainer, so everything (carousel, chrome,
+            // footer, back button) shrinks uniformly and centred, with the screen-scaling dim on the
+            // sides. Leaving legacy clears it (null) and returns to full screen.
             (game as OsuGame)?.SetLegacyScreenAspectLock(legacy ? 1366f / 768f : null);
         }
 
-        // torii: el skin cambio. solo reconstruimos si el stable esta activo y seguimos en pantalla
-        // (SourceChanged es un callback de manager de larga vida; no debe tocar una screen ya disposeada).
+        // Torii: the skin changed. Only rebuild when legacy is on and we're still on screen
+        // (SourceChanged is a long-lived manager callback; it must not touch a disposed screen).
         private void onSkinChangedWhileLegacy()
         {
             if (!legacyUi.Value || !this.IsCurrentScreen())
                 return;
 
-            // diferimos un frame: en este momento SourceChanged esta iterando SU lista de handlers, que
-            // incluye los de los componentes legacy actuales. si los disposeamos ya, esos handlers (que
-            // siguen en la lista capturada de esta emision) correrian sobre objetos disposeados. en el
-            // proximo frame la emision ya termino y reconstruimos seguro (Schedule se cancela al disposear).
+            // Defer by one frame: right now SourceChanged is iterating ITS handler list, which includes
+            // the current legacy components' handlers. If we disposed them then, those handlers (still in
+            // this emission's captured list) would run against disposed objects. By the next frame the
+            // emission is done and the rebuild is safe (Schedule is cancelled on dispose).
             Schedule(rebuildLegacyChrome);
         }
 
         /// <summary>
-        /// torii: reconstruye el chrome legacy como si entraramos de cero. el toggle solo hacia fade de
-        /// los contenedores creados una vez en load(), pero sus hijos resuelven las texturas de skin
-        /// one-shot en LoadComplete; al prender el stable mid-screen (o cambiar de skin) quedaban stale
-        /// hasta salir y volver al menu. reemplazamos el Child de cada contenedor (no el contenedor, asi
-        /// el z-order no cambia): el setter disposa el hijo viejo -corriendo su Dispose, que desuscribe
-        /// sus handlers de skin- y carga el nuevo contra el skin ACTUAL.
+        /// Torii: rebuild the legacy chrome as if entering from scratch. The toggle only faded the
+        /// containers created once in load(), but their children resolve skin textures one-shot in
+        /// LoadComplete; turning legacy on mid-screen (or changing skin) left them stale until you left
+        /// and re-entered the menu. We replace each container's Child (not the container, so the z-order
+        /// doesn't change): the setter disposes the old child - running its Dispose, which unsubscribes
+        /// its skin handlers - and loads the new one against the CURRENT skin.
         /// </summary>
         private void rebuildLegacyChrome()
         {
@@ -518,7 +518,7 @@ namespace osu.Game.Screens.Select
                 rebuildingLegacyChrome = false;
             }
 
-            // dejamos los contenedores en el estado visible correcto + re-aplica el aspect lock.
+            // Leave the containers in the correct visible state and re-apply the aspect lock.
             updateLegacyChrome();
         }
 

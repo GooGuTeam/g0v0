@@ -25,13 +25,12 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Ranking
 {
     /// <summary>
-    /// torii: reemplaza la vista de "detalles" del results con el panel de ranking de osu!stable.
-    /// va montado encima del <see cref="ResultsScreen"/>: trackea la visibilidad del
-    /// <see cref="StatisticsPanel"/> (el estado al que se entra clickeando el score panel expandido)
-    /// y muestra el panel legacy en su lugar, escondiendo el contenido stock de abajo. tambien
-    /// re-estiliza el chrome del screen para que quede como stable: la barra de abajo stock (backing
-    /// gris, con altura reservada) pasa a ser una barra transparente flotante con los mismos botones,
-    /// y el back button global pasa a ser el legacy skineado.
+    /// Replaces the results screen's "details" view with osu!stable's ranking panel. Mounted on top of
+    /// the <see cref="ResultsScreen"/>: it tracks the visibility of the <see cref="StatisticsPanel"/> (the
+    /// state entered by clicking the expanded score panel) and shows the legacy panel instead, hiding the
+    /// stock content underneath. It also restyles the screen's chrome to match stable: the stock bottom
+    /// bar (grey backing, with reserved height) becomes a floating transparent bar with the same buttons,
+    /// and the global back button becomes the legacy skinned one.
     /// </summary>
     public partial class LegacyRankingOverlay : CompositeDrawable
     {
@@ -45,35 +44,35 @@ namespace osu.Game.Screens.Ranking
         private Container panelContainer = null!;
         private bool toolbarHidden;
 
-        // el score para el que ya esta armado el panel: show() puede correr dos veces para el
-        // mismo score (pre-armado en load + el sync del statistics panel), y rebuildear al pedo
-        // duplica los computes async de los extras (pp, heatmap).
+        // The score the panel is already built for: show() can run twice for the same score
+        // (pre-built in load + the statistics panel sync), and rebuilding for nothing duplicates the
+        // async extra computes (pp, heatmap).
         private ScoreInfo? builtScore;
 
-        // la animacion de entrada de stable corre solo en el PRIMER build post-gameplay; los
-        // rebuilds por cambio de score muestran todo al instante.
+        // stable's entrance animation only runs on the FIRST build after gameplay; rebuilds for a score
+        // change show everything instantly.
         private bool pendingEntrance;
 
-        // true cuando el modo directo post-gameplay quedo activo de verdad (autoShowDetails y
-        // habia score al armar): el chrome stock no se ve nunca y back sale del screen.
+        // True when the post-gameplay direct mode really became active (autoShowDetails and there was a
+        // score at build time): the stock chrome is never seen and back leaves the screen.
         private bool directModeActive;
 
         private OsuScrollContainer? currentScroll;
         private Drawable? detailsHint;
         private bool hintVisible = true;
 
-        // la "pagina 1" (el ranking panel) matchea la altura REAL del viewport en cada frame:
-        // el espacio DrawSizePreserving puede ser mas alto que 768 (ventanas 16:10, etc) y con
-        // altura fija se asomaba el banner de la pagina de abajo sin scrollear.
+        // "Page 1" (the ranking panel) matches the viewport's REAL height every frame: the
+        // DrawSizePreserving space can be taller than 768 (16:10 windows, etc) and with a fixed height the
+        // next page's banner peeked in without scrolling.
         private Container? panelPage;
 
-        // la barra flotante de botones (render/nota/coleccion/favorito) estorba al panel stable
-        // arriba de todo: solo se muestra scrolleada la vista (o cuando el panel esta cerrado).
+        // The floating button bar (render/note/collection/favourite) gets in the way of the stable panel at
+        // the very top: it only shows once the view is scrolled (or when the panel is closed).
         private Container floatingBar = null!;
         private bool floatingBarVisible = true;
 
-        // los scores ajenos no tienen pagina de abajo (las bandas LOCAL/ONLINE/BEATMAP hablan
-        // del usuario local): sin below-fold el hint no va y la barra flotante queda siempre.
+        // Other players' scores have no page below (the LOCAL/ONLINE/BEATMAP bands are about the local
+        // user): without a below-fold the hint is pointless and the floating bar stays put.
         private bool hasBelowFold;
 
         [Resolved]
@@ -111,25 +110,24 @@ namespace osu.Game.Screens.Ranking
                 Direction = FillDirection.Horizontal,
             };
 
-            // los botones de coleccion/favorito, sin el backing gris de la barra stock.
-            // retry y watch-replay NO van aca: viven EN el panel legacy (debajo del grade), como stable.
+            // The collection/favourite buttons, without the stock bar's grey backing.
+            // retry and watch-replay do NOT go here: they live IN the legacy panel (under the grade), as in stable.
             if (screen.Score?.BeatmapInfo != null)
                 buttons.Add(new CollectionButton(screen.Score.BeatmapInfo));
 
             if (screen.Score?.BeatmapInfo?.BeatmapSet != null && screen.Score.BeatmapInfo.BeatmapSet.OnlineID > 0)
                 buttons.Add(new FavouriteButton(screen.Score.BeatmapInfo.BeatmapSet));
 
-            // el boton de colecciones de la barra flotante abre un popover: el overlay vive
-            // FUERA del PopoverContainer del screen (se agrega con AddInternal al screen
-            // por el depth), asi que necesita el suyo propio en la raiz. full-screen, igual
-            // al del screen, para que el popover se posicione igual que en el layout stock
-            // (ShowPopover lanza una excepcion si no hay ningun PopoverContainer arriba).
+            // The floating bar's collections button opens a popover: this overlay lives OUTSIDE the
+            // screen's PopoverContainer (it's added to the screen with AddInternal because of its depth),
+            // so it needs its own at the root. Full-screen, like the screen's, so the popover positions
+            // itself as it would in the stock layout (ShowPopover throws if there's no PopoverContainer above).
             InternalChild = new PopoverContainer
             {
                 RelativeSizeAxes = Axes.Both,
                 Children = new Drawable[]
                 {
-                    // la vista de ranking legacy, toggleada con el estado del statistics panel.
+                    // The legacy ranking view, toggled with the statistics panel state.
                     panelLayer = new BlockingLayer
                     {
                         RelativeSizeAxes = Axes.Both,
@@ -151,7 +149,7 @@ namespace osu.Game.Screens.Ranking
                             },
                         },
                     },
-                    // botones flotantes centrados (visibilidad manejada en Update) + back button skineado.
+                    // Centred floating buttons (visibility handled in Update) + the skinned back button.
                     floatingBar = new Container
                     {
                         Anchor = Anchor.BottomLeft,
@@ -169,9 +167,9 @@ namespace osu.Game.Screens.Ranking
                         {
                             Anchor = Anchor.BottomLeft,
                             Origin = Anchor.BottomLeft,
-                            // mismo two-stage que Esc: OnBackButton cierra la vista de detalles si
-                            // corresponde (modo browse); en el modo stable directo devuelve false
-                            // y salimos de una (nunca se ve el carousel de scores stock).
+                            // The same two-stage as Esc: OnBackButton closes the details view when
+                            // applicable (browse mode); in stable direct mode it returns false and we leave
+                            // straight away (the stock score carousel is never seen).
                             Action = () =>
                             {
                                 if (!screen.OnBackButton())
@@ -182,10 +180,9 @@ namespace osu.Game.Screens.Ranking
                 },
             };
 
-            // post-gameplay: el panel legacy queda armado y VISIBLE aca mismo, todavia en el load
-            // thread del screen (scrollContent es parte del mismo subtree en carga, mutarlo es
-            // legal) — el primer frame del results ya es el ranking de stable, sin ningun flash
-            // del chrome de lazer.
+            // Post-gameplay: the legacy panel is built and VISIBLE right here, still on the screen's load
+            // thread (scrollContent is part of the same subtree being loaded, mutating it is legal) - the
+            // results screen's first frame is already stable's ranking, with no flash of lazer's chrome.
             if (autoShowDetails)
             {
                 var score = screen.SelectedScore.Value ?? screen.Score;
@@ -197,7 +194,7 @@ namespace osu.Game.Screens.Ranking
                     panelLayer.Alpha = 1;
                     scrollContent.Alpha = 0;
 
-                    // arrancamos con el panel a la vista: la barra flotante espera al scroll.
+                    // Start with the panel in view: the floating bar waits for the scroll.
                     floatingBar.Alpha = 0;
                     floatingBarVisible = false;
                 }
@@ -208,24 +205,23 @@ namespace osu.Game.Screens.Ranking
         {
             base.Update();
 
-            // la animacion de entrada del screen vuelve a fadear la barra stock; sus hijos
-            // (los botones que recreamos aca) dibujarian a altura cero si no.
+            // The screen's entrance animation fades the stock bar back in; its children (the buttons we
+            // recreate here) would otherwise draw at zero height.
             if (stockBottomPanel.Alpha > 0)
                 stockBottomPanel.Alpha = 0;
 
-            // pagina 1 del scroll = altura real del viewport (ver comentario del campo).
+            // Page 1 of the scroll = the viewport's real height (see the field's comment).
             if (panelPage != null && currentScroll != null && Math.Abs(panelPage.Height - currentScroll.DrawHeight) > 0.1f)
                 panelPage.Height = currentScroll.DrawHeight;
 
-            // si el screen sale con la vista de detalles abierta, dejamos la toolbar en paz:
-            // OsuGame la re-muestra solo en los cambios de screen normales, y el song select
-            // legacy la esconde por su cuenta. re-mostrarla aca corria una carrera contra el
-            // screen de destino y la dejaba trabada visible.
+            // If the screen exits with the details view open, leave the toolbar alone: OsuGame re-shows it
+            // only on normal screen changes, and the legacy song select hides it on its own. Re-showing it
+            // here raced against the destination screen and left it stuck visible.
             if (toolbarHidden && !screen.IsCurrentScreen())
                 toolbarHidden = false;
 
-            // el hint de scroll desaparece apenas se scrollea (como el "Online Ranking" de
-            // stable, que se esconde con ScrollPosition.Y > 20) y vuelve al subir del todo.
+            // The scroll hint disappears as soon as the view is scrolled (like stable's "Online Ranking",
+            // hidden once ScrollPosition.Y > 20) and comes back at the very top.
             if (detailsHint != null && currentScroll != null && hasBelowFold)
             {
                 bool shouldShow = currentScroll.Current <= 32;
@@ -237,10 +233,10 @@ namespace osu.Game.Screens.Ranking
                 }
             }
 
-            // la barra flotante de botones tapaba el hint y ensuciaba el panel stable: con el
-            // panel a la vista solo aparece al scrollear a los detalles (complementa al hint);
-            // con el panel cerrado (modo browse sobre el carousel stock) o sin pagina de abajo
-            // (score ajeno) queda siempre.
+            // The floating button bar covered the hint and made the stable panel look dirty: with the panel
+            // in view it only appears once scrolled to the details (complementing the hint); with the panel
+            // closed (browse mode over the stock carousel) or without a page below (someone else's score)
+            // it stays put.
             bool barShouldShow = panelLayer.Alpha < 0.5f || !hasBelowFold || (currentScroll != null && currentScroll.Current > 300);
 
             if (barShouldShow != floatingBarVisible)
@@ -251,9 +247,9 @@ namespace osu.Game.Screens.Ranking
         }
 
         /// <summary>
-        /// back en el modo stable directo: si la vista esta scrolleada en los extras, primero
-        /// vuelve arriba (como el Esc de stable cierra el dialog de online ranking); devuelve
-        /// false cuando ya esta arriba, y ahi el screen sale de una.
+        /// Back in stable direct mode: if the view is scrolled into the extras, go back to the top first
+        /// (like stable's Esc closing the online ranking dialog); returns false once at the top, and then
+        /// the screen leaves straight away.
         /// </summary>
         public bool HandleBackScroll()
         {
@@ -270,22 +266,20 @@ namespace osu.Game.Screens.Ranking
         {
             base.LoadComplete();
 
-            // look de stable: sin el back button rosa de lazer, y la barra stock de abajo ni
-            // reserva altura de layout (su fila de grid es auto-size) ni dibuja. va ACA y no en
-            // load(): tocar el estado del footer global desde el loader thread async es una
-            // mutacion ilegal (InvalidThreadForMutationException). LoadComplete corre siempre en
-            // el update thread.
+            // stable's look: no pink lazer back button, and the stock bottom bar neither reserves layout
+            // height (its grid row is auto-sized) nor draws. This goes HERE and not in load(): touching the
+            // global footer state from the async loader thread is an illegal mutation
+            // (InvalidThreadForMutationException). LoadComplete always runs on the update thread.
             screen.SetFooterBackButtonVisible(false);
             stockBottomPanel.Height = 0;
 
             if (directModeActive)
             {
-                // post-gameplay: el panel legacy ya esta visible desde el primer frame (lo dejo
-                // armado load()). aca solo sincronizamos el estado del screen (detach del panel
-                // stock, dim del fondo) para que SelectedScore y compania queden como si se
-                // hubiera abierto la vista de detalles — todo tapado por el panel legacy.
-                // en este modo NUNCA volvemos al chrome stock: el bind ignora el hide, y el
-                // screen (LegacyStableDirectMode) hace que back salga directo y Select no togglee.
+                // Post-gameplay: the legacy panel has been visible since the first frame (built in load()).
+                // Here we only sync the screen's state (detach the stock panel, dim the background) so
+                // SelectedScore and friends behave as if the details view had been opened - all covered by
+                // the legacy panel. In this mode we NEVER go back to the stock chrome: the bind ignores the
+                // hide, and the screen (LegacyStableDirectMode) makes back leave directly and Select not toggle.
                 statisticsPanel.State.BindValueChanged(v =>
                 {
                     if (v.NewValue == Visibility.Visible)
@@ -294,18 +288,18 @@ namespace osu.Game.Screens.Ranking
 
                 screen.LegacyStableDirectMode = true;
 
-                // el sync va con una demora corta: el detach del score panel stock asume que el
-                // panel ya se asento (el delay original de 500ms protegia ese orden, no era solo
-                // estetico). como todo pasa tapado por el panel legacy, la demora no se ve.
+                // The sync runs with a short delay: detaching the stock score panel assumes the panel has
+                // already settled (the original 500ms delay protected that ordering, it wasn't just
+                // cosmetic). Since everything is covered by the legacy panel, the delay isn't visible.
                 Scheduler.AddDelayed(() =>
                 {
                     if (statisticsPanel.State.Value != Visibility.Visible && (screen.SelectedScore.Value ?? screen.Score) != null)
                         statisticsPanel.ToggleVisibility();
                 }, 250);
 
-                // stable toca el aplauso al entrar al ranking. el flair stock (accuracy circle,
-                // que era quien lo disparaba al final de su animacion) se suprime en este modo,
-                // asi que lo tocamos nosotros. Schedule: PlayApplause exige IsCurrentScreen.
+                // stable plays the applause on entering the ranking. The stock flair (accuracy circle, which
+                // was what fired it at the end of its animation) is suppressed in this mode, so we fire it
+                // ourselves. Schedule: PlayApplause requires IsCurrentScreen.
                 var score = screen.SelectedScore.Value ?? screen.Score;
                 if (score != null)
                     Schedule(() => screen.PlayApplause(score.Rank));
@@ -321,7 +315,7 @@ namespace osu.Game.Screens.Ranking
                 }, true);
             }
 
-            // cambio de score (flechas izq/der) con la vista de detalles abierta.
+            // Score change (left/right arrows) with the details view open.
             screen.SelectedScore.BindValueChanged(_ =>
             {
                 if (directModeActive || statisticsPanel.State.Value == Visibility.Visible)
@@ -339,8 +333,8 @@ namespace osu.Game.Screens.Ranking
             rebuildPanel(score);
 
             panelLayer.FadeIn(250, Easing.OutQuint);
-            // esconder el contenido stock (statistics/panels) entero asi el panel legacy queda
-            // solo sobre el fondo del beatmap. la toolbar tambien se va, como stable.
+            // Hide the entire stock content (statistics/panels) so the legacy panel is left alone over the
+            // beatmap background. The toolbar goes too, as in stable.
             scrollContent.FadeOut(120);
 
             if (game != null)
@@ -372,11 +366,11 @@ namespace osu.Game.Screens.Ranking
             bool animate = pendingEntrance;
             pendingEntrance = false;
 
-            // primero el skin actual, con el classic bundleado de fallback (para el score font y
-            // las texturas ranking-* que el skin no traiga). la vista scrollea como la de stable:
-            // el ranking panel es la primera "pagina", scrollear para abajo revela la seccion de
-            // extras (pp, heatmap de accuracy, tags del mapa). el header (barra negra + titulo +
-            // ranking-title) queda FIJO por encima del scroll, como los ViewOffsetImmune de stable.
+            // Current skin first, with the bundled classic one as fallback (for the score font and the
+            // ranking-* textures the skin doesn't ship). The view scrolls like stable's: the ranking panel
+            // is the first "page", scrolling down reveals the extras section (pp, accuracy heatmap, beatmap
+            // tags). The header (black bar + title + ranking-title) stays FIXED above the scroll, like
+            // stable's ViewOffsetImmune elements.
             panelContainer.Child = new SkinProvidingContainer(skins.DefaultClassicSkin)
             {
                 RelativeSizeAxes = Axes.Both,
@@ -402,8 +396,8 @@ namespace osu.Game.Screens.Ranking
                                         Height = 768,
                                         Child = new LegacyRankingPanel(score, animate),
                                     },
-                                    // la pagina de abajo estilo stable (el RankingDialog con las
-                                    // bandas LOCAL / ONLINE / BEATMAP); vacia para scores ajenos.
+                                    // The stable-style page below (the RankingDialog with the LOCAL / ONLINE /
+                                    // BEATMAP bands); empty for someone else's scores.
                                     new LegacyOnlineRanking(score),
                                 },
                             },
@@ -423,9 +417,9 @@ namespace osu.Game.Screens.Ranking
         }
 
         /// <summary>
-        /// mientras esta visible, se traga el input de puntero asi los clicks no llegan al
-        /// contenido stock (escondido) de abajo. los botones flotantes y el back button son
-        /// hermanos puestos encima, asi que siguen andando.
+        /// While visible, it swallows pointer input so clicks never reach the (hidden) stock content
+        /// underneath. The floating buttons and the back button are siblings placed on top, so they keep
+        /// working.
         /// </summary>
         private partial class BlockingLayer : Container
         {
@@ -439,9 +433,8 @@ namespace osu.Game.Screens.Ranking
         }
 
         /// <summary>
-        /// el header fijo de stable (ViewOffsetImmune): barra negra de 60 unidades al 80% con
-        /// el titulo del mapa / creador / jugador, y el ranking-title colgando arriba a la
-        /// derecha. no scrollea con el panel.
+        /// stable's fixed header (ViewOffsetImmune): a 60-unit black bar at 80% with the map title /
+        /// creator / player, and the ranking-title hanging in the top right. Doesn't scroll with the panel.
         /// </summary>
         private partial class HeaderStrip : CompositeDrawable
         {
@@ -502,9 +495,9 @@ namespace osu.Game.Screens.Ranking
         }
 
         /// <summary>
-        /// el boton hint de scroll de stable ("v Online Ranking v", centrado abajo): el pButton
-        /// REAL de stable (texturas button-left/middle/right, three-slice, tinte BlueViolet),
-        /// invita a scrollear a la seccion de abajo y desaparece mientras la vista no este arriba.
+        /// stable's scroll hint button ("v Online Ranking v", centred at the bottom): stable's REAL pButton
+        /// (button-left/middle/right textures, three-slice, BlueViolet tint), inviting you to scroll to the
+        /// section below, hidden while the view isn't at the top.
         /// </summary>
         private partial class ScrollHintButton : OsuClickableContainer
         {
@@ -531,8 +524,8 @@ namespace osu.Game.Screens.Ranking
 
                 var tint = Color4.BlueViolet;
 
-                // three-slice como el pButton de stable: caps a tamaño natural + middle
-                // estirado, todo escalado de la altura nativa de la textura (71) a la del boton.
+                // Three-slice like stable's pButton: caps at natural size + stretched middle, all scaled
+                // from the texture's native height (71) to the button's.
                 float scale = Height / 71f;
                 float texSpaceWidth = Width / scale;
                 float capWidth = left?.DisplayWidth ?? 16;

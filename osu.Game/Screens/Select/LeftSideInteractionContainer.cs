@@ -72,10 +72,10 @@ namespace osu.Game.Screens.Select
             if (isDragging)
                 return;
 
-            // torii: en modo legacy esta zona izquierda es para drag-scrollear el carousel y browsear.
-            // si dejamos el "volver a la seleccion" al hoverear, te tira el scroll de vuelta a la cancion
-            // actual cada vez que pasas el mouse por ahi (lo que el usuario veia como "la leaderboard me
-            // resetea el carousel"). asi que en legacy desactivamos el reset por hover.
+            // In legacy mode this left area is for drag-scrolling the carousel and browsing.
+            // If we leave the "snap back to selection" on hover, it yanks the scroll back to the current
+            // song every time the mouse passes through (which users saw as "the leaderboard resets my
+            // carousel"). So in legacy mode we disable the hover reset.
             if (canForwardDrag?.Invoke() == true)
             {
                 mouseContained = Contains(inputManager.CurrentState.Mouse.Position);

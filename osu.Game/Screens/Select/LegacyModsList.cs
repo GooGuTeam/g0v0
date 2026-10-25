@@ -16,9 +16,9 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Select
 {
     /// <summary>
-    /// el readout de mods seleccionados de osu!stable en el song select: los nombres de los mods
-    /// activos en texto blanco semi-transparente arriba del footer. stable: pText size 30 en
-    /// (60, 397) en espacio 480, Color(255, 255, 255, 128), con borde de texto.
+    /// osu!stable's selected mod readout in song select: the names of the active mods in
+    /// semi-transparent white text above the footer. stable: pText size 30 at (60, 397) in 480 space,
+    /// Color(255, 255, 255, 128), with a text outline.
     /// </summary>
     public partial class LegacyModsList : CompositeDrawable
     {

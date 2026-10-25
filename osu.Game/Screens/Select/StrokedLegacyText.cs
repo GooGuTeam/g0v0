@@ -13,16 +13,16 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Select
 {
     /// <summary>
-    /// torii: texto legacy (estilo osu!stable) con un drop shadow suave mas un contorno fino casi opaco
-    /// alrededor de los glifos, asi se lee como el texto de la UI de stable sobre fondos claros/cargados.
-    /// el stroke se estampa en 8 direcciones con un offset sub-pixel (constante, NO escalado por el
-    /// tamano de fuente) asi queda apretado y definido sin engordar el texto; la copia real (de
-    /// adelante) lleva una sombra sutil encima. todas las copias comparten el mismo atlas de fuente bitmap asi entran en el
-    /// mismo draw call. casi drop-in de <see cref="OsuSpriteText"/>: seteas Text, Font, Colour, Anchor/Origin como siempre.
+    /// Legacy (osu!stable style) text with a soft drop shadow plus a thin, near-opaque outline around
+    /// the glyphs, so it reads like stable's UI text over light or busy backgrounds. The stroke is
+    /// stamped in 8 directions with a sub-pixel offset (constant, NOT scaled by font size) so it stays
+    /// tight and crisp without emboldening the text; the real copy (in front) carries a subtle shadow on
+    /// top. All copies share the same bitmap font atlas so they land in the same draw call. A near
+    /// drop-in replacement for <see cref="OsuSpriteText"/>: set Text, Font, Colour, Anchor/Origin as usual.
     /// </summary>
     public partial class StrokedLegacyText : CompositeDrawable
     {
-        // offsets unitarios en 8 direcciones (lados + esquinas) asi cada glifo queda con el anillo completo.
+        // Unit offsets in 8 directions (sides + corners) so every glyph gets the full ring.
         private static readonly Vector2[] directions =
         {
             new Vector2(-1, -1), new Vector2(0, -1), new Vector2(1, -1),
@@ -33,7 +33,7 @@ namespace osu.Game.Screens.Select
         private readonly OsuSpriteText main;
         private readonly OsuSpriteText[] strokes = new OsuSpriteText[directions.Length];
 
-        /// <summary>grosor absoluto del stroke en px locales. fino: un contorno apretado, no un halo.</summary>
+        /// <summary>Absolute stroke thickness in local px. Thin: a tight outline rather than a halo.</summary>
         public float StrokeWidth { get; init; } = 0.35f;
 
         public LocalisableString Text
@@ -56,13 +56,13 @@ namespace osu.Game.Screens.Select
             }
         }
 
-        /// <summary>color del texto de adelante. por defecto blanco.</summary>
+        /// <summary>Colour of the front text. White by default.</summary>
         public new Color4 Colour
         {
             set => main.Colour = value;
         }
 
-        /// <summary>color del anillo del stroke. por defecto negro casi opaco, como stable.</summary>
+        /// <summary>Colour of the stroke ring. Near-opaque black by default, as in stable.</summary>
         public Color4 StrokeColour
         {
             set
@@ -83,7 +83,7 @@ namespace osu.Game.Screens.Select
                 children[i] = strokes[i] = new OsuSpriteText
                 {
                     Shadow = false,
-                    // contorno fino y suave: se nota el borde pero sin quedar negro/cargado.
+                    // Thin, soft outline: the edge is visible without looking black/heavy.
                     Colour = new Color4(0f, 0f, 0f, 0.5f),
                     Position = directions[i],
                 };
@@ -91,7 +91,7 @@ namespace osu.Game.Screens.Select
 
             children[directions.Length] = main = new OsuSpriteText
             {
-                // drop shadow apenas, mas suave que antes asi no carga el texto de negro.
+                // Barely any drop shadow, softer than before so it doesn't blacken the text.
                 Shadow = true,
                 ShadowColour = new Color4(0f, 0f, 0f, 0.3f),
                 ShadowOffset = new Vector2(0f, 0.08f),
@@ -105,7 +105,7 @@ namespace osu.Game.Screens.Select
         {
             base.LoadComplete();
 
-            // aplicamos el stroke width final ahora que ya se seteo el init prop StrokeWidth.
+            // Apply the final stroke width now that the StrokeWidth init property has been set.
             for (int i = 0; i < directions.Length; i++)
                 strokes[i].Position = directions[i] * StrokeWidth;
         }

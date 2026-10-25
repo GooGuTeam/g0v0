@@ -27,12 +27,12 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Select
 {
     /// <summary>
-    /// torii: el bloque de info del beatmap estilo osu!stable (arriba a la izquierda del song select legacy).
-    /// replica el layout exacto del stable (SongSelection.cs:261-289): el icono de ranked-status en la
-    /// esquina, el titulo pegado arriba de todo, despues mapper / length-bpm-objects / cantidad de circulos /
-    /// stats de dificultad. las coords son las del stable (espacio de 480) x1.6 para que peguen con el espacio
-    /// legacy de 1366x768. length/BPM y los stats se tiñen con los mods activos (rojo = mas dificil,
-    /// verde = mas facil), como stable con DT/HT/HR/EZ.
+    /// The osu!stable style beatmap info block (top-left of the legacy song select).
+    /// Replicates stable's exact layout (SongSelection.cs:261-289): ranked status icon in the corner,
+    /// title hugging the very top, then mapper / length-bpm-objects / object counts / difficulty stats.
+    /// Coordinates are stable's 480-space ones scaled by 1.6 so they line up with the 1366x768
+    /// legacy space. Length/BPM and the stats are tinted by the active mods (red = harder,
+    /// green = easier), just like stable with DT/HT/HR/EZ.
     /// </summary>
     public partial class LegacyBeatmapInfoPanel : CompositeDrawable
     {
@@ -66,16 +66,16 @@ namespace osu.Game.Screens.Select
         private IBindable<StarDifficulty>? starDifficulty;
         private CancellationTokenSource? starCancellation;
 
-        // el SR SIN mods calculado en vivo, base de comparacion para el tinte. comparar contra
-        // info.StarRating (el valor de la base) tiñe al azar: el calculador actual suele diferir
-        // unas centesimas del valor guardado aunque no haya ningun mod puesto.
+        // The SR WITHOUT mods, calculated live, used as the comparison baseline for the tint. Comparing
+        // against info.StarRating (the stored value) tints randomly: the current calculator usually
+        // differs by a few hundredths from the stored value even with no mods applied.
         private double? baselineStars;
         private CancellationTokenSource? baselineCancellation;
 
         private Ruleset? rulesetInstance;
         private RulesetInfo? rulesetInstanceSource;
 
-        // valor subido por mods = mas dificil = calido; bajado = mas facil = frio.
+        // Value raised by mods = harder = warmer; lowered = easier = cooler.
         private static readonly Color4 harder_colour = new Color4(255, 102, 102, 255);
         private static readonly Color4 easier_colour = new Color4(130, 220, 130, 255);
 
@@ -107,8 +107,8 @@ namespace osu.Game.Screens.Select
             }
             catch
             {
-                // decode fallido (archivo corrupto / faltante); stable tambien muestra ceros aca.
                 return @"Circles: 0   Sliders: 0   Spinners: 0";
+                // Failed decode (corrupt / missing file); stable shows zeroes here too.
             }
         }
 
@@ -127,8 +127,8 @@ namespace osu.Game.Screens.Select
                     Position = new Vector2(19, 19),
                     Size = new Vector2(28),
                 },
-                // glyph de fallback cuando ni el skin ni el classic bundleado traen el icono de
-                // status (selection-ranked / selection-loved / etc).
+                // Fallback glyph for when neither the skin nor the bundled classic one provides the
+                // status icon (selection-ranked / selection-loved / etc).
                 statusGlyph = new SpriteIcon
                 {
                     Anchor = Anchor.TopLeft,
@@ -138,9 +138,8 @@ namespace osu.Game.Screens.Select
                     Shadow = true,
                     Alpha = 0,
                 },
-                // el titulo va pegado arriba de todo, corrido para pasar el icono de status (stable 21,-3).
-                // con depth mas alta asi siempre queda DETRAS de las lineas de detalle cuando un titulo
-                // largo/alto se les superpone.
+                // The title hugs the very top, offset to clear the status icon (stable: 21,-3).
+                // Higher depth keeps it BEHIND the detail lines whenever a long/tall title overlaps them.
                 titleText = line(new Vector2(34, -3), 28, FontWeight.Light, depth: 1),
                 mapperText = line(new Vector2(37, 19), 18, FontWeight.Light),
                 lengthLine = flowLine(new Vector2(2, 38)),
@@ -188,12 +187,12 @@ namespace osu.Game.Screens.Select
         {
             base.LoadComplete();
             beatmap.BindValueChanged(_ => updateDisplay(), true);
-            // mods y ruleset afectan la linea de length/BPM y la de stats; el bindable de star
-            // rating de abajo ya trackea los cambios de mod/ruleset por su cuenta.
+            // Mods and ruleset both affect the length/BPM line and the stats line; the star rating
+            // bindable below already tracks mod/ruleset changes on its own.
             mods.BindValueChanged(_ => Scheduler.AddOnce(refreshModSensitiveLines));
             ruleset.BindValueChanged(_ =>
             {
-                // el baseline sin mods depende del ruleset (convertidos cambian de SR).
+                // The mod-free baseline depends on the ruleset (converts change SR).
                 refreshBaselineStars();
                 Scheduler.AddOnce(refreshModSensitiveLines);
             });
@@ -232,8 +231,8 @@ namespace osu.Game.Screens.Select
             titleText.Text = $"{metadata.Artist} - {metadata.Title} [{info.DifficultyName}]";
             mapperText.Text = $"Mapped by {metadata.Author.Username}";
 
-            // star rating con los mods actuales aplicados; el bindable ademas se actualiza solo
-            // con los cambios de mod/ruleset.
+            // Star rating with the current mods applied; the bindable also updates itself on
+            // mod/ruleset changes.
             starCancellation?.Cancel();
             starDifficulty?.UnbindAll();
             starDifficulty = difficultyCache.GetBindableDifficulty(info, (starCancellation = new CancellationTokenSource()).Token);
@@ -244,10 +243,10 @@ namespace osu.Game.Screens.Select
             refreshLengthLine();
             refreshStatsLine();
 
-            // la cantidad de circles/sliders/spinners no esta en la base local (solo los totales),
-            // asi que la derivamos de los hit objects reales como hace stable. si el beatmap ya
-            // esta decodeado en memoria lo usamos directo; si no, decodeamos en un task de fondo
-            // (los mapas grandes tardan unas decenas de ms) y llenamos la linea cuando termina.
+            // The circle/slider/spinner counts aren't in the local database (only the totals are), so we
+            // derive them from the actual hit objects like stable does. If the beatmap is already decoded
+            // in memory we use it directly; if not, we decode on a background task (large maps take a few
+            // tens of ms) and fill the line in once it finishes.
             countsCancellation?.Cancel();
 
             if (working.BeatmapLoaded)
@@ -277,8 +276,8 @@ namespace osu.Game.Screens.Select
 
             if (tex != null)
             {
-                // encajar en el slot de 28px manteniendo el aspecto; forzar cuadrado estiraba a lo
-                // ancho los iconos no cuadrados (ej. selection-question es 15x26).
+                // Fit the 28px slot while preserving aspect; forcing a square stretched the non-square
+                // icons (e.g. selection-question is 15x26).
                 float fit = Math.Min(28f / tex.DisplayWidth, 28f / tex.DisplayHeight);
                 statusIcon.Size = new Vector2(tex.DisplayWidth, tex.DisplayHeight) * fit;
                 statusIcon.Alpha = 1;
@@ -327,7 +326,7 @@ namespace osu.Game.Screens.Select
                 rulesetInstanceSource = ruleset.Value;
             }
 
-            // primero el orden de stats de stable (CS AR OD HP), despues los extras del ruleset.
+            // Stable's stat order first (CS AR OD HP), then the ruleset's extras.
             string[] preferredOrder = { @"CS", @"AR", @"OD", @"HP" };
 
             var attributes = rulesetInstance.GetBeatmapAttributesForDisplay(info, mods.Value)
@@ -349,8 +348,8 @@ namespace osu.Game.Screens.Select
                 first = false;
             }
 
-            // tinte solo contra el baseline vivo sin mods (misma version del calculador); hasta
-            // que llega, blanco. el valor mostrado si puede caer al de la base mientras calcula.
+            // Tint against the live mod-free baseline only (same calculator version); white until it
+            // arrives. The displayed value may still fall back to the stored one while calculating.
             double stars = starDifficulty?.Value.Stars ?? info.StarRating;
             var starColour = Color4.White;
 
@@ -374,7 +373,7 @@ namespace osu.Game.Screens.Select
             base.Dispose(isDisposing);
         }
 
-        // iconos propios (nuevos) de lazer, de osu-resources.
+        // lazer's own (newer) icons, from osu-resources.
         private static IconUsage statusFallbackIcon(BeatmapOnlineStatus status)
         {
             switch (status)

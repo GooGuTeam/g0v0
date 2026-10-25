@@ -1,12 +1,12 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
-// el panel de ranking (results) de osu!stable, layouteado desde el Ranking.cs de stable
-// (LoadScore / InitializeRankingPanel / LoadRanking / LoadMods / InitializeSpecifics) con
-// las coords del espacio 480 de stable x1.6 al espacio legacy de 1366x768. incluye la
-// animacion de entrada de stable (elementos staggereados 300ms, grade 2x->1x + ghost
-// aditivo, white flash), los rayos rotativos de fondo, el graph de la play adentro del
-// marco ranking-graph, y los botones retry / watch replay pegados al borde derecho.
+// osu!stable's (results) ranking panel, laid out from stable's Ranking.cs (LoadScore /
+// InitializeRankingPanel / LoadRanking / LoadMods / InitializeSpecifics) using stable's 480-space
+// coordinates x1.6 into the 1366x768 legacy space. Includes stable's entrance animation (elements
+// staggered 300ms, grade 2x->1x + additive ghost, white flash), the rotating background rays, the
+// play's graph inside the ranking-graph frame, and the retry / watch replay buttons pinned to the
+// right edge.
 
 using System;
 using System.Collections.Generic;
@@ -36,7 +36,7 @@ namespace osu.Game.Screens.Ranking
         private readonly ScoreInfo score;
         private readonly bool animate;
 
-        // constantes de layout de stable (espacio 480, "new layout" de skin v2+).
+        // stable's layout constants (480 space, skin v2+ "new layout").
         private const int textx1 = 80;
         private const int imgx1 = 40;
         private const int textx2 = 280;
@@ -55,7 +55,7 @@ namespace osu.Game.Screens.Ranking
         [Resolved]
         private ResultsScreen? resultsScreen { get; set; }
 
-        // la cadena de entrada de stable: cada elemento (imagen + su texto) entra staggereado.
+        // stable's entrance chain: every element (image + its text) enters staggered.
         private readonly List<(Drawable image, bool shrink, Drawable? text, double time, float targetScale)> entranceElements = new List<(Drawable, bool, Drawable?, double, float)>();
         private Sprite? grade;
         private Sprite? gradeGhost;
@@ -63,9 +63,9 @@ namespace osu.Game.Screens.Ranking
         private Box? whiteFlash;
         private double gradeTime;
 
-        /// <param name="score">el score a mostrar.</param>
-        /// <param name="animate">si corre la animacion de entrada de stable (solo el primer
-        /// build post-gameplay; los rebuilds por cambio de score muestran todo al instante).</param>
+        /// <param name="score">The score to show.</param>
+        /// <param name="animate">Whether to run stable's entrance animation (only on the first
+        /// post-gameplay build; rebuilds for a score change show everything instantly).</param>
         public LegacyRankingPanel(ScoreInfo score, bool animate = false)
         {
             this.score = score;
@@ -84,8 +84,8 @@ namespace osu.Game.Screens.Ranking
 
             var children = new List<Drawable>();
 
-            // rayos rotativos de fondo (stable: ranking-background-overlay, aditivo, girando
-            // una vuelta cada 20s, centrado cerca del grade). detras de todo.
+            // Rotating background rays (stable: ranking-background-overlay, additive, one turn every
+            // 20s, centred near the grade). Behind everything.
             var raysTex = tex(@"ranking-background-overlay");
 
             if (raysTex != null)
@@ -102,17 +102,17 @@ namespace osu.Game.Screens.Ranking
                 rays.OnLoadComplete += d => d.Spin(20000, RotationDirection.Clockwise);
             }
 
-            // el backing grande del panel (stable: (0, 64) con el layout nuevo).
+            // The panel's large backing (stable: (0, 64) with the new layout).
             children.Add(new Sprite
             {
                 Position = new Vector2(0, 64 * 1.6f),
                 Texture = tex(@"ranking-panel"),
             });
 
-            // marco del ranking-graph (stable: (160, 380)) + el HP graph adentro (stable
-            // dibuja score.HpGraph en graphPos+(5,5), region 186x86; lazer no persiste la
-            // vida, asi que la simulamos desde los hit events: sube con los aciertos y se
-            // desploma con los miss — la misma forma que el graph clasico).
+            // The ranking-graph frame (stable: (160, 380)) + the HP graph inside it (stable draws
+            // score.HpGraph at graphPos+(5,5), region 186x86; lazer doesn't persist health, so we
+            // simulate it from the hit events: it rises with hits and drops on misses - the same shape as
+            // the classic graph).
             var graphTex = tex(@"ranking-graph");
 
             children.Add(new Sprite
@@ -129,7 +129,7 @@ namespace osu.Game.Screens.Ranking
                 });
             }
 
-            // score total en el score font del skin (stable: (220, 94), origen centro, 1.3x).
+            // Total score in the skin's score font (stable: (220, 94), origin centre, 1.3x).
             var scoreText = new LegacySpriteText(LegacyFont.Score)
             {
                 Origin = Anchor.Centre,
@@ -143,7 +143,7 @@ namespace osu.Game.Screens.Ranking
             double t = 300;
             entranceElements.Add((scoreText, false, null, t, 1));
 
-            // los seis slots de hit counts, staggereados como AddRankingSprites de stable.
+            // The six hit count slots, staggered like stable's AddRankingSprites.
             foreach (var (image, position, count) in hitRows())
             {
                 t += 300;
@@ -168,8 +168,8 @@ namespace osu.Game.Screens.Ranking
                 entranceElements.Add((img, true, txt, t, 1));
             }
 
-            // labels + valores de max combo / accuracy (filas de stable alrededor de row4;
-            // las imagenes NO hacen el shrink 2x->1x, solo fadean — asi lo hace stable).
+            // Labels + values for max combo / accuracy (stable's rows around row4; the images do NOT do
+            // the 2x->1x shrink, they only fade - that's how stable does it).
             t += 300;
 
             var comboImg = new Sprite
@@ -208,9 +208,8 @@ namespace osu.Game.Screens.Ranking
             children.Add(accTxt);
             entranceElements.Add((accImg, false, accTxt, t, 1));
 
-            // el grade (stable LoadRanking: field TopRight, origen centro, (120, 200); entra
-            // 2x->1x con fade DESPUES de todos los elementos, con un ghost aditivo que se
-            // agranda y desvanece para los rangos B+).
+            // The grade (stable LoadRanking: field TopRight, origin centre, (120, 200); enters 2x->1x with
+            // a fade AFTER all the elements, with an additive ghost that grows and fades for B+ ranks).
             gradeTime = t + 300;
 
             var gradeTex = tex($@"ranking-{score.Rank}") ?? tex(@"ranking-D");
@@ -240,10 +239,9 @@ namespace osu.Game.Screens.Ranking
                 children.Add(gradeGhost);
             }
 
-            // iconos de mods (stable LoadMods: field TopRight origen centro, y=260, el primero
-            // a 40 del borde derecho, +20 por icono hacia la izquierda — overlap pesado, el
-            // primero queda mas a la derecha y los siguientes se dibujan ENCIMA). entran 2x->1x
-            // staggereados 500ms.
+            // Mod icons (stable LoadMods: field TopRight origin centre, y=260, the first one 40 from the
+            // right edge, +20 per icon towards the left - heavy overlap, so the first ends up furthest
+            // right and the following ones draw ON TOP). They enter 2x->1x staggered 500ms.
             int modIndex = 0;
 
             foreach (var mod in score.Mods)
@@ -271,9 +269,9 @@ namespace osu.Game.Screens.Ranking
                 modIndex++;
             }
 
-            // banner de full combo (stable: para plays perfectos, en (260, 430), al frente).
-            // se escala para que fittee el marco del ranking-graph (la textura default es mas
-            // ancha que el marco y quedaba gigante tapando todo).
+            // Full combo banner (stable: for perfect plays, at (260, 430), in front). Scaled so it fits the
+            // ranking-graph frame (the default texture is wider than the frame and came out gigantic,
+            // covering everything).
             if (isPerfect)
             {
                 gradeTime += 300;
@@ -298,9 +296,9 @@ namespace osu.Game.Screens.Ranking
                 gradeTime += 300;
             }
 
-            // botones retry / watch replay de stable: pegados al borde derecho (origen
-            // centre-right), retry en y=360 y replay en y=420 (o 360 si no hay retry).
-            // idle al 70% de alpha, hover al 100% — igual que stable.
+            // stable's retry / watch replay buttons: pinned to the right edge (origin centre-right), retry
+            // at y=360 and replay at y=420 (or 360 when there's no retry). 70% alpha idle, 100% on hover -
+            // exactly like stable.
             bool showRetry = player != null && resultsScreen?.AllowRetry == true;
 
             if (showRetry)
@@ -323,7 +321,7 @@ namespace osu.Game.Screens.Ranking
                 });
             }
 
-            // white flash de stable: pantallazo aditivo que acompaña la llegada del grade.
+            // stable's white flash: an additive screen flash that accompanies the grade landing.
             if (animate)
             {
                 whiteFlash = new Box
@@ -346,9 +344,8 @@ namespace osu.Game.Screens.Ranking
             if (!animate)
                 return;
 
-            // la cadena de entrada de stable (RankingElement.cs): imagen fade + shrink 2x->1x
-            // en 300ms In; su texto entra 200ms despues deslizandose 40 unidades desde la
-            // izquierda con fade, 300ms Out.
+            // stable's entrance chain (RankingElement.cs): the image fades in + shrinks 2x->1x over 300ms
+            // In; its text enters 200ms later sliding 40 units in from the left with a fade, 300ms Out.
             foreach (var (image, shrink, text, time, targetScale) in entranceElements)
             {
                 image.Delay(time).FadeIn(300, Easing.In);
@@ -365,7 +362,7 @@ namespace osu.Game.Screens.Ranking
                 }
             }
 
-            // grade: 1000ms In despues de todos los elementos; ghost aditivo 1s despues.
+            // Grade: 1000ms In after all the elements; the additive ghost 1s later.
             grade?.Delay(gradeTime).FadeIn(1000, Easing.In);
             grade?.Delay(gradeTime).ScaleTo(1, 1000, Easing.In);
 
@@ -375,11 +372,11 @@ namespace osu.Game.Screens.Ranking
                 gradeGhost.Delay(gradeTime + 1000).ScaleTo(1.05f, 2400, Easing.Out);
             }
 
-            // white flash: 0.5 -> 0 pegado a la llegada del grade.
+            // White flash: 0.5 -> 0 as the grade lands.
             if (whiteFlash != null)
                 whiteFlash.Delay(gradeTime + 1000).FadeTo(0.5f).Then().FadeOut(1400);
 
-            // mods: staggereados 500ms, shrink 2x->1x + fade en 400ms Out.
+            // Mods: staggered 500ms, 2x->1x shrink + fade over 400ms Out.
             for (int i = 0; i < modSprites.Count; i++)
             {
                 modSprites[i].Delay(300 + i * 500).FadeIn(400, Easing.Out);
@@ -388,7 +385,7 @@ namespace osu.Game.Screens.Ranking
         }
 
         /// <summary>
-        /// los nombres de mod de lazer que no coinciden con la textura de stable.
+        /// lazer mod names that don't match stable's texture.
         /// </summary>
         private static string mapModTextureName(string name) => name switch
         {
@@ -405,9 +402,9 @@ namespace osu.Game.Screens.Ranking
         private int maxStat(HitResult result) => score.MaximumStatistics.GetValueOrDefault(result);
 
         /// <summary>
-        /// los seis slots de hit-counts, mapeados por ruleset como el switch de LoadScore de stable.
-        /// para osu!, los slots de geki/katu muestran los slider tick hits / slider tail misses de
-        /// lazer (stable no tiene equivalente para scores de lazer), reusando las texturas geki/katu.
+        /// The six hit count slots, mapped per ruleset like stable's LoadScore switch. For osu!, the
+        /// geki/katu slots show lazer's slider tick hits / slider tail misses (stable has no equivalent
+        /// for lazer scores), reusing the geki/katu textures.
         /// </summary>
         private IEnumerable<(string image, Vector2 position, int count)> hitRows()
         {
@@ -450,7 +447,7 @@ namespace osu.Game.Screens.Ranking
 
 
         /// <summary>
-        /// boton de sprite estilo stable: idle al 70% de alpha, hover al 100% en 200ms.
+        /// stable-style sprite button: 70% alpha idle, 100% on hover over 200ms.
         /// </summary>
         private partial class LegacyPanelButton : OsuClickableContainer
         {
@@ -477,11 +474,10 @@ namespace osu.Game.Screens.Ranking
         }
 
         /// <summary>
-        /// el "watch replay" de stable, con la misma maquina de estados que el
-        /// <see cref="ReplayDownloadButton"/> stock: si el replay esta local lo reproduce,
-        /// si esta online lo descarga primero. tambien conserva los hotkeys de guardar /
-        /// exportar replay (la barra stock que los manejaba queda escondida en modo legacy).
-        /// se esconde solo si el score no tiene replay por ningun lado, como stable.
+        /// stable's "watch replay", with the same state machine as the stock
+        /// <see cref="ReplayDownloadButton"/>: plays the replay if it's local, downloads it first if it's
+        /// online. Also keeps the save / export replay hotkeys working (the stock bar that handled them is
+        /// hidden in legacy mode). Hides itself only when the score has no replay anywhere, as in stable.
         /// </summary>
         private partial class LegacyWatchReplayButton : LegacyPanelButton, IKeyBindingHandler<GlobalAction>
         {

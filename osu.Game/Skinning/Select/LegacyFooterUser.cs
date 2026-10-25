@@ -135,8 +135,8 @@ namespace osu.Game.Skinning.Select
         {
             var statistics = userStatisticsProvider.GetStatisticsFor(ruleset.Value);
 
-            // sin estadisticas todavia (recien logueado / offline pero con sesion): igual mostramos
-            // avatar y nombre del usuario local, como stable, en vez de un panel vacio.
+            // No statistics yet (just logged in / offline but signed in): still show the local user's
+            // avatar and name, as stable does, instead of an empty panel.
             currentUser = statistics?.User ?? (api.IsLoggedIn ? api.LocalUser.Value : null);
             avatar.User = currentUser;
 

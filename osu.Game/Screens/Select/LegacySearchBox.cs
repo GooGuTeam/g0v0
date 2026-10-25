@@ -18,11 +18,10 @@ using osuTK.Input;
 namespace osu.Game.Screens.Select
 {
     /// <summary>
-    /// torii: el campo de busqueda estilo osu!stable para la barra de arriba del song-select legacy.
-    /// un label "Search:" verde-amarillo seguido de un text box inline sobre un fondo oscuro suave (asi
-    /// se sigue leyendo sobre el fondo del beatmap, como el menu-button-background tenue de stable). va
-    /// two-way con el filter query compartido asi escribir filtra el carousel igual que la busqueda
-    /// moderna (que esta oculta).
+    /// The osu!stable style search box for the legacy song select top bar. A green-yellow "Search:"
+    /// label followed by an inline text box over a soft dark background (so it stays legible over the
+    /// beatmap background, like stable's faint menu-button-background). Binds two-way to the shared
+    /// filter query so typing filters the carousel just like the (hidden) modern search.
     /// </summary>
     public partial class LegacySearchBox : CompositeDrawable
     {
@@ -79,15 +78,14 @@ namespace osu.Game.Screens.Select
 
         private partial class SearchTextBox : FocusedTextBox
         {
-            // las flechas izquierda/derecha quedan libres para el carousel (grupo anterior/siguiente),
-            // como en stable; el caret no las necesita con busquedas cortas.
+            // Left/right arrows stay free for the carousel (previous/next group), as in stable; the caret
+            // doesn't need them with short queries.
             public override bool HandleLeftRightArrows => false;
 
             public SearchTextBox()
             {
-                PlaceholderText = @"Type to search!";
-                // como en lazer: agarra y mantiene el foco asi se puede tipear directo sin clickear.
-                // solo esta presente en modo legacy, asi que no roba foco en el resto.
+                // As in lazer: grab and hold focus so the user can type straight away without clicking.
+                // Only present in legacy mode, so it doesn't steal focus anywhere else.
                 HoldFocus = true;
             }
 
@@ -100,10 +98,10 @@ namespace osu.Game.Screens.Select
 
             protected override bool OnKeyDown(KeyDownEvent e)
             {
-                // NO consumimos Enter: FocusedTextBox vendria a commitearlo y se lo comeria, y entonces
-                // GlobalAction.Select (empezar el mapa) nunca dispara. lo dejamos pasar, igual que
-                // FocusedTextBox ya hace con Escape para GlobalAction.Back. la busqueda filtra live por el
-                // binding two-way, asi que no necesitamos el commit.
+                // Do NOT consume Enter: FocusedTextBox would commit on it and swallow the key, so
+                // GlobalAction.Select (start the beatmap) would never fire. Let it through, just like
+                // FocusedTextBox already does for Escape and GlobalAction.Back. The search filters live
+                // through the two-way binding, so the commit isn't needed.
                 if (e.Key == Key.Enter || e.Key == Key.KeypadEnter)
                     return false;
 

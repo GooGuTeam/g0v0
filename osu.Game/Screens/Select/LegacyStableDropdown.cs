@@ -21,25 +21,26 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Select
 {
     /// <summary>
-    /// torii: dropdown estilo osu!stable para la barra de arriba del song-select legacy. caja negra
-    /// redondeada con borde de 1px de color, un label y un chevron hacia abajo, mas una lista de
-    /// opciones negra y plana que se ilumina con el accent al hacer hover. todo el comportamiento
-    /// (abrir/cerrar/seleccionar/teclado) viene del <see cref="Dropdown{T}"/> del framework; aca solo
-    /// piso el look.
+    /// An osu!stable style dropdown for the legacy song select top bar. A rounded black box with a 1px
+    /// coloured border, a label and a down chevron, plus a flat black option list that lights up with the
+    /// accent colour on hover. All the behaviour (open/close/select/keyboard) comes from the framework's
+    /// <see cref="Dropdown{T}"/>; this only overrides the look.
     /// </summary>
     public partial class LegacyStableDropdown<T> : Dropdown<T>
     {
         /// <summary>
-        /// el "highlight colour" de stable para este dropdown (azul para Group, verde para Sort). define
-        /// el borde de la caja y el color de hover de las opciones.
+        /// stable's "highlight colour" for this dropdown (blue for Group, green for Sort). Defines the
+        /// box's border and the hover colour of the options.
         /// </summary>
         public Color4 AccentColour { get; init; } = Color4.White;
 
-        /// <summary>el tinte de hover de las opciones, por si tiene que ser distinto al borde de la caja
-        /// (el dropdown de ranking de stable tiene caja cyan pero hover rosa). por defecto usa <see cref="AccentColour"/>.</summary>
+        /// <summary>
+        /// The hover tint of the options, for when it has to differ from the box border (stable's ranking
+        /// dropdown has a cyan box but a pink hover). Defaults to <see cref="AccentColour"/>.
+        /// </summary>
         public Color4? HoverColour { get; init; }
 
-        /// <summary>override opcional para como se arma el texto de cada item (ej "Global Ranking").</summary>
+        /// <summary>Optional override for how each item's text is built (e.g. "Global Ranking").</summary>
         public Func<T, LocalisableString>? ItemText { get; init; }
 
         protected override DropdownHeader CreateHeader() => new LegacyDropdownHeader();
@@ -49,9 +50,9 @@ namespace osu.Game.Screens.Select
         [BackgroundDependencyLoader]
         private void load()
         {
-            // AccentColour todavia no esta seteado cuando CreateHeader()/CreateMenu() corren adentro
-            // del ctor base, asi que el borde de color y el tinte de hover hay que aplicarlos aca (si no
-            // se quedan en el blanco por defecto).
+            // AccentColour isn't set yet when CreateHeader()/CreateMenu() run inside the base ctor, so the
+            // coloured border and the hover tint have to be applied here (otherwise they stay at the
+            // default white).
             Header.BorderColour = AccentColour;
             ((LegacyDropdownMenu)Menu).AccentColour = HoverColour ?? AccentColour;
         }
@@ -87,8 +88,8 @@ namespace osu.Game.Screens.Select
                 CornerRadius = 5;
                 BorderThickness = 2;
 
-                // semitransparente asi el color de la decoracion skinnable de arriba se transluce por la
-                // caja (las cajas Group/Sort/ranking de stable estan tinteadas, no negro solido).
+                // Semi-transparent so the skinnable decoration above shows through the box (stable's
+                // Group/Sort/ranking boxes are tinted, not solid black).
                 BackgroundColour = new Color4(0f, 0f, 0f, 0.45f);
                 BackgroundColourHover = new Color4(0.16f, 0.16f, 0.16f, 0.6f);
 
@@ -134,7 +135,7 @@ namespace osu.Game.Screens.Select
         {
             private Color4 accent = Color4.White;
 
-            /// <summary>el tinte de hover de las opciones (azul/verde/cyan). tambien se aplica a los items ya existentes.</summary>
+            /// <summary>The hover tint of the options (blue/green/cyan). Also applied to already existing items.</summary>
             public Color4 AccentColour
             {
                 get => accent;
@@ -155,7 +156,7 @@ namespace osu.Game.Screens.Select
             [BackgroundDependencyLoader]
             private void load()
             {
-                // negro oscuro medio transparente (las opciones de stable son ~negro alpha 240/255).
+                // Medium-dark, mostly transparent black (stable's options are ~black alpha 240/255).
                 BackgroundColour = new Color4(0f, 0f, 0f, 0.9f);
             }
 
@@ -206,7 +207,7 @@ namespace osu.Game.Screens.Select
                 protected override void UpdateForegroundColour()
                 {
                     base.UpdateForegroundColour();
-                    // la opcion seleccionada se ve en bold en la lista abierta (como stable).
+                    // The selected option shows in bold in the open list (as in stable).
                     content.Font = LegacyFonts.Get(17, IsSelected ? FontWeight.Bold : FontWeight.Regular);
                 }
             }
