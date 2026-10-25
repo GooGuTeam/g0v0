@@ -16,6 +16,7 @@ using osu.Framework.Graphics.Textures;
 using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
+using osu.Game.Localisation;
 using osu.Game.Screens.Select.Filter;
 using osu.Game.Skinning;
 using osuTK;
@@ -100,10 +101,10 @@ namespace osu.Game.Screens.Select
                     // A few px of left padding so the status badge and the text don't stick to the edge.
                     Position = new Vector2(5, 0),
                 },
-                label(@"Group", group_colour, x: -481),
                 // Group label + dropdown (stable: x = WidthScaled-140-118-sortLabelWidth). The whole
                 // right-hand cluster has to fit above the panel's blue outline (~y78), so the dropdowns
                 // sit well up top and the tabs tuck in right below.
+                label(SongSelectStrings.Group, group_colour, x: -481),
                 groupDropdown = new LegacyStableDropdown<GroupMode>
                 {
                     Anchor = Anchor.TopRight,
@@ -116,8 +117,8 @@ namespace osu.Game.Screens.Select
                     Items = Enum.GetValues<GroupMode>(),
                     Current = { BindTarget = groupBindable },
                 },
-                label(@"Sort", sort_colour, x: -212),
                 // Sort label + dropdown (stable: x = WidthScaled-130).
+                label(SongSelectStrings.Sort, sort_colour, x: -212),
                 sortDropdown = new LegacyStableDropdown<SortMode>
                 {
                     Anchor = Anchor.TopRight,

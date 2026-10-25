@@ -22,9 +22,12 @@ using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Localisation;
+using osu.Game.Resources.Localisation.Web;
 using osu.Game.Rulesets.Judgements;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
@@ -80,7 +83,7 @@ namespace osu.Game.Screens.Ranking
         [BackgroundDependencyLoader]
         private void load()
         {
-            // el tooltip es barato: se arma sincronico aca.
+            // The tooltip content is cheap to build, so it is built synchronously here.
             double? unstableRate = score.HitEvents.CalculateUnstableRate()?.Result;
             var offsets = score.HitEvents.Where(e => e.Result.IsBasic() && e.Result.IsHit()).Select(e => e.TimeOffset).ToList();
 
@@ -431,7 +434,7 @@ namespace osu.Game.Screens.Ranking
                 int si = Math.Clamp((int)(marker.XNorm * (samples_count - 1)), 0, samples_count - 1);
                 float my = Math.Clamp(lineY(smooth[si]), 7, region.Y - 7);
 
-                // contorno negro + cross de color, clavadas sobre la linea.
+                // Black outline plus a coloured cross, pinned onto the line.
                 content.Add(new SpriteIcon
                 {
                     Origin = Anchor.Centre,
@@ -557,7 +560,7 @@ namespace osu.Game.Screens.Ranking
                         {
                             new OsuSpriteText
                             {
-                                Text = @"Accuracy:",
+                                Text = LocalisableString.Interpolate($"{RankingsStrings.StatAccuracy}:"),
                                 Font = LegacyFonts.Get(12.8f, FontWeight.Bold),
                             },
                             errorText = new OsuSpriteText
@@ -580,8 +583,8 @@ namespace osu.Game.Screens.Ranking
                 if (content == null)
                     return;
 
-                errorText.Text = $"Error: {content.NegAvg:0.00}ms - +{content.PosAvg:0.00}ms avg";
-                urText.Text = $"Unstable Rate: {content.UnstableRate:0.00}";
+                errorText.Text = RankingStatisticsStrings.AverageHitErrorLine(content.NegAvg, content.PosAvg);
+                urText.Text = LocalisableString.Interpolate($"{RankingStatisticsStrings.UnstableRateTitle}: {content.UnstableRate:0.00}");
             }
 
             public void Move(Vector2 pos) => Position = pos;

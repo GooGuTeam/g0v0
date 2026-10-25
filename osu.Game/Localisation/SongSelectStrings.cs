@@ -284,6 +284,31 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString MatchesCount(int quantity) => new PluralisableString(new TranslatableString(getKey(@"matches_count"), @"{0:#,0} match|{0:#,0} matches", quantity), quantity, '|');
 
+        /// <summary>
+        /// "Objects"
+        /// </summary>
+        public static LocalisableString Objects => new TranslatableString(getKey(@"objects"), @"Objects");
+
+        /// <summary>
+        /// "Search:"
+        /// </summary>
+        public static LocalisableString Search => new TranslatableString(getKey(@"search"), @"Search:");
+
+        /// <summary>
+        /// "{0} Ranking"
+        /// </summary>
+        public static LocalisableString ScopeRanking(LocalisableString scope) => new TranslatableString(getKey(@"scope_ranking"), @"{0} Ranking", scope);
+
+        /// <summary>
+        /// "No personal record set"
+        /// </summary>
+        public static LocalisableString NoPersonalRecord => new TranslatableString(getKey(@"no_personal_record"), @"No personal record set");
+
+        /// <summary>
+        /// "#{0:#,0} of {1:#,0}"
+        /// </summary>
+        public static LocalisableString RankOfTotal(int position, int total) => new TranslatableString(getKey(@"rank_of_total"), @"#{0:#,0} of {1:#,0}", position, total);
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

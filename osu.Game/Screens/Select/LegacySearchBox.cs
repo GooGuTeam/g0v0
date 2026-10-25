@@ -11,6 +11,7 @@ using osu.Framework.Input.Events;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Localisation;
 using osuTK;
 using osuTK.Graphics;
 using osuTK.Input;
@@ -57,7 +58,7 @@ namespace osu.Game.Screens.Select
                             {
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
-                                Text = @"Search:",
+                                Text = SongSelectStrings.Search,
                                 Font = LegacyFonts.Get(20, FontWeight.Bold),
                                 Colour = Color4.GreenYellow,
                                 Shadow = true,

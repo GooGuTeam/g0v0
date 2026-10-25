@@ -6,6 +6,7 @@
 using System;
 using osu.Framework.Allocation;
 using osu.Framework.Audio.Track;
+using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
@@ -14,6 +15,7 @@ using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Localisation;
 using osuTK;
 using osuTK.Graphics;
 
@@ -57,7 +59,7 @@ namespace osu.Game.Skinning.Select
                 {
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.Centre,
-                    Text = @"back",
+                    Text = CommonStrings.Back.ToLower(),
                     Font = OsuFont.Default.With(size: back_text_size),
                     Y = -vertical_offset,
                     UseFullGlyphHeight = false,

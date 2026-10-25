@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
@@ -16,6 +17,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
@@ -55,7 +57,7 @@ namespace osu.Game.Screens.Select
         /// </summary>
         public Action? HoverScrollRequested { get; init; }
 
-        private InputManager inputManager = null!;
+        private InputManager? inputManager;
         private bool wasLeaderboardHovered;
 
         // The scope the user wants for maps with an online leaderboard (Global by default when logged
@@ -91,7 +93,6 @@ namespace osu.Game.Screens.Select
         private OsuScrollContainer scoreScroll = null!;
         private Container scoreContainer = null!;
         private Container personalBest = null!;
-        private LegacyStableDropdown<BeatmapLeaderboardScope> scopeDropdown = null!;
         private Sprite noRecords = null!;
         private LoadingSpinner loadingSpinner = null!;
 
@@ -158,7 +159,7 @@ namespace osu.Game.Screens.Select
                     AutoSizeAxes = Axes.Y,
                 },
                 // Drawn last so the dropdown's open menu stays above the scores / "no records" graphic.
-                scopeDropdown = new LegacyStableDropdown<BeatmapLeaderboardScope>
+                new LegacyStableDropdown<BeatmapLeaderboardScope>
                 {
                     Anchor = Anchor.TopLeft,
                     Origin = Anchor.TopLeft,
@@ -167,7 +168,7 @@ namespace osu.Game.Screens.Select
                     AccentColour = new Color4(31 / 255f, 184 / 255f, 255 / 255f, 1f),
                     HoverColour = new Color4(255 / 255f, 102 / 255f, 171 / 255f, 1f),
                     Items = Enum.GetValues<BeatmapLeaderboardScope>(),
-                    ItemText = scope => $@"{scope} Ranking",
+                    ItemText = scope => SongSelectStrings.ScopeRanking(scope.GetLocalisableDescription()),
                     Current = { BindTarget = Scope },
                 },
             };
@@ -331,7 +332,7 @@ namespace osu.Game.Screens.Select
 
             var top = result.TopScores;
 
-            if (top == null || top.Count == 0)
+            if (top.Count == 0)
             {
                 noRecords.ClearTransforms();
                 noRecords.ScaleTo(0.9f).Then().ScaleTo(1f, 600, Easing.OutQuint);
@@ -357,14 +358,14 @@ namespace osu.Game.Screens.Select
                 Anchor = Anchor.TopLeft,
                 Origin = Anchor.TopCentre,
                 Position = new Vector2(list_width / 2, 0),
-                Text = @"Personal Best",
+                Text = BeatmapLeaderboardWedgeStrings.PersonalBest,
                 Font = LegacyFonts.Get(20, FontWeight.Bold),
             }, cascade++);
 
             if (result.UserScore != null)
             {
-                string name = result.UserScore.Position is int pos
-                    ? $"#{pos:#,0} of {result.TotalScores:#,0}"
+                LocalisableString name = result.UserScore.Position is int pos
+                    ? SongSelectStrings.RankOfTotal(pos, result.TotalScores)
                     : result.UserScore.User.Username;
 
                 addAnimated(personalBest, new LegacyScoreRow(result.UserScore, name, null) { Y = 28 }, cascade++);
@@ -394,7 +395,7 @@ namespace osu.Game.Screens.Select
                         {
                             Anchor = Anchor.Centre,
                             Origin = Anchor.Centre,
-                            Text = @"No personal record set",
+                            Text = SongSelectStrings.NoPersonalRecord,
                             Font = LegacyFonts.Get(20, FontWeight.Light),
                         },
                     },
@@ -419,7 +420,7 @@ namespace osu.Game.Screens.Select
         private partial class LegacyScoreRow : OsuClickableContainer, IHasContextMenu, IHasCustomTooltip<ScoreInfo>
         {
             private readonly ScoreInfo score;
-            private readonly string displayName;
+            private readonly LocalisableString displayName;
             private readonly long? scoreDiff;
 
             private static readonly OverlayColourProvider fallback_colour = new OverlayColourProvider(OverlayColourScheme.Blue);
@@ -447,7 +448,7 @@ namespace osu.Game.Screens.Select
 
             private Box hoverHighlight = null!;
 
-            public LegacyScoreRow(ScoreInfo score, string displayName, long? scoreDiff)
+            public LegacyScoreRow(ScoreInfo score, LocalisableString displayName, long? scoreDiff)
             {
                 this.score = score;
                 this.displayName = displayName;
@@ -542,7 +543,7 @@ namespace osu.Game.Screens.Select
                         Children = new Drawable[]
                         {
                             shadowed(displayName, 25, FontWeight.Regular, Anchor.TopLeft),
-                            shadowed($"Score: {score.TotalScore:#,0} ({score.MaxCombo:#,0}x)", 17, FontWeight.Regular, Anchor.TopLeft),
+                            shadowed(LocalisableString.Interpolate($"{BeatmapLeaderboardWedgeStrings.Score}: {score.TotalScore:#,0} ({score.MaxCombo:#,0}x)"), 17, FontWeight.Regular, Anchor.TopLeft),
                         },
                     },
                     rightColumn,
@@ -590,7 +591,7 @@ namespace osu.Game.Screens.Select
                         items.Add(new OsuMenuItem(SongSelectStrings.WatchReplay, MenuItemType.Standard, () => songSelect.PresentScore(score, ScorePresentType.Gameplay)));
 
                     items.Add(new OsuMenuItem(CommonStrings.Export, MenuItemType.Standard, () => scoreManager.Export(score)));
-                    items.Add(new OsuMenuItem(osu.Game.Resources.Localisation.Web.CommonStrings.ButtonsDelete, MenuItemType.Destructive, () => dialogOverlay?.Push(new LocalScoreDeleteDialog(score))));
+                    items.Add(new OsuMenuItem(Resources.Localisation.Web.CommonStrings.ButtonsDelete, MenuItemType.Destructive, () => dialogOverlay?.Push(new LocalScoreDeleteDialog(score))));
 
                     return items.ToArray();
                 }

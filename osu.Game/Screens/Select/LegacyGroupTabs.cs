@@ -4,6 +4,7 @@
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
@@ -38,13 +39,13 @@ namespace osu.Game.Screens.Select
 
         private static readonly Color4 crimson = Color4.Crimson;
 
-        private static readonly (GroupMode mode, string text)[] tab_definitions =
+        private static readonly GroupMode[] tab_modes =
         {
-            (GroupMode.Collections, @"Collections"),
-            (GroupMode.LastPlayed, @"Recently Played"),
-            (GroupMode.Artist, @"By Artist"),
-            (GroupMode.Difficulty, @"By Difficulty"),
-            (GroupMode.None, @"No Grouping"),
+            GroupMode.Collections,
+            GroupMode.LastPlayed,
+            GroupMode.Artist,
+            GroupMode.Difficulty,
+            GroupMode.None,
         };
 
         private Container backgroundLayer = null!;
@@ -55,19 +56,19 @@ namespace osu.Game.Screens.Select
         private void load(ISkinSource skin)
         {
             Height = tab_height;
-            Width = tab_definitions.Length * step;
+            Width = tab_modes.Length * step;
 
             Texture? tabTexture = skin.GetTexture(@"selection-tab");
 
             backgroundLayer = new Container { RelativeSizeAxes = Axes.Both };
             var foregroundLayer = new Container { RelativeSizeAxes = Axes.Both };
 
-            backgrounds = new Sprite[tab_definitions.Length];
-            labels = new OsuSpriteText[tab_definitions.Length];
+            backgrounds = new Sprite[tab_modes.Length];
+            labels = new OsuSpriteText[tab_modes.Length];
 
-            for (int i = 0; i < tab_definitions.Length; i++)
+            for (int i = 0; i < tab_modes.Length; i++)
             {
-                var def = tab_definitions[i];
+                GroupMode mode = tab_modes[i];
 
                 backgroundLayer.Add(backgrounds[i] = new Sprite
                 {
@@ -85,13 +86,13 @@ namespace osu.Game.Screens.Select
                     Origin = Anchor.CentreLeft,
                     X = i * step,
                     Size = new Vector2(step, tab_height),
-                    Action = () => Current.Value = def.mode,
+                    Action = () => Current.Value = mode,
                 };
                 slot.Add(labels[i] = new OsuSpriteText
                 {
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
-                    Text = def.text,
+                    Text = mode.GetLocalisableDescription(),
                     Font = LegacyFonts.Get(14, FontWeight.Bold),
                     Shadow = true,
                 });
@@ -109,9 +110,9 @@ namespace osu.Game.Screens.Select
 
         private void updateSelection()
         {
-            for (int i = 0; i < tab_definitions.Length; i++)
+            for (int i = 0; i < tab_modes.Length; i++)
             {
-                bool selected = tab_definitions[i].mode == Current.Value;
+                bool selected = tab_modes[i] == Current.Value;
 
                 backgrounds[i].FadeColour(selected ? Color4.White : crimson, 40, Easing.OutQuint);
                 labels[i].FadeColour(selected ? Color4.Black : Color4.White, 40, Easing.OutQuint);

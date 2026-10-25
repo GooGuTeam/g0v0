@@ -15,6 +15,7 @@ using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Resources.Localisation.Web;
 using osuTK;
 using osuTK.Graphics;
 
@@ -125,7 +126,7 @@ namespace osu.Game.Screens.Select
 
                 protected override TextBox CreateTextBox() => new BasicTextBox
                 {
-                    PlaceholderText = @"type to search",
+                    PlaceholderText = HomeStrings.SearchPlaceholder,
                     FontSize = 14,
                 };
             }

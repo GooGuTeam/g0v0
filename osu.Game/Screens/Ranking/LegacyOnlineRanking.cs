@@ -1,15 +1,6 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
-// osu!stable's RankingDialog 1:1 (the "below the fold" page of the ranking view): the background is
-// the ranking-dialog-left/middle/right 3-slice (the LOCAL/ONLINE/BEATMAP bands with their watermarks
-// are ART, not drawn boxes), and on top of it - using stable's RankingDialog.cs coordinates x1.6 - go
-// the local ranking text (y=20, gold), the user panel (leftCentre-100, 60), the save-replay/favourite
-// checkboxes (WidthScaled-160, 10/35), the compact table (LEFT_PADDING=3+(W-640)/2, headers y=170
-// font 9, rows y=180 font 11, 24-unit cell boxes alternating (40,40,40)/(20,20,20), green/red on the
-// deltas), the beatmap text at (170, 301) and the mode logo additively in the TopRight (100, 230) at
-// 10%. Columns of the current cuttingedge: Overall/Accuracy/Max Combo/Ranked Score/Total Score/
-// Performance. stable's rate-beatmap is deliberately left out. Only for the player's own plays.
 
 using System;
 using System.Linq;
@@ -24,14 +15,17 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
 using osu.Game.Extensions;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Localisation;
 using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
+using osu.Game.Resources.Localisation.Web;
 using osu.Game.Scoring;
 using osu.Game.Screens.Select;
 using osu.Game.Skinning;
@@ -69,7 +63,15 @@ namespace osu.Game.Screens.Ranking
         private const float row2_y = 327;
         private const float cell_height = 38;
 
-        private static readonly string[] column_headers = { "Overall", "Accuracy", "Max Combo", "Ranked Score", "Total Score", "Performance" };
+        private static readonly LocalisableString[] column_headers =
+        {
+            ResultsScreenStrings.Overall,
+            UsersStrings.ShowStatsHitAccuracy,
+            BeatmapLeaderboardWedgeStrings.MaxCombo,
+            ResultsScreenStrings.RankedScore,
+            ResultsScreenStrings.TotalScore,
+            ResultsScreenStrings.Performance,
+        };
 
         private readonly ScoreInfo score;
 
@@ -184,8 +186,8 @@ namespace osu.Game.Screens.Ranking
                 Position = new Vector2(523, 96),
             });
 
-            children.Add(new LegacyCheckbox(@"Save replay to Replays folder", onExportReplay)
             // Checkboxes in the top right corner (stable: WidthScaled-160, y 10 / 35).
+            children.Add(new LegacyCheckbox(ResultsScreenStrings.SaveReplayToFolder, onExportReplay)
             {
                 Anchor = Anchor.TopRight,
                 X = -256,
@@ -194,7 +196,7 @@ namespace osu.Game.Screens.Ranking
 
             if (score.BeatmapInfo?.BeatmapSet != null && score.BeatmapInfo.BeatmapSet.OnlineID > 0)
             {
-                children.Add(new LegacyCheckbox(@"Add as online favourite", onToggleFavourite)
+                children.Add(new LegacyCheckbox(ResultsScreenStrings.AddAsOnlineFavourite, onToggleFavourite)
                 {
                     Anchor = Anchor.TopRight,
                     X = -256,
@@ -236,7 +238,7 @@ namespace osu.Game.Screens.Ranking
                 Position = new Vector2(272, 482),
                 Font = LegacyFonts.Get(24),
                 Shadow = true,
-                Text = $"{meta?.Artist} - {meta?.Title} [{score.BeatmapInfo?.DifficultyName}] by {meta?.Author.Username}",
+                Text = LocalisableString.Interpolate($"{meta?.Artist} - {meta?.Title} [{score.BeatmapInfo?.DifficultyName}] {ResultsScreenStrings.MappedBy(meta?.Author.Username ?? string.Empty)}"),
             });
             children.Add(beatmapInfoLine = new OsuSpriteText
             {
@@ -345,7 +347,7 @@ namespace osu.Game.Screens.Ranking
                 Font = LegacyFonts.Get(18, Graphics.FontWeight.Bold),
                 Colour = label_orange,
                 Shadow = true,
-                Text = @"Beatmap Ranking",
+                Text = ResultsScreenStrings.BeatmapRanking,
             });
             table.Add(new OsuSpriteText
             {
@@ -354,7 +356,7 @@ namespace osu.Game.Screens.Ranking
                 Font = LegacyFonts.Get(18, Graphics.FontWeight.Bold),
                 Colour = label_orange,
                 Shadow = true,
-                Text = @"Overall Ranking",
+                Text = ResultsScreenStrings.OverallRanking,
             });
 
             for (int i = 0; i < 6; i++)
@@ -421,7 +423,7 @@ namespace osu.Game.Screens.Ranking
 
             if (rank >= 1)
             {
-                localRankText.Text = $"You achieved the #{rank} score on local rankings!";
+                localRankText.Text = ResultsScreenStrings.LocalRankAchieved(rank);
                 localRankText.FadeIn(400);
             }
         }
@@ -446,14 +448,14 @@ namespace osu.Game.Screens.Ranking
                     beatmapMain[0].Text = $"#{best.Position:N0}";
 
                 if (best.Position != null)
-                    beatmapSub[0].Text = $"your best: #{best.Position:N0}";
+                    beatmapSub[0].Text = ResultsScreenStrings.YourBest($"#{best.Position:N0}");
 
-                beatmapSub[1].Text = $"your best: {best.Score.Accuracy:0.00%}";
-                beatmapSub[2].Text = $"your best: {best.Score.MaxCombo:N0}x";
-                beatmapSub[3].Text = $"your best: {best.Score.TotalScore:N0}";
+                beatmapSub[1].Text = ResultsScreenStrings.YourBest($"{best.Score.Accuracy:0.00%}");
+                beatmapSub[2].Text = ResultsScreenStrings.YourBest($"{best.Score.MaxCombo:N0}x");
+                beatmapSub[3].Text = ResultsScreenStrings.YourBest($"{best.Score.TotalScore:N0}");
 
                 if (best.Score.PP != null)
-                    beatmapSub[5].Text = $"your best: {best.Score.PP:N0}pp";
+                    beatmapSub[5].Text = ResultsScreenStrings.YourBest($"{best.Score.PP:N0}pp");
             });
 
             api.Queue(req);
@@ -470,14 +472,18 @@ namespace osu.Game.Screens.Ranking
             {
                 if (beatmap.PlayCount <= 0)
                 {
-                    beatmapInfoLine.Text = @"no plays recorded on this beatmap yet";
+                    beatmapInfoLine.Text = ResultsScreenStrings.NoPlaysRecorded;
                     return;
                 }
 
                 double passRate = beatmap.PassCount * 100.0 / beatmap.PlayCount;
-                string since = beatmap.BeatmapSet != null ? $" since {beatmap.BeatmapSet.Submitted:MMM yyyy}" : string.Empty;
 
-                beatmapInfoLine.Text = $"{beatmap.PlayCount:N0} plays{since} | {passRate:0}% pass rate";
+                LocalisableString playCount = ResultsScreenStrings.PlayCount(beatmap.PlayCount);
+                LocalisableString passRateText = ResultsScreenStrings.PassRate((int)passRate);
+
+                beatmapInfoLine.Text = beatmap.BeatmapSet != null
+                    ? LocalisableString.Format(@"{0} {1} | {2}", playCount, ResultsScreenStrings.SubmittedSince($"{beatmap.BeatmapSet.Submitted:MMM yyyy}"), passRateText)
+                    : LocalisableString.Format(@"{0} | {1}", playCount, passRateText);
             });
 
             api.Queue(req);
@@ -604,14 +610,14 @@ namespace osu.Game.Screens.Ranking
         /// </summary>
         private partial class LegacyCheckbox : OsuClickableContainer
         {
-            private readonly string label;
+            private readonly LocalisableString label;
             private readonly Action<bool> onToggle;
 
             private CircularContainer circle = null!;
             private Box fill = null!;
             private bool ticked;
 
-            public LegacyCheckbox(string label, Action<bool> onToggle)
+            public LegacyCheckbox(LocalisableString label, Action<bool> onToggle)
             {
                 this.label = label;
                 this.onToggle = onToggle;

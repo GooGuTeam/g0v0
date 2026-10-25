@@ -11,6 +11,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Game.Audio;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
@@ -19,6 +20,7 @@ using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays;
+using osu.Game.Resources.Localisation.Web;
 using osu.Game.Rulesets;
 using osu.Game.Users.Drawables;
 using osuTK;
@@ -140,22 +142,22 @@ namespace osu.Game.Skinning.Select
             currentUser = statistics?.User ?? (api.IsLoggedIn ? api.LocalUser.Value : null);
             avatar.User = currentUser;
 
+            usernameText.Text = currentUser?.Username ?? string.Empty;
+
             if (statistics == null)
             {
-                usernameText.Text = currentUser?.Username ?? string.Empty;
                 infoText.Text = string.Empty;
                 rankText.Text = string.Empty;
                 rulesetIcon.Hide();
             }
             else
             {
-                usernameText.Text = currentUser?.Username ?? string.Empty;
                 infoText.Clear();
-                infoText.AddText($"Performance:{statistics.PP:N0}pp");
+                infoText.AddText(LocalisableString.Interpolate($"{RankingsStrings.StatPerformance}:{statistics.PP:N0}pp"));
                 infoText.NewLine();
-                infoText.AddText($"Accuracy:{statistics.DisplayAccuracy}");
+                infoText.AddText(LocalisableString.Interpolate($"{RankingsStrings.StatAccuracy}:{statistics.DisplayAccuracy}"));
                 infoText.NewLine();
-                infoText.AddText($"Lv{statistics.Level.Current}");
+                infoText.AddText(@$"Lv{statistics.Level.Current}");
 
                 if (!statistics.GlobalRank.HasValue)
                     rankText.Hide();
@@ -165,22 +167,19 @@ namespace osu.Game.Skinning.Select
 
                     rankText.Text = $"#{rank}";
 
-                    if (rank > 100000)
-                        rankText.Colour = new Color4(255, 255, 255, 40);
-                    else if (rank > 50000)
-                        rankText.Colour = new Color4(255, 255, 255, 60);
-                    else if (rank > 1000)
-                        rankText.Colour = new Color4(255, 255, 255, 80);
-                    else if (rank > 10)
-                        rankText.Colour = new Color4(255, 255, 255, 100);
-                    else if (rank > 1)
-                        rankText.Colour = new Color4(244, 218, 73, 120);
-                    else
-                        rankText.Colour = new Color4(88, 171, 248, 120);
+                    rankText.Colour = rank switch
+                    {
+                        > 100000 => new Color4(255, 255, 255, 40),
+                        > 50000 => new Color4(255, 255, 255, 60),
+                        > 1000 => new Color4(255, 255, 255, 80),
+                        > 10 => new Color4(255, 255, 255, 100),
+                        > 1 => new Color4(244, 218, 73, 120),
+                        _ => new Color4(88, 171, 248, 120)
+                    };
                 }
 
                 rulesetIcon.Alpha = 70 / 255f;
-                rulesetIcon.Texture = skins.DefaultClassicSkin.GetTexture($"mode-{ruleset.Value.ShortName}-small");
+                rulesetIcon.Texture = skins.DefaultClassicSkin.GetTexture(@$"mode-{ruleset.Value.ShortName}-small");
 
                 if (statistics.Level.Progress == 0)
                     levelBar.Hide();
@@ -189,7 +188,6 @@ namespace osu.Game.Skinning.Select
                     levelBar.Width = 198 * statistics.Level.Progress / 100f;
                     levelBar.Show();
                 }
-
             }
         }
 

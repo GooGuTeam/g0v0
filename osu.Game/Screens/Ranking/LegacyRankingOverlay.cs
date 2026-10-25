@@ -10,10 +10,12 @@ using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Framework.Screens;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Localisation;
 using osu.Game.Scoring;
 using osu.Game.Screens.Ranking.Statistics;
 using osu.Game.Screens.Select;
@@ -403,7 +405,7 @@ namespace osu.Game.Screens.Ranking
                             },
                         },
                         new HeaderStrip(score),
-                        detailsHint = new ScrollHintButton(@"v  Online Ranking  v")
+                        detailsHint = new ScrollHintButton(LocalisableString.Interpolate($"v  {ResultsScreenStrings.OnlineRanking}  v"))
                         {
                             Action = () => currentScroll?.ScrollToEnd(),
                         },
@@ -474,14 +476,14 @@ namespace osu.Game.Screens.Ranking
                         Position = new Vector2(1.6f, 20 * 1.6f),
                         Font = LegacyFonts.Get(16 * 1.6f),
                         Shadow = true,
-                        Text = $"Beatmap by {score.BeatmapInfo?.Metadata.Author.Username}",
+                        Text = ResultsScreenStrings.BeatmapBy(score.BeatmapInfo?.Metadata.Author.Username ?? string.Empty),
                     },
                     new OsuSpriteText
                     {
                         Position = new Vector2(1.6f, 34 * 1.6f),
                         Font = LegacyFonts.Get(16 * 1.6f),
                         Shadow = true,
-                        Text = $"Played by {score.User.Username} on {score.Date.ToLocalTime():g}.",
+                        Text = ResultsScreenStrings.PlayedBy(score.User.Username, $"{score.Date.ToLocalTime():g}"),
                     },
                     new Sprite
                     {
@@ -501,12 +503,12 @@ namespace osu.Game.Screens.Ranking
         /// </summary>
         private partial class ScrollHintButton : OsuClickableContainer
         {
-            private readonly string text;
+            private readonly LocalisableString text;
 
             [Resolved]
             private SkinManager skins { get; set; } = null!;
 
-            public ScrollHintButton(string text)
+            public ScrollHintButton(LocalisableString text)
             {
                 this.text = text;
 

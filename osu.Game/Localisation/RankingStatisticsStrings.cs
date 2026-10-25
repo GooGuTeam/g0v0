@@ -39,6 +39,11 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString ClassicScoringAlwaysUsed => new TranslatableString(getKey(@"classic_scoring_always_used"), @"Classic scoring mode is always used for this statistic.");
 
+        /// <summary>
+        /// "Error: {0:0.00}ms - +{1:0.00}ms avg"
+        /// </summary>
+        public static LocalisableString AverageHitErrorLine(double negativeAverage, double positiveAverage) => new TranslatableString(getKey(@"average_hit_error_line"), @"Error: {0:0.00}ms - +{1:0.00}ms avg", negativeAverage, positiveAverage);
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

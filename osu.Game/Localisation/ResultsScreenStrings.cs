@@ -152,6 +152,91 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString ClickToFullComboTooltip => new TranslatableString(getKey(@"click_to_full_combo_tooltip"), @"Click to switch to FC case.");
 
+        /// <summary>
+        /// "Overall"
+        /// </summary>
+        public static LocalisableString Overall => new TranslatableString(getKey(@"overall"), @"Overall");
+
+        /// <summary>
+        /// "Ranked Score"
+        /// </summary>
+        public static LocalisableString RankedScore => new TranslatableString(getKey(@"ranked_score"), @"Ranked Score");
+
+        /// <summary>
+        /// "Total Score"
+        /// </summary>
+        public static LocalisableString TotalScore => new TranslatableString(getKey(@"total_score"), @"Total Score");
+
+        /// <summary>
+        /// "Performance"
+        /// </summary>
+        public static LocalisableString Performance => new TranslatableString(getKey(@"performance"), @"Performance");
+
+        /// <summary>
+        /// "Beatmap Ranking"
+        /// </summary>
+        public static LocalisableString BeatmapRanking => new TranslatableString(getKey(@"beatmap_ranking"), @"Beatmap Ranking");
+
+        /// <summary>
+        /// "Overall Ranking"
+        /// </summary>
+        public static LocalisableString OverallRanking => new TranslatableString(getKey(@"overall_ranking"), @"Overall Ranking");
+
+        /// <summary>
+        /// "Online Ranking"
+        /// </summary>
+        public static LocalisableString OnlineRanking => new TranslatableString(getKey(@"online_ranking"), @"Online Ranking");
+
+        /// <summary>
+        /// "Save replay to Replays folder"
+        /// </summary>
+        public static LocalisableString SaveReplayToFolder => new TranslatableString(getKey(@"save_replay_to_folder"), @"Save replay to Replays folder");
+
+        /// <summary>
+        /// "Add as online favourite"
+        /// </summary>
+        public static LocalisableString AddAsOnlineFavourite => new TranslatableString(getKey(@"add_as_online_favourite"), @"Add as online favourite");
+
+        /// <summary>
+        /// "You achieved the #{0} score on local rankings!"
+        /// </summary>
+        public static LocalisableString LocalRankAchieved(int rank) => new TranslatableString(getKey(@"local_rank_achieved"), @"You achieved the #{0} score on local rankings!", rank);
+
+        /// <summary>
+        /// "your best: {0}"
+        /// </summary>
+        public static LocalisableString YourBest(LocalisableString value) => new TranslatableString(getKey(@"your_best"), @"your best: {0}", value);
+
+        /// <summary>
+        /// "no plays recorded on this beatmap yet"
+        /// </summary>
+        public static LocalisableString NoPlaysRecorded => new TranslatableString(getKey(@"no_plays_recorded"), @"no plays recorded on this beatmap yet");
+
+        /// <summary>
+        /// "{0:N0} plays"
+        /// </summary>
+        public static LocalisableString PlayCount(long plays) => new TranslatableString(getKey(@"play_count"), @"{0:N0} plays", plays);
+
+        /// <summary>
+        /// "since {0}"
+        /// </summary>
+        public static LocalisableString SubmittedSince(LocalisableString date) => new TranslatableString(getKey(@"submitted_since"), @"since {0}", date);
+
+        /// <summary>
+        /// "{0:0}% pass rate"
+        /// </summary>
+        public static LocalisableString PassRate(double passRate) => new TranslatableString(getKey(@"pass_rate"), @"{0:0}% pass rate", passRate);
+
+        /// <summary>
+        /// "Beatmap by {0}"
+        /// </summary>
+        public static LocalisableString BeatmapBy(LocalisableString mapper) => new TranslatableString(getKey(@"beatmap_by"), @"Beatmap by {0}", mapper);
+
+        /// <summary>
+        /// "Played by {0} on {1}."
+        /// </summary>
+        public static LocalisableString PlayedBy(LocalisableString player, LocalisableString date) => new TranslatableString(getKey(@"played_by"), @"Played by {0} on {1}.", player, date);
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

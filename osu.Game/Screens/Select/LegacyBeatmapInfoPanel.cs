@@ -10,12 +10,16 @@ using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions;
+using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Localisation;
+using osu.Game.Resources.Localisation.Web;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects.Types;
@@ -79,12 +83,12 @@ namespace osu.Game.Screens.Select
         private static readonly Color4 harder_colour = new Color4(255, 102, 102, 255);
         private static readonly Color4 easier_colour = new Color4(130, 220, 130, 255);
 
-        private static string formatCounts(WorkingBeatmap working)
+        private static LocalisableString formatCounts(WorkingBeatmap working)
         {
+            int circles = 0, sliders = 0, spinners = 0;
+
             try
             {
-                int circles = 0, sliders = 0, spinners = 0;
-
                 foreach (var hitObject in working.Beatmap.HitObjects)
                 {
                     switch (hitObject)
@@ -102,14 +106,14 @@ namespace osu.Game.Screens.Select
                             break;
                     }
                 }
-
-                return $"Circles: {circles}   Sliders: {sliders}   Spinners: {spinners}";
             }
             catch
             {
-                return @"Circles: 0   Sliders: 0   Spinners: 0";
                 // Failed decode (corrupt / missing file); stable shows zeroes here too.
+                circles = sliders = spinners = 0;
             }
+
+            return LocalisableString.Interpolate($"{BeatmapStatisticStrings.Circles}: {circles}   {BeatmapStatisticStrings.Sliders}: {sliders}   {BeatmapStatisticStrings.Spinners}: {spinners}");
         }
 
         [BackgroundDependencyLoader]
@@ -167,7 +171,7 @@ namespace osu.Game.Screens.Select
             };
         }
 
-        private static void setSegments(FillFlowContainer flow, float size, FontWeight weight, IEnumerable<(string text, Color4 colour)> segments)
+        private static void setSegments(FillFlowContainer flow, float size, FontWeight weight, IEnumerable<(LocalisableString text, Color4 colour)> segments)
         {
             flow.Clear();
 
@@ -229,7 +233,7 @@ namespace osu.Game.Screens.Select
             var metadata = info.Metadata;
 
             titleText.Text = $"{metadata.Artist} - {metadata.Title} [{info.DifficultyName}]";
-            mapperText.Text = $"Mapped by {metadata.Author.Username}";
+            mapperText.Text = BeatmapsetsStrings.ShowDetailsMappedBy(metadata.Author.Username).ToSentence();
 
             // Star rating with the current mods applied; the bindable also updates itself on
             // mod/ruleset changes.
@@ -259,7 +263,7 @@ namespace osu.Game.Screens.Select
 
                 Task.Run(() =>
                 {
-                    string text = formatCounts(working);
+                    LocalisableString text = formatCounts(working);
 
                     Schedule(() =>
                     {
@@ -310,15 +314,15 @@ namespace osu.Game.Screens.Select
 
             setSegments(lengthLine, 18, FontWeight.Bold, new[]
             {
-                ($"Length: {lengthSeconds / 60:00}:{lengthSeconds % 60:00}   BPM: {bpm}", rateColour),
-                ($"   Objects: {total}", Color4.White),
+                (LocalisableString.Interpolate($"{SongSelectStrings.Length}: {lengthSeconds / 60:00}:{lengthSeconds % 60:00}   {SongSelectStrings.BPM}: {bpm}"), rateColour),
+                (LocalisableString.Interpolate($"   {SongSelectStrings.Objects}: {total}"), Color4.White),
             });
         }
 
         private void refreshStatsLine()
         {
             var info = beatmap.Value.BeatmapInfo;
-            var segments = new List<(string, Color4)>();
+            var segments = new List<(LocalisableString, Color4)>();
 
             if (rulesetInstance == null || !ruleset.Value.Equals(rulesetInstanceSource))
             {
@@ -327,7 +331,7 @@ namespace osu.Game.Screens.Select
             }
 
             // Stable's stat order first (CS AR OD HP), then the ruleset's extras.
-            string[] preferredOrder = { @"CS", @"AR", @"OD", @"HP" };
+            string[] preferredOrder = [@"CS", @"AR", @"OD", @"HP"];
 
             var attributes = rulesetInstance.GetBeatmapAttributesForDisplay(info, mods.Value)
                                             .OrderBy(a =>
@@ -360,7 +364,7 @@ namespace osu.Game.Screens.Select
                     : Color4.White;
             }
 
-            segments.Add(($"   Star Rating: {stars:0.0}", starColour));
+            segments.Add((LocalisableString.Interpolate($"   {BeatmapsetsStrings.ShowStatsStars}: {stars:0.0}"), starColour));
 
             setSegments(statsLine, 13, FontWeight.Bold, segments);
         }
