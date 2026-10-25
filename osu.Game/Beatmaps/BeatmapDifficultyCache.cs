@@ -197,7 +197,7 @@ namespace osu.Game.Beatmaps
 
         public Task<List<TimedDifficultyAttributes>> GetTimedDifficultyAttributesAsync(IWorkingBeatmap beatmap, Ruleset ruleset, Mod[] mods, CancellationToken cancellationToken = default)
         {
-            return Task.Factory.StartNew(() => ruleset.CreateModSpecificDifficultyCalculator(beatmap).CalculateTimed(mods, cancellationToken),
+            return Task.Factory.StartNew(() => ModSpecificCalculation.CreateDifficultyCalculator(ruleset, beatmap).CalculateTimed(mods, cancellationToken),
                 cancellationToken,
                 TaskCreationOptions.HideScheduler | TaskCreationOptions.RunContinuationsAsynchronously,
                 updateScheduler);
@@ -309,10 +309,10 @@ namespace osu.Game.Beatmaps
                 PlayableCachedWorkingBeatmap workingBeatmap = new PlayableCachedWorkingBeatmap(beatmapManager.GetWorkingBeatmap(key.BeatmapInfo));
                 IBeatmap playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, key.OrderedMods, cancellationToken);
 
-                var difficulty = ruleset.CreateModSpecificDifficultyCalculator(workingBeatmap).Calculate(key.OrderedMods, cancellationToken);
+                var difficulty = ModSpecificCalculation.CreateDifficultyCalculator(ruleset, workingBeatmap, key.UseModSpecific).Calculate(key.OrderedMods, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var performanceCalculator = ruleset.CreateModSpecificPerformanceCalculator();
+                var performanceCalculator = ModSpecificCalculation.CreatePerformanceCalculator(ruleset);
                 if (performanceCalculator == null)
                     return new StarDifficulty(difficulty, new PerformanceAttributes());
 
@@ -374,17 +374,25 @@ namespace osu.Game.Beatmaps
             public readonly RulesetInfo Ruleset;
             public readonly Mod[] OrderedMods;
 
+            /// <summary>
+            /// Whether the cached values were computed using the mod-specific algorithms.
+            /// Part of the key so that toggling the setting does not mix results of the two algorithms.
+            /// </summary>
+            public readonly bool UseModSpecific;
+
             public DifficultyCacheLookup(BeatmapInfo beatmapInfo, RulesetInfo? ruleset, IEnumerable<Mod>? mods)
             {
                 BeatmapInfo = beatmapInfo;
                 // In the case that the user hasn't given us a ruleset, use the beatmap's default ruleset.
                 Ruleset = ruleset ?? BeatmapInfo.Ruleset;
                 OrderedMods = mods?.OrderBy(m => m.Acronym).Select(mod => mod.DeepClone()).ToArray() ?? Array.Empty<Mod>();
+                UseModSpecific = ModSpecificCalculation.Enabled;
             }
 
             public bool Equals(DifficultyCacheLookup other)
                 => BeatmapInfo.Equals(other.BeatmapInfo)
                    && Ruleset.Equals(other.Ruleset)
+                   && UseModSpecific == other.UseModSpecific
                    && OrderedMods.SequenceEqual(other.OrderedMods);
 
             public override int GetHashCode()
@@ -393,6 +401,7 @@ namespace osu.Game.Beatmaps
 
                 hashCode.Add(BeatmapInfo.ID);
                 hashCode.Add(Ruleset.ShortName);
+                hashCode.Add(UseModSpecific);
 
                 foreach (var mod in OrderedMods)
                     hashCode.Add(mod);

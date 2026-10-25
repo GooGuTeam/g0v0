@@ -23,6 +23,7 @@ using osu.Game.Online.API;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Performance;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets;
 using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
@@ -127,7 +128,7 @@ namespace osu.Game.Database
             foreach (var ruleset in rulesetStore.AvailableRulesets)
             {
                 // beatmap being passed in is arbitrary here. just needs to be non-null.
-                int currentVersion = ruleset.CreateInstance().CreateModSpecificDifficultyCalculator(gameBeatmap.Value).Version;
+                int currentVersion = ModSpecificCalculation.CreateDifficultyCalculator(ruleset.CreateInstance(), gameBeatmap.Value).Version;
 
                 if (ruleset.LastAppliedDifficultyVersion < currentVersion)
                 {
@@ -212,7 +213,7 @@ namespace osu.Game.Database
 
                     Debug.Assert(ruleset != null);
 
-                    var calculator = ruleset.CreateModSpecificDifficultyCalculator(working);
+                    var calculator = ModSpecificCalculation.CreateDifficultyCalculator(ruleset, working);
 
                     double starRating = calculator.Calculate().StarRating;
                     realmAccess.Write(r =>

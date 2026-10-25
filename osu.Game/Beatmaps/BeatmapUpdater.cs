@@ -10,6 +10,7 @@ using osu.Framework.Platform;
 using osu.Framework.Threading;
 using osu.Game.Database;
 using osu.Game.Online.API;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Objects.Types;
 
 namespace osu.Game.Beatmaps
@@ -58,7 +59,7 @@ namespace osu.Game.Beatmaps
                     difficultyCache.Invalidate(beatmap, working.BeatmapInfo);
 
                     var ruleset = working.BeatmapInfo.Ruleset.CreateInstance();
-                    var calculator = ruleset.CreateModSpecificDifficultyCalculator(working);
+                    var calculator = ModSpecificCalculation.CreateDifficultyCalculator(ruleset, working);
 
                     beatmap.StarRating = calculator.Calculate().StarRating;
                     beatmap.UpdateStatisticsFromBeatmap(working.Beatmap);

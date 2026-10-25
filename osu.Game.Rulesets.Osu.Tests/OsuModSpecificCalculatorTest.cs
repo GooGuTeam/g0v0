@@ -28,6 +28,31 @@ namespace osu.Game.Rulesets.Osu.Tests
         }
 
         [Test]
+        public void TestSettingSelectsBetweenAlgorithms()
+        {
+            var beatmap = GetBeatmap("diffcalc-test");
+            var ruleset = new OsuRuleset();
+            bool original = ModSpecificCalculation.Enabled;
+
+            try
+            {
+                ModSpecificCalculation.Enabled = true;
+
+                Assert.That(ModSpecificCalculation.CreateDifficultyCalculator(ruleset, beatmap), Is.TypeOf<OsuModSpecificDifficultyCalculator>());
+                Assert.That(ModSpecificCalculation.CreatePerformanceCalculator(ruleset), Is.TypeOf<OsuModSpecificPerformanceCalculator>());
+
+                ModSpecificCalculation.Enabled = false;
+
+                Assert.That(ModSpecificCalculation.CreateDifficultyCalculator(ruleset, beatmap), Is.TypeOf<OsuDifficultyCalculator>());
+                Assert.That(ModSpecificCalculation.CreatePerformanceCalculator(ruleset), Is.TypeOf<OsuPerformanceCalculator>());
+            }
+            finally
+            {
+                ModSpecificCalculation.Enabled = original;
+            }
+        }
+
+        [Test]
         public void TestModSpecificDifficultyMatchesUpstreamWithoutRelax()
         {
             var beatmap = GetBeatmap("diffcalc-test");

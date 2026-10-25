@@ -53,7 +53,7 @@ namespace osu.Game.Screens.Play.HUD
         {
             if (gameplayState != null)
             {
-                performanceCalculator = gameplayState.Ruleset.CreateModSpecificPerformanceCalculator();
+                performanceCalculator = ModSpecificCalculation.CreatePerformanceCalculator(gameplayState.Ruleset);
                 clonedMods = gameplayState.Mods.Select(m => m.DeepClone()).ToArray();
 
                 scoreInfo = new ScoreInfo(gameplayState.Score.ScoreInfo.BeatmapInfo, gameplayState.Score.ScoreInfo.Ruleset) { Mods = clonedMods };
