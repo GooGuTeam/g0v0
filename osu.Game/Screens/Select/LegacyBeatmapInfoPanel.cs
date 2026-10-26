@@ -31,12 +31,7 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Select
 {
     /// <summary>
-    /// The osu!stable style beatmap info block (top-left of the legacy song select).
-    /// Replicates stable's exact layout (SongSelection.cs:261-289): ranked status icon in the corner,
-    /// title hugging the very top, then mapper / length-bpm-objects / object counts / difficulty stats.
-    /// Coordinates are stable's 480-space ones scaled by 1.6 so they line up with the 1366x768
-    /// legacy space. Length/BPM and the stats are tinted by the active mods (red = harder,
-    /// green = easier), just like stable with DT/HT/HR/EZ.
+    /// The legacy beatmap info block (top-left of the legacy song select).
     /// </summary>
     public partial class LegacyBeatmapInfoPanel : CompositeDrawable
     {
@@ -377,45 +372,20 @@ namespace osu.Game.Screens.Select
             base.Dispose(isDisposing);
         }
 
-        // lazer's own (newer) icons, from osu-resources.
-        private static IconUsage statusFallbackIcon(BeatmapOnlineStatus status)
+        private static IconUsage statusFallbackIcon(BeatmapOnlineStatus status) => status switch
         {
-            switch (status)
-            {
-                case BeatmapOnlineStatus.Ranked:
-                case BeatmapOnlineStatus.Qualified:
-                    return OsuIcon.CheckCircle;
+            BeatmapOnlineStatus.Ranked => FontAwesome.Solid.AngleDoubleUp,
+            BeatmapOnlineStatus.Loved => FontAwesome.Solid.Heart,
+            BeatmapOnlineStatus.Qualified or BeatmapOnlineStatus.Approved => FontAwesome.Solid.Check,
+            _ => FontAwesome.Solid.Question,
+        };
 
-                case BeatmapOnlineStatus.Loved:
-                    return OsuIcon.Heart;
-
-                case BeatmapOnlineStatus.Approved:
-                    return OsuIcon.Crown;
-
-                default:
-                    return OsuIcon.EditCircle;
-            }
-        }
-
-        private static string statusTextureName(BeatmapOnlineStatus status)
+        private static string statusTextureName(BeatmapOnlineStatus status) => status switch
         {
-            switch (status)
-            {
-                case BeatmapOnlineStatus.Ranked:
-                case BeatmapOnlineStatus.Qualified:
-                    return @"selection-ranked";
-
-                case BeatmapOnlineStatus.Loved:
-                    return @"selection-loved";
-
-                case BeatmapOnlineStatus.Approved:
-                case BeatmapOnlineStatus.Pending:
-                case BeatmapOnlineStatus.WIP:
-                    return @"selection-approved";
-
-                default:
-                    return @"selection-question";
-            }
-        }
+            BeatmapOnlineStatus.Ranked or BeatmapOnlineStatus.Qualified => @"selection-ranked",
+            BeatmapOnlineStatus.Loved => @"selection-loved",
+            BeatmapOnlineStatus.Approved or BeatmapOnlineStatus.Pending or BeatmapOnlineStatus.WIP => @"selection-approved",
+            _ => @"selection-question",
+        };
     }
 }
