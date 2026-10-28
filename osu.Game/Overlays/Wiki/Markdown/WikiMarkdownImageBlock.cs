@@ -66,23 +66,24 @@ namespace osu.Game.Overlays.Wiki.Markdown
 
             private partial class BlockImageContainer : ImageContainer
             {
-                private readonly string url;
+                private PreviewableSprite sprite = null!;
 
                 public BlockImageContainer(string url)
                     : base(url)
                 {
-                    this.url = url;
+                    // the sprite is created from ImageContainer's constructor, which runs before this type's fields are
+                    // assigned, so the url can only be handed over to it here.
+                    sprite.Url = url;
 
                     AutoSizeAxes = Axes.Y;
                     RelativeSizeAxes = Axes.X;
                 }
 
-                protected override Sprite CreateImageSprite() => new ImageSprite(url);
+                protected override Sprite CreateImageSprite() => sprite = new ImageSprite();
 
                 private partial class ImageSprite : PreviewableSprite
                 {
-                    public ImageSprite(string url)
-                        : base(url)
+                    public ImageSprite()
                     {
                         Anchor = Anchor.TopCentre;
                         Origin = Anchor.TopCentre;

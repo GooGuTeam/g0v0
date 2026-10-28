@@ -17,24 +17,36 @@ namespace osu.Game.Overlays.ImagePreview
     /// </remarks>
     public partial class PreviewableSprite : Sprite
     {
-        private readonly string url;
-        private readonly LocalisableString? title;
+        /// <summary>
+        /// The url of the image, used when copying a link to it or saving it to disk.
+        /// </summary>
+        /// <remarks>
+        /// Settable after construction because a container deriving from <c>ImageContainer</c> creates its sprite from
+        /// its own constructor, which runs before the fields of the deriving type are assigned. Such a container can
+        /// therefore only hand the url over once its constructor body runs.
+        /// </remarks>
+        public string? Url { get; set; }
+
+        /// <summary>
+        /// An optional title to be displayed above the image in the preview.
+        /// </summary>
+        public LocalisableString? Title { get; set; }
 
         [Resolved]
         private IImagePreviewOverlay? previewOverlay { get; set; }
 
-        public PreviewableSprite(string url, LocalisableString? title = null)
+        public PreviewableSprite(string? url = null, LocalisableString? title = null)
         {
-            this.url = url;
-            this.title = title;
+            Url = url;
+            Title = title;
         }
 
         protected override bool OnClick(ClickEvent e)
         {
-            if (Texture == null || string.IsNullOrEmpty(url))
+            if (Texture == null || string.IsNullOrEmpty(Url))
                 return false;
 
-            previewOverlay?.ShowImage(new ImagePreviewRequest(Texture, url, title, this));
+            previewOverlay?.ShowImage(new ImagePreviewRequest(Texture, Url, Title, this));
             return true;
         }
     }

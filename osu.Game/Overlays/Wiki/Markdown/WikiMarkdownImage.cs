@@ -32,15 +32,17 @@ namespace osu.Game.Overlays.Wiki.Markdown
 
         private partial class WikiImageContainer : ImageContainer
         {
-            private readonly string url;
+            private PreviewableSprite sprite = null!;
 
             public WikiImageContainer(string url)
                 : base(url)
             {
-                this.url = url;
+                // the sprite is created from ImageContainer's constructor, which runs before this type's fields are
+                // assigned, so the url can only be handed over to it here.
+                sprite.Url = url;
             }
 
-            protected override Sprite CreateImageSprite() => new PreviewableSprite(url);
+            protected override Sprite CreateImageSprite() => sprite = new PreviewableSprite();
         }
     }
 }
