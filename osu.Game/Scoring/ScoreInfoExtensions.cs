@@ -73,6 +73,36 @@ namespace osu.Game.Scoring
         /// </summary>
         public static bool IsPerfect(this IScoreInfo score) => score.MaxCombo == score.GetMaximumAchievableCombo();
 
+        public static IEnumerable<HitResultDisplayStatistic> GetStatisticsForDisplay(this IScoreInfo scoreInfo)
+        {
+            foreach (var r in scoreInfo.Ruleset.CreateInstance().GetHitResultsForDisplay())
+            {
+                int value = scoreInfo.Statistics.GetValueOrDefault(r.result);
+
+                switch (r.result)
+                {
+                    case HitResult.SmallTickHit:
+                    case HitResult.LargeTickHit:
+                    case HitResult.SliderTailHit:
+                    case HitResult.LargeBonus:
+                    case HitResult.SmallBonus:
+                        if (scoreInfo.MaximumStatistics.TryGetValue(r.result, out int count) && count > 0)
+                            yield return new HitResultDisplayStatistic(r.result, value, count, r.displayName);
+
+                        break;
+
+                    case HitResult.SmallTickMiss:
+                    case HitResult.LargeTickMiss:
+                        break;
+
+                    default:
+                        yield return new HitResultDisplayStatistic(r.result, value, null, r.displayName);
+
+                        break;
+                }
+            }
+        }
+
         /// <summary>
         /// A perfect full combo requires both perfect accuracy and the complete achievable combo.
         /// Bonus judgements are intentionally excluded: spinner bonus does not determine PFC.

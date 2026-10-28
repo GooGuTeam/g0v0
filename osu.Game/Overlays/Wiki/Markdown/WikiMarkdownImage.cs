@@ -16,13 +16,16 @@ namespace osu.Game.Overlays.Wiki.Markdown
         {
         }
 
-        protected override ImageContainer CreateImageContainer(string url)
+        protected override string ResolveImageUrl(string url)
         {
             // The idea is to replace "https://website.url/wiki/{path-to-image}" to "https://website.url/wiki/images/{path-to-image}"
             // "/wiki/images/*" is route to fetch wiki image from osu!web server (see: https://github.com/ppy/osu-web/blob/4205eb66a4da86bdee7835045e4bf28c35456e04/routes/web.php#L289)
-            url = url.Replace("/wiki/", "/wiki/images/");
+            return url.Replace("/wiki/", "/wiki/images/");
+        }
 
-            var container = new WikiImageContainer(url);
+        protected override ImageContainer CreateImageContainerCore(string mediaUrl)
+        {
+            var container = new WikiImageContainer(mediaUrl);
             container.OnLoadComplete += d => d.FadeInFromZero(300, Easing.OutQuint);
             return container;
         }

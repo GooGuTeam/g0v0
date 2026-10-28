@@ -59,3 +59,67 @@ if command -v aapt2 &> /dev/null; then
   echo "Verifying APK signature..."
   aapt2 dump badging Releases/g0v0.apk | grep -E "application-label|package" || true
 fi
+
+# The APK installs fine even when the wrong flavour of a shared library ends up inside it, and the
+# mistake only shows up as an immediate crash on a real device, so verify the packaged libraries.
+#
+# ppy.osu.Framework.NativeLibs ships glibc builds of libbass / libbassmix / libbass_fx under
+# runtimes/linux-*/native/ for the desktop platforms and an empty runtimes/android/native/_._
+# placeholder so that NuGet resolves no native assets at all for android-* RIDs. When that
+# placeholder is not honoured it falls back to the matching linux-<arch> RID instead, and the glibc
+# libraries are packaged into lib/<abi>/, where they shadow the bionic ones extracted from
+# osu.Framework.Android's aar (the build only warns "APK already contains the item
+# lib/arm64-v8a/libbass.so; ignoring"). The app then dies on startup with
+# "System.DllNotFoundException: bass" on arm64 devices.
+# Fail closed if the ELF inspection tool is unavailable or a library cannot be inspected.
+command -v readelf > /dev/null || { echo "ERROR: readelf is required to verify Android native libraries."; exit 1; }
+
+tmp_lib=$(mktemp)
+trap 'rm -f "$tmp_lib"' EXIT
+
+# The shipped ABI set is whatever the build actually packaged: since the move to CoreCLR on Android
+# (upstream #39029) the app is arm64-only, so demanding the old 32-bit/x86 ABIs fails every build.
+# Detect the ABIs that actually carry the audio libraries and verify each of them, while keeping
+# arm64-v8a mandatory so a silently dropped ABI is still caught.
+apk_abis=$(unzip -l Releases/g0v0.apk | tr -d '\r' | sed -n 's|.*lib/\([^/]*\)/libbass\.so$|\1|p' | sort -u | tr '\n' ' ')
+apk_abis="${apk_abis% }"
+
+if [[ -z "$apk_abis" ]]; then
+  echo "ERROR: no libbass.so found in the packaged APK for any ABI."
+  exit 1
+fi
+
+echo "Audio library ABIs found in APK: $apk_abis"
+
+if ! grep -qw arm64-v8a <<< "$apk_abis"; then
+  echo "ERROR: lib/arm64-v8a/libbass.so is missing from the packaged APK."
+  exit 1
+fi
+
+for abi in $apk_abis; do
+  for lib in libbass.so libbassmix.so libbass_fx.so; do
+    if ! unzip -p Releases/g0v0.apk "lib/$abi/$lib" > "$tmp_lib" || [[ ! -s "$tmp_lib" ]]; then
+      rm -f "$tmp_lib"
+      echo "ERROR: lib/$abi/$lib is missing from the packaged APK."
+      exit 1
+    fi
+
+    if ! dependencies=$(readelf -d "$tmp_lib"); then
+      echo "ERROR: lib/$abi/$lib is not a readable ELF library."
+      exit 1
+    fi
+
+    if grep -qE 'libc\.so\.6|libdl\.so\.2|libpthread\.so\.0' <<< "$dependencies"; then
+      echo "ERROR: lib/$abi/$lib in the packaged APK is a desktop (glibc) build and can never be loaded on Android."
+      exit 1
+    fi
+
+    if ! grep -qE '\(NEEDED\).*\[libc\.so\]' <<< "$dependencies"; then
+      echo "ERROR: lib/$abi/$lib does not declare the expected Android libc dependency."
+      exit 1
+    fi
+  done
+done
+rm -f "$tmp_lib"
+
+echo "Verified that the packaged audio libraries are Android builds for every shipped ABI ($apk_abis)."

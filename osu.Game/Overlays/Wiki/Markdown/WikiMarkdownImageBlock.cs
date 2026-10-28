@@ -57,7 +57,12 @@ namespace osu.Game.Overlays.Wiki.Markdown
                 RelativeSizeAxes = Axes.X;
             }
 
-            protected override ImageContainer CreateImageContainer(string url) => new BlockImageContainer(url);
+            protected override ImageContainer CreateImageContainerCore(string mediaUrl)
+            {
+                var container = new BlockImageContainer(mediaUrl);
+                container.OnLoadComplete += d => d.FadeInFromZero(300, Easing.OutQuint);
+                return container;
+            }
 
             private partial class BlockImageContainer : ImageContainer
             {

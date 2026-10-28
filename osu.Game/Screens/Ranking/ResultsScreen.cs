@@ -28,6 +28,7 @@ using osu.Game.Localisation;
 using osu.Game.Online.Placeholders;
 using osu.Game.Overlays;
 using osu.Game.Scoring;
+using osu.Game.Screens.Footer;
 using osu.Game.Screens.Play;
 using osu.Game.Screens.Ranking.Expanded.Accuracy;
 using osu.Game.Screens.Ranking.Statistics;
@@ -392,6 +393,17 @@ namespace osu.Game.Screens.Ranking
                 StatisticsPanel.Show();
         }
 
+        /// <summary>
+        /// Shows or hides the global footer's legacy back button without changing the footer mode.
+        /// </summary>
+        public void SetFooterBackButtonVisible(bool visible)
+        {
+            if (FooterContent.Value.Mode != ScreenFooterContent.FooterMode.Legacy)
+                return;
+
+            FooterContent.Value = ScreenFooterContent.Legacy(showBackButton: visible);
+        }
+
         private void updateResultsLayout()
         {
             if (showingV2Layout)
@@ -412,7 +424,7 @@ namespace osu.Game.Screens.Ranking
                 }
             }
 
-            BackButtonVisibility.Value = !showingV2Layout && !useLegacyResults;
+            FooterContent.Value = ScreenFooterContent.Legacy(showBackButton: !showingV2Layout && !useLegacyResults);
             VerticalScrollContent.FitToViewport = showingV2Layout;
             v2Footer.Alpha = showingV2Layout ? 1 : 0;
             classicFooterBackground.Alpha = showingV2Layout ? 0 : 1;

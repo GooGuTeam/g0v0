@@ -213,14 +213,12 @@ namespace osu.Game.Screens.Utility
             previousActiveHz = host.UpdateThread.ActiveHz;
             config.SetValue(FrameworkSetting.FrameSync, FrameSync.Unlimited);
             host.UpdateThread.ActiveHz = target_host_update_frames;
-            host.AllowBenchmarkUnlimitedFrames = true;
 
             musicController.Stop();
         }
 
         public override bool OnExiting(ScreenExitEvent e)
         {
-            host.AllowBenchmarkUnlimitedFrames = false;
             config.SetValue(FrameworkSetting.FrameSync, previousFrameSyncMode);
             host.UpdateThread.ActiveHz = previousActiveHz;
             return base.OnExiting(e);

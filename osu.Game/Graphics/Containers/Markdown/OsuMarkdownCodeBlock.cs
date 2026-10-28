@@ -6,13 +6,13 @@ using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers.Markdown;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.Sprites;
 using osu.Game.Overlays;
 
 namespace osu.Game.Graphics.Containers.Markdown
 {
     public partial class OsuMarkdownCodeBlock : MarkdownCodeBlock
     {
-        // TODO : change to monospace font for this component
         public OsuMarkdownCodeBlock(CodeBlock codeBlock)
             : base(codeBlock)
         {
@@ -39,6 +39,11 @@ namespace osu.Game.Graphics.Containers.Markdown
             {
                 Colour = colourProvider.Light1;
                 Margin = new MarginPadding(10);
+            }
+
+            protected override SpriteText CreateSpriteText()
+            {
+                return base.CreateSpriteText().With(t => t.Font = OsuFont.MapleMono.With(size: t.Font.Size));
             }
         }
     }

@@ -1,16 +1,43 @@
 ﻿<Project>
   <PropertyGroup>
-    <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
-    <RuntimeIdentifiers>android-x86;android-arm;android-arm64</RuntimeIdentifiers>
+    <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
+    <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <MandroidI18n>CJK;Mideast;Rare;West;Other;</MandroidI18n>
-    <AndroidHttpClientHandlerType>Xamarin.Android.Net.AndroidMessageHandler</AndroidHttpClientHandlerType>
     <!-- NullabilityInfoContextSupport is disabled by default for Android -->
     <NullabilityInfoContextSupport>true</NullabilityInfoContextSupport>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+    <!-- Can be removed in .NET 11 (CoreCLR is the default) -->
+    <UseMonoRuntime>false</UseMonoRuntime>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <!-- CoreCLR on Android is an experimental feature in .NET 10.
+         This suppression can be removed after .NET 11, as the use of CoreCLR becomes the default in .NET 11 and above. -->
+    <NoWarn>$(NoWarn);XA1040</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="ppy.osu.Framework.Android" Version="2026.1005.0" />
+    <PackageReference Include="ppy.osu.Framework.Android" Version="2026.1019.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- ppy.osu.Framework.NativeLibs and ppy.SDL2-CS only carry desktop (linux/win/osx) native
+         libraries; the Android ones are shipped as an aar by ppy.osu.Framework.Android, which is
+         referenced above.
+
+         ppy.osu.Framework.NativeLibs contains an empty "runtimes/android/native/_._" placeholder so
+         that NuGet resolves no native assets at all for android-* RIDs, but that placeholder is not
+         always honoured. With the ~/.nuget/packages cache state that GitHub Actions restores from
+         its own cache, NuGet instead falls back to the compatible linux-<arch> RID and copies glibc
+         builds of libbass / libbassmix / libbass_fx into lib/<abi>/ of the APK. Those take
+         precedence over the bionic libraries extracted from the aar - the only sign of it being a
+         warning ("APK already contains the item lib/arm64-v8a/libbass.so; ignoring") - and the
+         packaged game then dies on startup on arm64 devices with:
+
+           System.DllNotFoundException: bass
+           at ManagedBass.Bass.get_DeviceCount()
+
+         Exclude the desktop native assets from Android builds so that only Android (bionic)
+         libraries can be packaged. -->
+    <PackageReference Include="ppy.osu.Framework.NativeLibs" Version="2025.806.0-nativelibs" ExcludeAssets="native" />
+    <PackageReference Include="ppy.SDL2-CS" Version="1.0.741-alpha" ExcludeAssets="native" />
   </ItemGroup>
   <PropertyGroup>
     <!-- Fody does not handle Android build well, and warns when unchanged.
@@ -33,6 +60,18 @@
       <ReferencePath Condition="%(Filename) == 'Xamarin.Jetbrains.Annotations'">
         <Aliases>XamarinJetbrainsAnnotations</Aliases>
       </ReferencePath>
+    </ItemGroup>
+  </Target>
+  <!-- Safety net for the exclusions above: no shared library coming from a desktop RID folder may
+       reach the APK, whichever package it originates from. RIDs starting with "linux-bionic" are the
+       bionic (Android) flavour of Linux and are therefore kept. -->
+  <Target Name="RemoveDesktopNativeLibraries" AfterTargets="_ResolveAssemblies">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                             Condition="'%(ResolvedFileToPublish.Extension)' == '.so'
+                                        and $([System.String]::Copy('%(ResolvedFileToPublish.FullPath)').Replace('\', '/').Contains('/runtimes/'))
+                                        and !$([System.String]::Copy('%(ResolvedFileToPublish.FullPath)').Replace('\', '/').Contains('/runtimes/android'))
+                                        and !$([System.String]::Copy('%(ResolvedFileToPublish.FullPath)').Replace('\', '/').Contains('/runtimes/linux-bionic'))" />
     </ItemGroup>
   </Target>
 </Project>
