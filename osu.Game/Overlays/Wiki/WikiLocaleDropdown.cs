@@ -139,7 +139,7 @@ namespace osu.Game.Overlays.Wiki
             }
 
             [BackgroundDependencyLoader(true)]
-            private void load(OverlayColourProvider overlayColourProvider, OsuColour colours)
+            private void load(OverlayColourProvider? overlayColourProvider, OsuColour colours)
             {
                 BackgroundColour = overlayColourProvider?.Colour3 ?? colours.Blue3;
                 // matching the web menu, hovering a locale inverts the colours rather than just tinting the background.
