@@ -153,7 +153,7 @@ namespace osu.Game.Overlays.Toolbar
 
             foreach (ToolbarButton button in candidates)
             {
-                candidateButtons[button.ID] = button;
+                candidateButtons[button.ID!] = button;
                 button.ContextMenuItemsProvider = () => createContextMenuItems(button.ID);
             }
 
@@ -330,11 +330,16 @@ namespace osu.Game.Overlays.Toolbar
 
         #region Public API
 
+        // the rest of this file predates nullable annotation, so it is left unannotated as a whole. the lookup
+        // below is the one member which genuinely has no result at times, so it is annotated on its own - callers
+        // which are annotated (such as the icon management dialog) then have to deal with the absence.
+#nullable enable
+
         /// <summary>
         /// Retrieves the optional icon button with the given stable identifier, or <c>null</c> if there is no such button
         /// (or the toolbar has not finished loading yet).
         /// </summary>
-        public ToolbarButton GetButton(string id) => candidateButtons.GetValueOrDefault(id);
+        public ToolbarButton? GetButton(string id) => candidateButtons.GetValueOrDefault(id);
 
         /// <summary>
         /// The identifiers of the buttons which are currently not shown in the toolbar (either because the user hid
@@ -345,7 +350,9 @@ namespace osu.Game.Overlays.Toolbar
         /// <summary>
         /// The buttons which are currently not shown in the toolbar, in their configured order.
         /// </summary>
-        public IEnumerable<ToolbarButton> HiddenButtons => HiddenButtonIds.Select(GetButton).Where(button => button != null);
+        public IEnumerable<ToolbarButton> HiddenButtons => HiddenButtonIds.Select(GetButton).OfType<ToolbarButton>();
+
+#nullable disable
 
         /// <summary>
         /// Hides or shows one of the optional buttons, persisting the change to the user's configuration.
