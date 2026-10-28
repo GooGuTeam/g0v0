@@ -8,7 +8,6 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.UserInterface;
@@ -16,7 +15,6 @@ using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Game.Extensions;
 using osu.Game.Graphics;
-using osu.Game.Graphics.Backgrounds;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
@@ -32,8 +30,15 @@ namespace osu.Game.Overlays.Wiki
         private const float flag_width = 20;
         private const float flag_height = 15;
         private const float flag_spacing = 8;
-        private const float menu_text_left_padding = 52;
-        private const float menu_horizontal_padding = menu_text_left_padding + 30;
+
+        // the spacing below mimics the margins and paddings of osu-web's wiki locales menu.
+        private const float menu_padding = 8;
+        private const float menu_item_padding_vertical = 3;
+        private const float menu_item_padding_horizontal = 5;
+        private const float menu_flag_offset = 18;
+        private const float menu_flag_spacing = 14;
+        private const float menu_text_left_padding = menu_flag_offset + flag_width + menu_flag_spacing;
+        private const float menu_horizontal_padding = menu_text_left_padding + (menu_padding + menu_item_padding_horizontal) * 2;
 
         private WikiLocaleDropdownHeader header = null!;
         private WikiLocaleDropdownMenu menu = null!;
@@ -127,9 +132,9 @@ namespace osu.Game.Overlays.Wiki
             {
                 Anchor = Anchor.TopRight;
                 Origin = Anchor.TopRight;
-                CornerRadius = 10;
+                CornerRadius = 5;
                 CornerExponent = 2.5f;
-                MaskingContainer.CornerRadius = 10;
+                MaskingContainer.CornerRadius = 5;
                 MaskingContainer.CornerExponent = 2.5f;
             }
 
@@ -137,9 +142,10 @@ namespace osu.Game.Overlays.Wiki
             private void load(OverlayColourProvider overlayColourProvider, OsuColour colours)
             {
                 BackgroundColour = overlayColourProvider?.Colour3 ?? colours.Blue3;
-                HoverColour = BackgroundColour.Lighten(0.2f);
+                // matching the web menu, hovering a locale inverts the colours rather than just tinting the background.
+                HoverColour = overlayColourProvider?.Highlight1 ?? colours.Pink1;
                 SelectionColour = BackgroundColour;
-                ItemsContainer.Padding = new MarginPadding { Vertical = 10, Horizontal = 10 };
+                ItemsContainer.Padding = new MarginPadding(menu_padding);
             }
 
             public float TargetWidth
@@ -176,7 +182,7 @@ namespace osu.Game.Overlays.Wiki
                 public WikiLocaleDropdownMenuItem(MenuItem item)
                     : base(item)
                 {
-                    Foreground.Padding = new MarginPadding { Vertical = 4, Horizontal = 2 };
+                    Foreground.Padding = new MarginPadding { Vertical = menu_item_padding_vertical, Horizontal = menu_item_padding_horizontal };
                 }
 
                 protected override Drawable CreateContent()
@@ -192,6 +198,9 @@ namespace osu.Game.Overlays.Wiki
                     base.UpdateForegroundColour();
 
                     content.Hovering = IsHovered;
+                    // the menu keeps the last hovered item preselected after the cursor leaves, and preselection
+                    // is what drives the inverted background.
+                    content.Inverted = IsPreSelected;
                 }
 
                 private partial class WikiLocaleDropdownMenuItemContent : CompositeDrawable, IHasText
@@ -200,13 +209,13 @@ namespace osu.Game.Overlays.Wiki
 
                     private readonly Container flagContainer;
 
-                    public readonly OsuSpriteText Label;
-                    public readonly SpriteIcon Chevron;
+                    private readonly OsuSpriteText label;
+                    private readonly SpriteIcon chevron;
 
                     public LocalisableString Text
                     {
-                        get => Label.Text;
-                        set => Label.Text = value;
+                        get => label.Text;
+                        set => label.Text = value;
                     }
 
                     public CountryCode CountryCode
@@ -221,7 +230,7 @@ namespace osu.Game.Overlays.Wiki
 
                         InternalChildren = new Drawable[]
                         {
-                            Chevron = new SpriteIcon
+                            chevron = new SpriteIcon
                             {
                                 Icon = FontAwesome.Solid.ChevronRight,
                                 Size = new Vector2(8),
@@ -237,9 +246,9 @@ namespace osu.Game.Overlays.Wiki
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
                                 Size = new Vector2(flag_width, flag_height),
-                                X = 23,
+                                X = menu_flag_offset,
                             },
-                            Label = new TruncatingSpriteText
+                            label = new TruncatingSpriteText
                             {
                                 Padding = new MarginPadding { Left = menu_text_left_padding },
                                 Origin = Anchor.CentreLeft,
@@ -250,6 +259,12 @@ namespace osu.Game.Overlays.Wiki
                     }
 
                     private bool hovering;
+                    private bool inverted;
+
+                    [Resolved]
+                    private OverlayColourProvider? overlayColourProvider { get; set; }
+
+                    private Color4 invertedColour => overlayColourProvider?.Background6 ?? Color4.Black;
 
                     public bool Hovering
                     {
@@ -263,14 +278,32 @@ namespace osu.Game.Overlays.Wiki
 
                             if (hovering)
                             {
-                                Chevron.FadeIn(400, Easing.OutQuint);
-                                Chevron.MoveToX(0, 400, Easing.OutQuint);
+                                chevron.FadeIn(400, Easing.OutQuint);
+                                chevron.MoveToX(0, 400, Easing.OutQuint);
                             }
                             else
                             {
-                                Chevron.FadeOut(200);
-                                Chevron.MoveToX(chevron_offset, 200, Easing.In);
+                                chevron.FadeOut(200);
+                                chevron.MoveToX(chevron_offset, 200, Easing.In);
                             }
+                        }
+                    }
+
+                    /// <summary>
+                    /// Whether this item is currently sitting on the inverted (light) highlight background.
+                    /// </summary>
+                    public bool Inverted
+                    {
+                        get => inverted;
+                        set
+                        {
+                            if (value == inverted)
+                                return;
+
+                            inverted = value;
+
+                            label.FadeColour(value ? invertedColour : Color4.White, 200, Easing.OutQuint);
+                            chevron.FadeColour(value ? invertedColour : Color4.White, 200, Easing.OutQuint);
                         }
                     }
                 }
@@ -287,8 +320,6 @@ namespace osu.Game.Overlays.Wiki
             private readonly Container flagContainer;
             private readonly OsuSpriteText measurementText;
 
-            private TrianglesV2 triangles = null!;
-
             [Resolved]
             private OverlayColourProvider? overlayColourProvider { get; set; }
 
@@ -297,6 +328,9 @@ namespace osu.Game.Overlays.Wiki
 
             public float DesiredWidth => Math.Max(WikiHeader.CONTROL_HEIGHT,
                 measurementText.DrawWidth + horizontal_padding * 2 + flag_width + flag_spacing + chevron_spacing + chevron_size + text_extra_width);
+
+            private Color4 backgroundColour => overlayColourProvider?.Colour3 ?? colours.Blue3;
+            private Color4 hoverColour => backgroundColour.Lighten(0.2f);
 
             public WikiLocaleDropdownHeader()
             {
@@ -332,15 +366,7 @@ namespace osu.Game.Overlays.Wiki
             {
                 base.LoadComplete();
 
-                Add(triangles = new TrianglesV2
-                {
-                    Thickness = 0.02f,
-                    SpawnRatio = 0.6f,
-                    RelativeSizeAxes = Axes.Both,
-                    Depth = float.MaxValue,
-                });
-
-                updateColours();
+                Background.Colour = IsHovered ? hoverColour : backgroundColour;
                 Dropdown?.Current.BindValueChanged(language => updateFlag(language.NewValue), true);
             }
 
@@ -354,33 +380,16 @@ namespace osu.Game.Overlays.Wiki
 
             protected override bool OnHover(HoverEvent e)
             {
-                bool handled = base.OnHover(e);
-
                 if (Enabled.Value)
-                    Background.FadeColour(getHoverColour(), 300, Easing.OutQuint);
+                    Background.FadeColour(hoverColour, 300, Easing.OutQuint);
 
-                return handled;
+                return false;
             }
 
             protected override void OnHoverLost(HoverLostEvent e)
             {
-                base.OnHoverLost(e);
-
-                Background.FadeColour(getBackgroundColour(), 300, Easing.OutQuint);
+                Background.FadeColour(backgroundColour, 300, Easing.OutQuint);
             }
-
-            private void updateColours()
-            {
-                Color4 backgroundColour = getBackgroundColour();
-                Color4 hoverColour = getHoverColour();
-
-                Background.Colour = IsHovered ? hoverColour : backgroundColour;
-                triangles.Colour = ColourInfo.GradientVertical(hoverColour, backgroundColour);
-            }
-
-            private Color4 getBackgroundColour() => overlayColourProvider?.Colour3 ?? colours.Blue3;
-
-            private Color4 getHoverColour() => getBackgroundColour().Lighten(0.2f);
 
             private void updateFlag(Language language)
                 => flagContainer.Child = new DrawableFlag(LanguageExtensions.GetCountryCode(language), false)
