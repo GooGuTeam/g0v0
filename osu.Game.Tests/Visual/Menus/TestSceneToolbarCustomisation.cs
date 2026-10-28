@@ -421,12 +421,20 @@ namespace osu.Game.Tests.Visual.Menus
             });
 
             AddStep("write malformed configuration", () => config.SetValue(OsuSetting.ToolbarButtons, @"{{{"));
-            AddUntilStep("toolbar still usable", () => button(ToolbarButtonLayout.NEWS) != null && !toolbar.HiddenButtonIds.Any());
+            // the lookup is read directly here rather than through the helper, as this is the one place where the
+            // toolbar still being able to hand out its buttons is the thing being asserted, rather than assumed.
+            AddUntilStep("toolbar still usable", () => toolbar.GetButton(ToolbarButtonLayout.NEWS) != null && !toolbar.HiddenButtonIds.Any());
         }
 
-        private ToolbarButton button(string id) => toolbar.GetButton(id);
+        /// <summary>
+        /// The toolbar's button for the given identifier. Every identifier in the layout is backed by a button once
+        /// the toolbar has loaded, so a missing one fails here - naming the identifier - instead of at whichever
+        /// assertion happened to read the button first.
+        /// </summary>
+        private ToolbarButton button(string id)
+            => toolbar.GetButton(id) ?? throw new AssertionException($@"The toolbar has no button with the identifier {id}.");
 
-        private ToolbarOverlayToggleButton toggle(string id) => (ToolbarOverlayToggleButton)toolbar.GetButton(id);
+        private ToolbarOverlayToggleButton toggle(string id) => (ToolbarOverlayToggleButton)button(id);
 
         private void createDialog()
         {
