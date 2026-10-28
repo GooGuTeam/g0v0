@@ -20,6 +20,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Effects;
+using osu.Framework.Graphics.Lines;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
@@ -50,6 +51,10 @@ namespace osu.Game.Screens.Ranking
         // edge (the "top glue" that looked broken), and at hp=0 it doesn't touch the floor.
         private const float top_inset = 8;
         private const float bottom_inset = 6;
+
+        // Stroke half-widths. The per-segment boxes the line used to be built from were 3.2 and 7 px tall.
+        private const float line_radius = 1.6f;
+        private const float shadow_radius = 3.5f;
 
         private static readonly Vector2 region = new Vector2(186, 86) * 1.6f;
 
@@ -386,40 +391,36 @@ namespace osu.Game.Screens.Ranking
 
             Vector2 pointAt(int s) => new Vector2(region.X * s / (samples_count - 1), lineY(smooth[s]));
 
-            // The line with one shadow pass underneath (ALL shadows first, otherwise a segment's shadow
-            // overrides the previous one's colour at the joints).
-            var shadows = new List<Drawable>(samples_count);
-            var segments = new List<Drawable>(samples_count);
+            var content = new List<Drawable>(data.Markers.Count * 3 + 4);
 
-            for (int s = 1; s < samples_count; s++)
+            // The shadow is a single path for the whole line: a path composites its own segments with max
+            // blending, so it stays flat where the per-segment boxes used to double up into darker joints.
+            var shadowVertices = new List<Vector2>(samples_count);
+
+            for (int s = 0; s < samples_count; s++)
+                shadowVertices.Add(pointAt(s));
+
+            content.Add(createPath(shadow_radius, Color4.Black, shadowVertices, 0.45f));
+
+            // The line itself is split into runs of consecutive segments that sit on the same side of half
+            // health, one path per run. A segment takes the colour of its END sample - exactly what the
+            // per-segment boxes did - so where the colour flips does not move.
+            int runStart = 0;
+            bool runHigh = smooth[1] > 0.5;
+
+            for (int s = 2; s < samples_count; s++)
             {
-                var a = pointAt(s - 1);
-                var b = pointAt(s);
-                var d = b - a;
-                float rotation = MathF.Atan2(d.Y, d.X) * 180f / MathF.PI;
+                bool isHigh = smooth[s] > 0.5;
 
-                shadows.Add(new Box
-                {
-                    Origin = Anchor.CentreLeft,
-                    Position = a,
-                    Size = new Vector2(d.Length + 1.6f, 7),
-                    Rotation = rotation,
-                    Colour = Color4.Black,
-                    Alpha = 0.45f,
-                });
-                segments.Add(new Box
-                {
-                    Origin = Anchor.CentreLeft,
-                    Position = a,
-                    Size = new Vector2(d.Length + 1.6f, 3.2f),
-                    Rotation = rotation,
-                    Colour = smooth[s] > 0.5 ? Color4.YellowGreen : Color4.Red,
-                });
+                if (isHigh == runHigh)
+                    continue;
+
+                addRun(content, pointAt, runStart, s - 1, runHigh);
+                runStart = s - 1;
+                runHigh = isHigh;
             }
 
-            var content = new List<Drawable>(shadows.Count + segments.Count + data.Markers.Count * 3);
-            content.AddRange(shadows);
-            content.AddRange(segments);
+            addRun(content, pointAt, runStart, samples_count - 1, runHigh);
 
             foreach (var marker in data.Markers)
             {
@@ -506,6 +507,36 @@ namespace osu.Game.Screens.Ranking
             // The reveal starts HERE (the content arrives async; LoadComplete may have run a while ago).
             if (animate)
                 revealMask.Delay(300).ResizeWidthTo(region.X, 4000);
+        }
+
+        private static void addRun(ICollection<Drawable> target, Func<int, Vector2> pointAt, int from, int to, bool high)
+        {
+            var vertices = new List<Vector2>(to - from + 1);
+
+            for (int s = from; s <= to; s++)
+                vertices.Add(pointAt(s));
+
+            target.Add(createPath(line_radius, high ? Color4.YellowGreen : Color4.Red, vertices));
+        }
+
+        private static Path createPath(float radius, Color4 colour, List<Vector2> vertices, float alpha = 1)
+        {
+            // A path auto-sizes to its vertices *including* the stroke radius and shifts its geometry by that
+            // same amount. Pushing every vertex at least one radius in from the origin makes that shift a fixed
+            // +radius on both axes, which the -radius position cancels - otherwise the vertical shift would
+            // depend on where the topmost vertex happens to be.
+            var path = new Path
+            {
+                Position = new Vector2(-radius, -radius),
+                PathRadius = radius,
+                Colour = colour,
+                Alpha = alpha,
+            };
+
+            foreach (var vertex in vertices)
+                path.AddVertex(vertex + new Vector2(radius, radius));
+
+            return path;
         }
 
         private static float lineY(double health) => top_inset + (float)(1 - health) * (region.Y - top_inset - bottom_inset);
