@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -527,6 +527,13 @@ namespace osu.Game.Overlays.SkinEditor
                 // May fail if dependencies are not available, for instance.
                 return false;
             }
+
+            // With the load error boundary enabled (see LoadErrorHandling), a component which cannot resolve its dependencies is discarded and replaced by
+            // an inline placeholder rather than throwing from the Add() above. Such a component never reaches a usable load state, and must not be treated
+            // as placed (it is not in the target container, so it would never be selectable or serialised).
+            // A target which is not loaded has not attempted a load at all, so there is nothing to detect in that case.
+            if (targetContainer.IsLoaded && drawableComponent.LoadState < LoadState.Ready)
+                return false;
 
             SelectedComponents.Add(component);
 
