@@ -42,8 +42,9 @@ namespace osu.Game.Online.API.Requests.Responses
             ["lazer"] = new Color4(237, 18, 33, 255),
             ["tachyon"] = new Color4(206, 0, 255, 255),
             ["g0v0"] = new Color4(92, 169, 229, 255),
-            ["robin"] = new Color4(181, 126, 255, 255),
-            ["web"] = new Color4(136, 102, 238, 255)
+            ["robin"] = new Color4(227, 60, 100, 255),
+            ["server"] = new Color4(0, 186, 173, 255),
+            ["web"] = new Color4(136, 102, 238, 255),
         };
 
         public ColourInfo Colour => KNOWN_STREAMS.TryGetValue(Name, out var colour) ? colour : new Color4(0, 0, 0, 255);
