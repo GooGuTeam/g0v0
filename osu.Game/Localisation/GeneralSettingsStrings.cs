@@ -45,6 +45,11 @@ namespace osu.Game.Localisation
         public static LocalisableString UpdateHeader => new TranslatableString(getKey(@"update_header"), @"Updates");
 
         /// <summary>
+        /// "Disable automatic updates"
+        /// </summary>
+        public static LocalisableString DisableAutomaticUpdates => new TranslatableString(getKey(@"disable_automatic_updates"), @"Disable automatic updates");
+
+        /// <summary>
         /// "Release stream"
         /// </summary>
         public static LocalisableString ReleaseStream => new TranslatableString(getKey(@"release_stream"), @"Release stream");
