@@ -83,7 +83,9 @@ namespace osu.Game.Rulesets.Osu.Scoring
 
         public override ScoreRank RankFromScore(double accuracy, IReadOnlyDictionary<HitResult, int> results)
         {
-            if (ScoreV1Active)
+            // classic grades are simulated for anything played with stable scoring semantics - both the explicit
+            // score v1 mode and the classic mod (which is what legacy/stable scores are decoded with).
+            if (ScoreV1Active || Mods.Value.Any(m => m is ModClassic))
             {
                 int count300 = results.GetValueOrDefault(HitResult.Great);
                 int count100 = results.GetValueOrDefault(HitResult.Ok);

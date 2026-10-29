@@ -157,7 +157,9 @@ namespace osu.Game.Graphics.UserInterfaceV2
 
         protected override void Dispose(bool isDisposing)
         {
-            if (isDisposing)
+            // this drawable can be disposed before it has ever been loaded (eg. the game being torn down
+            // while the overlay hosting it is still initialising), in which case the provider is still null.
+            if (isDisposing && colourProvider != null)
                 colourProvider.ColoursChanged -= updateState;
 
             base.Dispose(isDisposing);

@@ -86,8 +86,12 @@ namespace osu.Game.Scoring
                     case HitResult.SliderTailHit:
                     case HitResult.LargeBonus:
                     case HitResult.SmallBonus:
+                        // maximums are not always known (eg. scores imported from stable), in which case the count
+                        // is still worth showing if the player got any of them.
                         if (scoreInfo.MaximumStatistics.TryGetValue(r.result, out int count) && count > 0)
                             yield return new HitResultDisplayStatistic(r.result, value, count, r.displayName);
+                        else if (value > 0)
+                            yield return new HitResultDisplayStatistic(r.result, value, null, r.displayName);
 
                         break;
 

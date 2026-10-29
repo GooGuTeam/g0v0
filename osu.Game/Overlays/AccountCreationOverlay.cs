@@ -96,7 +96,7 @@ namespace osu.Game.Overlays
             if (welcomeScreen.GetChildScreen() != null)
                 welcomeScreen.MakeCurrent();
 
-            // there might be a stale scheduled hide from a previous API state change.
+            // there might be a stale-scheduled hide from a previous API state change.
             // cancel it here so that the overlay is not hidden again after one frame.
             scheduledHide?.Cancel();
             scheduledHide = null;

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -189,6 +189,10 @@ namespace osu.Game.Tests.Visual.Navigation
 
             AddUntilStep("wait for filter control", () => filterControlTextBox().IsLoaded);
 
+            // the search bar (and with it the back-key handling it provides) only becomes interactive once the
+            // carousel has presented its first results, so wait for that before touching the filter.
+            AddUntilStep("wait for carousel presented", () => songSelect.CarouselItemsPresented);
+
             AddStep("set filter", () => filterControlTextBox().Current.Value = "test");
             AddStep("press back", () => InputManager.Click(MouseButton.Button1));
 
@@ -289,6 +293,13 @@ namespace osu.Game.Tests.Visual.Navigation
                 songSelect.ChildrenOfType<BeatmapDetailsArea>().Single()));
             AddStep("scroll down", () => InputManager.ScrollVerticalBy(-1));
             AddAssert("carousel didn't move", getCarouselScrollPosition, () => Is.EqualTo(scrollPosition));
+
+            // the details area overlaps the volume overlay, which is what makes scrolling there adjust the effect
+            // volume. which meter the pointer ends up over depends on the width of the overlay's labels (and thus on
+            // the font in use), so point at the effect meter itself instead of the details area's centre.
+            // meter order in the overlay is master, music, effect, hitsound.
+            AddStep("move to effect volume meter", () => InputManager.MoveMouseTo(
+                Game.ChildrenOfType<VolumeOverlay>().Single().ChildrenOfType<VolumeMeter>().ElementAt(2)));
 
             AddRepeatStep("alt-scroll down", () =>
             {

@@ -483,7 +483,9 @@ namespace osu.Game.Screens.Ranking
             if (!this.IsCurrentScreen())
                 return;
 
-            rankApplauseSound?.Dispose();
+            // the previous sound is still a child of this screen, so it must leave the hierarchy before it is disposed
+            // (disposing it in place would leave a disposed drawable in the list, throwing on the next update).
+            rankApplauseSound?.Expire();
 
             var applauseSamples = new List<string>();
 
