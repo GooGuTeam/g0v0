@@ -1,11 +1,10 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using NUnit.Framework;
 using osu.Framework.Allocation;
@@ -87,9 +86,10 @@ namespace osu.Game.Tests.NonVisual
                     File.WriteAllText(actualTestFile, "test");
 
                     var rulesetStorage = storage.GetStorageForDirectory("rulesets");
-                    string lookupPath = rulesetStorage.GetFiles(".").Single();
 
-                    Assert.That(lookupPath, Is.EqualTo("test"));
+                    // the rulesets directory also holds the ruleset management configuration written on startup,
+                    // so this only asserts that the file created here is found via the subdirectory lookup.
+                    Assert.That(rulesetStorage.GetFiles("."), Does.Contain("test"));
                 }
                 finally
                 {
