@@ -59,6 +59,7 @@ using osu.Game.Online.Leaderboards;
 using osu.Game.Online.Rooms;
 using osu.Game.Overlays;
 using osu.Game.Overlays.BeatmapListing;
+using osu.Game.Overlays.ImagePreview;
 using osu.Game.Overlays.Mods;
 using osu.Game.Overlays.Music;
 using osu.Game.Overlays.Notifications;
@@ -1343,6 +1344,7 @@ namespace osu.Game
                 Origin = Anchor.TopRight,
             }, rightFloatingOverlayContent.Add, true);
 
+            loadComponentSingleFile<IImagePreviewOverlay>(new ImagePreviewOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new AccountCreationOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile<IDialogOverlay>(dialogOverlay = new DialogOverlay(), topMostOverlayContent.Add, true);
             loadComponentSingleFile(new MedalOverlay(), topMostOverlayContent.Add);
