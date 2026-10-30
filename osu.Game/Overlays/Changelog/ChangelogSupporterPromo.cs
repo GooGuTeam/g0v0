@@ -13,8 +13,8 @@ using osu.Framework.Graphics.Textures;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Localisation;
 using osu.Game.Online.Chat;
-using osu.Game.Resources.Localisation.Web;
 using osuTK;
 using osuTK.Graphics;
 
@@ -82,30 +82,28 @@ namespace osu.Game.Overlays.Changelog
                                     {
                                         new OsuSpriteText
                                         {
-                                            Text = ChangelogStrings.SupportHeading,
-                                            Font = OsuFont.GetFont(size: 20, weight: FontWeight.Light),
+                                            Text = ChangelogStrings.PromotionText,
+                                            Font = OsuFont.GetFont(size: 20, weight: FontWeight.SemiBold),
                                             Margin = new MarginPadding { Bottom = 20 },
-                                        },
-                                        supportLinkText = new SupporterPromoLinkFlowContainer(t =>
-                                        {
-                                            t.Font = t.Font.With(size: 14);
-                                            t.Colour = colour.PinkLighter;
-                                        })
-                                        {
-                                            RelativeSizeAxes = Axes.X,
-                                            AutoSizeAxes = Axes.Y,
                                         },
                                         new OsuTextFlowContainer(t =>
                                         {
-                                            t.Font = t.Font.With(size: 12);
-                                            t.Colour = colour.PinkLighter;
+                                            t.Font = t.Font.With(size: 16);
                                         })
                                         {
-                                            Text = ChangelogStrings.SupportText2,
-                                            Margin = new MarginPadding { Top = 10 },
+                                            Text = ChangelogStrings.ContributionText,
+                                            Margin = new MarginPadding { Bottom = 10 },
                                             RelativeSizeAxes = Axes.X,
                                             AutoSizeAxes = Axes.Y,
-                                        }
+                                        },
+                                        supportLinkText = new SupporterPromoLinkFlowContainer(t =>
+                                        {
+                                            t.Font = t.Font.With(size: 16);
+                                        })
+                                        {
+                                            RelativeSizeAxes = Axes.X,
+                                            AutoSizeAxes = Axes.Y,
+                                        },
                                     },
                                 },
                                 new Container
@@ -153,9 +151,7 @@ namespace osu.Game.Overlays.Changelog
                 },
             };
 
-            supportLinkText.AddText("Support further development of osu! and ");
-            supportLinkText.AddLink("become an osu!supporter", @"https://osu.ppy.sh/home/support", t => t.Font = t.Font.With(weight: FontWeight.Bold));
-            supportLinkText.AddText(" today!");
+            supportLinkText.AddLink(ChangelogStrings.SeeContributionGuideLink, @"https://docs.g0v0.top/lazer/development/core", t => t.Font = t.Font.With(weight: FontWeight.Bold));
         }
 
         private partial class SupporterPromoLinkFlowContainer : LinkFlowContainer
@@ -177,7 +173,7 @@ namespace osu.Game.Overlays.Changelog
                 [BackgroundDependencyLoader]
                 private void load(OsuColour colour)
                 {
-                    IdleColour = colour.PinkDark;
+                    IdleColour = colour.G0V0ThemeColour;
                     HoverColour = Color4.White;
                 }
             }
