@@ -20,6 +20,7 @@ using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Resources.Localisation.Web;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Scoring;
 using osu.Game.Localisation;
 using osu.Game.Rulesets.Mods;
@@ -105,7 +106,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
             try
             {
                 var attributes = await difficultyCache.GetDifficultyAsync(score.BeatmapInfo!, score.Ruleset, score.Mods, token).ConfigureAwait(false);
-                var calculator = score.Ruleset.CreateInstance().CreatePerformanceCalculator();
+                var calculator = ModSpecificCalculation.CreatePerformanceCalculator(score.Ruleset.CreateInstance());
 
                 if (attributes?.DifficultyAttributes == null || calculator == null)
                     return;

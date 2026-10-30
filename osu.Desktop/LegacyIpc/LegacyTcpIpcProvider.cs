@@ -8,6 +8,7 @@ using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Rulesets.Mania;
@@ -81,7 +82,7 @@ namespace osu.Desktop.LegacyIpc
 
                         return new LegacyIpcDifficultyCalculationResponse
                         {
-                            StarRating = ruleset.CreateDifficultyCalculator(beatmap).Calculate(mods).StarRating
+                            StarRating = ModSpecificCalculation.CreateDifficultyCalculator(ruleset, beatmap).Calculate(mods).StarRating
                         };
                     }
                     catch

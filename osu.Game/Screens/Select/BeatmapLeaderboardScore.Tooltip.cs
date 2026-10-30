@@ -27,6 +27,7 @@ using osu.Game.Localisation;
 using osu.Game.Online.Leaderboards;
 using osu.Game.Overlays;
 using osu.Game.Resources.Localisation.Web;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.UI;
@@ -292,7 +293,7 @@ namespace osu.Game.Screens.Select
                     Task.Run(async () =>
                     {
                         var attributes = await difficultyCache.GetDifficultyAsync(score.BeatmapInfo!, score.Ruleset, score.Mods, cancellationToken ?? CancellationToken.None).ConfigureAwait(false);
-                        var performanceCalculator = score.Ruleset.CreateInstance().CreatePerformanceCalculator();
+                        var performanceCalculator = ModSpecificCalculation.CreatePerformanceCalculator(score.Ruleset.CreateInstance());
 
                         // Performance calculation requires the beatmap and ruleset to be locally available. If not, return a default value.
                         if (attributes?.DifficultyAttributes == null || performanceCalculator == null)

@@ -266,7 +266,11 @@ namespace osu.Game.Rulesets.Osu
 
         public override DifficultyCalculator CreateDifficultyCalculator(IWorkingBeatmap beatmap) => new OsuDifficultyCalculator(RulesetInfo, beatmap);
 
+        public override DifficultyCalculator CreateModSpecificDifficultyCalculator(IWorkingBeatmap beatmap) => new OsuModSpecificDifficultyCalculator(RulesetInfo, beatmap);
+
         public override PerformanceCalculator CreatePerformanceCalculator() => new OsuPerformanceCalculator();
+
+        public override PerformanceCalculator CreateModSpecificPerformanceCalculator() => new OsuModSpecificPerformanceCalculator();
 
         public override HitObjectComposer CreateHitObjectComposer() => new OsuHitObjectComposer(this);
 

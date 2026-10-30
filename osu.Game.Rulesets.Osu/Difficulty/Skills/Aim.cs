@@ -97,6 +97,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 combinedSnapDifficulty = DiffUtils.Norm(combined_snap_norm_exponent, snapDifficulty, agilityDifficulty);
             }
 
+            if (Mods.Any(m => m is OsuModRelax))
+            {
+                combinedSnapDifficulty *= 0.75;
+                flowDifficulty *= 0.6;
+            }
+
             double totalDifficulty = combinedSnapDifficulty * pSnap + flowDifficulty * pFlow;
 
             double totalStrain = totalDifficulty * skill_multiplier_total;
