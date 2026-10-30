@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
@@ -12,7 +13,6 @@ using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterfaceV2;
 using osuTK;
-using osuTK.Graphics;
 
 namespace osu.Game.Overlays.Toolbar
 {
@@ -72,6 +72,7 @@ namespace osu.Game.Overlays.Toolbar
 
         private partial class ItemContent : CompositeDrawable
         {
+            private readonly Box background;
             private readonly Box hoverBackground;
             private readonly Box swapBackground;
 
@@ -87,17 +88,19 @@ namespace osu.Game.Overlays.Toolbar
 
                 InternalChildren = new Drawable[]
                 {
+                    background = new Box
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                    },
                     hoverBackground = new Box
                     {
                         RelativeSizeAxes = Axes.Both,
-                        Colour = Color4.White,
                         Alpha = 0,
                     },
                     // drawn over the hover background so that a swap stays visible even while the row is hovered.
                     swapBackground = new Box
                     {
                         RelativeSizeAxes = Axes.Both,
-                        Colour = Color4.White,
                         Alpha = 0,
                     },
                     new GridContainer
@@ -156,6 +159,14 @@ namespace osu.Game.Overlays.Toolbar
                         },
                     },
                 };
+            }
+
+            [BackgroundDependencyLoader]
+            private void load(OverlayColourProvider colourProvider)
+            {
+                background.Colour = colourProvider.Background5;
+                hoverBackground.Colour = colourProvider.Highlight1;
+                swapBackground.Colour = colourProvider.Highlight1;
             }
 
             protected override bool OnClick(ClickEvent e)
