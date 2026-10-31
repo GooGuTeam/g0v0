@@ -40,6 +40,15 @@ namespace osu.Game.Overlays.Settings.Sections.Gameplay
                     Caption = GameplaySettingsStrings.StarFountains,
                     Current = config.GetBindable<bool>(OsuSetting.StarFountains)
                 }),
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = GameplaySettingsStrings.UseModSpecificCalculation,
+                    Current = config.GetBindable<bool>(OsuSetting.UseModSpecificCalculation),
+                    HintText = GameplaySettingsStrings.UseModSpecificCalculationDescription,
+                })
+                {
+                    Keywords = new[] { "mod", "pp", "performance", "difficulty", "star", "relax", "algorithm" },
+                },
             };
         }
     }

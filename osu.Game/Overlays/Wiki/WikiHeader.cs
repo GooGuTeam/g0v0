@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -19,6 +19,7 @@ using osu.Game.Online;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Resources.Localisation.Web;
 using osuTK;
+using static osu.Game.Extensions.LanguageExtensions;
 
 namespace osu.Game.Overlays.Wiki
 {
@@ -26,14 +27,20 @@ namespace osu.Game.Overlays.Wiki
     {
         public static LocalisableString IndexPageString => LayoutStrings.HeaderHelpIndex;
 
+        public const float CONTROL_HEIGHT = 32;
+
         private const string github_wiki_base = @"https://github.com/ppy/osu-wiki/blob/master/wiki";
 
         public readonly Bindable<APIWikiPage> WikiPageData = new Bindable<APIWikiPage>();
+        public readonly Bindable<Language> CurrentLanguage = new Bindable<Language>();
+        public readonly Bindable<bool> IsFallback = new Bindable<bool>();
 
         public Action ShowIndexPage;
         public Action ShowParentPage;
 
         private readonly Bindable<string> githubPath = new Bindable<string>();
+
+        private WikiLocaleDropdown localeDropdown = null!;
 
         public WikiHeader()
         {
@@ -41,6 +48,7 @@ namespace osu.Game.Overlays.Wiki
             Current.Value = IndexPageString;
 
             WikiPageData.BindValueChanged(onWikiPageChange);
+            CurrentLanguage.BindValueChanged(onLanguageChange);
             Current.BindValueChanged(onCurrentChange);
         }
 
@@ -52,11 +60,16 @@ namespace osu.Game.Overlays.Wiki
             if (e.NewValue == null)
                 return;
 
+            var availableLanguages = getAvailableLanguages(e.NewValue);
+            localeDropdown.SetAvailableLanguages(availableLanguages);
+
+            IsFallback.Value = !availableLanguages.Contains(CurrentLanguage.Value);
+
             TabControl.Clear();
             Current.Value = null;
 
             TabControl.AddItem(IndexPageString);
-            githubPath.Value = $"{github_wiki_base}/{e.NewValue.Path}/{e.NewValue.Locale}.md";
+            updateGithubPath(e.NewValue);
 
             if (e.NewValue.Path == WikiOverlay.INDEX_PATH)
             {
@@ -75,7 +88,7 @@ namespace osu.Game.Overlays.Wiki
         {
             return new FillFlowContainer
             {
-                Height = 40,
+                Height = CONTROL_HEIGHT,
                 AutoSizeAxes = Axes.X,
                 Direction = FillDirection.Horizontal,
                 Spacing = new Vector2(5),
@@ -83,13 +96,53 @@ namespace osu.Game.Overlays.Wiki
                 {
                     new ShowOnGitHubButton
                     {
-                        Anchor = Anchor.CentreRight,
-                        Origin = Anchor.CentreRight,
-                        Size = new Vector2(32),
+                        Anchor = Anchor.TopLeft,
+                        Origin = Anchor.TopLeft,
+                        Size = new Vector2(CONTROL_HEIGHT),
                         TargetPath = { BindTarget = githubPath },
                     },
+                    localeDropdown = new WikiLocaleDropdown
+                    {
+                        Anchor = Anchor.TopLeft,
+                        Origin = Anchor.TopLeft,
+                        Items = getAvailableLanguages(WikiPageData.Value),
+                        ExternalCurrent = { BindTarget = CurrentLanguage },
+                    }
                 },
             };
+        }
+
+        private void onLanguageChange(ValueChangedEvent<Language> e)
+        {
+            if (WikiPageData.Value == null || IsFallback.Value)
+                return;
+
+            Language[] availableLanguages = getAvailableLanguages(WikiPageData.Value);
+
+            if (!availableLanguages.Contains(e.NewValue))
+            {
+                IsFallback.Value = true;
+                return;
+            }
+
+            updateGithubPath(WikiPageData.Value);
+        }
+
+        private void updateGithubPath(APIWikiPage page)
+            => githubPath.Value = $"{github_wiki_base}/{page.Path}/{page.Locale}.md";
+
+        private static Language[] getAvailableLanguages(APIWikiPage page)
+        {
+            if (page?.AvailableLocales == null)
+                return [Language.en];
+
+            Language[] languages = page.AvailableLocales
+                                       .Select(locale => TryParseCultureCode(locale, out var language) ? language : (Language?)null)
+                                       .Where(language => language.HasValue)
+                                       .Select(language => language.Value)
+                                       .ToArray();
+
+            return languages.Length > 0 ? languages : [Language.en];
         }
 
         private void onCurrentChange(ValueChangedEvent<LocalisableString?> e)

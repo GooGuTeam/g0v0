@@ -59,7 +59,7 @@ namespace osu.Game.Tests.Visual.Ranking
                 score.PP = 12;
                 score.Rank = perfect ? (hidden ? ScoreRank.XH : ScoreRank.X) : ScoreRank.B;
                 var attributes = new OsuDifficultyAttributes { MaxCombo = 100, HitCircleCount = 100 };
-                var calculator = new OsuRuleset().CreatePerformanceCalculator();
+                var calculator = ModSpecificCalculation.CreatePerformanceCalculator(new OsuRuleset())!;
                 fullComboExpected = calculator.Calculate(FullComboScoreInfo.Create(score)!, attributes).Total;
                 perfectExpected = calculator.Calculate(PerfectScoreInfo.Create(score)!, attributes).Total;
                 difficultyCache.Difficulty = new StarDifficulty(attributes, new PerformanceAttributes { Total = 123 });

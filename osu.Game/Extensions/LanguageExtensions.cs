@@ -6,6 +6,7 @@ using System.Globalization;
 using osu.Framework.Configuration;
 using osu.Framework.Localisation;
 using osu.Game.Localisation;
+using osu.Game.Users;
 
 namespace osu.Game.Extensions
 {
@@ -67,5 +68,54 @@ namespace osu.Game.Extensions
 
             return Language.en;
         }
+
+        /// <summary>
+        /// Convert the <see cref="Language"/> to the corresponding <see cref="CountryCode"/>.
+        /// </summary>
+        /// <param name="language">The <see cref="Language"/>.</param>
+        /// <returns>The corresponding <see cref="CountryCode"/>.</returns>
+        public static CountryCode GetCountryCode(Language language) => language switch
+        {
+            Language.en => CountryCode.GB,
+            Language.be => CountryCode.BY,
+            Language.bg => CountryCode.BG,
+            Language.ca => CountryCode.AD,
+            Language.cs => CountryCode.CZ,
+            Language.da => CountryCode.DK,
+            Language.de => CountryCode.DE,
+            Language.el => CountryCode.GR,
+            Language.es => CountryCode.ES,
+            Language.es_419 => CountryCode.MX,
+            Language.fi => CountryCode.FI,
+            Language.fil => CountryCode.PH,
+            Language.fr => CountryCode.FR,
+            Language.hr_hr => CountryCode.HR,
+            Language.hu => CountryCode.HU,
+            Language.id => CountryCode.ID,
+            Language.it => CountryCode.IT,
+            Language.ja => CountryCode.JP,
+            Language.ko => CountryCode.KR,
+            Language.lt => CountryCode.LT,
+            Language.lv_lv => CountryCode.LV,
+            Language.ms_my => CountryCode.MY,
+            Language.nl => CountryCode.NL,
+            Language.no => CountryCode.NO,
+            Language.pl => CountryCode.PL,
+            Language.pt => CountryCode.PT,
+            Language.pt_br => CountryCode.BR,
+            Language.ro => CountryCode.RO,
+            Language.ru => CountryCode.RU,
+            Language.sk => CountryCode.SK,
+            Language.sl => CountryCode.SI,
+            Language.sr => CountryCode.RS,
+            Language.sv => CountryCode.SE,
+            Language.th => CountryCode.TH,
+            Language.tr => CountryCode.TR,
+            Language.uk => CountryCode.UA,
+            Language.vi => CountryCode.VN,
+            Language.zh => CountryCode.CN,
+            Language.zh_hant => CountryCode.TW,
+            _ => CountryCode.Unknown,
+        };
     }
 }

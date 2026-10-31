@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using Markdig.Syntax.Inlines;
 using osu.Framework.Allocation;
@@ -7,6 +7,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Containers.Markdown;
 using osu.Framework.Graphics.Sprites;
+using osu.Game.Overlays.ImagePreview;
 using osuTK;
 
 namespace osu.Game.Overlays.Wiki.Markdown
@@ -56,20 +57,31 @@ namespace osu.Game.Overlays.Wiki.Markdown
                 RelativeSizeAxes = Axes.X;
             }
 
-            protected override ImageContainer CreateImageContainerCore(string mediaUrl) => new BlockImageContainer(mediaUrl);
+            protected override ImageContainer CreateImageContainerCore(string mediaUrl)
+            {
+                var container = new BlockImageContainer(mediaUrl);
+                container.OnLoadComplete += d => d.FadeInFromZero(300, Easing.OutQuint);
+                return container;
+            }
 
             private partial class BlockImageContainer : ImageContainer
             {
+                private PreviewableSprite sprite = null!;
+
                 public BlockImageContainer(string url)
                     : base(url)
                 {
+                    // the sprite is created from ImageContainer's constructor, which runs before this type's fields are
+                    // assigned, so the url can only be handed over to it here.
+                    sprite.Url = url;
+
                     AutoSizeAxes = Axes.Y;
                     RelativeSizeAxes = Axes.X;
                 }
 
-                protected override Sprite CreateImageSprite() => new ImageSprite();
+                protected override Sprite CreateImageSprite() => sprite = new ImageSprite();
 
-                private partial class ImageSprite : Sprite
+                private partial class ImageSprite : PreviewableSprite
                 {
                     public ImageSprite()
                     {

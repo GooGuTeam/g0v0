@@ -37,6 +37,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
             const double skill_multiplier = 1.16;
 
+            if (Mods.Any(m => m is OsuModRelax))
+                return 0;
+
             double decay = strainDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
 
             currentStrain *= decay;

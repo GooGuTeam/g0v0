@@ -80,6 +80,17 @@ namespace osu.Game.Localisation
         public static LocalisableString StarFountains => new TranslatableString(getKey(@"star_fountains"), @"Star fountains");
 
         /// <summary>
+        /// "Use mod-specific pp and difficulty algorithms"
+        /// </summary>
+        public static LocalisableString UseModSpecificCalculation => new TranslatableString(getKey(@"use_mod_specific_calculation"), @"Use mod-specific pp and difficulty algorithms");
+
+        /// <summary>
+        /// "Whether to enable the algorithm specific to mods such as Relax. Existing scores will not be recalculated."
+        /// </summary>
+        public static LocalisableString UseModSpecificCalculationDescription => new TranslatableString(getKey(@"use_mod_specific_calculation_description"),
+            @"Whether to enable the algorithm specific to mods such as Relax. Existing scores will not be recalculated.");
+
+        /// <summary>
         /// "Always show key overlay"
         /// </summary>
         public static LocalisableString AlwaysShowKeyOverlay => new TranslatableString(getKey(@"key_overlay"), @"Always show key overlay");

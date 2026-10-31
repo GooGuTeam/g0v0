@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
-// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -25,7 +25,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
     {
         public const double PERFORMANCE_BASE_MULTIPLIER = 1.12; // This is being adjusted to keep the final pp value scaled around what it used to be when changing things.
         public const double PERFORMANCE_NORM_EXPONENT = 1.1;
-        public const double RELAX_MULTIPLIER = 1.18;
 
         private bool usingClassicSliderAccuracy;
         private bool usingScoreV2;
@@ -63,8 +62,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private double? speedDeviation;
 
-        private bool isRelax;
-
         private double aimEstimatedSliderBreaks;
         private double speedEstimatedSliderBreaks;
 
@@ -79,9 +76,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         {
             var osuAttributes = (OsuDifficultyAttributes)attributes;
 
-            isRelax = score.Mods.Any(m => m is OsuModRelax);
-
-            usingClassicSliderAccuracy = score.Mods.Any(m => m is ModScoreV1) || score.Mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value);
+            usingClassicSliderAccuracy = score.Mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value);
             usingScoreV2 = score.Mods.Any(m => m is ModScoreV2);
 
             accuracy = Math.Clamp(score.Accuracy, 0, 1);
@@ -155,8 +150,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
                 // As we're adding Oks and Mehs to an approximated number of combo breaks the result can be higher than total hits in specific scenarios (which breaks some calculations) so we need to clamp it.
                 effectiveMissCount = Math.Min(effectiveMissCount + countOk * okMultiplier + countMeh * mehMultiplier, totalHits);
-
-                multiplier *= RELAX_MULTIPLIER;
             }
 
             speedDeviation = calculateSpeedDeviation(osuAttributes);
@@ -168,12 +161,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             double readingValue = computeReadingValue(osuAttributes);
             double flashlightValue = computeFlashlightValue(score, osuAttributes);
             double cognitionValue = OsuDifficultyCalculator.SumCognitionDifficulty(readingValue, flashlightValue);
-
-            if (isRelax)
-            {
-                aimValue *= 1.715;
-                accuracyValue *= 1.52;
-            }
 
             double totalValue = DiffUtils.Norm(PERFORMANCE_NORM_EXPONENT, aimValue, speedValue, accuracyValue, cognitionValue) * multiplier;
 
@@ -205,7 +192,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             {
                 double estimateImproperlyFollowedDifficultSliders;
 
-                if (usingClassicSliderAccuracy || usingScoreV2)
+                if (usingClassicSliderAccuracy)
                 {
                     // When the score is considered classic (regardless if it was made on old client or not) we consider all missing combo to be dropped difficult sliders
                     int maximumPossibleDroppedSliders = totalImperfectHits;
@@ -218,16 +205,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                     estimateImproperlyFollowedDifficultSliders = Math.Clamp(countSliderEndsDropped + countSliderTickMiss, 0, attributes.AimDifficultSliderCount);
                 }
 
-                double sliderNerfFactor = (1 - attributes.SliderFactor) * DiffUtils.Pow(1 - estimateImproperlyFollowedDifficultSliders / attributes.AimDifficultSliderCount, 3)
-                                          + attributes.SliderFactor;
+                double sliderNerfFactor = (1 - attributes.SliderFactor) * DiffUtils.Pow(1 - estimateImproperlyFollowedDifficultSliders / attributes.AimDifficultSliderCount, 3) + attributes.SliderFactor;
                 aimDifficulty *= sliderNerfFactor;
             }
 
             double aimValue = DifficultyToPerformance(aimDifficulty);
 
-            double lengthBonusBase = isRelax ? 0.88 : 0.95;
-            double hitMultiple = isRelax ? 0.4 : 0.35;
-            double lengthBonus = lengthBonusBase + hitMultiple * Math.Min(1.0, totalHits / 2000.0) +
+            double lengthBonus = 0.95 + 0.35 * Math.Min(1.0, totalHits / 2000.0) +
                                  (totalHits > 2000 ? Math.Log10(totalHits / 2000.0) * 0.5 : 0.0);
             aimValue *= lengthBonus;
 
@@ -246,13 +230,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 aimValue *= 1.0 + calculateTraceableBonus(attributes.SliderFactor);
             }
 
-            // R* Tweak acc bonus for RX
-            aimValue *= isRelax ? 0.3 + accuracy / 2.0 : accuracy;
-            // It is important to consider accuracy difficulty when scaling with accuracy.
-            aimValue *= 0.98 + Math.Pow(Math.Max(0.0, overallDifficulty), 2) / 2500.0;
-            // R* Bonus normal clock rate scores
-            if (isRelax && clockRate <= 1.0)
-                aimValue *= 1.20;
+            aimValue *= accuracy;
 
             return aimValue;
         }
@@ -295,6 +273,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private double computeAccuracyValue(ScoreInfo score, OsuDifficultyAttributes attributes)
         {
+            if (score.Mods.Any(h => h is OsuModRelax))
+                return 0.0;
+
             // This percentage only considers HitCircles of any value - in this part of the calculation we focus on hitting the timing hit window.
             double betterAccuracyPercentage;
             int amountHitObjectsWithAccuracy = attributes.HitCircleCount;
@@ -372,7 +353,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double missCount = countMiss;
 
-            if (usingClassicSliderAccuracy || usingScoreV2)
+            if (usingClassicSliderAccuracy)
             {
                 // If sliders in the map are hard - it's likely for player to drop sliderends
                 // If map has easy sliders - it's more likely for player to sliderbreak
@@ -417,7 +398,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         {
             int nonMissMistakes = countOk + countMeh;
 
-            if ((!usingClassicSliderAccuracy && !usingScoreV2) || nonMissMistakes == 0)
+            if (!usingClassicSliderAccuracy || nonMissMistakes == 0)
                 return 0;
 
             double missedComboPercent = 1.0 - (double)scoreMaxCombo / attributes.MaxCombo;
@@ -558,20 +539,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         // Miss penalty assumes that a player will miss on the hardest parts of a map,
         // so we use the amount of relatively difficult sections to adjust miss penalty
         // to make it more punishing on maps with lower amount of hard sections.
-        private double calculateMissPenalty(double missCount, double difficultStrainCount)
-        {
-            if (!isRelax) return 0.93 / (missCount / (4 * Math.Log(Math.Max(1, difficultStrainCount))) + 1);
-            if (totalHits <= 0)
-                return 1.0;
-
-            double missPortion = missCount / totalHits;
-            missPortion = Math.Clamp(missPortion, 0.0, 1.0);
-
-            return 0.97 * DiffUtils.Pow(1.0 - DiffUtils.Pow(missPortion, 0.5), 1.0 + missCount / 1.5);
-        }
-
-        private double getComboScalingFactor(OsuDifficultyAttributes attributes) =>
-            attributes.MaxCombo <= 0 ? 1.0 : Math.Min(DiffUtils.Pow(scoreMaxCombo, 0.8) / DiffUtils.Pow(attributes.MaxCombo, 0.8), 1.0);
+        private double calculateMissPenalty(double missCount, double difficultStrainCount) => 0.93 / (missCount / (4 * Math.Log(Math.Max(1, difficultStrainCount))) + 1);
+        private double getComboScalingFactor(OsuDifficultyAttributes attributes) => attributes.MaxCombo <= 0 ? 1.0 : Math.Min(DiffUtils.Pow(scoreMaxCombo, 0.8) / DiffUtils.Pow(attributes.MaxCombo, 0.8), 1.0);
 
         private double calculateRateAdjustedApproachRate(double approachRate, double clockRate)
         {

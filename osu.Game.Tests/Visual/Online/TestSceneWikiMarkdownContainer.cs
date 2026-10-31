@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -12,10 +12,12 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.Textures;
 using osu.Framework.Testing;
 using osu.Game.Graphics.Containers.Markdown;
 using osu.Game.Graphics.Containers.Markdown.Footnotes;
 using osu.Game.Overlays;
+using osu.Game.Overlays.ImagePreview;
 using osu.Game.Overlays.Wiki.Markdown;
 using osu.Game.Users.Drawables;
 using osuTK.Input;
@@ -30,9 +32,24 @@ namespace osu.Game.Tests.Visual.Online
         [Cached]
         private readonly OverlayColourProvider overlayColour = new OverlayColourProvider(OverlayColourScheme.Orange);
 
+        private Texture texture;
+
+        /// <summary>
+        /// The preview overlay, standing in for the game-wide one images are made previewable against.
+        /// </summary>
+        private ImagePreviewOverlay preview;
+
+        [BackgroundDependencyLoader]
+        private void load(TextureStore textures)
+        {
+            texture = textures.Get(@"Menu/logo");
+        }
+
         [SetUp]
         public void Setup() => Schedule(() =>
         {
+            preview = new ImagePreviewOverlay();
+
             Children = new Drawable[]
             {
                 new Box
@@ -44,14 +61,17 @@ namespace osu.Game.Tests.Visual.Online
                 {
                     RelativeSizeAxes = Axes.Both,
                     Padding = new MarginPadding(20),
-                }
+                },
+                preview,
             };
 
             scrollContainer.Child = new DependencyProvidingContainer
             {
                 CachedDependencies = new (Type, object)[]
                 {
-                    (typeof(OverlayScrollContainer), scrollContainer)
+                    (typeof(OverlayScrollContainer), scrollContainer),
+                    // mirrors the wiring done in OsuGame, where the overlay is cached so that any drawable can resolve it.
+                    (typeof(IImagePreviewOverlay), preview),
                 },
                 RelativeSizeAxes = Axes.X,
                 AutoSizeAxes = Axes.Y,
@@ -79,6 +99,17 @@ namespace osu.Game.Tests.Visual.Online
 
             AddStep("set 'Formatting''", () => markdownContainer.Text = "[wiki formatting guidline](Formatting)");
             AddAssert("check url", () => markdownContainer.Link.Url == $"{API.Endpoints.WebsiteUrl}/wiki/Article_styling_criteria/Formatting");
+        }
+
+        [Test]
+        public void TestOutdatedTranslationNoticeBox()
+        {
+            AddStep("Add outdated translation yaml header", () =>
+            {
+                markdownContainer.Text = @"---
+outdated_translation: true
+---";
+            });
         }
 
         [Test]
@@ -230,6 +261,36 @@ public class WikiMarkdownContainer : MarkdownContainer
 This is a line after the fenced code block!
 ";
             });
+        }
+
+        [TestCase("![alt text](/wiki/shared/test.png \"a wiki image\")", "block")]
+        [TestCase("text before ![alt text](/wiki/shared/test.png \"a wiki image\") text after", "inline")]
+        public void TestImageIsPreviewable(string markdown, string kind)
+        {
+            PreviewableSprite image = null;
+
+            AddStep($"set content with an {kind} image", () => markdownContainer.Text = markdown);
+
+            AddUntilStep("image created", () => markdownContainer.ChildrenOfType<PreviewableSprite>().Any());
+            AddStep("take image reference", () => image = markdownContainer.ChildrenOfType<PreviewableSprite>().Single());
+
+            // a container deriving from ImageContainer creates its sprite before its own constructor runs, so the url
+            // is the thing most likely to be silently dropped on the way to the preview.
+            AddAssert("image knows its url", () => !string.IsNullOrEmpty(image.Url));
+
+            // the tooltip lives on the markdown image rather than on the sprite the preview is opened from,
+            // so it has to survive the image being made previewable.
+            AddAssert("tooltip text retained", () => markdownContainer.ChildrenOfType<WikiMarkdownImage>().Single().TooltipText.ToString() == @"a wiki image");
+
+            // the image is fetched through the media endpoint, which the test environment cannot reach, so it never
+            // gets a texture and therefore has no size to be clicked at. stand in for the real load.
+            AddStep("give the image a texture", () => image.Texture = texture);
+            AddUntilStep("image has size", () => image.ScreenSpaceDrawQuad.Width > 0);
+
+            AddStep("move mouse to image", () => InputManager.MoveMouseTo(image));
+            AddStep("click image", () => InputManager.Click(MouseButton.Left));
+
+            AddUntilStep("preview shown", () => preview.State.Value == Visibility.Visible);
         }
 
         private partial class TestMarkdownContainer : WikiMarkdownContainer

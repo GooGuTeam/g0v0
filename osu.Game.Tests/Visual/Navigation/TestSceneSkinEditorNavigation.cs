@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -294,7 +294,16 @@ namespace osu.Game.Tests.Visual.Navigation
             AddUntilStep("skin editor hidden", () => skinEditor.State.Value == Visibility.Hidden);
 
             AddStep("move cursor slightly", () => InputManager.MoveMouseTo(InputManager.ScreenSpaceDrawQuad.TopRight + new Vector2(2)));
-            AddUntilStep("settings visible", () => getPlayerSettingsOverlay().DrawWidth, () => Is.GreaterThan(0));
+
+            // the player screen can still be transitioning in when the move above is dispatched, in which case it is not
+            // delivered to the settings overlay (which only expands after receiving one), so keep nudging the cursor.
+            int nudge = 0;
+
+            AddUntilStep("settings visible", () =>
+            {
+                InputManager.MoveMouseTo(InputManager.ScreenSpaceDrawQuad.TopRight + new Vector2(2 + nudge++ % 2));
+                return getPlayerSettingsOverlay().DrawWidth;
+            }, () => Is.GreaterThan(0));
 
             AddStep("move cursor to right of screen too far", () => InputManager.MoveMouseTo(InputManager.ScreenSpaceDrawQuad.TopRight + new Vector2(10240, 0)));
             AddUntilStep("settings not visible", () => getPlayerSettingsOverlay().DrawWidth, () => Is.EqualTo(0));

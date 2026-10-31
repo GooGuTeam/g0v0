@@ -26,6 +26,7 @@ using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Resources.Localisation.Web;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Scoring;
 using osu.Game.Screens.Select;
 using osu.Game.Skinning;
@@ -498,7 +499,7 @@ namespace osu.Game.Screens.Ranking
             if (score.PP != null || score.BeatmapInfo == null)
                 return;
 
-            var calculator = score.Ruleset.CreateInstance().CreatePerformanceCalculator();
+            var calculator = ModSpecificCalculation.CreatePerformanceCalculator(score.Ruleset.CreateInstance());
 
             if (calculator == null)
                 return;

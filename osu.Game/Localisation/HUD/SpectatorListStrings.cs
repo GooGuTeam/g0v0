@@ -7,7 +7,7 @@ namespace osu.Game.Localisation.HUD
 {
     public static class SpectatorListStrings
     {
-        private const string prefix = @"osu.Game.Resources.Localisation.SpectatorList";
+        private const string prefix = @"osu.Game.Resources.Localisation.HUD.SpectatorList";
 
         /// <summary>
         /// "Spectators ({0})"

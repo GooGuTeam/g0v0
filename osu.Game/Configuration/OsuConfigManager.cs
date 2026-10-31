@@ -67,6 +67,8 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ProfileCoverExpanded, true);
 
             SetDefault(OsuSetting.ToolbarClockDisplayMode, ToolbarClockDisplayMode.Full);
+            SetDefault(OsuSetting.ToolbarButtons, string.Empty);
+            SetDefault(OsuSetting.ToolbarAutoHideButtons, false);
 
             SetDefault(OsuSetting.SongSelectBackgroundBlur, false);
             SetDefault(OsuSetting.UseV2ResultsScreen, false);
@@ -161,6 +163,7 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.HitLighting, true);
             SetDefault(OsuSetting.StarFountains, true);
+            SetDefault(OsuSetting.UseModSpecificCalculation, true);
 
             SetDefault(OsuSetting.HUDVisibilityMode, HUDVisibilityMode.Always);
             SetDefault(OsuSetting.ShowHealthDisplayWhenCantFail, true);
@@ -408,6 +411,8 @@ namespace osu.Game.Configuration
         ChatDisplayHeight,
         BeatmapListingCardSize,
         ToolbarClockDisplayMode,
+        ToolbarButtons,
+        ToolbarAutoHideButtons,
         SongSelectBackgroundBlur,
         Version,
         ShowFirstRunSetup,
@@ -525,5 +530,11 @@ namespace osu.Game.Configuration
         ToriiStableResults,
         ToriiLegacyFont,
         UnslantedSongSelectUI,
+
+        /// <summary>
+        /// Uses the mod-specific difficulty and performance algorithms of rulesets which provide them (for example Relax in osu!).
+        /// Scores which were already submitted are not recalculated.
+        /// </summary>
+        UseModSpecificCalculation,
     }
 }

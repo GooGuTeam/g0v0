@@ -24,7 +24,7 @@ namespace osu.Game.Rulesets.Difficulty
             => CreatePerformanceAttributes(score, attributes);
 
         public PerformanceAttributes Calculate(ScoreInfo score, IWorkingBeatmap beatmap)
-            => Calculate(score, Ruleset.CreateDifficultyCalculator(beatmap).Calculate(score.Mods));
+            => Calculate(score, ModSpecificCalculation.CreateDifficultyCalculator(Ruleset, beatmap).Calculate(score.Mods));
 
         /// <summary>
         /// Creates <see cref="PerformanceAttributes"/> to describe a score's performance.

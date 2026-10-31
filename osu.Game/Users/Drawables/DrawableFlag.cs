@@ -17,10 +17,10 @@ namespace osu.Game.Users.Drawables
 
         public LocalisableString TooltipText { get; }
 
-        public DrawableFlag(CountryCode countryCode)
+        public DrawableFlag(CountryCode countryCode, bool showTooltip = true)
         {
             this.countryCode = countryCode;
-            TooltipText = countryCode == CountryCode.Unknown ? string.Empty : countryCode.GetDescription();
+            TooltipText = showTooltip && countryCode != CountryCode.Unknown ? countryCode.GetDescription() : string.Empty;
         }
 
         [BackgroundDependencyLoader]

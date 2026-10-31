@@ -175,6 +175,7 @@ namespace osu.Game
 
         private readonly Bindable<bool> legacyFontSetting = new Bindable<bool>();
         private readonly Bindable<bool> unslantedSongSelectUI = new Bindable<bool>();
+        private readonly Bindable<bool> useModSpecificCalculation = new Bindable<bool>();
 
         protected SessionStatics SessionStatics { get; private set; }
 
@@ -336,6 +337,8 @@ namespace osu.Game
             unslantedSongSelectUI.BindValueChanged(e => OsuGame.SetUnslantedUI(e.NewValue), true);
             LocalConfig.BindWith(OsuSetting.ToriiLegacyFont, legacyFontSetting);
             legacyFontSetting.BindValueChanged(e => Screens.Select.LegacyFonts.UseInterFont = e.NewValue, true);
+            LocalConfig.BindWith(OsuSetting.UseModSpecificCalculation, useModSpecificCalculation);
+            useModSpecificCalculation.BindValueChanged(e => Rulesets.Difficulty.ModSpecificCalculation.Enabled = e.NewValue, true);
             dependencies.CacheAs<IGameplaySettings>(LocalConfig);
 
             InitialiseFonts();

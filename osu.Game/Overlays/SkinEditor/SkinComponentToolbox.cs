@@ -1,9 +1,10 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
 using osu.Framework.Allocation;
+using osu.Framework.Development;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Events;
@@ -60,9 +61,24 @@ namespace osu.Game.Overlays.SkinEditor
         {
             fill.Clear();
 
-            var skinnableTypes = SerialisedDrawableInfo.GetAllAvailableDrawables(ruleset);
-            foreach (var type in skinnableTypes)
-                attemptAddComponent(type);
+            // Populating the list works by loading every candidate and keeping the ones which succeed, which is how components are narrowed down to those
+            // the current target can host. A component which cannot resolve its dependencies is therefore an expected outcome here - but the load error
+            // boundary (see LoadErrorHandling) would report it as an error and leave a placeholder in the list in its place. The boundary is suspended for
+            // the probe so that such a failure surfaces out of attemptAddComponent() instead, which is what the filtering is built on. Everything in this
+            // loop loads synchronously, and the boundary is restored as soon as the list has been populated.
+            bool loadErrorHandling = LoadErrorHandling.Enabled;
+            LoadErrorHandling.Enabled = false;
+
+            try
+            {
+                var skinnableTypes = SerialisedDrawableInfo.GetAllAvailableDrawables(ruleset);
+                foreach (var type in skinnableTypes)
+                    attemptAddComponent(type);
+            }
+            finally
+            {
+                LoadErrorHandling.Enabled = loadErrorHandling;
+            }
         }
 
         private void attemptAddComponent(Type type)
