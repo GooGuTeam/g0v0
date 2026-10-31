@@ -108,6 +108,21 @@ namespace osu.Game.Localisation
         public static LocalisableString PersonalBest => new TranslatableString(getKey(@"personal_best"), @"Personal best");
 
         /// <summary>
+        /// "Accuracy:
+        /// Error: {0:0.00}ms - {1:0.00}ms avg
+        /// Unstable Rate: {2:0.00}"
+        /// </summary>
+        public static LocalisableString LegacyHealthGraphTooltipText(double earlyAverage, double lateAverage, double unstableRate) => new TranslatableString(getKey(@"legacy_health_graph_tooltip_text"), @"Accuracy:
+Error: {0:0.00}ms - {1:0.00}ms avg
+Unstable Rate: {2:0.00}", earlyAverage, lateAverage, unstableRate);
+
+        /// <summary>
+        /// "▼ Online Ranking ▼"
+        /// </summary>
+        public static LocalisableString LegacyOnlineRankingButtonText => new TranslatableString(getKey(@"legacy_online_ranking_button_text"), @"▼ Online Ranking ▼");
+
+
+        /// <summary>
         /// "Combo"
         /// </summary>
         public static LocalisableString Combo => new TranslatableString(getKey(@"combo"), @"Combo");
