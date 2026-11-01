@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -47,8 +47,11 @@ namespace osu.Game.Storyboards.Drawables
         [Cached(typeof(IReadOnlyList<Mod>))]
         public IReadOnlyList<Mod> Mods { get; }
 
-        [Resolved]
-        private GameHost host { get; set; } = null!;
+        [Resolved(canBeNull: true)]
+        private GameHost? host { get; set; }
+
+        [Resolved(canBeNull: true)]
+        private osu.Game.IO.IStorageResourceProvider? resourceProvider { get; set; }
 
         [Resolved]
         private RealmAccess realm { get; set; } = null!;
@@ -93,10 +96,11 @@ namespace osu.Game.Storyboards.Drawables
             if (clock != null)
                 Clock = clock;
 
-            dependencies.CacheAs(typeof(TextureStore),
-                new TextureStore(host.Renderer, host.CreateTextureLoaderStore(
-                    CreateResourceLookupStore()
-                ), false, scaleAdjust: 1));
+            var renderer = resourceProvider?.Renderer ?? host?.Renderer
+                ?? throw new InvalidOperationException(@"A storyboard renderer is required.");
+            var loader = resourceProvider?.CreateTextureLoaderStore(CreateResourceLookupStore())
+                         ?? host!.CreateTextureLoaderStore(CreateResourceLookupStore());
+            dependencies.CacheAs(typeof(TextureStore), new TextureStore(renderer, loader, false, scaleAdjust: 1));
 
             foreach (var layer in Storyboard.Layers)
             {
@@ -125,7 +129,9 @@ namespace osu.Game.Storyboards.Drawables
             passing.BindValueChanged(_ => updateLayerVisibility(), true);
         }
 
-        protected virtual IResourceStore<byte[]> CreateResourceLookupStore() => new StoryboardResourceLookupStore(Storyboard, realm, host);
+        protected virtual IResourceStore<byte[]> CreateResourceLookupStore() => resourceProvider != null
+            ? new StoryboardResourceLookupStore(Storyboard, resourceProvider.Files)
+            : new StoryboardResourceLookupStore(Storyboard, realm, host!);
 
         protected override void Update()
         {
@@ -145,15 +151,26 @@ namespace osu.Game.Storyboards.Drawables
         {
             private readonly IResourceStore<byte[]> realmFileStore;
             private readonly Storyboard storyboard;
+            private readonly bool ownsStore;
 
             public StoryboardResourceLookupStore(Storyboard storyboard, RealmAccess realm, GameHost host)
             {
                 realmFileStore = new RealmFileStore(realm, host.Storage).Store;
                 this.storyboard = storyboard;
+                ownsStore = true;
             }
 
-            public void Dispose() =>
-                realmFileStore.Dispose();
+            public StoryboardResourceLookupStore(Storyboard storyboard, IResourceStore<byte[]> files)
+            {
+                realmFileStore = files;
+                this.storyboard = storyboard;
+            }
+
+            public void Dispose()
+            {
+                if (ownsStore)
+                    realmFileStore.Dispose();
+            }
 
             public byte[] Get(string name)
             {

@@ -68,7 +68,7 @@ namespace osu.Game.Graphics.Containers
             Vector2 offset = Vector2.Zero;
             Vector2 scale = new Vector2(1 + Math.Abs(amount));
 
-            if (input.CurrentState.Mouse != null)
+            if (input != null && input.CurrentState.Mouse != null)
             {
                 Vector2 sizeDiv2 = DrawSize / 2;
                 Vector2 relativeAmount = ToLocalSpace(input.CurrentState.Mouse.Position) - sizeDiv2;

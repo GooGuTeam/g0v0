@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -12,6 +12,7 @@ using osu.Framework.Audio;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Rendering;
 using osu.Framework.IO.Stores;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
@@ -54,10 +55,28 @@ namespace osu.Game.Skinning
             this.beatmapSkin = beatmapSkin;
         }
 
-        [BackgroundDependencyLoader]
+        private readonly ISkin privateClassicSkin;
+        private readonly ISkin privateRulesetResources;
+        private readonly bool? privateUserSkinIsLegacy;
+
+        /// <summary>
+        /// Uses worker-owned skins instead of allocating against a live host's GPU/audio.
+        /// The caller owns and disposes both supplied skins after disposing the scene.
+        /// </summary>
+        public RulesetSkinProvidingContainer(Ruleset ruleset, IBeatmap beatmap, ISkin beatmapSkin, ISkin classicSkin = null, ISkin rulesetResources = null, bool? userSkinIsLegacy = null)
+            : this(ruleset, beatmap, beatmapSkin)
+        {
+            privateClassicSkin = classicSkin;
+            privateRulesetResources = rulesetResources;
+            privateUserSkinIsLegacy = userSkinIsLegacy;
+        }
+
+        [BackgroundDependencyLoader(true)]
         private void load(SkinManager skinManager)
         {
-            InternalChild = new BeatmapSkinProvidingContainer(GetRulesetTransformedSkin(beatmapSkin), GetRulesetTransformedSkin(skinManager.DefaultClassicSkin))
+            var classicSkin = privateClassicSkin ?? skinManager?.DefaultClassicSkin
+                ?? throw new System.InvalidOperationException("A classic skin source is required.");
+            InternalChild = new BeatmapSkinProvidingContainer(GetRulesetTransformedSkin(beatmapSkin), GetRulesetTransformedSkin(classicSkin), privateUserSkinIsLegacy)
             {
                 Child = Content,
                 BeatmapSkins = BeatmapSkins,
@@ -70,8 +89,14 @@ namespace osu.Game.Skinning
 
         protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
         {
-            if (Ruleset.CreateResourceStore() is IResourceStore<byte[]> resources)
-                rulesetResourcesSkin = new ResourceStoreBackedSkin(resources, parent.Get<GameHost>(), parent.Get<AudioManager>());
+            if (privateRulesetResources == null && Ruleset.CreateResourceStore() is IResourceStore<byte[]> resources)
+            {
+                var renderer = parent.Get<IRenderer>() ?? parent.Get<GameHost>()?.Renderer;
+                if (renderer != null)
+                    rulesetResourcesSkin = new ResourceStoreBackedSkin(resources, renderer, parent.Get<AudioManager>());
+                else
+                    rulesetResourcesSkin = new ResourceStoreBackedSkin(resources, parent.Get<GameHost>(), parent.Get<AudioManager>());
+            }
 
             return base.CreateChildDependencies(parent);
         }
@@ -104,9 +129,9 @@ namespace osu.Game.Skinning
             // This is achieved by placing them before the last instance of DefaultSkin.
             // Note that DefaultSkin may not be present in some test scenes.
             if (lastDefaultSkinIndex >= 0)
-                sources.Insert(lastDefaultSkinIndex, rulesetResourcesSkin);
+                sources.Insert(lastDefaultSkinIndex, privateRulesetResources ?? rulesetResourcesSkin);
             else
-                sources.Add(rulesetResourcesSkin);
+                sources.Add(privateRulesetResources ?? rulesetResourcesSkin);
 
             SetSources(sources);
         }

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -29,6 +29,11 @@ namespace osu.Game.Beatmaps
     {
         public readonly BeatmapInfo BeatmapInfo;
         public readonly BeatmapSetInfo BeatmapSetInfo;
+
+        /// <summary>
+        /// Whether local difficulty calculation is permitted for this beatmap.
+        /// </summary>
+        public virtual bool CanCalculateDifficulty => true;
 
         // TODO: remove once the fallback lookup is not required (and access via `working.BeatmapInfo.Metadata` directly).
         public BeatmapMetadata Metadata => BeatmapInfo.Metadata;

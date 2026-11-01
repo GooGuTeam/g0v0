@@ -67,6 +67,8 @@ namespace osu.Game.Screens.Ranking
 
         private readonly Bindable<DownloadState> replayState = new Bindable<DownloadState>();
         private bool exportWhenDownloaded;
+        private ScreenFooterButton videoButton = null!;
+        private bool exportVideoWhenDownloaded;
 
         [Resolved]
         private ScoreManager scoreManager { get; set; } = null!;
@@ -141,6 +143,14 @@ namespace osu.Game.Screens.Ranking
                     AccentColour = colours.Yellow,
                     Hotkey = GlobalAction.SaveReplay,
                     Action = watchReplay,
+                },
+                videoButton = new ScreenFooterButton
+                {
+                    Text = VideoRecordingStrings.ExportReplay,
+                    Icon = FontAwesome.Solid.Video,
+                    AccentColour = colours.Yellow,
+                    Action = exportVideo,
+                    Enabled = { Value = false },
                 },
                 RetryButton = new ScreenFooterButton
                 {
@@ -236,8 +246,13 @@ namespace osu.Game.Screens.Ranking
             bool available = AllowWatchingReplay && Score != null && (local || Score.HasOnlineReplay);
 
             if (replayState.Value == DownloadState.NotDownloaded)
+            {
                 exportWhenDownloaded = false;
+                exportVideoWhenDownloaded = false;
+            }
 
+            videoButton.Enabled.Value = available && !busy && game != null;
+            videoButton.TooltipText = busy ? ResultsScreenStrings.DownloadingReplay : available ? VideoRecordingStrings.ExportReplay : ResultsScreenStrings.ReplayUnavailable;
             ExportButton.Enabled.Value = available && !busy;
             ReplayButton.Enabled.Value = available && !busy && game != null;
             ReplayButton.TooltipText = busy ? ResultsScreenStrings.DownloadingReplay : available ? SongSelectStrings.WatchReplay : ResultsScreenStrings.ReplayUnavailable;
@@ -247,6 +262,12 @@ namespace osu.Game.Screens.Ranking
             {
                 exportWhenDownloaded = false;
                 _ = scoreManager.Export(Score!);
+            }
+
+            if (local && exportVideoWhenDownloaded)
+            {
+                exportVideoWhenDownloaded = false;
+                game?.PresentScore(Score!, ScorePresentType.Video);
             }
         }
 
@@ -271,6 +292,20 @@ namespace osu.Game.Screens.Ranking
             else
             {
                 exportWhenDownloaded = true;
+                downloader.Download(Score);
+            }
+        }
+
+        private void exportVideo()
+        {
+            if (!videoButton.Enabled.Value || Score == null)
+                return;
+
+            if (replayState.Value == DownloadState.LocallyAvailable)
+                game?.PresentScore(Score, ScorePresentType.Video);
+            else
+            {
+                exportVideoWhenDownloaded = true;
                 downloader.Download(Score);
             }
         }

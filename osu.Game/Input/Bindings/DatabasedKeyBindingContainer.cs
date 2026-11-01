@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -27,8 +27,13 @@ namespace osu.Game.Input.Bindings
 
         private IDisposable realmSubscription;
 
-        [Resolved]
+        [Resolved(canBeNull: true)]
         private RealmAccess realm { get; set; }
+
+        [Resolved(canBeNull: true)]
+        private osu.Game.IO.IStorageResourceProvider resourceProvider { get; set; }
+
+        private bool offlinePlayback => resourceProvider is osu.Game.IO.OfflineStorageResourceProvider;
 
         public override IEnumerable<IKeyBinding> DefaultKeyBindings => ruleset.CreateInstance().GetDefaultKeyBindings(variant ?? 0);
 
@@ -51,17 +56,31 @@ namespace osu.Game.Input.Bindings
 
         protected override void LoadComplete()
         {
-            realmSubscription = realm.RegisterForNotifications(queryRealmKeyBindings, (sender, _) =>
+            if (realm != null && !offlinePlayback)
             {
-                // The first fire of this is a bit redundant as this is being called in base.LoadComplete,
-                // but this is safest in case the subscription is restored after a context recycle.
-                ReloadMappings(sender.AsQueryable());
-            });
+                realmSubscription = realm.RegisterForNotifications(queryRealmKeyBindings, (sender, _) =>
+                {
+                    // The first fire of this is a bit redundant as this is being called in base.LoadComplete,
+                    // but this is safest in case the subscription is restored after a context recycle.
+                    ReloadMappings(sender.AsQueryable());
+                });
+            }
 
             base.LoadComplete();
         }
 
-        protected sealed override void ReloadMappings() => ReloadMappings(queryRealmKeyBindings(realm.Realm));
+        protected sealed override void ReloadMappings()
+        {
+            if (realm != null)
+            {
+                var bindings = realm.Run(r => queryRealmKeyBindings(r).Detach());
+                ReloadMappings(bindings.AsQueryable());
+            }
+            else
+            {
+                base.ReloadMappings();
+            }
+        }
 
         private IQueryable<RealmKeyBinding> queryRealmKeyBindings(Realm realm)
         {

@@ -68,6 +68,7 @@ using osu.Game.Overlays.SkinEditor;
 using osu.Game.Overlays.Toolbar;
 using osu.Game.Overlays.Volume;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Configuration;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
@@ -192,6 +193,8 @@ namespace osu.Game
 
         [Cached]
         private readonly ScreenshotManager screenshotManager = new ScreenshotManager();
+        private readonly VideoRecordingManager videoRecordingManager = new VideoRecordingManager();
+        private ReplayExportNotification activeVideoExport;
 
         private SentryLogger sentryLogger;
 
@@ -902,6 +905,11 @@ namespace osu.Game
         /// </summary>
         public void PresentScore(IScoreInfo score, ScorePresentType presentType = ScorePresentType.Results)
         {
+            if (presentType == ScorePresentType.Video)
+            {
+                exportReplayVideo(score);
+                return;
+            }
             Logger.Log($"Beginning {nameof(PresentScore)} with score {score}");
 
             Score databasedScore;
@@ -987,6 +995,58 @@ namespace osu.Game
                         break;
                 }
             }, validScreens: validScreens);
+        }
+
+        private void exportReplayVideo(IScoreInfo score)
+        {
+            if (activeVideoExport?.IsRunning == true)
+                return;
+            try
+            {
+                var replay = ScoreManager.GetScore(score);
+                if (replay?.Replay == null)
+                {
+                    Notifications.Post(new SimpleNotification { Text = ResultsScreenStrings.ReplayUnavailable });
+                    return;
+                }
+                var beatmap = BeatmapManager.GetWorkingBeatmap(replay.ScoreInfo.BeatmapInfo);
+                if (beatmap is DummyWorkingBeatmap || beatmap.Beatmap.HitObjects.Count == 0)
+                    throw new InvalidOperationException(@"The replay's beatmap is unavailable.");
+                if (replay.ScoreInfo.Mods.Any(m => m is IApplicableToRate && m is not ModRateAdjust))
+                    throw new NotSupportedException(@"Variable-rate mods are not supported by offline export yet.");
+                double rate = replay.ScoreInfo.Mods.OfType<IApplicableToRate>().Aggregate(1.0, (value, mod) => mod.ApplyToRate(0, value));
+                double startTime = Math.Min(0, beatmap.Beatmap.HitObjects[0].StartTime - 2000);
+                double endTime = Math.Max(beatmap.Beatmap.GetLastObjectTime(), replay.Replay.Frames.Count == 0 ? 0 : replay.Replay.Frames.Max(f => f.Time)) + 2000;
+                var recordingOptions = RecordingConfiguration.Snapshot(LocalConfig);
+                var exportBackend = LocalConfig.Get<ReplayVideoBackend>(OsuSetting.ReplayVideoBackend);
+                string ffmpegPath = LocalConfig.Get<string>(OsuSetting.RecordingFfmpegPath);
+                var timeline = new ReplayExportTimeline(TimeSpan.FromMilliseconds((endTime - startTime) / rate), recordingOptions.FrameRate);
+                string directory = Storage.GetFullPath(@"exports");
+                Directory.CreateDirectory(directory);
+                string destination = Path.Combine(directory, $@"replay-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.mp4");
+                var skin = SkinManager.CurrentSkinInfo.Value.PerformRead(s => s.Detach());
+                var exportSettings = LocalConfig.GetCurrentConfigurationForLogging();
+                var exportRuleset = replay.ScoreInfo.Ruleset.CreateInstance();
+                var rulesetConfig = Dependencies.Get<IRulesetConfigCache>().GetConfigFor(exportRuleset);
+                if (rulesetConfig != null && rulesetConfig is not IRulesetConfigSnapshotSource)
+                    throw new NotSupportedException(@"The selected ruleset cannot snapshot its configuration for export.");
+                var rulesetSettings = (rulesetConfig as IRulesetConfigSnapshotSource)?.CreateSnapshot();
+                var rulesetType = exportRuleset.GetType();
+                var notification = activeVideoExport = new ReplayExportNotification(timeline, destination, Host);
+                Notifications.Post(notification);
+                _ = notification.RunAsync(token =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    return Task.FromResult<IReplayExportSession>(new OfflineReplayExportSession(
+                        beatmap, replay, skin, SkinManager, exportSettings, rulesetType, rulesetSettings, destination, startTime, rate, recordingOptions, exportBackend, ffmpegPath,
+                        Host.CacheStorage.GetStorageForDirectory(@"shaders"), token));
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, @"Unable to prepare replay video export.");
+                Notifications.Post(new SimpleNotification { Text = VideoRecordingStrings.Failed(ex.Message) });
+            }
         }
 
         public override Task Import(ImportTask[] imports, ImportParameters parameters = default)
@@ -1311,6 +1371,7 @@ namespace osu.Game
             loadComponentSingleFile(legacyImportManager, Add);
 
             loadComponentSingleFile(screenshotManager, Add);
+            loadComponentSingleFile(videoRecordingManager, Add, true);
 
             // dependency on notification overlay, dependent by settings overlay
             loadComponentSingleFile(CreateUpdateManager(), Add, true);
@@ -1775,6 +1836,16 @@ namespace osu.Game
                 case GlobalAction.PreviousVolumeMeter:
                     return volume.Adjust(e.Action);
 
+                case GlobalAction.ToggleVideoRecording:
+                    if (!videoRecordingManager.IsLoaded) return false;
+                    _ = videoRecordingManager.ToggleAsync();
+                    return true;
+
+                case GlobalAction.ToggleLiveStreaming:
+                    if (!videoRecordingManager.IsLoaded) return false;
+                    videoRecordingManager.ToggleStreaming();
+                    return true;
+
                 case GlobalAction.ToggleFPSDisplay:
                     fpsCounter.ToggleVisibility();
                     return true;
@@ -1870,6 +1941,16 @@ namespace osu.Game
 
         protected override bool OnExiting()
         {
+            if (activeVideoExport?.IsRunning == true)
+            {
+                activeVideoExport.State = ProgressNotificationState.Cancelled;
+                return true;
+            }
+            if (videoRecordingManager.IsRecording)
+            {
+                _ = videoRecordingManager.StopAsync();
+                return true;
+            }
             if (ScreenStack.CurrentScreen is Loader)
                 return false;
 

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
@@ -22,7 +22,7 @@ namespace osu.Game.Skinning.Components
         private GameplayState? gameplayState { get; set; }
 
         [Resolved]
-        private IAPIProvider api { get; set; } = null!;
+        private IAPIProvider? api { get; set; }
 
         private IBindable<APIUser>? apiUser;
 
@@ -45,7 +45,7 @@ namespace osu.Game.Skinning.Components
         {
             if (gameplayState != null)
                 text.Text = gameplayState.Score.ScoreInfo.User.Username;
-            else
+            else if (api != null)
             {
                 apiUser = api.LocalUser.GetBoundCopy();
                 apiUser.BindValueChanged(u => text.Text = u.NewValue.Username, true);

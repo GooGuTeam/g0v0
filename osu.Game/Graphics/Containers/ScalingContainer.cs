@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 
 using System.Linq;
@@ -166,7 +166,7 @@ namespace osu.Game.Graphics.Containers
         }
 
         [BackgroundDependencyLoader]
-        private void load(GameHost host, OsuConfigManager config, ISafeArea safeArea)
+        private void load(GameHost? host, OsuConfigManager config, ISafeArea safeArea)
         {
             scalingMode = config.GetBindable<ScalingMode>(OsuSetting.Scaling);
             scalingMode.ValueChanged += _ => Scheduler.AddOnce(updateSize);
@@ -192,7 +192,7 @@ namespace osu.Game.Graphics.Containers
             scalingMenuBackgroundDim = config.GetBindable<float>(OsuSetting.ScalingBackgroundDim);
             scalingMenuBackgroundDim.ValueChanged += _ => Scheduler.AddOnce(updateSize);
 
-            tabletHandler = host.AvailableInputHandlers.OfType<ITabletHandler>().SingleOrDefault();
+            tabletHandler = host?.AvailableInputHandlers.OfType<ITabletHandler>().SingleOrDefault();
         }
 
         protected override void LoadComplete()
@@ -305,8 +305,8 @@ namespace osu.Game.Graphics.Containers
 
         private partial class SizeableAlwaysInputContainer : Container
         {
-            [Resolved]
-            private GameHost host { get; set; } = null!;
+            [Resolved(canBeNull: true)]
+            private GameHost? host { get; set; }
 
             [Resolved]
             private ISafeArea safeArea { get; set; } = null!;
@@ -346,7 +346,7 @@ namespace osu.Game.Graphics.Containers
 
             private void updateHostCursorConfineRect()
             {
-                if (host.Window == null) return;
+                if (host?.Window == null) return;
 
                 bool coversWholeScreen = Size == Vector2.One && (!config.Get<bool>(OsuSetting.SafeAreaConsiderations) || safeArea.SafeAreaPadding.Value.Total == Vector2.Zero);
                 host.Window.CursorConfineRect = coversWholeScreen ? null : ToScreenSpace(DrawRectangle).AABBFloat;

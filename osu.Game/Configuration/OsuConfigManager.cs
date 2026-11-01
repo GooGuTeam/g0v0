@@ -105,6 +105,12 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.ExternalLinkWarning, true);
             SetDefault(OsuSetting.PreferNoVideo, false);
+            SetDefault(OsuSetting.RecordingBitrate, 12, 1, 100);
+            SetDefault(OsuSetting.RecordingFrameRate, RecordingFrameRate.Fps60);
+            SetDefault(OsuSetting.RecordingEncoderProfile, RecordingEncoderProfile.Automatic);
+            SetDefault(OsuSetting.RecordingResolution, RecordingResolution.FullHd1080);
+            SetDefault(OsuSetting.ReplayVideoBackend, ReplayVideoBackend.Automatic);
+            SetDefault(OsuSetting.RecordingFfmpegPath, @"ffmpeg");
 
             SetDefault(OsuSetting.ShowOnlineExplicitContent, false);
 
@@ -429,6 +435,12 @@ namespace osu.Game.Configuration
         ScoreDisplayMode,
         ExternalLinkWarning,
         PreferNoVideo,
+        RecordingBitrate,
+        RecordingFrameRate,
+        RecordingEncoderProfile,
+        RecordingResolution,
+        ReplayVideoBackend,
+        RecordingFfmpegPath,
         Scaling,
         ScalingPositionX,
         ScalingPositionY,

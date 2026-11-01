@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -10,6 +10,8 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.Textures;
 using osu.Framework.Layout;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
@@ -96,7 +98,7 @@ namespace osu.Game.Screens.Play.HUD
         private OsuConfigManager config { get; set; } = null!;
 
         [Resolved]
-        private IAPIProvider api { get; set; } = null!;
+        private IAPIProvider? api { get; set; }
 
         [Resolved]
         private OsuColour colours { get; set; } = null!;
@@ -303,7 +305,7 @@ namespace osu.Game.Screens.Play.HUD
         {
             base.LoadComplete();
 
-            isFriend = User != null && api.LocalUserState.Friends.Any(u => User.OnlineID == u.TargetID);
+            isFriend = User != null && api?.LocalUserState.Friends.Any(u => User.OnlineID == u.TargetID) == true;
 
             scoreDisplayMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
             scoreDisplayMode.BindValueChanged(_ => updateScore());
@@ -413,6 +415,7 @@ namespace osu.Game.Screens.Play.HUD
             private readonly IUser? user;
 
             private Box placeholder = null!;
+            private bool loadOnlineAvatar;
 
             public ScoreAvatar(IUser? user)
             {
@@ -422,18 +425,35 @@ namespace osu.Game.Screens.Play.HUD
             }
 
             [BackgroundDependencyLoader]
-            private void load()
+            private void load(IAPIProvider? api, LargeTextureStore textures)
             {
+                loadOnlineAvatar = api != null;
                 InternalChild = placeholder = new Box
                 {
                     RelativeSizeAxes = Axes.Both,
                     Colour = OsuColour.Gray(0.1f),
                 };
+
+                // Export owns this texture store and must not start network or background GPU work.
+                if (!loadOnlineAvatar)
+                {
+                    AddInternal(new Sprite
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                        Anchor = Anchor.Centre,
+                        Origin = Anchor.Centre,
+                        FillMode = FillMode.Fit,
+                        Texture = textures.Get(@"Online/avatar-guest"),
+                    });
+                }
             }
 
             protected override void LoadComplete()
             {
                 base.LoadComplete();
+
+                if (!loadOnlineAvatar)
+                    return;
 
                 LoadComponentAsync(new DrawableAvatar(user), a =>
                 {

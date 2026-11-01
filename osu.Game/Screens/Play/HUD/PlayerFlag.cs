@@ -1,11 +1,13 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Game.Configuration;
 using osu.Game.Online.API;
+using osu.Game.Users;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Skinning;
 using osu.Game.Users.Drawables;
@@ -25,7 +27,7 @@ namespace osu.Game.Screens.Play.HUD
         private GameplayState? gameplayState { get; set; }
 
         [Resolved]
-        private IAPIProvider api { get; set; } = null!;
+        private IAPIProvider? api { get; set; }
 
         private IBindable<APIUser>? apiUser;
 
@@ -40,8 +42,19 @@ namespace osu.Game.Screens.Play.HUD
         }
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
+            if (api == null)
+            {
+                var country = config.Get<bool>(OsuSetting.HideCountryFlags)
+                    ? CountryCode.Unknown
+                    : gameplayState?.Score.ScoreInfo.User.CountryCode ?? CountryCode.Unknown;
+                RemoveInternal(flag, false);
+                flag.Dispose();
+                InternalChild = new DrawableFlag(country) { RelativeSizeAxes = Axes.Both };
+                return;
+            }
+
             if (gameplayState != null)
                 flag.CountryCode = gameplayState.Score.ScoreInfo.User.CountryCode;
             else
