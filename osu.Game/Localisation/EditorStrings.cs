@@ -101,6 +101,11 @@ namespace osu.Game.Localisation
         public static LocalisableString SetupScreen => new TranslatableString(getKey(@"setup_screen"), @"setup");
 
         /// <summary>
+        /// "hitsounding_screen"
+        /// </summary>
+        public static LocalisableString HitSoundingScreen => new TranslatableString(getKey(@"hitsounding_screen"), @"hitsounding_screen");
+
+        /// <summary>
         /// "compose"
         /// </summary>
         public static LocalisableString ComposeScreen => new TranslatableString(getKey(@"compose_screen"), @"compose");
