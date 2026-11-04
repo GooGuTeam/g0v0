@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 // el panel de ranking (results) de osu!stable, layouteado desde el Ranking.cs de stable
 // (LoadScore / InitializeRankingPanel / LoadRanking / LoadMods / InitializeSpecifics) con
@@ -376,8 +376,7 @@ namespace osu.Game.Screens.Ranking
             }
 
             // white flash: 0.5 -> 0 pegado a la llegada del grade.
-            if (whiteFlash != null)
-                whiteFlash.Delay(gradeTime + 1000).FadeTo(0.5f).Then().FadeOut(1400);
+            whiteFlash?.Delay(gradeTime + 1000).FadeTo(0.5f).Then().FadeOut(1400);
 
             // mods: staggereados 500ms, shrink 2x->1x + fade en 400ms Out.
             for (int i = 0; i < modSprites.Count; i++)
@@ -420,6 +419,7 @@ namespace osu.Game.Screens.Ranking
                     yield return (@"hit300g", new Vector2(imgx2, row1), stat(HitResult.LargeTickHit));
                     yield return (@"hit100k", new Vector2(imgx2, row2), Math.Max(0, maxStat(HitResult.SliderTailHit) - stat(HitResult.SliderTailHit)));
                     yield return (@"hit0", new Vector2(imgx2, row3), stat(HitResult.Miss));
+
                     break;
 
                 case @"taiko":
@@ -428,6 +428,7 @@ namespace osu.Game.Screens.Ranking
                     yield return (@"taiko-hit0", new Vector2(imgx1, row3), stat(HitResult.Miss));
                     yield return (@"taiko-hit300g", new Vector2(imgx2, row1), stat(HitResult.LargeBonus));
                     yield return (@"taiko-hit100k", new Vector2(imgx2, row2), stat(HitResult.SmallBonus));
+
                     break;
 
                 case @"fruits":
@@ -435,6 +436,7 @@ namespace osu.Game.Screens.Ranking
                     yield return (@"fruit-drop", new Vector2(imgx1, row2), stat(HitResult.LargeTickHit));
                     yield return (@"fruit-drop", new Vector2(imgx1, row3), stat(HitResult.SmallTickHit));
                     yield return (@"hit0", new Vector2(imgx2, row1), stat(HitResult.Miss));
+
                     break;
 
                 case @"mania":
@@ -444,10 +446,10 @@ namespace osu.Game.Screens.Ranking
                     yield return (@"mania-hit300g", new Vector2(imgx2, row1), stat(HitResult.Perfect));
                     yield return (@"mania-hit100", new Vector2(imgx2, row2), stat(HitResult.Ok));
                     yield return (@"mania-hit0", new Vector2(imgx2, row3), stat(HitResult.Miss));
+
                     break;
             }
         }
-
 
         /// <summary>
         /// boton de sprite estilo stable: idle al 70% de alpha, hover al 100% en 200ms.

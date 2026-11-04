@@ -40,12 +40,12 @@ namespace osu.Game.Screens.Ranking
             Colour4 accent = isS ? Colour4.FromHex("#C40087") : OsuColour.ForRank(rank);
 
             Colour4 flareColour = rank >= ScoreRank.X
-                ? (Colour4)OsuColour.ForRank(rank)
+                ? OsuColour.ForRank(rank)
                 : isS
                     ? Colour4.FromHex("#C40087")
                     : rank == ScoreRank.A
                         ? Colour4.FromHex("#88DA20")
-                        : (Colour4)OsuColour.ForRank(rank);
+                        : OsuColour.ForRank(rank);
 
             AddInternal(glowFlare = new BufferedContainer(cachedFrameBuffer: true)
             {

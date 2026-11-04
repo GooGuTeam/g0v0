@@ -129,6 +129,7 @@ namespace osu.Game.Screens.Ranking
                 highlight.FadeTo(0.12f, 100);
                 foreground.ScaleTo(1.08f, 150, Easing.OutQuint);
             }
+
             return base.OnHover(e);
         }
 
