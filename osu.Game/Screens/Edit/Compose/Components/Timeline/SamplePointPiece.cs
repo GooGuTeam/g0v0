@@ -72,7 +72,7 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                 editor.ShowSampleEditPopoverRequested += onShowSampleEditPopoverRequested;
         }
 
-        private readonly Bindable<bool> contracted = new();
+        private readonly Bindable<bool> contracted = new Bindable<bool>();
 
         protected override void LoadComplete()
         {
