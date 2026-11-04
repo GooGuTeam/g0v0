@@ -11,9 +11,9 @@ using osu.Game.Localisation;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
 
-namespace osu.Desktop.Performance
+namespace osu.Game.Performance
 {
-    internal partial class ProcessorPerformanceNotice : Component
+    public partial class ProcessorPerformanceNotice : Component
     {
         [Resolved]
         private INotificationOverlay notifications { get; set; } = null!;

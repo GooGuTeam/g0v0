@@ -39,11 +39,11 @@ namespace osu.Game.Overlays.ImagePreview
         private const float transition_duration = 250;
         private const float quick_transition_duration = 100;
         private const float zoom_step = 1.25f;
-        private const float min_zoom = 0.1f;
+        private const float min_zoom = 0.05f;
         private const float max_zoom = 10f;
 
         /// <summary>
-        /// The empty space kept around the image when fitting it to the display area.
+        /// The empty space kept around the image when fitting it to the display area, in screen pixels.
         /// This keeps the image clear of the edges of the screen (and of the toolbar at the bottom),
         /// so that its edges are never viewed flush against them.
         /// </summary>
@@ -79,6 +79,16 @@ namespace osu.Game.Overlays.ImagePreview
         private Vector2 nativeSize = Vector2.One;
 
         /// <summary>
+        /// The scale the game's interface currently applies to this overlay, as measured in <see cref="updateInterfaceScale"/>.
+        /// </summary>
+        private Vector2 interfaceScale = Vector2.One;
+
+        /// <summary>
+        /// The size the display area covers on screen, as measured in <see cref="updateInterfaceScale"/>.
+        /// </summary>
+        private Vector2 displayArea = Vector2.One;
+
+        /// <summary>
         /// The in-flight save operation, if any. Non-null exactly while a save is running, which is what the
         /// save button's busy state is derived from.
         /// </summary>
@@ -94,8 +104,12 @@ namespace osu.Game.Overlays.ImagePreview
         private bool transitionInProgress;
 
         /// <summary>
-        /// The current zoom, where 1 represents the default fit-to-screen size.
+        /// The current zoom, where 1 represents the image at its native size (one image pixel per screen pixel).
         /// </summary>
+        /// <remarks>
+        /// Note that the game's interface scaling is not applied to the image, so this is unrelated to the size of the
+        /// interface elements around it.
+        /// </remarks>
         public IBindable<float> CurrentZoom => zoom;
 
         /// <summary>
@@ -124,7 +138,7 @@ namespace osu.Game.Overlays.ImagePreview
                     RelativeSizeAxes = Axes.Both,
                     Colour = Color4.Black.Opacity(0.9f),
                 },
-                imageArea = new Container
+                new Container
                 {
                     RelativeSizeAxes = Axes.Both,
                     Child = ImageHolder = new Container
@@ -156,8 +170,12 @@ namespace osu.Game.Overlays.ImagePreview
             nativeSize = new Vector2(Math.Max(request.Texture.DisplayWidth, 1), Math.Max(request.Texture.DisplayHeight, 1));
             image.Texture = request.Texture;
 
-            zoom.Value = zoom.Default;
-            updateFittedSize();
+            updateInterfaceScale();
+            updateImageSize();
+
+            // 100% is the image at its native size, so an image which fits inside the display area at that size is
+            // shown as-is, while one which does not is shrunk down to fit rather than opening overflowing the screen.
+            zoom.Value = fittedZoom;
 
             if (State.Value == Visibility.Visible)
             {
@@ -186,7 +204,7 @@ namespace osu.Game.Overlays.ImagePreview
 
             ImageHolder.Alpha = 1;
             ImageHolder.Position = Vector2.Zero;
-            ImageHolder.Scale = Vector2.One;
+            ImageHolder.Scale = new Vector2(zoom.Value);
         }
 
         protected override void Update()
@@ -196,32 +214,89 @@ namespace osu.Game.Overlays.ImagePreview
             if (currentRequest == null)
                 return;
 
-            updateFittedSize();
+            updateInterfaceScale();
+            updateImageSize();
 
             if (!transitionInProgress)
                 clampPosition();
         }
 
-        private void updateFittedSize()
+        /// <summary>
+        /// The zoom at which the image just fits inside the display area, leaving <see cref="DISPLAY_PADDING"/> around it.
+        /// </summary>
+        /// <remarks>
+        /// This is computed from the size the display area covers on screen rather than from this overlay's own size,
+        /// as the latter is subject to the game's interface scaling and would therefore place the padding relative to
+        /// the interface rather than to the screen.
+        /// </remarks>
+        private float fittedZoom
         {
-            Vector2 area = DrawSize - new Vector2(DISPLAY_PADDING * 2);
+            get
+            {
+                Vector2 area = displayArea - new Vector2(DISPLAY_PADDING * 2);
 
-            if (area.X <= 0 || area.Y <= 0)
+                if (area.X <= 0 || area.Y <= 0)
+                    return 1;
+
+                return Math.Min(area.X / nativeSize.X, area.Y / nativeSize.Y);
+            }
+        }
+
+        /// <summary>
+        /// Sizes the image holder such that the image is drawn at <see cref="nativeSize"/> multiplied by the zoom in
+        /// screen pixels, regardless of how much the game's interface is scaled.
+        /// </summary>
+        /// <remarks>
+        /// The interface scaling is an ancestor transform, so it multiplies whatever size is assigned here. Dividing the
+        /// native size by it cancels that out, which keeps the image at its real size when the interface scale changes
+        /// (and when the interface is scaled according to the window resolution).
+        /// </remarks>
+        private void updateImageSize()
+        {
+            if (interfaceScale.X <= 0 || interfaceScale.Y <= 0)
                 return;
 
-            float fitScale = Math.Min(area.X / nativeSize.X, area.Y / nativeSize.Y);
-            Vector2 fitted = nativeSize * fitScale;
+            Vector2 size = Vector2.Divide(nativeSize, interfaceScale);
 
-            if (ImageHolder.Size != fitted)
-                ImageHolder.Size = fitted;
+            if (ImageHolder.Size != size)
+                ImageHolder.Size = size;
+        }
+
+        /// <summary>
+        /// Measures the scale the game's interface applies to this overlay, by comparing the size of the parent to its
+        /// size on screen.
+        /// </summary>
+        /// <remarks>
+        /// The parent is used rather than this overlay itself because an overlay which is hidden is not updated at all,
+        /// and would therefore report a stale (or never computed) transform. The parent shares this overlay's local
+        /// coordinate space and keeps being updated while the overlay is hidden.
+        /// </remarks>
+        private void updateInterfaceScale()
+        {
+            if (Parent == null || Parent.DrawWidth <= 0 || Parent.DrawHeight <= 0)
+                return;
+
+            Quad quad = Parent.ScreenSpaceDrawQuad;
+
+            if (quad.Width <= 0 || quad.Height <= 0)
+                return;
+
+            interfaceScale = new Vector2(quad.Width / Parent.DrawWidth, quad.Height / Parent.DrawHeight);
+            displayArea = new Vector2(quad.Width, quad.Height);
         }
 
         private void clampPosition()
         {
-            Vector2 scaledSize = ImageHolder.Size * zoom.Value;
+            // the image is drawn at its native size in screen space, so the space it takes up has to be compared
+            // against the display area in screen space as well.
+            Vector2 scaledSize = nativeSize * zoom.Value;
+
             Vector2 maxOffset = new Vector2(
-                Math.Max((scaledSize.X - imageArea.DrawWidth) / 2, 0),
-                Math.Max((scaledSize.Y - imageArea.DrawHeight) / 2, 0));
+                Math.Max((scaledSize.X - displayArea.X) / 2, 0),
+                Math.Max((scaledSize.Y - displayArea.Y) / 2, 0));
+
+            maxOffset = Vector2.Divide(maxOffset, interfaceScale);
+
             Vector2 clamped = Vector2.Clamp(ImageHolder.Position, -maxOffset, maxOffset);
 
             if (clamped != ImageHolder.Position)
@@ -249,12 +324,16 @@ namespace osu.Game.Overlays.ImagePreview
 
             transitionInProgress = true;
 
+            // the image is drawn at its native size in screen space, so matching the width of the source on screen
+            // only requires dividing by that size - neither the interface scale nor the zoom enter into it.
+            Vector2 restingScale = new Vector2(zoom.Value);
+
             ImageHolder.Position = hasSource ? ToLocalSpace(sourceQuad.Centre) - DrawSize / 2 : Vector2.Zero;
-            ImageHolder.Scale = new Vector2(hasSource ? sourceQuad.Width / ImageHolder.Size.X : 0.9f);
+            ImageHolder.Scale = new Vector2(hasSource ? sourceQuad.Width / nativeSize.X : restingScale.X * 0.9f);
 
             ImageHolder.FadeIn(transition_duration, Easing.OutQuint)
                        .MoveTo(Vector2.Zero, transition_duration, Easing.OutQuint)
-                       .ScaleTo(Vector2.One, transition_duration, Easing.OutQuint)
+                       .ScaleTo(restingScale, transition_duration, Easing.OutQuint)
                        .OnComplete(_ => transitionInProgress = false);
         }
 
@@ -278,7 +357,7 @@ namespace osu.Game.Overlays.ImagePreview
             // without the two ever being seen on top of each other.
             ImageHolder.FadeOut(transition_duration, Easing.OutQuint)
                        .MoveTo(hasSource ? ToLocalSpace(sourceQuad.Centre) - DrawSize / 2 : Vector2.Zero, transition_duration, Easing.OutQuint)
-                       .ScaleTo(new Vector2(hasSource ? sourceQuad.Width / ImageHolder.Size.X : 0.9f), transition_duration, Easing.OutQuint)
+                       .ScaleTo(new Vector2(hasSource ? sourceQuad.Width / nativeSize.X : zoom.Value * 0.9f), transition_duration, Easing.OutQuint)
                        .OnComplete(_ =>
                        {
                            transitionInProgress = false;
@@ -305,7 +384,7 @@ namespace osu.Game.Overlays.ImagePreview
 
             Quad sourceQuad = source.ScreenSpaceDrawQuad;
 
-            if (sourceQuad.Width <= 0 || ImageHolder.Size.X <= 0)
+            if (sourceQuad.Width <= 0 || nativeSize.X <= 0)
                 return false;
 
             quad = sourceQuad;

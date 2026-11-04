@@ -10,9 +10,9 @@ using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Utils;
 
-namespace osu.Desktop.Performance
+namespace osu.Game.Performance
 {
-    internal partial class PowerStatusMonitor : Component
+    public partial class PowerStatusMonitor : Component
     {
         [Resolved]
         private BatteryInfo batteryInfo { get; set; } = null!;
