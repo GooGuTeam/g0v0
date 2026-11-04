@@ -18,13 +18,31 @@ above.
 
 ## Hitsounding
 
-The editor includes a dedicated hitsounding mode which lays out every sample point of the beatmap per sample set and
-bank instead of hiding them in the timeline. Custom sample sets are created and configured in the editor's Setup
-screen, under the Resources section; hitsounding mode only assigns samples and manages how the existing sets are
-presented. Sets can be reordered and collapsed from the set manager below the lanes. Collapsing animates a set down
-below the expanded sets and shrinks it to a single 22px text row, with unlabelled pink dots at its sample times;
-expanding animates it back. Click a set header to collapse or expand it; its samples keep playing back. The mouse
-wheel seeks the cursor, snapping to the closest sound point rather than to the editor's beat grid.
+The editor includes a dedicated hitsounding mode. Every object gets the same five compact rows below
+**Objects** and **Volume**: **Sample set** (the normal bank), **Additions** (the addition bank), then **Whistle**,
+**Finish** and **Clap**. The rows keep a fixed height rather than stretching to fill the screen; the unused area
+reveals the beatmap background through a translucent overlay. Custom sample sets are created and configured in
+the editor's Setup screen, under the Resources section; hitsounding mode only assigns samples to those rows.
+
+The Sample set and Additions rows show a compact, fixed-size badge — the bank letter (`N` / `S` / `D`) above the
+numeric set index, with room for two characters and horizontal padding. Only sound point times get vertical
+guides, and neither the guides nor badge sizes depend on Compose's beat divisor. Zoom changes the time spacing
+without shrinking badges or text. Hit samples store one set index per object, shared by all of its samples, so
+changing the set on any row changes it for the whole object. The Normal-bank badge is left blank for set 1 when
+the beatmap has custom hitsound files, or for user skin set 0 when it has none. All other bank and set combinations
+show both parts — for example, the Normal bank with set 2 reads `N` over `2`. Importing or removing custom
+hitsound files updates this presentation without changing existing sample assignments. Resetting the Sample set
+row returns it to the currently blank default. A blank Additions badge means the addition bank follows the normal
+bank (Auto); an object needs at least one addition sound before its addition bank can be configured. Resetting
+Additions to Auto leaves the shared set index untouched.
+
+Whistle, Finish and Clap toggle the matching addition sound on the selection; the object's own body sample supports
+only the whistle, so Finish and Clap exist purely as additions. A direct click toggles a single cell while
+Ctrl-click or a box selection collects several; bank and set edits and every toggle are undoable as one change.
+Cells that cannot be edited — file-backed samples, or slider nodes that were never materialised — are disabled.
+
+The Objects and Volume rows behave as before, and the mouse wheel still seeks the cursor, snapping to the closest
+sound point rather than to the editor's beat grid.
 
 ## Download
 
