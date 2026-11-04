@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 
 using osu.Framework.Allocation;
@@ -189,7 +189,6 @@ namespace osu.Game.Skinning.Select
                     levelBar.Width = 198 * statistics.Level.Progress / 100f;
                     levelBar.Show();
                 }
-
             }
         }
 
