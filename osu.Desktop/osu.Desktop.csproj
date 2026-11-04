@@ -22,6 +22,12 @@
   <PropertyGroup>
     <StartupObject>osu.Desktop.Program</StartupObject>
   </PropertyGroup>
+  <ItemGroup Label="Runtime Configuration">
+    <!-- Tiered compilation waits until no new methods have been compiled for this long before promoting hot methods.
+         Loading screens and gameplay keep compiling new methods, so with the default (100 ms) frames ran tier-0 code
+         for about 15 s; with 0 the offline render benchmark reaches steady-state frame times within about 5 s. -->
+    <RuntimeHostConfigurationOption Include="System.Runtime.TieredCompilation.CallCountingDelayMs" Value="0" />
+  </ItemGroup>
   <ItemGroup Label="Project References">
     <ProjectReference Include="..\osu.Game.Tournament\osu.Game.Tournament.csproj"/>
     <ProjectReference Include="..\osu.Game\osu.Game.csproj"/>

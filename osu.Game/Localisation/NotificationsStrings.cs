@@ -35,6 +35,16 @@ namespace osu.Game.Localisation
         public static LocalisableString BatteryLow => new TranslatableString(getKey(@"battery_low"), @"Your battery level is low! Charge your device to prevent interruptions during gameplay.");
 
         /// <summary>
+        /// "Your device is running on battery power. Connect the power adapter for consistent gameplay performance."
+        /// </summary>
+        public static LocalisableString PowerNotConnected => new TranslatableString(getKey(@"power_not_connected"), @"Your device is running on battery power. Connect the power adapter for consistent gameplay performance.");
+
+        /// <summary>
+        /// "The power adapter has been disconnected. Your device is now running on battery power, which may affect gameplay performance."
+        /// </summary>
+        public static LocalisableString PowerDisconnected => new TranslatableString(getKey(@"power_disconnected"), @"The power adapter has been disconnected. Your device is now running on battery power, which may affect gameplay performance.");
+
+        /// <summary>
         /// "Your game volume is too low to hear anything! Click here to restore it."
         /// </summary>
         public static LocalisableString GameVolumeTooLow => new TranslatableString(getKey(@"game_volume_too_low"), @"Your game volume is too low to hear anything! Click here to restore it.");
@@ -338,6 +348,11 @@ Click to see what's new!", version);
         /// "Boom!"
         /// </summary>
         public static LocalisableString ExceptionTitle => new TranslatableString(getKey(@"exception_title"), @"Boom!");
+
+        /// <summary>
+        /// "Your device has an older processor. The game may stutter."
+        /// </summary>
+        public static LocalisableString LimitedProcessorAcceleration => new TranslatableString(getKey(@"limited_processor_acceleration"), @"Your device has an older processor. The game may stutter.");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
