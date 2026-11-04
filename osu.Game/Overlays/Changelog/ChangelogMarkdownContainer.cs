@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -36,6 +36,13 @@ namespace osu.Game.Overlays.Changelog
             }
 
             base.AddMarkdownComponent(markdownObject, container, level);
+        }
+
+        public override OsuMarkdownTextFlowContainer CreateTextFlow() => new ChangelogMarkdownTextFlowContainer();
+
+        private partial class ChangelogMarkdownTextFlowContainer : OsuMarkdownTextFlowContainer
+        {
+            protected override void AddImage(LinkInline linkInline) => AddDrawable(new ChangelogMarkdownImage(linkInline));
         }
     }
 }
