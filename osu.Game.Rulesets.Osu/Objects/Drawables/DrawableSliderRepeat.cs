@@ -1,10 +1,9 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
 using System;
-using System.Collections.Generic;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -12,6 +11,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Utils;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Skinning.Default;
+using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
@@ -31,7 +31,20 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
         public SkinnableDrawable Arrow { get; private set; }
 
-        private Drawable scaleContainer;
+        private Container scaleContainer;
+
+        [Resolved(CanBeNull = true)]
+        private OsuVisualOrdering visualOrdering { get; set; }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            if (visualOrdering?.IsActive == true)
+            {
+                visualOrdering.Register(CirclePiece, this, OsuVisualKind.CircleGroup, () => scaleContainer, localDepth: 1);
+                visualOrdering.Register(Arrow, this, OsuVisualKind.Arrow, () => scaleContainer);
+            }
+        }
 
         public DrawableSliderRepeat()
             : base(null)
@@ -121,29 +134,9 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (IsHit) return;
 
             bool isRepeatAtEnd = HitObject.RepeatIndex % 2 == 0;
-            List<Vector2> curve = ((PlaySliderBody)DrawableSlider.Body.Drawable).CurrentCurve;
-
             Position = isRepeatAtEnd ? end : start;
-
-            if (curve.Count < 2)
-                return;
-
-            int searchStart = isRepeatAtEnd ? curve.Count - 1 : 0;
-            int direction = isRepeatAtEnd ? -1 : 1;
-
-            Vector2 aimRotationVector = Vector2.Zero;
-
-            // find the next vector2 in the curve which is not equal to our current position to infer a rotation.
-            for (int i = searchStart; i >= 0 && i < curve.Count; i += direction)
-            {
-                if (Precision.AlmostEquals(curve[i], Position))
-                    continue;
-
-                aimRotationVector = curve[i];
-                break;
-            }
-
-            float aimRotation = float.RadiansToDegrees(MathF.Atan2(aimRotationVector.Y - Position.Y, aimRotationVector.X - Position.X));
+            Vector2 aimRotationVector = ((PlaySliderBody)DrawableSlider.Body.Drawable).GetSnakingDirection(Position, isRepeatAtEnd);
+            float aimRotation = float.RadiansToDegrees(MathF.Atan2(aimRotationVector.Y, aimRotationVector.X));
             while (Math.Abs(aimRotation - Arrow.Rotation) > 180)
                 aimRotation += aimRotation < Arrow.Rotation ? 360 : -360;
 

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -59,6 +59,25 @@ namespace osu.Game.Rulesets.Osu.UI
                 {
                     Caption = RulesetSettingsStrings.PlayfieldBorderStyle,
                     Current = config.GetBindable<PlayfieldBorderStyle>(OsuRulesetSetting.PlayfieldBorderStyle),
+                }),
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = RulesetSettingsStrings.KeepOverlapCirclesVisible,
+                    HintText = RulesetSettingsStrings.KeepOverlapCirclesVisibleDescription,
+                    Current = config.GetBindable<bool>(OsuRulesetSetting.KeepOverlapCirclesVisible),
+                }),
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = RulesetSettingsStrings.ShowHiddenSliders,
+                    HintText = RulesetSettingsStrings.ShowHiddenSlidersDescription,
+                    Current = config.GetBindable<bool>(OsuRulesetSetting.ShowHiddenSliders),
+                }),
+                new SettingsItemV2(new FormSliderBar<int>
+                {
+                    Caption = RulesetSettingsStrings.SliderViewportSize,
+                    HintText = RulesetSettingsStrings.SliderViewportSizeDescription,
+                    Current = config.GetBindable<int>(OsuRulesetSetting.SliderViewportSize),
+                    KeyboardStep = 1024,
                 }),
                 new SettingsItemV2(new FormCheckBox
                 {
