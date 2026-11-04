@@ -96,7 +96,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                         },
                         new SettingsItemV2(buffer = new FormSliderBar<double>
                         {
-                            Current = audio.WasapiBufferSize,
+                            Current = audio.WasapiBufferMilliseconds,
                             Caption = AudioSettingsStrings.BufferSize,
                             HintText = AudioSettingsStrings.BufferSizeTooltip,
                         })
@@ -106,7 +106,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                         },
                         new SettingsItemV2(period = new FormSliderBar<double>
                         {
-                            Current = audio.WasapiPeriod,
+                            Current = audio.WasapiPeriodMilliseconds,
                             Caption = AudioSettingsStrings.Period,
                             HintText = AudioSettingsStrings.PeriodTooltip,
                         })

@@ -22,6 +22,7 @@ namespace osu.Desktop.Performance
         {
             base.LoadComplete();
 
+            Logger.Log(osu.Framework.Platform.ProcessorDiagnostics.GetDescription());
             var architecture = RuntimeInformation.ProcessArchitecture;
             Logger.Log($@"Processor diagnostics: process={architecture}, OS={RuntimeInformation.OSArchitecture}, managed SSE4.1={Sse41.IsSupported}, AVX2={Avx2.IsSupported}, AdvSimd={AdvSimd.IsSupported}.");
 

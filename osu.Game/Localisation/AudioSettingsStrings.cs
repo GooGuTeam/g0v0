@@ -130,14 +130,14 @@ namespace osu.Game.Localisation
         public static LocalisableString ExclusiveAudioModeTooltip => new TranslatableString(getKey(@"exclusive_audio_mode_tooltip"), @"Bypasses the system audio mixer to achieve the lowest possible audio latency. When enabled, other applications will not be able to play audio simultaneously.");
 
         /// <summary>
-        /// "Buffer size (s)"
+        /// "Buffer size (ms)"
         /// </summary>
-        public static LocalisableString BufferSize => new TranslatableString(getKey(@"buffer_size"), @"Buffer size (s)");
+        public static LocalisableString BufferSize => new TranslatableString(getKey(@"buffer_size"), @"Buffer size (ms)");
 
         /// <summary>
-        /// "Length of the audio buffer in seconds. Set to 0 to use the lowest supported buffer size. Increase this value if you experience audio stuttering or dropouts."
+        /// "Length of the audio buffer in milliseconds. Set to 0 to use the lowest supported buffer size. Increase this value if you experience audio stuttering or dropouts."
         /// </summary>
-        public static LocalisableString BufferSizeTooltip => new TranslatableString(getKey(@"buffer_size_tooltip"), @"Length of the audio buffer in seconds. Set to 0 to use the lowest supported buffer size. Increase this value if you experience audio stuttering or dropouts.");
+        public static LocalisableString BufferSizeTooltip => new TranslatableString(getKey(@"buffer_size_tooltip"), @"Length of the audio buffer in milliseconds. Set to 0 to use the lowest supported buffer size. Increase this value if you experience audio stuttering or dropouts.");
 
         /// <summary>
         /// "Auto switch to shared audio in background"
@@ -150,14 +150,14 @@ namespace osu.Game.Localisation
         public static LocalisableString AutoSharedAudioOnBackgroundTooltip => new TranslatableString(getKey(@"auto_shared_audio_on_background_tooltip"), @"Automatically releases exclusive audio mode and switches to shared mode when the game loses focus.");
 
         /// <summary>
-        /// "Period (s)"
+        /// "Period (ms)"
         /// </summary>
-        public static LocalisableString Period => new TranslatableString(getKey(@"period"), @"Period (s)");
+        public static LocalisableString Period => new TranslatableString(getKey(@"period"), @"Period (ms)");
 
         /// <summary>
-        /// "Polling interval for audio updates in seconds. Set to 0 to request the minimum supported device period. Increase this value if audio playback is unstable."
+        /// "Polling interval for audio updates in milliseconds. Set to 0 to request the minimum supported device period. Increase this value if audio playback is unstable."
         /// </summary>
-        public static LocalisableString PeriodTooltip => new TranslatableString(getKey(@"period_tooltip"), @"Polling interval for audio updates in seconds. Set to 0 to request the minimum supported device period. Increase this value if audio playback is unstable.");
+        public static LocalisableString PeriodTooltip => new TranslatableString(getKey(@"period_tooltip"), @"Polling interval for audio updates in milliseconds. Set to 0 to request the minimum supported device period. Increase this value if audio playback is unstable.");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
