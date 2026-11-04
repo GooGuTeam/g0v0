@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -132,8 +132,7 @@ namespace osu.Game.Rulesets.Osu.Objects
             set
             {
                 scoreV2SliderBehaviour = value;
-                if (HeadCircle != null)
-                    HeadCircle.ScoreV2SliderBehaviour = value;
+                HeadCircle?.ScoreV2SliderBehaviour = value;
             }
         }
 

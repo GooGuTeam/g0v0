@@ -37,7 +37,6 @@ namespace osu.Game.Rulesets.Osu.Mods
                     slider.ClassicSliderBehaviour = true;
                     slider.ClassicSliderJudgement = true;
                     break;
-
             }
         }
 
