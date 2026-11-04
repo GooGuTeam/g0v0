@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Diagnostics;
 using osu.Framework.Allocation;
@@ -10,6 +10,7 @@ using osu.Framework.Utils;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Configuration;
+using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
@@ -33,6 +34,16 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         public SkinnableDrawable? CirclePiece { get; private set; }
 
         private Container scaleContainer = null!;
+
+        [Resolved(CanBeNull = true)]
+        private OsuVisualOrdering? visualOrdering { get; set; }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            if (visualOrdering?.IsActive == true && CirclePiece != null)
+                visualOrdering.Register(CirclePiece, this, OsuVisualKind.CircleGroup, () => scaleContainer);
+        }
 
         public DrawableSliderTail()
             : base(null)

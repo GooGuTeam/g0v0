@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -14,6 +14,7 @@ using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Configuration;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
+using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
@@ -37,6 +38,13 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         protected Container OverlayLayer { get; private set; } = null!;
 
         private SkinnableSpriteText hitCircleText = null!;
+        private Drawable flashingProxy = null!;
+        private bool overlayAboveNumber;
+        private readonly Container baseProxies = new Container { RelativeSizeAxes = Axes.Both, Depth = 1 };
+        private readonly Container flashProxies = new Container { RelativeSizeAxes = Axes.Both, Depth = -1 };
+
+        [Resolved(CanBeNull = true)]
+        private OsuVisualOrdering? visualOrdering { get; set; }
 
         private readonly Bindable<Color4> accentColour = new Bindable<Color4>();
         private readonly IBindable<int> indexInCurrentCombo = new Bindable<int>();
@@ -104,7 +112,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                         Origin = Anchor.Centre,
                     },
                 },
-                CircleSprite.FlashingDrawable.CreateProxy(),
+                flashingProxy = CircleSprite.FlashingDrawable.CreateProxy(),
             };
 
             if (hasNumber)
@@ -120,7 +128,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                 });
             }
 
-            bool overlayAboveNumber = skin.GetConfig<OsuSkinConfiguration, bool>(OsuSkinConfiguration.HitCircleOverlayAboveNumber)?.Value ?? true;
+            overlayAboveNumber = skin.GetConfig<OsuSkinConfiguration, bool>(OsuSkinConfiguration.HitCircleOverlayAboveNumber)?.Value ?? true;
 
             if (overlayAboveNumber)
                 OverlayLayer.ChangeChildDepth(OverlaySprite, float.MinValue);
@@ -135,6 +143,18 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         protected override void LoadComplete()
         {
             base.LoadComplete();
+
+            if (visualOrdering?.IsActive == true && drawableObject is DrawableOsuHitObject owner)
+            {
+                AddInternal(baseProxies);
+                AddInternal(flashProxies);
+                visualOrdering.Register(CircleSprite, owner, OsuVisualKind.CircleBase, () => baseProxies);
+                visualOrdering.Register(OverlaySprite, owner, OsuVisualKind.Overlay, () => OverlayLayer,
+                    localDepth: OverlaySprite.Depth, overlayAboveNumber: overlayAboveNumber);
+                visualOrdering.Register(flashingProxy, owner, OsuVisualKind.Flash, () => flashProxies);
+                if (hasNumber)
+                    visualOrdering.Register(hitCircleText, owner, OsuVisualKind.Number, () => OverlayLayer, overlayAboveNumber: overlayAboveNumber);
+            }
 
             accentColour.BindValueChanged(colour =>
             {
@@ -205,6 +225,14 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
 
         protected override void Dispose(bool isDisposing)
         {
+            if (visualOrdering?.IsActive == true)
+            {
+                if (CircleSprite != null) visualOrdering.Unregister(CircleSprite);
+                if (OverlaySprite != null) visualOrdering.Unregister(OverlaySprite);
+                if (flashingProxy != null) visualOrdering.Unregister(flashingProxy);
+                if (hitCircleText != null) visualOrdering.Unregister(hitCircleText);
+            }
+
             base.Dispose(isDisposing);
 
             if (drawableObject != null)

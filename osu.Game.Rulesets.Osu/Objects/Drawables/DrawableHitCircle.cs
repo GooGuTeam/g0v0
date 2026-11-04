@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -53,6 +53,16 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         }
 
         private readonly Bindable<bool> hitAnimations = new Bindable<bool>(true);
+
+        [Resolved(CanBeNull = true)]
+        private OsuVisualOrdering? visualOrdering { get; set; }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            if (visualOrdering?.IsActive == true)
+                visualOrdering.Register(CirclePiece, this, OsuVisualKind.CircleGroup, () => shakeContainer, localDepth: 1);
+        }
 
         [BackgroundDependencyLoader]
         private void load(OsuRulesetConfigManager? osuConfig)

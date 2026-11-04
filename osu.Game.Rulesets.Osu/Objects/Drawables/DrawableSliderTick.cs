@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -11,6 +11,7 @@ using osuTK.Graphics;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Skinning;
 using osu.Framework.Graphics.Containers;
+using osu.Game.Rulesets.Osu.UI;
 
 namespace osu.Game.Rulesets.Osu.Objects.Drawables
 {
@@ -23,6 +24,20 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         protected DrawableSlider DrawableSlider => (DrawableSlider)ParentHitObject;
 
         private SkinnableDrawable scaleContainer;
+        private readonly Container visualProxies = new Container { RelativeSizeAxes = Axes.Both };
+
+        [Resolved(CanBeNull = true)]
+        private OsuVisualOrdering visualOrdering { get; set; }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            if (visualOrdering?.IsActive == true)
+            {
+                AddInternal(visualProxies);
+                visualOrdering.Register(scaleContainer, this, OsuVisualKind.Tick, () => visualProxies);
+            }
+        }
 
         public DrawableSliderTick()
             : base(null)

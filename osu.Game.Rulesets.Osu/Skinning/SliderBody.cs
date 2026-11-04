@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -99,6 +99,7 @@ namespace osu.Game.Rulesets.Osu.Skinning
                 p.BorderColour = path?.BorderColour ?? Color4.White;
                 p.BorderSize = path?.BorderSize ?? 1;
                 p.Vertices = path?.Vertices ?? Array.Empty<Vector2>();
+                p.DrawRange = path?.DrawRange;
             });
         }
 
