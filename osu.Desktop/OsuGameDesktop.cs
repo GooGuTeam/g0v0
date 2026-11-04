@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
 using osu.Desktop.IPC;
+using osu.Desktop.Performance;
 using osu.Desktop.Security;
 using osu.Framework.Platform;
 using osu.Game;
@@ -158,6 +159,8 @@ namespace osu.Desktop
             }
 
             LoadComponentAsync(new ElevatedPrivilegesChecker(), Add);
+            LoadComponentAsync(new PowerStatusMonitor(), Add);
+            LoadComponentAsync(new ProcessorPerformanceNotice(), Add);
 
             osuSchemeLinkIPCChannel = new OsuSchemeLinkIPCChannel(Host, this);
             archiveImportIPCChannel = new ArchiveImportIPCChannel(Host, this);

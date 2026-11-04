@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.IO;
@@ -25,10 +25,8 @@ using osu.Game.Online.API.Requests;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using osu.Framework.Imaging;
+using System.Drawing;
 
 namespace osu.Game.Graphics
 {
@@ -129,7 +127,7 @@ namespace osu.Game.Graphics
                     var image = await Image.LoadAsync(storage.GetFullPath(filename)).ConfigureAwait(false);
 
                     stream = new MemoryStream();
-                    await image.SaveAsJpegAsync(stream, new JpegEncoder { Quality = jpeg_quality }).ConfigureAwait(false);
+                    await image.SaveAsJpegAsync(stream, jpeg_quality).ConfigureAwait(false);
                     break;
 
                 default:
@@ -235,7 +233,7 @@ namespace osu.Game.Graphics
 
                     (string? filename, Stream? stream) = getWritableStream(screenshotFormat.Value);
 
-                    if (filename == null) return null;
+                    if (filename == null || stream == null) return null;
 
                     using (stream)
                     {
@@ -246,7 +244,7 @@ namespace osu.Game.Graphics
                                 break;
 
                             case ScreenshotFormat.Jpg:
-                                await image.SaveAsJpegAsync(stream, new JpegEncoder { Quality = jpeg_quality }).ConfigureAwait(false);
+                                await image.SaveAsJpegAsync(stream, jpeg_quality).ConfigureAwait(false);
                                 break;
 
                             default:

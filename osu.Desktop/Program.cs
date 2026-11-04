@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -40,6 +40,8 @@ namespace osu.Desktop
 
             if (OperatingSystem.IsWindows())
             {
+                WindowsCompatibility.EnsureFullscreenOptimizationsDisabled();
+
                 var windowsVersion = Environment.OSVersion.Version;
 
                 // While .NET 8 only supports Windows 10 and above, running on Windows 7/8.1 may still work. We are limited by realm currently, as they choose to only support 8.1 and higher.

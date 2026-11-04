@@ -22,6 +22,24 @@
   <PropertyGroup>
     <StartupObject>osu.Desktop.Program</StartupObject>
   </PropertyGroup>
+  <ItemGroup Label="Runtime Configuration">
+    <!-- Tiered compilation waits until no new methods have been compiled for this long before promoting hot methods.
+         Loading screens and gameplay keep compiling new methods, so with the default (100 ms) frames ran tier-0 code
+         for about 15 s; with 0 the offline render benchmark reaches steady-state frame times within about 5 s. -->
+    <RuntimeHostConfigurationOption Include="System.Runtime.TieredCompilation.CallCountingDelayMs" Value="0" />
+  </ItemGroup>
+  <PropertyGroup Label="Mapping Assistant">
+    <!-- The mapping assistant loads its native module from beside the application. Release packages do not include one yet,
+         so builds copy a locally built module (see docs/mapperatorinator/native.md) when it exists. -->
+    <MapperatorNativeLibrary Condition="'$(MapperatorNativeLibrary)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">$(MSBuildThisFileDirectory)../build/mapperatorinator/g0v0_mapperator.dll</MapperatorNativeLibrary>
+    <MapperatorNativeLibrary Condition="'$(MapperatorNativeLibrary)' == ''">$(MSBuildThisFileDirectory)../build/mapperatorinator/libg0v0_mapperator.so</MapperatorNativeLibrary>
+  </PropertyGroup>
+  <ItemGroup Label="Mapping Assistant" Condition="Exists('$(MapperatorNativeLibrary)')">
+    <None Include="$(MapperatorNativeLibrary)" Link="$([System.IO.Path]::GetFileName('$(MapperatorNativeLibrary)'))" CopyToOutputDirectory="PreserveNewest" />
+    <!-- A CUDA build of the module needs the CUDA runtime beside it; copy any placed next to the module. -->
+    <None Include="$([System.IO.Path]::GetDirectoryName('$(MapperatorNativeLibrary)'))/cudart64_*.dll;$([System.IO.Path]::GetDirectoryName('$(MapperatorNativeLibrary)'))/cublas*64_*.dll"
+          Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
   <ItemGroup Label="Project References">
     <ProjectReference Include="..\osu.Game.Tournament\osu.Game.Tournament.csproj"/>
     <ProjectReference Include="..\osu.Game\osu.Game.csproj"/>

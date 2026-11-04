@@ -154,6 +154,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
         protected override void OnFree()
         {
+            CanTrack = null;
             base.OnFree();
 
             spinningSample.ClearSamples();
@@ -316,7 +317,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             base.Update();
 
             if (HandleUserInput)
-                RotationTracker.Tracking = RotationTracker.IsSpinnableTime && !Result.HasResult && correctButtonPressed();
+                RotationTracker.Tracking = RotationTracker.IsSpinnableTime && !Result.HasResult
+                                           && (CanTrack?.Invoke() ?? true) && correctButtonPressed();
 
             spinningSample?.Frequency.Value = spinnerFrequencyModulate
                 ? Math.Min(spinning_sample_modulated_max_frequency, spinning_sample_modulated_base_frequency + progressUnclamped * spinning_sample_modulaton_ratio)
@@ -340,6 +342,12 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (nextTick?.LifetimeStart == double.MaxValue)
                 nextTick.LifetimeStart = HitObject.StartTime;
         }
+
+        /// <summary>
+        /// Optional input ownership check used by Classic for overlapping spinners.
+        /// Button state remains shared; changing the held hit button does not lose ownership.
+        /// </summary>
+        public Func<bool> CanTrack { get; set; }
 
         private bool correctButtonPressed()
         {

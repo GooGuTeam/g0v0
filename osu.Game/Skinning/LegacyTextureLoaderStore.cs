@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -9,9 +9,7 @@ using System.Threading.Tasks;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.IO.Stores;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using osu.Framework.Imaging;
 
 namespace osu.Game.Skinning
 {
@@ -105,29 +103,29 @@ namespace osu.Game.Skinning
             if (left == null && middle == null && right == null)
                 return null;
 
-            var spliced = new Image<Rgba32>((left?.Width ?? 0) + (middle?.Width ?? 0) + (right?.Width ?? 0), Math.Max(Math.Max(left?.Height ?? 0, middle?.Height ?? 0), right?.Height ?? 0));
-            if (spliced.Width == 0 || spliced.Height == 0)
+            int width = (left?.Width ?? 0) + (middle?.Width ?? 0) + (right?.Width ?? 0);
+            int height = Math.Max(Math.Max(left?.Height ?? 0, middle?.Height ?? 0), right?.Height ?? 0);
+            if (width == 0 || height == 0)
                 return null;
 
-            if (left != null)
-            {
-                var leftPixels = Image.LoadPixelData(left.Data, left.Width, left.Height);
-                spliced.Mutate(t => t.DrawImage(leftPixels, new Point(), 1));
-            }
-
-            if (middle != null)
-            {
-                var middlePixels = Image.LoadPixelData(middle.Data, middle.Width, middle.Height);
-                spliced.Mutate(t => t.DrawImage(middlePixels, new Point(left?.Width ?? 0, 0), 1));
-            }
-
-            if (right != null)
-            {
-                var rightPixels = Image.LoadPixelData(right.Data, right.Width, right.Height);
-                spliced.Mutate(t => t.DrawImage(rightPixels, new Point((left?.Width ?? 0) + (middle?.Width ?? 0), 0), 1));
-            }
+            // The pieces sit side by side on a transparent canvas without overlapping, so copying rows matches drawing them.
+            var spliced = new Image<Rgba32>(width, height);
+            copyInto(spliced, left, 0);
+            copyInto(spliced, middle, left?.Width ?? 0);
+            copyInto(spliced, right, (left?.Width ?? 0) + (middle?.Width ?? 0));
 
             return new TextureUpload(spliced);
+        }
+
+        private static void copyInto(Image<Rgba32> target, TextureUpload? source, int offsetX)
+        {
+            if (source == null)
+                return;
+
+            var data = source.Data;
+
+            for (int y = 0; y < source.Height; y++)
+                data.Slice(y * source.Width, source.Width).CopyTo(target.Pixels.Slice(y * target.Width + offsetX, source.Width));
         }
 
         private TextureUpload convertToGrayscale(TextureUpload textureUpload)
@@ -137,7 +135,7 @@ namespace osu.Game.Skinning
             // stable uses `0.299 * r + 0.587 * g + 0.114 * b`
             // (https://github.com/peppy/osu-stable-reference/blob/013c3010a9d495e3471a9c59518de17006f9ad89/osu!/Graphics/Textures/pTexture.cs#L138-L153)
             // which matches mode BT.601 (https://en.wikipedia.org/wiki/Grayscale#Luma_coding_in_video_systems)
-            image.Mutate(i => i.Grayscale(GrayscaleMode.Bt601));
+            image.Mutate(i => i.Grayscale());
 
             return new TextureUpload(image);
         }
