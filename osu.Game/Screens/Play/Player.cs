@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -127,16 +127,17 @@ namespace osu.Game.Screens.Play
         [Cached]
         private OverlayColourProvider colourProvider = new OverlayColourProvider(OverlayColourScheme.Purple);
 
-        [Resolved]
+        // The following are absent when gameplay runs outside the game, as in offline replay export (see ExportReplayPlayer).
+        [Resolved(canBeNull: true)]
         private ScoreManager scoreManager { get; set; }
 
-        [Resolved]
+        [Resolved(canBeNull: true)]
         private IAPIProvider api { get; set; }
 
-        [Resolved]
+        [Resolved(canBeNull: true)]
         private MusicController musicController { get; set; }
 
-        [Resolved]
+        [Resolved(canBeNull: true)]
         private OsuGameBase game { get; set; }
 
         public GameplayState GameplayState { get; private set; }
@@ -288,7 +289,7 @@ namespace osu.Game.Screens.Play
 
             dependencies.CacheAs(GameplayState = new GameplayState(playableBeatmap, ruleset, gameplayMods, Score, ScoreProcessor, HealthProcessor, Beatmap.Value.Storyboard, PlayingState));
 
-            var rulesetSkinProvider = new RulesetSkinProvidingContainer(ruleset, playableBeatmap, Beatmap.Value.Skin);
+            var rulesetSkinProvider = CreateRulesetSkinProvider(ruleset, playableBeatmap, Beatmap.Value.Skin);
             config.BindWith(OsuSetting.BeatmapSkins, rulesetSkinProvider.BeatmapSkins);
             config.BindWith(OsuSetting.BeatmapColours, rulesetSkinProvider.BeatmapColours);
             config.BindWith(OsuSetting.BeatmapHitsounds, rulesetSkinProvider.BeatmapHitsounds);
@@ -436,6 +437,12 @@ namespace osu.Game.Screens.Play
         }
 
         protected virtual GameplayClockContainer CreateGameplayClockContainer(WorkingBeatmap beatmap, double gameplayStart) => new MasterGameplayClockContainer(beatmap, gameplayStart);
+
+        /// <summary>
+        /// Creates the skin hierarchy for gameplay components.
+        /// </summary>
+        protected internal virtual RulesetSkinProvidingContainer CreateRulesetSkinProvider(Ruleset ruleset, IBeatmap beatmap, ISkin beatmapSkin)
+            => new RulesetSkinProvidingContainer(ruleset, beatmap, beatmapSkin);
 
         private Drawable createUnderlayComponents(WorkingBeatmap working)
         {
@@ -777,7 +784,7 @@ namespace osu.Game.Screens.Play
 
             // at the point of restarting the track should either already be paused or the volume should be zero.
             // stopping here is to ensure music doesn't become audible after exiting back to PlayerLoader.
-            musicController.Stop();
+            musicController?.Stop();
 
             skipExitTransition = quickRestart;
             PrepareLoaderForRestart?.Invoke(quickRestart);
@@ -1217,7 +1224,7 @@ namespace osu.Game.Screens.Play
             // as we are no longer the current screen, we cannot guarantee the track is still usable.
             (GameplayClockContainer as MasterGameplayClockContainer)?.StopUsingBeatmapClock();
 
-            musicController.ResetTrackAdjustments();
+            musicController?.ResetTrackAdjustments();
 
             fadeOut();
 
@@ -1233,8 +1240,8 @@ namespace osu.Game.Screens.Play
         {
             ScoreInfo = new ScoreInfo
             {
-                User = api.LocalUser.Value,
-                ClientVersion = game.Version,
+                User = api?.LocalUser.Value,
+                ClientVersion = game?.Version,
             },
         };
 

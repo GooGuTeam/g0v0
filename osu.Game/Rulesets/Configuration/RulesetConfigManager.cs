@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -15,7 +15,7 @@ using osu.Game.Database;
 
 namespace osu.Game.Rulesets.Configuration
 {
-    public abstract class RulesetConfigManager<TLookup> : ConfigManager<TLookup>, IRulesetConfigManager
+    public abstract class RulesetConfigManager<TLookup> : ConfigManager<TLookup>, IRulesetConfigManager, IRulesetConfigSnapshotSource
         where TLookup : struct, Enum
     {
         private readonly RealmAccess realm;
@@ -37,6 +37,23 @@ namespace osu.Game.Rulesets.Configuration
             Load();
 
             InitialiseDefaults();
+        }
+
+        public IReadOnlyDictionary<string, string> CreateSnapshot() => ConfigStore.ToDictionary(
+            pair => pair.Key.ToString(), pair => pair.Value.ToString(CultureInfo.InvariantCulture));
+
+        public void ApplySnapshot(IReadOnlyDictionary<string, string> snapshot)
+        {
+            if (realm != null)
+                throw new InvalidOperationException(@"Snapshots may only be applied to detached ruleset configurations.");
+
+            foreach (var pair in snapshot)
+            {
+                if (!Enum.TryParse(pair.Key, out TLookup key) || !ConfigStore.TryGetValue(key, out var bindable) || bindable is not IParseable parseable)
+                    throw new InvalidOperationException($@"Unknown ruleset setting: {pair.Key}");
+
+                parseable.Parse(pair.Value, CultureInfo.InvariantCulture);
+            }
         }
 
         protected override void PerformLoad()

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Threading.Tasks;
@@ -25,8 +25,9 @@ namespace osu.Game.Screens.Play
         [Resolved]
         private RealmAccess realm { get; set; } = null!;
 
+        // Absent in offline replay export, where the button is never shown.
         [Resolved]
-        private ScoreManager scoreManager { get; set; } = null!;
+        private ScoreManager? scoreManager { get; set; }
 
         private readonly Bindable<DownloadState> state = new Bindable<DownloadState>();
 
@@ -146,7 +147,7 @@ namespace osu.Game.Screens.Play
         {
             if (state.NewValue != DownloadState.LocallyAvailable) return;
 
-            if (importedScore != null) scoreManager.Export(importedScore.Value);
+            if (importedScore != null) scoreManager?.Export(importedScore.Value);
 
             this.state.ValueChanged -= exportWhenReady;
         }

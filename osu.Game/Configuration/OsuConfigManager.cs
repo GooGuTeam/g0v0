@@ -25,6 +25,7 @@ using osu.Game.Screens.Select;
 using osu.Game.Screens.Select.Filter;
 using osu.Game.Skinning;
 using osu.Game.Users;
+using osu.Game.Recording;
 
 namespace osu.Game.Configuration
 {
@@ -105,6 +106,12 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.ExternalLinkWarning, true);
             SetDefault(OsuSetting.PreferNoVideo, false);
+            SetDefault(OsuSetting.RecordingBitrate, 12, 1, 100);
+            SetDefault(OsuSetting.RecordingFrameRate, RecordingFrameRate.Fps60);
+            SetDefault(OsuSetting.RecordingEncoderProfile, RecordingEncoderProfile.Automatic);
+            SetDefault(OsuSetting.RecordingResolution, RecordingResolution.FullHd1080);
+            SetDefault(OsuSetting.RecordingBackend, RecordingBackend.Automatic);
+            SetDefault(OsuSetting.RecordingFfmpegPath, @"ffmpeg");
 
             SetDefault(OsuSetting.ShowOnlineExplicitContent, false);
 
@@ -429,6 +436,12 @@ namespace osu.Game.Configuration
         ScoreDisplayMode,
         ExternalLinkWarning,
         PreferNoVideo,
+        RecordingBitrate,
+        RecordingFrameRate,
+        RecordingEncoderProfile,
+        RecordingResolution,
+        RecordingBackend,
+        RecordingFfmpegPath,
         Scaling,
         ScalingPositionX,
         ScalingPositionY,

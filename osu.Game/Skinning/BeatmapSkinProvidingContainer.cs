@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -31,25 +31,37 @@ namespace osu.Game.Skinning
         private readonly ISkin? classicFallback;
 
         private Bindable<Skin> currentSkin = null!;
+        private readonly bool? userSkinIsLegacy;
 
-        public BeatmapSkinProvidingContainer(ISkin skin, ISkin? classicFallback = null)
+        public BeatmapSkinProvidingContainer(ISkin skin, ISkin? classicFallback = null, bool? userSkinIsLegacy = null)
             : base(skin)
         {
             this.skin = skin;
             this.classicFallback = classicFallback;
+            this.userSkinIsLegacy = userSkinIsLegacy;
         }
 
         [BackgroundDependencyLoader]
-        private void load(SkinManager skins)
+        private void load(SkinManager? skins)
         {
             BeatmapSkins.BindValueChanged(_ => TriggerSourceChanged());
             BeatmapColours.BindValueChanged(_ => TriggerSourceChanged());
             BeatmapHitsounds.BindValueChanged(_ => TriggerSourceChanged());
 
-            currentSkin = skins.CurrentSkin.GetBoundCopy();
-            currentSkin.BindValueChanged(_ =>
+            if (userSkinIsLegacy is bool isLegacy)
             {
-                bool userSkinIsLegacy = skins.CurrentSkin.Value is LegacySkin;
+                updateSources(isLegacy);
+                return;
+            }
+
+            if (skins == null)
+                throw new System.InvalidOperationException(@"A selected skin snapshot or skin manager is required.");
+
+            currentSkin = skins.CurrentSkin.GetBoundCopy();
+            currentSkin.BindValueChanged(value => updateSources(value.NewValue is LegacySkin), true);
+
+            void updateSources(bool userSkinIsLegacy)
+            {
                 bool beatmapProvidingResources = skin is LegacySkinTransformer legacySkin && legacySkin.IsProvidingLegacyResources;
 
                 // Some beatmaps provide a limited selection of skin elements to add some visual flair.
@@ -66,7 +78,7 @@ namespace osu.Game.Skinning
                     SetSources(new[] { skin, classicFallback });
                 else
                     SetSources(new[] { skin });
-            }, true);
+            }
         }
     }
 }

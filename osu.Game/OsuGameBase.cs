@@ -517,34 +517,43 @@ namespace osu.Game
 
         protected virtual void InitialiseFonts()
         {
-            AddFont(Resources, @"Fonts/Inter/Inter-Regular");
-            AddFont(Resources, @"Fonts/Inter/Inter-RegularItalic");
-            AddFont(Resources, @"Fonts/Inter/Inter-Light");
-            AddFont(Resources, @"Fonts/Inter/Inter-LightItalic");
-            AddFont(Resources, @"Fonts/Inter/Inter-SemiBold");
-            AddFont(Resources, @"Fonts/Inter/Inter-SemiBoldItalic");
-            AddFont(Resources, @"Fonts/Inter/Inter-Bold");
-            AddFont(Resources, @"Fonts/Inter/Inter-BoldItalic");
-
-            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Light");
-            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Regular");
-            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Medium");
-            AddFont(Resources, @"Fonts/MapleMono/MapleMono-SemiBold");
-            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Bold");
-            AddFont(Resources, @"Fonts/MapleMono/MapleMono-Black");
-
-            AddFont(Resources, @"Fonts/KTXPYingRound/KTXPYingRound");
-            AddFont(Resources, @"Fonts/MgenPlus/MgenPlus");
-
-            AddFont(Resources, @"Fonts/Noto/Noto-Basic");
-            AddFont(Resources, @"Fonts/Noto/Noto-Bopomofo");
-            AddFont(Resources, @"Fonts/Noto/Noto-CJK-Basic");
-            AddFont(Resources, @"Fonts/Noto/Noto-CJK-Compatibility");
-            AddFont(Resources, @"Fonts/Noto/Noto-Hangul");
-            AddFont(Resources, @"Fonts/Noto/Noto-Thai");
+            foreach (string font in GAME_FONTS)
+                AddFont(Resources, font);
 
             Fonts.AddStore(new OsuIcon.OsuIconStore(Textures));
         }
+
+        /// <summary>
+        /// The fonts the game adds to the framework's font store, in lookup order. Offline replay export loads the same list.
+        /// </summary>
+        internal static readonly string[] GAME_FONTS =
+        {
+            @"Fonts/Inter/Inter-Regular",
+            @"Fonts/Inter/Inter-RegularItalic",
+            @"Fonts/Inter/Inter-Light",
+            @"Fonts/Inter/Inter-LightItalic",
+            @"Fonts/Inter/Inter-SemiBold",
+            @"Fonts/Inter/Inter-SemiBoldItalic",
+            @"Fonts/Inter/Inter-Bold",
+            @"Fonts/Inter/Inter-BoldItalic",
+
+            @"Fonts/MapleMono/MapleMono-Light",
+            @"Fonts/MapleMono/MapleMono-Regular",
+            @"Fonts/MapleMono/MapleMono-Medium",
+            @"Fonts/MapleMono/MapleMono-SemiBold",
+            @"Fonts/MapleMono/MapleMono-Bold",
+            @"Fonts/MapleMono/MapleMono-Black",
+
+            @"Fonts/KTXPYingRound/KTXPYingRound",
+            @"Fonts/MgenPlus/MgenPlus",
+
+            @"Fonts/Noto/Noto-Basic",
+            @"Fonts/Noto/Noto-Bopomofo",
+            @"Fonts/Noto/Noto-CJK-Basic",
+            @"Fonts/Noto/Noto-CJK-Compatibility",
+            @"Fonts/Noto/Noto-Hangul",
+            @"Fonts/Noto/Noto-Thai",
+        };
 
         protected override void LoadComplete()
         {
