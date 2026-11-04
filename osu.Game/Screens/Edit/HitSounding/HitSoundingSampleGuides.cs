@@ -44,7 +44,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             double previousTime = double.NaN;
             foreach (var node in model.Nodes)
             {
-                if (node.Time < start)
+                if (node.IsBody || node.Time < start)
                     continue;
                 if (node.Time > end)
                     break;

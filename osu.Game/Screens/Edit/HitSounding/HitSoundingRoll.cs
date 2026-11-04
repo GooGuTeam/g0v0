@@ -44,7 +44,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         private HitSoundingVolumeTrack volume = null!;
         private Box selectionBox = null!;
         private Vector2? selectionStart;
-        private double visibleDuration = 6000;
+        private double visibleDuration { get; set; } = 6000;
+        private double targetVisibleDuration = 6000;
         private double startTime;
         private bool invalid = true;
         private bool previewingSeek;
@@ -211,7 +212,9 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             foreach (var node in model.Nodes)
             {
-                if (node.Time < startTime - 200 || node.Time > endTime + 200)
+                double nodeStart = node.IsBody ? node.HitObject.StartTime : node.Time;
+                double nodeEnd = node.IsBody ? node.HitObject.GetEndTime() : node.Time;
+                if (nodeEnd < startTime - 200 || nodeStart > endTime + 200)
                 {
                     if (points.Remove(node, out var removed))
                         foreach (var point in removed)
@@ -224,14 +227,16 @@ namespace osu.Game.Screens.Edit.HitSounding
                     points.Add(node, nodePoints);
                     for (int i = 0; i < nodePoints.Length; i++)
                     {
-                        var point = new HitSoundingSamplePoint(node, model, (HitSoundingLane)i);
+                        var point = new HitSoundingSamplePoint(node, model, (HitSoundingLane)i) { Depth = node.IsBody ? 1 : 0 };
                         nodePoints[i] = point;
                         markers.Add(point);
                     }
                 }
                 foreach (var point in nodePoints)
                 {
-                    point.Position = new Vector2(timeToX(node.Time), ((float)point.Lane + 0.5f) * HitSoundingLayout.LANE_HEIGHT - HitSoundingLayout.LANE_SPACING / 2);
+                    point.Position = new Vector2(timeToX((nodeStart + nodeEnd) / 2), ((float)point.Lane + 0.5f) * HitSoundingLayout.LANE_HEIGHT - HitSoundingLayout.LANE_SPACING / 2);
+                    if (node.IsBody)
+                        point.UpdateBodyLayout(timeToX(nodeEnd) - timeToX(nodeStart), timeToX(node.Time) - timeToX(nodeStart));
                 }
             }
 
@@ -290,7 +295,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             int selectedCount = 0;
             foreach (var node in model.SelectedNodes)
             {
-                if (node.Time < startTime || node.Time > endTime)
+                if (node.IsBody || node.Time < startTime || node.Time > endTime)
                     continue;
                 if (selectedCount == columnBoxes.Count)
                 {
@@ -361,7 +366,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             if (e.AltPressed)
             {
-                visibleDuration = Math.Clamp(visibleDuration * Math.Pow(0.9, e.ScrollDelta.Y), 500, 30000);
+                targetVisibleDuration = Math.Clamp(targetVisibleDuration * Math.Pow(0.9, e.ScrollDelta.Y), 500, 30000);
+                this.TransformTo(nameof(visibleDuration), targetVisibleDuration, 250, Easing.OutQuint);
                 return true;
             }
 
@@ -414,7 +420,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (e.Button != MouseButton.Left)
                 return false;
 
-            Vector2 position = lanes.ToLocalSpace(e.ScreenSpaceMousePosition);
+            Vector2 position = lanes.ToLocalSpace(e.ScreenSpaceMouseDownPosition);
             if (position.X < 0 || position.X > lanes.DrawWidth || position.Y < 0 || position.Y > lanes.DrawHeight)
                 return false;
             selectionStart = position;
@@ -440,7 +446,11 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (selectionStart == null)
                 return;
             foreach (var (node, nodePoints) in points)
-                if (nodePoints.Any(p => p.X >= selectionBox.X && p.X <= selectionBox.X + selectionBox.Width && p.Y >= selectionBox.Y && p.Y <= selectionBox.Y + selectionBox.Height)
+                if (nodePoints.Any(p =>
+                        (node.IsBody
+                            ? p.X + p.Width / 2 >= selectionBox.X && p.X - p.Width / 2 <= selectionBox.X + selectionBox.Width
+                            : p.X >= selectionBox.X && p.X <= selectionBox.X + selectionBox.Width)
+                        && p.Y >= selectionBox.Y && p.Y <= selectionBox.Y + selectionBox.Height)
                     && !model.SelectedNodes.Contains(node))
                     model.SelectedNodes.Add(node);
             selectionStart = null;

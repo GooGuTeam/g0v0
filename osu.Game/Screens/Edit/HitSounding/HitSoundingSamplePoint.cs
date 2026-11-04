@@ -1,6 +1,7 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions;
@@ -31,6 +32,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly HitSoundingEditModel model;
         private Container badge = null!;
         private Box background = null!;
+        private Box? bodyFill;
+        private float bodyMarkerX;
         private OsuSpriteText bankLabel = null!;
         private OsuSpriteText setLabel = null!;
         private bool selected;
@@ -77,30 +80,54 @@ namespace osu.Game.Screens.Edit.HitSounding
         [BackgroundDependencyLoader]
         private void load()
         {
-            InternalChild = badge = new Container
+            if (Node.IsBody)
+                AddInternal(bodyFill = new Box { RelativeSizeAxes = Axes.Both });
+
+            AddInternal(badge = new Container
             {
-                RelativeSizeAxes = Axes.Both,
+                Anchor = Anchor.Centre,
+                Origin = Anchor.Centre,
+                RelativeSizeAxes = Node.IsBody ? Axes.None : Axes.Both,
+                Size = Node.IsBody ? new osuTK.Vector2(56, 28) : osuTK.Vector2.One,
                 Masking = true,
-                CornerRadius = HitSoundingLayout.SAMPLE_CORNER_RADIUS,
+                CornerRadius = Node.IsBody ? 14 : HitSoundingLayout.SAMPLE_CORNER_RADIUS,
                 BorderColour = osuTK.Graphics.Color4.White,
                 Children = new Drawable[]
                 {
                     background = new Box { RelativeSizeAxes = Axes.Both },
                     bankLabel = new OsuSpriteText
                     {
-                        Anchor = Anchor.TopCentre, Origin = Anchor.TopCentre, Y = 3,
+                        Anchor = Node.IsBody ? Anchor.CentreLeft : Anchor.TopCentre,
+                        Origin = Node.IsBody ? Anchor.CentreLeft : Anchor.TopCentre,
+                        X = Node.IsBody ? 10 : 0, Y = Node.IsBody ? 0 : 3,
                         Font = OsuFont.Default.With(size: HitSoundingLayout.SAMPLE_FONT_SIZE, weight: FontWeight.Bold),
                         Colour = colours.B5
                     },
                     setLabel = new OsuSpriteText
                     {
-                        Anchor = Anchor.BottomCentre, Origin = Anchor.BottomCentre, Y = -3,
+                        Anchor = Node.IsBody ? Anchor.CentreRight : Anchor.BottomCentre,
+                        Origin = Node.IsBody ? Anchor.CentreRight : Anchor.BottomCentre,
+                        X = Node.IsBody ? -10 : 0, Y = Node.IsBody ? 0 : -3,
                         Font = OsuFont.Default.With(size: 14, weight: FontWeight.SemiBold),
                         Colour = colours.B5
                     }
                 }
-            };
+            });
+            if (Node.IsBody)
+                UpdateBodyLayout(Width, bodyMarkerX);
             Refresh();
+        }
+
+        internal void UpdateBodyLayout(float width, float markerX)
+        {
+            Width = Math.Max(0, width);
+            bodyMarkerX = markerX;
+            if (badge == null)
+                return;
+
+            badge.X = markerX - Width / 2;
+            // Leave room for the head/repeat badges as well as the body capsule within the first span.
+            badge.Alpha = markerX >= HitSoundingLayout.SAMPLE_WIDTH + badge.Width / 2 + 4 ? 1 : 0;
         }
 
         public void Refresh()
@@ -109,6 +136,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 return;
 
             bool bankLane = Lane is HitSoundingLane.SampleSet or HitSoundingLane.Additions;
+            bool showBank = !IsEmpty || (Node.IsBody && Lane == HitSoundingLane.SampleSet);
             string bank = Node.GetBank(Lane == HitSoundingLane.Additions);
             background.Colour = bankLane ? bank switch
             {
@@ -121,7 +149,12 @@ namespace osu.Game.Screens.Edit.HitSounding
                 HitSoundingLane.Finish => colours.Yellow,
                 _ => colours.Pink
             };
-            background.Alpha = IsEnabled && !IsEmpty ? 1 : IsHovered && IsEnabled ? 0.2f : 0;
+            background.Alpha = IsEnabled && showBank ? 1 : IsHovered && IsEnabled ? 0.2f : 0;
+            if (bodyFill != null)
+            {
+                bodyFill.Colour = background.Colour;
+                background.Alpha = IsEnabled ? showBank ? 1 : 0.2f : 0;
+            }
             bankLabel.Text = bank switch
             {
                 HitSampleInfo.BANK_SOFT => "S",
@@ -129,7 +162,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 _ => "N"
             };
             setLabel.Text = Node.SetIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            bankLabel.Alpha = setLabel.Alpha = bankLane && IsEnabled && !IsEmpty ? 1 : 0;
+            bankLabel.Alpha = setLabel.Alpha = bankLane && IsEnabled && showBank ? 1 : 0;
             updateSelection();
         }
 
@@ -144,6 +177,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             selected = model.SelectedNodes.Contains(Node);
             badge.BorderThickness = selected ? 2 : 0;
+            if (bodyFill != null)
+                bodyFill.Alpha = IsEnabled ? selected ? 0.25f : IsHovered ? 0.2f : 0.1f : 0;
         }
 
         protected override bool OnHover(HoverEvent e)

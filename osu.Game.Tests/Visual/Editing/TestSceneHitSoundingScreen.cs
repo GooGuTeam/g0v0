@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
+using osu.Framework.Graphics;
 using osu.Framework.Testing;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
@@ -199,6 +200,108 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("tail changed", () => EditorBeatmap.HitObjects.OfType<Slider>().Single().NodeSamples[2][0].Volume == 40);
             AddAssert("head and repeat unchanged", () => EditorBeatmap.HitObjects.OfType<Slider>().Single().NodeSamples.Take(2).All(s => s[0].Volume == 60));
             AddAssert("body unchanged", () => EditorBeatmap.HitObjects.OfType<Slider>().Single().Samples[0].Volume == 70);
+        }
+
+        [Test]
+        public void TestSliderBodyIntervalEditsWithoutRetargetingHeadOrTail()
+        {
+            Slider slider = null!;
+            AddStep("replace sequence with slider", () =>
+            {
+                foreach (var hitObject in EditorBeatmap.HitObjects.ToArray())
+                    EditorBeatmap.Remove(hitObject);
+                EditorBeatmap.Add(slider = new Slider
+                {
+                    StartTime = 1000,
+                    Path = new SliderPath(new[] { new PathControlPoint(Vector2.Zero), new PathControlPoint(new Vector2(500, 0)) }),
+                    Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT, volume: 70)],
+                    NodeSamples =
+                    [
+                        new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_DRUM) },
+                        new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_DRUM) }
+                    ]
+                });
+            });
+            AddUntilStep("body interval loaded", () => Editor.ChildrenOfType<HitSoundingSamplePoint>().Any(p => p.Node.HitObject == slider && p.Node.IsBody && p.IsLoaded));
+            AddStep("click body away from its capsule", () => clickBody(HitSoundingLane.SampleSet));
+            AddUntilStep("body bank popup opens", () => Editor.ChildrenOfType<HitSoundingSamplePopover>().Any(p => p.IsPresent));
+            AddStep("change body bank", () =>
+            {
+                var popup = Editor.ChildrenOfType<HitSoundingSamplePopover>().Single(p => p.IsPresent);
+                popup.ChildrenOfType<FormDropdown<string>>().Single().Current.Value = HitSampleInfo.BANK_NORMAL;
+                popup.ChildrenOfType<RoundedButton>().Single().TriggerClick();
+            });
+            AddUntilStep("only body bank changes", () => slider.Samples.Single().Bank == HitSampleInfo.BANK_NORMAL
+                && slider.NodeSamples.All(s => s.Single().Bank == HitSampleInfo.BANK_DRUM));
+            AddStep("click body whistle interval", () => clickBody(HitSoundingLane.Whistle));
+            AddUntilStep("body whistle enabled", () => slider.Samples.Any(s => s.Name == HitSampleInfo.HIT_WHISTLE));
+            AddAssert("head and tail have no whistle", () => slider.NodeSamples.All(s => s.All(sample => sample.Name != HitSampleInfo.HIT_WHISTLE)));
+            AddStep("open body addition bank", () => clickBody(HitSoundingLane.Additions));
+            AddUntilStep("body addition popup opens", () => Editor.ChildrenOfType<HitSoundingSamplePopover>().Any(p => p.IsPresent));
+            AddStep("dismiss popup", () => InputManager.Key(Key.Escape));
+            AddStep("click head above the body fill", () =>
+            {
+                var head = Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node.HitObject == slider && p.Node.NodeIndex == 0 && p.Lane == HitSoundingLane.Whistle);
+                InputManager.MoveMouseTo(head);
+                InputManager.Click(MouseButton.Left);
+            });
+            AddUntilStep("head receives click instead of body", () => slider.NodeSamples[0].Any(s => s.Name == HitSampleInfo.HIT_WHISTLE));
+            AddAssert("body whistle remains enabled", () => slider.Samples.Any(s => s.Name == HitSampleInfo.HIT_WHISTLE));
+            AddAssert("tail stays unchanged", () => slider.NodeSamples[1].All(s => s.Name != HitSampleInfo.HIT_WHISTLE));
+            AddStep("box-select part of body away from capsule", () =>
+            {
+                model.SelectedNodes.Clear();
+                var body = Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node.HitObject == slider && p.Node.IsBody && p.Lane == HitSoundingLane.SampleSet);
+                InputManager.MoveMouseTo(body.ToScreenSpace(new Vector2(body.Width * 0.7f, -6)));
+                InputManager.PressButton(MouseButton.Left);
+                InputManager.MoveMouseTo(body.ToScreenSpace(new Vector2(body.Width * 0.8f, body.Height + 3)));
+            });
+            AddStep("release body selection", () => InputManager.ReleaseButton(MouseButton.Left));
+            AddAssert("body interval selected without head or tail", () => model.SelectedNodes.Single().IsBody);
+
+            void clickBody(HitSoundingLane lane)
+            {
+                var body = Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node.HitObject == slider && p.Node.IsBody && p.Lane == lane);
+                InputManager.MoveMouseTo(body.ToScreenSpace(new Vector2(body.Width * 0.7f, body.Height / 2)));
+                InputManager.Click(MouseButton.Left);
+            }
+        }
+
+        [Test]
+        public void TestZoomInterpolatesAndAccumulatesRapidWheelInput()
+        {
+            float initialSpacing = 0;
+            float finalSpacing = 0;
+            bool sawIntermediateSpacing = false;
+            HitSoundingRoll roll = null!;
+            HitSoundingSamplePoint first = null!;
+            HitSoundingSamplePoint second = null!;
+
+            AddStep("observe zoom frames", () =>
+            {
+                first = cell(HitSoundingLane.SampleSet);
+                second = Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node == model.Nodes[1] && p.Lane == HitSoundingLane.SampleSet);
+                initialSpacing = sampleSpacing();
+                finalSpacing = initialSpacing / (float)System.Math.Pow(0.9, 6);
+                roll = Editor.ChildrenOfType<HitSoundingRoll>().Single();
+                roll.OnUpdate += observe;
+                InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single());
+                InputManager.PressKey(Key.AltLeft);
+                InputManager.ScrollVerticalBy(3);
+                InputManager.ScrollVerticalBy(3);
+                InputManager.ReleaseKey(Key.AltLeft);
+            });
+            AddUntilStep("both wheel inputs reach their combined target", () => System.Math.Abs(sampleSpacing() - finalSpacing) < 0.1f);
+            AddAssert("zoom passed through intermediate frames", () => sawIntermediateSpacing);
+            AddStep("stop observing", () => roll.OnUpdate -= observe);
+
+            float sampleSpacing() => second.X - first.X;
+
+            void observe(Drawable _)
+            {
+                float spacing = sampleSpacing();
+                sawIntermediateSpacing |= spacing > initialSpacing + 0.1f && spacing < finalSpacing - 0.1f;
+            }
         }
 
         [Test]

@@ -25,9 +25,10 @@ reveals the beatmap background through a translucent overlay. Custom sample sets
 the editor's Setup screen, under the Resources section; hitsounding mode only assigns samples to those rows.
 
 The Sample set and Additions rows show a compact, fixed-size badge — the bank letter (`N` / `S` / `D`) above the
-numeric set index, with room for two characters and horizontal padding. Only sound point times get vertical
-guides, and neither the guides nor badge sizes depend on Compose's beat divisor. Zoom changes the time spacing
-without shrinking badges or text. Hit samples store one set index per object, shared by all of its samples, so
+numeric set index, with room for two characters and horizontal padding. Only discrete sound point times get
+vertical guides, and neither the guides nor badge sizes depend on Compose's beat divisor. Alt + mouse wheel
+smoothly changes the time spacing without shrinking badges or text; rapid wheel input accumulates towards one
+zoom target. Hit samples store one set index per object, shared by all of its samples, so
 changing the set on any row changes it for the whole object. The Normal-bank badge is left blank for set 1 when
 the beatmap has custom hitsound files, or for user skin set 0 when it has none. All other bank and set combinations
 show both parts — for example, the Normal bank with set 2 reads `N` over `2`. Importing or removing custom
@@ -40,6 +41,13 @@ Whistle, Finish and Clap toggle the matching addition sound on the selection; th
 only the whistle, so Finish and Clap exist purely as additions. A direct click toggles a single cell while
 Ctrl-click or a box selection collects several; bank and set edits and every toggle are undoable as one change.
 Cells that cannot be edited — file-backed samples, or slider nodes that were never materialised — are disabled.
+
+Slider body samples use a translucent, clickable rectangle spanning the slider's duration instead of a middle
+vertical guide. The body bank appears as a horizontal capsule (`N 1`, with the bank on the left and set on the
+right), with matching positions in the Additions and Whistle rows. Finish and Clap remain disabled for bodies.
+Capsules disappear when a slider span is too narrow to fit them between its hit nodes, but the interval remains
+clickable for bank edits, whistle toggles and selection. Head, repeat and tail cells stay above the fill and keep
+their own independent editing targets.
 
 The Objects and Volume rows behave as before, and the mouse wheel still seeks the cursor, snapping to the closest
 sound point rather than to the editor's beat grid.
