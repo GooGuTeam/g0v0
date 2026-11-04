@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -49,6 +50,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         public BindableList<HitSoundingNode> SelectedNodes { get; } = [];
 
         /// <summary>
+        /// The normal-bank set displayed as an empty cell: beatmap samples when available, otherwise the user skin.
+        /// </summary>
+        public int DefaultSampleSetIndex { get; private set; }
+
+        /// <summary>
         /// Invoked when the node list or the samples backing it may have changed.
         /// </summary>
         public event Action? Changed;
@@ -72,6 +78,10 @@ namespace osu.Game.Screens.Edit.HitSounding
             beatmap.HitObjectUpdated += onHitObjectChanged;
             beatmap.BeatmapReprocessed += invalidate;
 
+            updateDefaultSampleSet();
+            if (beatmap.BeatmapSkin != null)
+                beatmap.BeatmapSkin.BeatmapSkinChanged += scheduleDefaultSampleSetUpdate;
+
             SelectedNodes.CollectionChanged += onSelectedNodesChanged;
 
             rebuild();
@@ -80,6 +90,10 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// <summary>
         /// Applies a bank (and sample set) change to the given nodes.
         /// </summary>
+        /// <remarks>
+        /// A supplied <paramref name="setIndex"/> is applied to every sample of each targeted node (one shared set per node).
+        /// An additions-only edit never changes the normal bank, and is a no-op on nodes without an addition.
+        /// </remarks>
         /// <param name="targets">The nodes to change. Nodes no longer present in the beatmap are ignored.</param>
         /// <param name="bank">The target bank. May be <see cref="HitObjectComposer.HIT_BANK_AUTO"/> when <paramref name="additionsOnly"/> is <c>true</c>.</param>
         /// <param name="setIndex">The target sample set index. <c>0</c> is the default set, <c>1</c> the beatmap skin, <c>&gt;= 2</c> custom sets.
@@ -109,88 +123,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         /// <summary>
-        /// Whether <see cref="MoveSet"/> can move the given nodes by the requested offset.
-        /// </summary>
-        /// <remarks>
-        /// The operation is only offered when every editable target can move without leaving the valid sample set range.
-        /// This keeps a mixed-set selection moving by the same offset instead of silently clamping individual nodes.
-        /// </remarks>
-        /// <param name="targets">The nodes to inspect. Nodes no longer present in the beatmap are ignored.</param>
-        /// <param name="delta">The sample set index offset to test.</param>
-        /// <returns><c>true</c> if at least one target would actually change set and none would leave the valid range.</returns>
-        public bool CanMoveSet(IEnumerable<HitSoundingNode> targets, int delta)
-        {
-            if (delta == 0)
-                return false;
-
-            applyPendingChanges();
-
-            bool anyChanged = false;
-
-            foreach (var node in enumerateNodes(targets))
-            {
-                if (!canEditSamples(node) || node.Samples.Count == 0)
-                    continue;
-
-                long target = (long)node.SetIndex + delta;
-
-                if (target < 0 || target > int.MaxValue)
-                    return false;
-
-                if (planSetChange(node, (int)target) != null)
-                    anyChanged = true;
-            }
-
-            return anyChanged;
-        }
-
-        /// <summary>
-        /// Moves the given nodes by a sample set index offset, preserving each sample's bank, additions and volume.
-        /// </summary>
-        /// <remarks>
-        /// Mixed selections are moved relative to each node's current set, so their relative set ordering is preserved.
-        /// The whole batch is applied in a single reversible transaction, and no transaction is opened when nothing changes.
-        /// </remarks>
-        /// <param name="targets">The nodes to move. Nodes no longer present in the beatmap are ignored.</param>
-        /// <param name="delta">The sample set index offset. Must keep every edited node within the valid range.</param>
-        public void MoveSet(IEnumerable<HitSoundingNode> targets, int delta)
-        {
-            if (delta == 0)
-                return;
-
-            applyPendingChanges();
-
-            var editable = new List<HitSoundingNode>();
-
-            foreach (var node in enumerateNodes(targets))
-            {
-                if (!canEditSamples(node) || node.Samples.Count == 0)
-                    continue;
-
-                long target = (long)node.SetIndex + delta;
-
-                if (target < 0 || target > int.MaxValue)
-                    return;
-
-                editable.Add(node);
-            }
-
-            var plans = new List<PendingNodeUpdate>();
-
-            foreach (var node in editable)
-            {
-                int target = (int)((long)node.SetIndex + delta);
-                List<PendingSampleUpdate>? updates = planSetChange(node, target);
-
-                if (updates != null)
-                    plans.Add(new PendingNodeUpdate(node, updates));
-            }
-
-            commit(plans);
-        }
-
-        /// <summary>
-        /// Restores the given nodes to the editor's default hit sample (normal hit sound, default bank, set 0, volume 100).
+        /// Restores the given nodes to the editor's default hit sample (normal hit sound, default bank, default set, volume 100).
         /// </summary>
         /// <remarks>
         /// Only sample data is replaced; the hit object's timing and presence in the beatmap are never touched.
@@ -233,8 +166,12 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// <summary>
         /// Applies a volume change to every sample of the given nodes.
         /// </summary>
-        /// <param name="targets">The nodes to change. Nodes no longer present in the beatmap, or without samples, are ignored.</param>
+        /// <param name="targets">The nodes to change. Nodes no longer present in the beatmap, or whose sample list is not editable, are ignored.</param>
         /// <param name="volume">The target volume, clamped to the same bounds as the sample editing UI.</param>
+        /// <remarks>
+        /// An editable node without samples materialises its normal sample at the requested volume.
+        /// Body / loop nodes and unmaterialised repeat nodes never do so.
+        /// </remarks>
         public void SetVolume(IEnumerable<HitSoundingNode> targets, int volume)
         {
             volume = Math.Clamp(volume, DrawableHitObject.MINIMUM_SAMPLE_VOLUME, 100);
@@ -245,6 +182,9 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             foreach (var node in enumerateNodes(targets))
             {
+                if (!canEditSamples(node))
+                    continue;
+
                 IList<HitSampleInfo> samples = node.Samples;
 
                 if (samples.Count == 0)
@@ -303,6 +243,9 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             foreach (var node in enumerateNodes(targets))
             {
+                if (!node.CanEditSamples)
+                    continue;
+
                 // slider loops only react to the whistle addition (sliderwhistle).
                 if (node.IsBody && sampleName != HitSampleInfo.HIT_WHISTLE)
                     continue;
@@ -372,13 +315,17 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private static void planBankChange(HitSoundingNode node, string bank, int setIndex, bool additionsOnly, List<PendingNodeUpdate> plans)
         {
+            if (!node.CanEditSamples)
+                return;
+
             IList<HitSampleInfo> samples = node.Samples;
 
             if (samples.Count == 0)
             {
                 // Editing a node without any samples is only meaningful for nodes which own their sample list (not slider loops),
-                // so materialise the normal sample the edit refers to.
-                if (canPopulateNode(node))
+                // so materialise the normal sample the normal bank or set edit refers to. Addition edits never materialise a node,
+                // as there is no addition to configure.
+                if (!additionsOnly && canPopulateNode(node))
                 {
                     string? suffix = setIndex >= 2 ? setIndex.ToString() : null;
                     string sampleBank = bank == HitObjectComposer.HIT_BANK_AUTO ? HitSampleInfo.BANK_NORMAL : bank;
@@ -392,6 +339,10 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                 return;
             }
+
+            // Configuring the addition bank requires at least one addition; an addition edit never creates samples.
+            if (additionsOnly && !hasAnyAddition(samples))
+                return;
 
             List<PendingSampleUpdate>? updates = null;
 
@@ -407,37 +358,32 @@ namespace osu.Game.Screens.Edit.HitSounding
                 if (!additionsOnly)
                 {
                     // The normal sample always moves, as do addition samples which automatically follow the normal bank.
+                    // Explicitly-banked additions stay independent of the normal bank.
                     if ((isNormal || sample.EditorAutoBank) && !string.Equals(sample.Bank, bank, StringComparison.Ordinal))
                     {
                         targetBank = bank;
                         bankChanged = true;
                     }
                 }
-                else if (isNormal)
+                else if (!isNormal)
                 {
-                    // A body node's normal sample drives the loop sample (sliderslide), so an explicit bank move applies to it as well.
-                    if (node.IsBody && bank != HitObjectComposer.HIT_BANK_AUTO && !string.Equals(sample.Bank, bank, StringComparison.Ordinal))
+                    if (bank == HitObjectComposer.HIT_BANK_AUTO)
+                    {
+                        string normalBank = getNormalBank(samples);
+
+                        if (!string.Equals(sample.Bank, normalBank, StringComparison.Ordinal) || !sample.EditorAutoBank)
+                        {
+                            targetBank = normalBank;
+                            targetEditorAutoBank = true;
+                            bankChanged = true;
+                        }
+                    }
+                    else if (!string.Equals(sample.Bank, bank, StringComparison.Ordinal) || sample.EditorAutoBank)
                     {
                         targetBank = bank;
+                        targetEditorAutoBank = false;
                         bankChanged = true;
                     }
-                }
-                else if (bank == HitObjectComposer.HIT_BANK_AUTO)
-                {
-                    string normalBank = getNormalBank(samples);
-
-                    if (!string.Equals(sample.Bank, normalBank, StringComparison.Ordinal) || !sample.EditorAutoBank)
-                    {
-                        targetBank = normalBank;
-                        targetEditorAutoBank = true;
-                        bankChanged = true;
-                    }
-                }
-                else if (!string.Equals(sample.Bank, bank, StringComparison.Ordinal) || sample.EditorAutoBank)
-                {
-                    targetBank = bank;
-                    targetEditorAutoBank = false;
-                    bankChanged = true;
                 }
 
                 HitSampleInfo? updated = null;
@@ -519,6 +465,17 @@ namespace osu.Game.Screens.Edit.HitSounding
             return false;
         }
 
+        private static bool hasAnyAddition(IList<HitSampleInfo> samples)
+        {
+            for (int i = 0; i < samples.Count; i++)
+            {
+                if (Array.IndexOf(HitSampleInfo.ALL_ADDITIONS, samples[i].Name) >= 0)
+                    return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Whether an update produced by <see cref="planBankChange"/> actually changes the fields it targets.
         /// </summary>
@@ -562,55 +519,6 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             return node.HitObject is IHasRepeats hasRepeats && node.NodeIndex < hasRepeats.NodeSamples.Count;
         }
-
-        /// <summary>
-        /// Plans moving a node's samples to the given sample set while preserving every other sample field.
-        /// </summary>
-        /// <returns>The required sample updates, or <c>null</c> if the node has no editable samples or already uses the target set.</returns>
-        private static List<PendingSampleUpdate>? planSetChange(HitSoundingNode node, int setIndex)
-        {
-            if (!canEditSamples(node))
-                return null;
-
-            IList<HitSampleInfo> samples = node.Samples;
-
-            if (samples.Count == 0)
-                return null;
-
-            string? targetSuffix = setIndex >= 2 ? setIndex.ToString() : null;
-            bool targetUseBeatmapSamples = setIndex >= 1;
-
-            List<PendingSampleUpdate>? updates = null;
-
-            for (int i = 0; i < samples.Count; i++)
-            {
-                HitSampleInfo sample = samples[i];
-
-                if (string.Equals(sample.Suffix, targetSuffix, StringComparison.Ordinal) && sample.UseBeatmapSamples == targetUseBeatmapSamples)
-                    continue;
-
-                HitSampleInfo updated = sample.With(newSuffix: targetSuffix, newUseBeatmapSamples: targetUseBeatmapSamples);
-
-                if (!hasSetChanges(sample, updated))
-                    continue;
-
-                updates ??= [];
-                updates.Add(new PendingSampleUpdate(i, updated));
-            }
-
-            return updates;
-        }
-
-        /// <summary>
-        /// Whether an update produced by <see cref="planSetChange"/> actually changes the sample set fields it targets.
-        /// </summary>
-        /// <remarks>
-        /// File samples intentionally ignore set changes, so testing the produced sample accounts for those subclasses
-        /// instead of assuming that a differing suffix necessarily changes the encoded beatmap.
-        /// </remarks>
-        private static bool hasSetChanges(HitSampleInfo current, HitSampleInfo updated)
-            => !string.Equals(current.Suffix, updated.Suffix, StringComparison.Ordinal)
-               || current.UseBeatmapSamples != updated.UseBeatmapSamples;
 
         /// <summary>
         /// Whether the sample list already consists solely of the editor's default normal hit sample.
@@ -671,6 +579,18 @@ namespace osu.Game.Screens.Edit.HitSounding
                 return;
 
             synchroniseSelection();
+        }
+
+        private void scheduleDefaultSampleSetUpdate() => Schedule(updateDefaultSampleSet);
+
+        private void updateDefaultSampleSet()
+        {
+            int index = beatmap.BeatmapSkin?.GetAvailableSampleSets().Any(set => set.Filenames.Count > 0) == true ? 1 : 0;
+            if (DefaultSampleSetIndex == index)
+                return;
+
+            DefaultSampleSetIndex = index;
+            Changed?.Invoke();
         }
 
         private void invalidate()
@@ -863,6 +783,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             beatmap.HitObjectRemoved -= onHitObjectChanged;
             beatmap.HitObjectUpdated -= onHitObjectChanged;
             beatmap.BeatmapReprocessed -= invalidate;
+            if (beatmap.BeatmapSkin != null)
+                beatmap.BeatmapSkin.BeatmapSkinChanged -= scheduleDefaultSampleSetUpdate;
 
             SelectedNodes.CollectionChanged -= onSelectedNodesChanged;
         }

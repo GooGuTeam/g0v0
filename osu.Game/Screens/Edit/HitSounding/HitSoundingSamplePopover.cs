@@ -3,54 +3,108 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using osu.Framework.Allocation;
+using osu.Framework.Extensions;
+using osu.Framework.Graphics;
+using osu.Framework.Graphics.Containers;
+using osu.Framework.Localisation;
 using osu.Game.Audio;
-using osu.Game.Rulesets.Objects;
-using osu.Game.Screens.Edit.Compose.Components.Timeline;
+using osu.Game.Graphics.Containers;
+using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.Localisation;
+using osu.Game.Rulesets.Edit;
+using osuTK;
 
 namespace osu.Game.Screens.Edit.HitSounding
 {
     /// <summary>
-    /// A sample editing popover which operates on <see cref="HitSoundingNode"/>s rather than whole hit objects.
+    /// Chooses one bank and shared set for the nodes selected when the popover opens.
     /// </summary>
-    /// <remarks>
-    /// The sample mutations themselves are inherited from <see cref="SamplePointPiece.SampleEditPopover"/> and therefore
-    /// continue to use the editor's standard reversible transaction flow; only the set of samples being edited changes.
-    /// </remarks>
-    public partial class HitSoundingSamplePopover : SamplePointPiece.SampleEditPopover
+    public partial class HitSoundingSamplePopover : OsuPopover
     {
-        /// <summary>
-        /// The nodes this popover edits, frozen when it was opened so that later selection changes do not retarget an edit in progress.
-        /// </summary>
+        private readonly HitSoundingEditModel model;
         private readonly HitSoundingNode[] targets;
+        private readonly bool additionsOnly;
+        private readonly string initialBank;
+        private readonly int initialSet;
 
-        public HitSoundingSamplePopover(HitSoundingNode node, HitSoundingEditModel model)
-            : base(node.HitObject)
+        public HitSoundingSamplePopover(HitSoundingNode node, HitSoundingEditModel model, bool additionsOnly)
         {
+            this.model = model;
+            this.additionsOnly = additionsOnly;
             targets = model.SelectedNodes.Contains(node) ? model.SelectedNodes.ToArray() : new[] { node };
+            initialBank = node.GetBank(additionsOnly);
+            initialSet = node.SetIndex;
         }
 
-        /// <summary>
-        /// Restricts the edited samples to the nodes which were selected when the popover was opened,
-        /// or to the clicked node alone if it was not part of the selection.
-        /// </summary>
-        protected override IEnumerable<(HitObject hitObject, IList<HitSampleInfo> samples)> GetRelevantSamples(HitObject[] hitObjects)
+        [BackgroundDependencyLoader]
+        private void load(EditorBeatmap beatmap)
         {
-            foreach (var target in targets)
-                yield return (target.HitObject, target.Samples);
-        }
+            string[] banks = additionsOnly
+                ? new[] { HitObjectComposer.HIT_BANK_AUTO, HitSampleInfo.BANK_NORMAL, HitSampleInfo.BANK_SOFT, HitSampleInfo.BANK_DRUM }
+                : HitSampleInfo.ALL_BANKS;
+            var indices = new SortedSet<int> { 0, 1 };
+            if (beatmap.BeatmapSkin != null)
+                foreach (var set in beatmap.BeatmapSkin.GetAvailableSampleSets())
+                    indices.Add(set.SampleSetIndex);
+            foreach (var node in targets)
+                indices.Add(node.SetIndex);
 
-        /// <summary>
-        /// Slider loops only react to the whistle addition, so a selection consisting solely of body nodes only offers that toggle.
-        /// </summary>
-        protected override IEnumerable<string> GetAdditionSamples()
-        {
-            foreach (var target in targets)
+            var bankDropdown = new BankDropdown
             {
-                if (!target.IsBody)
-                    return HitSampleInfo.ALL_ADDITIONS;
-            }
+                Caption = additionsOnly ? EditorStrings.AdditionBank : EditorStrings.NormalBank,
+                Items = banks,
+                Current = { Value = initialBank }
+            };
+            var setDropdown = new SetDropdown
+            {
+                Caption = EditorStrings.SampleSet,
+                Items = indices,
+                Current = { Value = initialSet }
+            };
+            Children = new Drawable[]
+            {
+                new FillFlowContainer
+                {
+                    Width = 250, AutoSizeAxes = Axes.Y, Direction = FillDirection.Vertical, Spacing = new Vector2(0, 10),
+                    Children = new Drawable[]
+                    {
+                        bankDropdown,
+                        setDropdown,
+                        new OsuTextFlowContainer
+                        {
+                            RelativeSizeAxes = Axes.X, AutoSizeAxes = Axes.Y,
+                            Text = HitSoundingStrings.SharedSetHint
+                        },
+                        new RoundedButton
+                        {
+                            RelativeSizeAxes = Axes.X, Height = 35, Text = osu.Game.Resources.Localisation.Web.CommonStrings.ButtonsSave,
+                            Action = () =>
+                            {
+                                model.SetBank(targets, bankDropdown.Current.Value, setDropdown.Current.Value, additionsOnly);
+                                this.HidePopover();
+                            }
+                        }
+                    }
+                }
+            };
+        }
 
-            return new[] { HitSampleInfo.HIT_WHISTLE };
+        private partial class BankDropdown : FormDropdown<string>
+        {
+            protected override LocalisableString GenerateItemText(string item) => item switch
+            {
+                HitSampleInfo.BANK_NORMAL => HitSoundingStrings.Normal,
+                HitSampleInfo.BANK_SOFT => HitSoundingStrings.Soft,
+                HitSampleInfo.BANK_DRUM => HitSoundingStrings.Drum,
+                _ => HitSoundingStrings.Auto
+            };
+        }
+
+        private partial class SetDropdown : FormDropdown<int>
+        {
+            protected override LocalisableString GenerateItemText(int item)
+                => item == 0 ? HitSoundingStrings.UserSkin : HitSoundingStrings.Set(item);
         }
     }
 }

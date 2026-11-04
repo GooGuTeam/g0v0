@@ -30,14 +30,15 @@ namespace osu.Game.Screens.Edit.HitSounding
             dependencies.CacheAs(model);
             var playback = new HitSoundingSamplePlayback(model);
             dependencies.CacheAs(playback);
-            AddInternal(new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background6, Depth = float.MaxValue });
+            roll = new HitSoundingRoll(model);
+            AddInternal(new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background6, Alpha = 0.6f, Depth = float.MaxValue });
             Children = new Drawable[]
             {
                 model,
                 new EditorSkinProvidingContainer(EditorBeatmap)
                 {
                     RelativeSizeAxes = Axes.Both,
-                    Children = new Drawable[] { playback, new HitSoundingHotkeyHandler(model), roll = new HitSoundingRoll(model) }
+                    Children = new Drawable[] { playback, new HitSoundingHotkeyHandler(model), roll }
                 }
             };
         }

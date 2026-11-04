@@ -30,31 +30,6 @@ namespace osu.Game.Localisation
         public static LocalisableString CustomSet(int set) => new TranslatableString(getKey(@"custom_set"), @"Custom #{0}", set);
 
         /// <summary>
-        /// "Manage sets"
-        /// </summary>
-        public static LocalisableString ManageSets => new TranslatableString(getKey(@"manage_sets"), @"Manage sets");
-
-        /// <summary>
-        /// "Collapse set"
-        /// </summary>
-        public static LocalisableString CollapseSet => new TranslatableString(getKey(@"collapse_set"), @"Collapse set");
-
-        /// <summary>
-        /// "Expand set"
-        /// </summary>
-        public static LocalisableString ExpandSet => new TranslatableString(getKey(@"expand_set"), @"Expand set");
-
-        /// <summary>
-        /// "Move set up"
-        /// </summary>
-        public static LocalisableString MoveSetUp => new TranslatableString(getKey(@"move_set_up"), @"Move set up");
-
-        /// <summary>
-        /// "Move set down"
-        /// </summary>
-        public static LocalisableString MoveSetDown => new TranslatableString(getKey(@"move_set_down"), @"Move set down");
-
-        /// <summary>
         /// "Normal"
         /// </summary>
         public static LocalisableString Normal => new TranslatableString(getKey(@"normal"), @"Normal");
@@ -70,9 +45,49 @@ namespace osu.Game.Localisation
         public static LocalisableString Drum => new TranslatableString(getKey(@"drum"), @"Drum");
 
         /// <summary>
-        /// "Sample point: {0} · {1} · set {2}"
+        /// "Additions"
         /// </summary>
-        public static LocalisableString SamplePoint(string sounds, string bank, int set) => new TranslatableString(getKey(@"sample_point"), @"Sample point: {0} · {1} · set {2}", sounds, bank, set);
+        public static LocalisableString Additions => new TranslatableString(getKey(@"additions"), @"Additions");
+
+        /// <summary>
+        /// "Whistle"
+        /// </summary>
+        public static LocalisableString Whistle => new TranslatableString(getKey(@"whistle"), @"Whistle");
+
+        /// <summary>
+        /// "Finish"
+        /// </summary>
+        public static LocalisableString Finish => new TranslatableString(getKey(@"finish"), @"Finish");
+
+        /// <summary>
+        /// "Clap"
+        /// </summary>
+        public static LocalisableString Clap => new TranslatableString(getKey(@"clap"), @"Clap");
+
+        /// <summary>
+        /// "Auto"
+        /// </summary>
+        public static LocalisableString Auto => new TranslatableString(getKey(@"auto"), @"Auto");
+
+        /// <summary>
+        /// "Click to edit bank and set · Ctrl-click to select · Right-click to reset"
+        /// </summary>
+        public static LocalisableString BankHint => new TranslatableString(getKey(@"bank_hint"), @"Click to edit bank and set · Ctrl-click to select · Right-click to reset");
+
+        /// <summary>
+        /// "Click to toggle this addition · Ctrl-click to select"
+        /// </summary>
+        public static LocalisableString AdditionHint => new TranslatableString(getKey(@"addition_hint"), @"Click to toggle this addition · Ctrl-click to select");
+
+        /// <summary>
+        /// "Every sample of this object shares one set index"
+        /// </summary>
+        public static LocalisableString SharedSetHint => new TranslatableString(getKey(@"shared_set_hint"), @"Every sample of this object shares one set index");
+
+        /// <summary>
+        /// "Enable an addition first to configure its bank"
+        /// </summary>
+        public static LocalisableString ConfigureAdditionHint => new TranslatableString(getKey(@"configure_addition_hint"), @"Enable an addition first to configure its bank");
 
         /// <summary>
         /// "Object sample"
@@ -80,24 +95,9 @@ namespace osu.Game.Localisation
         public static LocalisableString BodySample => new TranslatableString(getKey(@"body_sample"), @"Object sample");
 
         /// <summary>
-        /// "Left-click to edit · Ctrl-click to select · Drag to change bank · Right-click for options"
-        /// </summary>
-        public static LocalisableString EditHint => new TranslatableString(getKey(@"edit_hint"), @"Left-click to edit · Ctrl-click to select · Drag to change bank · Right-click for options");
-
-        /// <summary>
         /// "Restore defaults"
         /// </summary>
         public static LocalisableString RestoreDefaults => new TranslatableString(getKey(@"restore_defaults"), @"Restore defaults");
-
-        /// <summary>
-        /// "Move up one set"
-        /// </summary>
-        public static LocalisableString MoveUpOneSet => new TranslatableString(getKey(@"move_up_one_set"), @"Move up one set");
-
-        /// <summary>
-        /// "Move down one set"
-        /// </summary>
-        public static LocalisableString MoveDownOneSet => new TranslatableString(getKey(@"move_down_one_set"), @"Move down one set");
 
         /// <summary>
         /// "Drag to change volume · Double-click for precise editing · Ctrl-click to edit from a sample point"

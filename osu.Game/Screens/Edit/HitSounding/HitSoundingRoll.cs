@@ -13,7 +13,6 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
-using osu.Game.Audio;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Input;
@@ -21,7 +20,6 @@ using osu.Game.Localisation;
 using osu.Game.Overlays;
 using osu.Game.Rulesets.Objects;
 using osuTK;
-using osuTK.Graphics;
 using osuTK.Input;
 
 namespace osu.Game.Screens.Edit.HitSounding
@@ -29,31 +27,20 @@ namespace osu.Game.Screens.Edit.HitSounding
     public partial class HitSoundingRoll : CompositeDrawable, IBlockGlobalAltScrollVolume
     {
         private const float header_width = 200;
-        private const float set_top = 180;
+        private const float lane_top = 180;
         private readonly HitSoundingEditModel model;
-        public HitSoundingSetLayout SetLayout { get; } = new();
-
-        private readonly Dictionary<int, HitSoundingLaneHeader> laneHeaders = [];
-        private readonly Dictionary<int, Container[]> laneBackgrounds = [];
-        private readonly Dictionary<HitSoundingNode, Circle> collapsedPoints = [];
-        private readonly Dictionary<HitSoundingNode, List<HitSoundingSamplePoint>> points = [];
+        private readonly Dictionary<HitSoundingNode, HitSoundingSamplePoint[]> points = [];
         private readonly Dictionary<HitObject, HitSoundingObject> objects = [];
         private readonly List<Box> columnBoxes = [];
         private readonly Stack<HitObject> concurrentObjects = new();
-        private Container surface = null!;
-        private Container headers = null!;
         private Container lanes = null!;
         private Container topLanes = null!;
         private Container backgrounds = null!;
         private Container markers = null!;
-        private Container collapsedMarkers = null!;
         private Container objectLayer = null!;
         private Container selectedColumns = null!;
-        private HitSoundingSetScrollContainer setScroll = null!;
-        private HitSoundingSetManagementButton setManagement = null!;
-        private Color4 sampleColour;
-        private HitSoundingBeatGrid grid = null!;
-        private HitSoundingBeatGrid topGrid = null!;
+        private HitSoundingSampleGuides grid = null!;
+        private HitSoundingSampleGuides topGrid = null!;
         private HitSoundingVolumeTrack volume = null!;
         private Box selectionBox = null!;
         private Vector2? selectionStart;
@@ -65,16 +52,13 @@ namespace osu.Game.Screens.Edit.HitSounding
         private double lastTime = double.NaN;
         private double lastDuration;
         private float lastWidth;
-        private int lastDivisor;
+        private float lastHeight;
 
         [Resolved]
         private EditorClock editorClock { get; set; } = null!;
 
         [Resolved]
         private EditorBeatmap beatmap { get; set; } = null!;
-
-        [Resolved]
-        private BindableBeatDivisor beatDivisor { get; set; } = null!;
 
         [Resolved]
         private OverlayColourProvider colours { get; set; } = null!;
@@ -89,9 +73,9 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour osuColour)
+        private void load()
         {
-            sampleColour = osuColour.Pink1;
+            Container headers;
             InternalChildren = new Drawable[]
             {
                 createHeader(HitSoundingStrings.Objects, 0, 70, true),
@@ -117,48 +101,46 @@ namespace osu.Game.Screens.Edit.HitSounding
                 },
                 new Container
                 {
-                    RelativeSizeAxes = Axes.Both, Padding = new MarginPadding { Top = set_top },
-                    Child = setScroll = new HitSoundingSetScrollContainer
+                    RelativeSizeAxes = Axes.X, Y = lane_top,
+                    Height = HitSoundingLayout.LANE_COUNT * HitSoundingLayout.LANE_HEIGHT,
+                    Children = new Drawable[]
                     {
-                        RelativeSizeAxes = Axes.Both, ScrollbarOverlapsContent = true,
-                        Child = surface = new Container
+                        headers = new Container { Width = header_width, RelativeSizeAxes = Axes.Y },
+                        new Container
                         {
-                            RelativeSizeAxes = Axes.X,
-                            Children = new Drawable[]
+                            RelativeSizeAxes = Axes.Both, Padding = new MarginPadding { Left = header_width + 1 },
+                            Child = lanes = new Container
                             {
-                                headers = new Container { Width = header_width, RelativeSizeAxes = Axes.Y },
-                                setManagement = new HitSoundingSetManagementButton(SetLayout),
-                                new Container
+                                RelativeSizeAxes = Axes.Both, Masking = true,
+                                Children = new Drawable[]
                                 {
-                                    RelativeSizeAxes = Axes.Both,
-                                    Padding = new MarginPadding { Left = header_width + 1, Bottom = 41 },
-                                    Child = lanes = new Container
-                                    {
-                                        RelativeSizeAxes = Axes.Both, Masking = true,
-                                        Children = new Drawable[]
-                                        {
-                                            backgrounds = new Container { RelativeSizeAxes = Axes.Both },
-                                            grid = [],
-                                            selectedColumns = new Container { RelativeSizeAxes = Axes.Both },
-                                            markers = new Container { RelativeSizeAxes = Axes.Both },
-                                            collapsedMarkers = new Container { RelativeSizeAxes = Axes.Both },
-                                            createPlayhead(),
-                                            selectionBox = new Box { Colour = colours.Highlight1, Alpha = 0 }
-                                        }
-                                    }
+                                    backgrounds = new Container { RelativeSizeAxes = Axes.Both },
+                                    grid = [],
+                                    selectedColumns = new Container { RelativeSizeAxes = Axes.Both },
+                                    markers = new Container { RelativeSizeAxes = Axes.Both },
+                                    createPlayhead(),
+                                    selectionBox = new Box { Colour = colours.Highlight1, Alpha = 0 }
                                 }
                             }
                         }
                     }
                 }
             };
+            for (int i = 0; i < HitSoundingLayout.LANE_COUNT; i++)
+            {
+                headers.Add(new HitSoundingLaneHeader((HitSoundingLane)i));
+                backgrounds.Add(new Container
+                {
+                    RelativeSizeAxes = Axes.X,
+                    Height = HitSoundingLayout.LANE_HEIGHT,
+                    Y = i * HitSoundingLayout.LANE_HEIGHT,
+                    Padding = new MarginPadding { Bottom = HitSoundingLayout.LANE_SPACING },
+                    Child = createBackground(0, 1).With(b => b.RelativeSizeAxes = Axes.Both)
+                });
+            }
             model.Changed += invalidate;
-            SetLayout.Changed += layoutChanged;
             model.SelectedNodes.CollectionChanged += selectionChanged;
             beatmap.ControlPointInfo.ControlPointsChanged += invalidate;
-            if (beatmap.BeatmapSkin != null)
-                beatmap.BeatmapSkin.BeatmapSkinChanged += skinChanged;
-            rebuildLanes();
         }
 
         private Box createPlayhead() => new()
@@ -170,62 +152,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             Colour = colours.Highlight1
         };
 
-        private void skinChanged() => Schedule(() => { rebuildLanes(); invalidate(); });
         private void invalidate() => invalid = true;
         private void selectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => lastTime = double.NaN;
-
-        private void layoutChanged()
-        {
-            rebuildLanes();
-            invalidate();
-        }
-
-        private void rebuildLanes()
-        {
-            SetLayout.Include(new[] { 0, 1 });
-            if (beatmap.BeatmapSkin != null)
-                SetLayout.Include(beatmap.BeatmapSkin.GetAvailableSampleSets().Select(s => s.SampleSetIndex));
-            SetLayout.Include(model.Nodes.Select(n => n.SetIndex));
-
-            foreach (int set in SetLayout.DisplayOrder)
-            {
-                float y = SetLayout.RowY(set)!.Value;
-                bool collapsed = SetLayout.IsCollapsed(set);
-                bool existing = laneHeaders.ContainsKey(set);
-                if (!existing)
-                {
-                    var header = new HitSoundingLaneHeader(set, collapsed, () => SetLayout.ToggleCollapsed(set)) { Y = y };
-                    laneHeaders.Add(set, header);
-                    headers.Add(header);
-                    var bankBackgrounds = new Container[3];
-                    for (int bank = 0; bank < bankBackgrounds.Length; bank++)
-                    {
-                        bankBackgrounds[bank] = createBackground(y + bank * HitSoundingLayout.BANK_PITCH, HitSoundingLayout.BANK_HEIGHT);
-                        backgrounds.Add(bankBackgrounds[bank]);
-                    }
-                    laneBackgrounds.Add(set, bankBackgrounds);
-                }
-
-                var laneHeader = laneHeaders[set];
-                double duration = existing ? HitSoundingLaneHeader.TRANSITION_DURATION : 0;
-                laneHeader.MoveToY(y, duration, Easing.OutQuint);
-                if (laneHeader.IsCollapsed != collapsed)
-                    laneHeader.SetCollapsed(collapsed);
-                for (int bank = 0; bank < 3; bank++)
-                {
-                    var background = laneBackgrounds[set][bank];
-                    background.MoveToY(y + (collapsed ? 0 : bank * HitSoundingLayout.BANK_PITCH), duration, Easing.OutQuint);
-                    background.ResizeHeightTo(collapsed ? HitSoundingLayout.COLLAPSED_SET_HEIGHT : HitSoundingLayout.BANK_HEIGHT, duration, Easing.OutQuint);
-                    background.FadeTo(collapsed && bank > 0 ? 0 : 1, duration, Easing.OutQuint);
-                }
-            }
-            foreach (var (node, dot) in collapsedPoints)
-                if (SetLayout.IsCollapsed(node.SetIndex))
-                    dot.MoveToY(SetLayout.RowY(node.SetIndex)!.Value + HitSoundingLayout.COLLAPSED_SET_HEIGHT / 2,
-                        HitSoundingLaneHeader.TRANSITION_DURATION, Easing.OutQuint);
-            setManagement.MoveToY(SetLayout.TotalHeight, HitSoundingLaneHeader.TRANSITION_DURATION, Easing.OutQuint);
-            surface.ResizeHeightTo(SetLayout.TotalHeight + 41, HitSoundingLaneHeader.TRANSITION_DURATION, Easing.OutQuint);
-        }
 
         private Container createHeader(LocalisableString text, float y, float height, bool centred) => new()
         {
@@ -236,7 +164,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             CornerRadius = 5,
             Children = new Drawable[]
             {
-                new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5 },
+                new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5, Alpha = 0.9f },
                 new OsuSpriteText
                 {
                     X = 10, Y = centred ? 0 : 10,
@@ -254,7 +182,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             Height = height,
             Masking = true,
             CornerRadius = 5,
-            Child = new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5 }
+            Child = new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5, Alpha = 0.9f }
         };
 
         protected override void Update()
@@ -266,12 +194,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                 lastPreviewTime = editorClock.CurrentTime;
                 previewingSeek = editorClock.IsSeeking;
             }
-            if (!invalid && lastTime == editorClock.CurrentTime && lastDuration == visibleDuration && lastWidth == topLanes.DrawWidth && lastDivisor == beatDivisor.Value)
+            if (!invalid && lastTime == editorClock.CurrentTime && lastDuration == visibleDuration && lastWidth == topLanes.DrawWidth
+                && lastHeight == lanes.DrawHeight)
                 return;
             lastTime = editorClock.CurrentTime;
             lastDuration = visibleDuration;
             lastWidth = topLanes.DrawWidth;
-            lastDivisor = beatDivisor.Value;
+            lastHeight = lanes.DrawHeight;
             startTime = editorClock.CurrentTime - visibleDuration / 2;
             double endTime = startTime + visibleDuration;
             if (invalid)
@@ -282,60 +211,27 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             foreach (var node in model.Nodes)
             {
-                bool visible = node.Time >= startTime - 200 && node.Time <= endTime + 200;
-                bool collapsed = SetLayout.IsCollapsed(node.SetIndex);
-                if (!visible || collapsed)
+                if (node.Time < startTime - 200 || node.Time > endTime + 200)
                 {
                     if (points.Remove(node, out var removed))
                         foreach (var point in removed)
-                            point.FadeOut(120).Expire();
-                }
-                if (!visible || !collapsed)
-                {
-                    if (collapsedPoints.Remove(node, out var removed))
-                        removed.FadeOut(120).Expire();
-                }
-                if (!visible)
-                    continue;
-                if (collapsed)
-                {
-                    if (!collapsedPoints.TryGetValue(node, out var dot))
-                    {
-                        dot = new Circle
-                        {
-                            Name = "collapsed sample",
-                            Size = new Vector2(HitSoundingLayout.COLLAPSED_SAMPLE_SIZE),
-                            Y = laneHeaders[node.SetIndex].Y + HitSoundingLayout.COLLAPSED_SET_HEIGHT / 2,
-                            Alpha = 0,
-                            Origin = Anchor.Centre,
-                            Colour = sampleColour
-                        };
-                        collapsedPoints.Add(node, dot);
-                        collapsedMarkers.Add(dot);
-                        dot.FadeIn(HitSoundingLaneHeader.TRANSITION_DURATION);
-                        dot.MoveToY(SetLayout.RowY(node.SetIndex)!.Value + HitSoundingLayout.COLLAPSED_SET_HEIGHT / 2,
-                            HitSoundingLaneHeader.TRANSITION_DURATION, Easing.OutQuint);
-                    }
-                    dot.X = timeToX(node.Time);
+                            markers.Remove(point, true);
                     continue;
                 }
                 if (!points.TryGetValue(node, out var nodePoints))
                 {
-                    points.Add(node, nodePoints = []);
-                    string normalBank = node.Samples.FirstOrDefault(s => s.Name == HitSampleInfo.HIT_NORMAL)?.Bank ?? HitSampleInfo.BANK_NORMAL;
-                    foreach (string bank in node.Samples.Select(s => s.Bank).DefaultIfEmpty(normalBank).Distinct())
+                    nodePoints = new HitSoundingSamplePoint[HitSoundingLayout.LANE_COUNT];
+                    points.Add(node, nodePoints);
+                    for (int i = 0; i < nodePoints.Length; i++)
                     {
-                        var point = new HitSoundingSamplePoint(node, model, bank, normalBank != bank, dropPoint);
-                        nodePoints.Add(point);
+                        var point = new HitSoundingSamplePoint(node, model, (HitSoundingLane)i);
+                        nodePoints[i] = point;
                         markers.Add(point);
-                        point.FadeInFromZero(120);
                     }
                 }
-                float cellWidth = (float)(beatmap.ControlPointInfo.TimingPointAt(node.Time).BeatLength / beatDivisor.Value / visibleDuration * lanes.DrawWidth);
                 foreach (var point in nodePoints)
                 {
-                    point.UpdatePosition(new Vector2(timeToX(node.Time), laneY(node.SetIndex, point.Bank) + HitSoundingLayout.BANK_HEIGHT / 2));
-                    point.UpdateLayout(cellWidth);
+                    point.Position = new Vector2(timeToX(node.Time), ((float)point.Lane + 0.5f) * HitSoundingLayout.LANE_HEIGHT - HitSoundingLayout.LANE_SPACING / 2);
                 }
             }
 
@@ -373,8 +269,6 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private void refreshPoints()
         {
-            if (model.Nodes.Any(n => !SetLayout.Contains(n.SetIndex)))
-                rebuildLanes();
             foreach (var hitObject in objects.Keys.Where(h => !beatmap.HitObjects.Contains(h)).ToArray())
             {
                 objectLayer.Remove(objects[hitObject], true);
@@ -386,38 +280,9 @@ namespace osu.Game.Screens.Edit.HitSounding
                     markers.Remove(point, true);
                 points.Remove(node);
             }
-            foreach (var node in collapsedPoints.Keys.Where(n => !model.Nodes.Contains(n)).ToArray())
-            {
-                collapsedMarkers.Remove(collapsedPoints[node], true);
-                collapsedPoints.Remove(node);
-            }
-            foreach (var (node, nodePoints) in points)
-            {
+            foreach (var nodePoints in points.Values)
                 foreach (var point in nodePoints)
-                {
-                    point.Bank = node.Samples.FirstOrDefault(s => point.AdditionsOnly ? s.Name != HitSampleInfo.HIT_NORMAL : s.Name == HitSampleInfo.HIT_NORMAL)?.Bank
-                                 ?? node.Samples.FirstOrDefault()?.Bank ?? HitSampleInfo.BANK_NORMAL;
                     point.Refresh();
-                }
-                foreach (string bank in node.Samples.Select(s => s.Bank).Distinct())
-                {
-                    if (nodePoints.Any(p => p.Bank == bank))
-                        continue;
-                    var point = new HitSoundingSamplePoint(node, model, bank, true, dropPoint);
-                    nodePoints.Add(point);
-                    markers.Add(point);
-                }
-                for (int i = nodePoints.Count - 1; i >= 0; i--)
-                {
-                    var point = nodePoints[i];
-                    if (point.AdditionsOnly && (!node.Samples.Any(s => s.Name != HitSampleInfo.HIT_NORMAL)
-                        || nodePoints.Any(p => p != point && !p.AdditionsOnly && p.Bank == point.Bank)))
-                    {
-                        markers.Remove(point, true);
-                        nodePoints.RemoveAt(i);
-                    }
-                }
-            }
         }
 
         private void updateSelectionColumns(double endTime)
@@ -429,7 +294,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     continue;
                 if (selectedCount == columnBoxes.Count)
                 {
-                    var column = new Box { RelativeSizeAxes = Axes.Y, Width = HitSoundingLayout.SAMPLE_HEIGHT, Colour = colours.Highlight1 };
+                    var column = new Box { RelativeSizeAxes = Axes.Y, Width = HitSoundingLayout.SAMPLE_WIDTH, Colour = colours.Highlight1 };
                     columnBoxes.Add(column);
                     selectedColumns.Add(column);
                 }
@@ -443,9 +308,6 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private float timeToX(double time) => (float)((time - startTime) / visibleDuration * lanes.DrawWidth);
 
-        private float laneY(int set, string bank)
-            => (SetLayout.RowY(set) ?? 0) + Math.Max(0, Array.IndexOf(HitSampleInfo.ALL_BANKS, bank)) * HitSoundingLayout.BANK_PITCH;
-
         private void selectObject(HitObject hitObject)
         {
             model.SelectedNodes.Clear();
@@ -454,26 +316,9 @@ namespace osu.Game.Screens.Edit.HitSounding
                     model.SelectedNodes.Add(node);
         }
 
-        private void dropPoint(HitSoundingSamplePoint point, Vector2 screenPosition)
-        {
-            if (!setScroll.Contains(screenPosition))
-                return;
-            Vector2 position = lanes.ToLocalSpace(screenPosition);
-            if (position.X < 0 || position.X > lanes.DrawWidth || !SetLayout.TryGetSetAt(position.Y, out int set, out float offset)
-                || SetLayout.IsCollapsed(set))
-                return;
-            int bank = (int)(offset / HitSoundingLayout.BANK_PITCH);
-            if (bank > 2 || offset % HitSoundingLayout.BANK_PITCH >= HitSoundingLayout.BANK_HEIGHT)
-                return;
-            var targets = model.SelectedNodes.Contains(point.Node) ? model.SelectedNodes.ToArray() : new[] { point.Node };
-            model.SetBank(targets, HitSampleInfo.ALL_BANKS[bank], set, point.AdditionsOnly);
-        }
-
         protected override bool OnMouseDown(MouseDownEvent e)
         {
             if (e.Button != MouseButton.Right)
-                return false;
-            if (!setScroll.Contains(e.ScreenSpaceMousePosition))
                 return false;
             Vector2 position = lanes.ToLocalSpace(e.ScreenSpaceMousePosition);
             if (position.X < 0 || position.X > lanes.DrawWidth || position.Y < 0 || position.Y > lanes.DrawHeight)
@@ -495,8 +340,6 @@ namespace osu.Game.Screens.Edit.HitSounding
                 {
                     foreach (var point in nodePoints)
                     {
-                        if (!setScroll.Contains(point.ScreenSpaceDrawQuad.Centre))
-                            continue;
                         float distance = (point.Position - position).LengthSquared;
                         if (distance < nearestDistance)
                         {
@@ -519,11 +362,6 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (e.AltPressed)
             {
                 visibleDuration = Math.Clamp(visibleDuration * Math.Pow(0.9, e.ScrollDelta.Y), 500, 30000);
-                return true;
-            }
-            if (e.ShiftPressed)
-            {
-                setScroll.ScrollSets(e);
                 return true;
             }
 
@@ -573,14 +411,8 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         protected override bool OnDragStart(DragStartEvent e)
         {
-            if (e.Button != MouseButton.Left || !setScroll.Contains(e.ScreenSpaceMousePosition))
+            if (e.Button != MouseButton.Left)
                 return false;
-
-            // a drag which started on a marker belongs to that marker, not to box selection.
-            foreach (var nodePoints in points.Values)
-                foreach (var point in nodePoints)
-                    if (point.IsPresent && point.ReceivePositionalInputAt(e.ScreenSpaceMouseDownPosition))
-                        return false;
 
             Vector2 position = lanes.ToLocalSpace(e.ScreenSpaceMousePosition);
             if (position.X < 0 || position.X > lanes.DrawWidth || position.Y < 0 || position.Y > lanes.DrawHeight)
@@ -618,14 +450,9 @@ namespace osu.Game.Screens.Edit.HitSounding
         protected override void Dispose(bool isDisposing)
         {
             model.Changed -= invalidate;
-            SetLayout.Changed -= layoutChanged;
             model.SelectedNodes.CollectionChanged -= selectionChanged;
             if (beatmap != null)
-            {
                 beatmap.ControlPointInfo.ControlPointsChanged -= invalidate;
-                if (beatmap.BeatmapSkin != null)
-                    beatmap.BeatmapSkin.BeatmapSkinChanged -= skinChanged;
-            }
             base.Dispose(isDisposing);
         }
     }

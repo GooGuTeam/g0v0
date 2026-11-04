@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using osu.Game.Audio;
+using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
+using osu.Game.Rulesets.Objects.Legacy;
 using osu.Game.Rulesets.Objects.Types;
 
 namespace osu.Game.Screens.Edit.HitSounding
@@ -49,6 +51,37 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// Whether this node represents the body / loop samples of an object with repeats rather than a single hit node's samples.
         /// </summary>
         public bool IsBody => NodeIndex < 0 && HitObject is IHasRepeats;
+
+        /// <summary>
+        /// Whether the samples of this node can be edited as hit sample data.
+        /// </summary>
+        /// <remarks>
+        /// Slider repeat nodes whose <see cref="IHasRepeats.NodeSamples"/> entry has not been materialised resolve to the
+        /// object's own sample list, so editing them would silently retarget the object instead of the repeat.
+        /// File samples from converted beatmaps ignore bank and suffix changes, so their configuration cells are disabled
+        /// as well. Volume editing is still supported for file samples.
+        /// </remarks>
+        public bool CanEditSamples
+        {
+            get
+            {
+                if (NodeIndex >= 0)
+                {
+                    if (HitObject is not IHasRepeats hasRepeats || NodeIndex >= hasRepeats.NodeSamples.Count)
+                        return false;
+                }
+
+                IList<HitSampleInfo> samples = Samples;
+
+                for (int i = 0; i < samples.Count; i++)
+                {
+                    if (samples[i] is ConvertHitObjectParser.FileHitSampleInfo)
+                        return false;
+                }
+
+                return true;
+            }
+        }
 
         /// <summary>
         /// The time at which this node is hit.
@@ -101,6 +134,64 @@ namespace osu.Game.Screens.Edit.HitSounding
                 return volume;
             }
         }
+
+        /// <summary>
+        /// The bank shown by the normal lane (<paramref name="additionsOnly"/> <c>false</c>) or the addition lane (<c>true</c>).
+        /// </summary>
+        /// <remarks>
+        /// The addition lane reports <see cref="HitObjectComposer.HIT_BANK_AUTO"/> when there is no addition or every addition
+        /// follows the normal bank. Otherwise it reports the first explicitly-banked addition's bank. The normal lane falls back
+        /// to <see cref="HitSampleInfo.BANK_SOFT"/> when the node has no normal sample.
+        /// </remarks>
+        public string GetBank(bool additionsOnly)
+        {
+            IList<HitSampleInfo> samples = Samples;
+
+            if (additionsOnly)
+            {
+                for (int i = 0; i < samples.Count; i++)
+                {
+                    HitSampleInfo sample = samples[i];
+
+                    if (!isAddition(sample.Name) || sample.EditorAutoBank)
+                        continue;
+
+                    return sample.Bank;
+                }
+
+                return HitObjectComposer.HIT_BANK_AUTO;
+            }
+
+            for (int i = 0; i < samples.Count; i++)
+            {
+                if (samples[i].Name == HitSampleInfo.HIT_NORMAL)
+                    return samples[i].Bank;
+            }
+
+            return HitSampleInfo.BANK_SOFT;
+        }
+
+        /// <summary>
+        /// Whether this node contains the given addition sample.
+        /// </summary>
+        /// <param name="sampleName">An addition sample name, as listed in <see cref="HitSampleInfo.ALL_ADDITIONS"/>.</param>
+        public bool HasAddition(string sampleName)
+        {
+            if (string.IsNullOrEmpty(sampleName) || !isAddition(sampleName))
+                return false;
+
+            IList<HitSampleInfo> samples = Samples;
+
+            for (int i = 0; i < samples.Count; i++)
+            {
+                if (string.Equals(samples[i].Name, sampleName, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool isAddition(string sampleName) => Array.IndexOf(HitSampleInfo.ALL_ADDITIONS, sampleName) >= 0;
 
         /// <summary>
         /// The custom sample bank (sample set index) of this node, or <c>0</c> if it has no samples.

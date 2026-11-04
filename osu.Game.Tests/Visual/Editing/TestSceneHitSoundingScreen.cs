@@ -1,26 +1,21 @@
-﻿// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using osu.Framework.Graphics;
-using osu.Framework.Graphics.Shapes;
-using osu.Framework.Graphics.UserInterface;
-using osu.Framework.Localisation;
+using osu.Framework.Allocation;
 using osu.Framework.Testing;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
-using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
-using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
-using osu.Game.Localisation;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Screens.Edit;
+using osu.Game.Screens.Edit.Compose;
 using osu.Game.Screens.Edit.HitSounding;
 using osu.Game.Skinning;
 using osu.Game.Tests.Beatmaps;
@@ -58,6 +53,52 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
+        public void TestBadgesKeepSizeAfterComposeSixteenthDivisorAndZoom()
+        {
+            Vector2 badgeSize = Vector2.Zero;
+            Vector2[] textScales = [];
+            float originalSpacing = 0;
+
+            AddStep("record badge and text size", () =>
+            {
+                badgeSize = cell(HitSoundingLane.SampleSet).DrawSize;
+                textScales = cell(HitSoundingLane.SampleSet).ChildrenOfType<OsuSpriteText>().Select(t => t.Scale).ToArray();
+                originalSpacing = pointSpacing();
+            });
+            AddStep("switch to Compose", () => Editor.Mode.Value = EditorScreenMode.Compose);
+            AddUntilStep("Compose loaded", () => Editor.ChildrenOfType<ComposeScreen>().Any(s => s.IsLoaded && s.IsPresent));
+            AddStep("choose 1/16 in Compose", () => Editor.Dependencies.Get<BindableBeatDivisor>().Value = 16);
+            AddStep("return to Hitsounding", () => Editor.Mode.Value = EditorScreenMode.HitSounding);
+            AddUntilStep("Hitsounding loaded", () => Editor.ChildrenOfType<HitSoundingScreen>().Any(s => s.IsLoaded && s.IsPresent));
+            AddUntilStep("badges retain size at 1/16", badgesKeepSize);
+            AddStep("zoom out", () => zoom(-8));
+            AddUntilStep("spacing shrinks but badges keep size", () => pointSpacing() < originalSpacing && badgesKeepSize());
+            AddStep("zoom back in", () => zoom(8));
+            AddUntilStep("spacing returns but badges keep size", () => System.Math.Abs(pointSpacing() - originalSpacing) < 0.1f && badgesKeepSize());
+            AddStep("toggle whistle after zoom", () => clickCell(HitSoundingLane.Whistle));
+            AddUntilStep("whistle remains editable", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_WHISTLE));
+            AddStep("undo whistle", () => Editor.Undo());
+            AddUntilStep("whistle undone", () => !model.Nodes[0].HasAddition(HitSampleInfo.HIT_WHISTLE));
+
+            bool badgesKeepSize() => Editor.ChildrenOfType<HitSoundingSamplePoint>().All(p => p.DrawSize == badgeSize)
+                                     && cell(HitSoundingLane.SampleSet).ChildrenOfType<OsuSpriteText>().Select(t => t.Scale).SequenceEqual(textScales);
+
+            float pointSpacing()
+            {
+                var second = Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node == model.Nodes[1] && p.Lane == HitSoundingLane.SampleSet);
+                return second.X - cell(HitSoundingLane.SampleSet).X;
+            }
+
+            void zoom(int notches)
+            {
+                InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single());
+                InputManager.PressKey(Key.AltLeft);
+                InputManager.ScrollVerticalBy(notches);
+                InputManager.ReleaseKey(Key.AltLeft);
+            }
+        }
+
+        [Test]
         public void TestBankMovePreservesAdditionAndUndo()
         {
             AddStep("move normal bank", () => model.SetBank(new[] { model.Nodes[0] }, HitSampleInfo.BANK_NORMAL, 2, false));
@@ -73,7 +114,7 @@ namespace osu.Game.Tests.Visual.Editing
         {
             AddStep("select sample", () =>
             {
-                InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingSamplePoint>().First(p => !p.AdditionsOnly));
+                InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingSamplePoint>().First(p => p.Lane == HitSoundingLane.SampleSet));
                 InputManager.PressKey(Key.ControlLeft);
                 InputManager.Click(MouseButton.Left);
                 InputManager.ReleaseKey(Key.ControlLeft);
@@ -161,42 +202,15 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
-        public void TestLeftClickEditsAndRightClickMovesSet()
-        {
-            AddStep("left click sample", () =>
-            {
-                InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingSamplePoint>().First(p => !p.AdditionsOnly));
-                InputManager.Click(MouseButton.Left);
-            });
-            AddUntilStep("sample editor visible", () => Editor.ChildrenOfType<HitSoundingSamplePopover>().Any(p => p.IsPresent));
-            AddStep("dismiss editor", () => InputManager.Key(Key.Escape));
-            AddStep("right click selected sample", () =>
-            {
-                InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingSamplePoint>().First(p => !p.AdditionsOnly));
-                InputManager.Click(MouseButton.Right);
-            });
-            AddUntilStep("context menu open", () => Editor.ChildrenOfType<OsuContextMenu>().Any(m => m.State == MenuState.Open));
-            AddStep("move down one set", () =>
-            {
-                InputManager.MoveMouseTo(Editor.ChildrenOfType<OsuContextMenu>().First(m => m.State == MenuState.Open).ChildrenOfType<DrawableOsuMenuItem>().Last());
-                InputManager.Click(MouseButton.Left);
-            });
-            AddUntilStep("all node samples moved together", () => EditorBeatmap.HitObjects[0].Samples.All(s => s.UseBeatmapSamples && s.Suffix == null));
-            AddAssert("banks retained", () => EditorBeatmap.HitObjects[0].Samples.Select(s => s.Bank), () => Is.EqualTo(new[] { HitSampleInfo.BANK_SOFT, HitSampleInfo.BANK_DRUM }));
-            AddStep("undo move", () => Editor.Undo());
-            AddUntilStep("skin set restored", () => EditorBeatmap.HitObjects[0].Samples.All(s => !s.UseBeatmapSamples));
-        }
-
-        [Test]
         public void TestRightClickBlankClearsMultipleThenSelectsNearest()
         {
             HitSoundingNode nearest = null!;
             AddStep("select two nodes", () => model.SelectedNodes.AddRange(model.Nodes.Take(2)));
             AddStep("right click nearby blank lane", () =>
             {
-                var point = Editor.ChildrenOfType<HitSoundingSamplePoint>().First(p => !p.AdditionsOnly);
+                var point = Editor.ChildrenOfType<HitSoundingSamplePoint>().First(p => p.Lane == HitSoundingLane.SampleSet);
                 nearest = point.Node;
-                InputManager.MoveMouseTo(point.ScreenSpaceDrawQuad.Centre + new Vector2(0, -22));
+                InputManager.MoveMouseTo(point.ToScreenSpace(new Vector2(point.Width / 2, -3)));
                 InputManager.Click(MouseButton.Right);
             });
             AddAssert("multi selection cleared", () => model.SelectedNodes, () => Is.Empty);
@@ -219,40 +233,6 @@ namespace osu.Game.Tests.Visual.Editing
                 return track.Segments.Count(s => s.EndX <= 0) == 2 && track.Segments.Where(s => s.EndX <= 0).All(s => !s.IsPresent);
             });
             AddAssert("current run still visible", () => Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single().Segments.First(s => s.EndX > 0).IsPresent);
-        }
-
-        [Test]
-        public void TestSmoothWheelAndPinnedSetScrolling()
-        {
-            Vector2 objectPosition = default;
-            Vector2 volumePosition = default;
-            double time = 0;
-            AddStep("create enough sets to scroll", () =>
-            {
-                for (int i = 0; i < model.Nodes.Count; i++)
-                    model.SetBank(new[] { model.Nodes[i] }, HitSampleInfo.BANK_SOFT, i + 1, false);
-            });
-            AddUntilStep("set rows loaded", () => Editor.ChildrenOfType<HitSoundingLaneHeader>().Count() >= 8);
-            AddStep("record fixed lane positions", () =>
-            {
-                objectPosition = Editor.ChildrenOfType<HitSoundingObject>().First().ScreenSpaceDrawQuad.Centre;
-                volumePosition = Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single().ScreenSpaceDrawQuad.Centre;
-                time = EditorClock.CurrentTime;
-            });
-            AddStep("shift scroll sets", () =>
-            {
-                InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single());
-                InputManager.PressKey(Key.ShiftLeft);
-                InputManager.ScrollVerticalBy(-5);
-                InputManager.ReleaseKey(Key.ShiftLeft);
-            });
-            AddUntilStep("sets scrolled", () => Editor.ChildrenOfType<HitSoundingSetScrollContainer>().Single().Current > 0);
-            AddAssert("object and volume stay pinned", () => Editor.ChildrenOfType<HitSoundingObject>().First().ScreenSpaceDrawQuad.Centre == objectPosition
-                && Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single().ScreenSpaceDrawQuad.Centre == volumePosition);
-            AddAssert("shift wheel did not seek", () => EditorClock.CurrentTime, () => Is.EqualTo(time));
-            AddStep("ordinary wheel", () => InputManager.ScrollVerticalBy(-1));
-            AddUntilStep("smooth seek in flight", () => EditorClock.CurrentTimeAccurate > EditorClock.CurrentTime);
-            AddUntilStep("seek completes", () => !EditorClock.IsSeeking && EditorClock.CurrentTime > time);
         }
 
         [Test]
@@ -366,7 +346,7 @@ namespace osu.Game.Tests.Visual.Editing
 
             bool objectsAlign()
             {
-                foreach (var marker in Editor.ChildrenOfType<HitSoundingSamplePoint>().Where(p => !p.AdditionsOnly))
+                foreach (var marker in Editor.ChildrenOfType<HitSoundingSamplePoint>().Where(p => p.Lane == HitSoundingLane.SampleSet))
                 {
                     var obj = Editor.ChildrenOfType<HitSoundingObject>().SingleOrDefault(o => o.Item == marker.Node.HitObject);
                     if (obj == null || System.Math.Abs(obj.ScreenSpaceDrawQuad.Centre.X - marker.ScreenSpaceDrawQuad.Centre.X) > 1)
@@ -378,180 +358,70 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
-        public void TestDraggedSampleFollowsCursorThenSettlesIntoLane()
+        public void TestBankPopupSharesSetAndResetPreservesAdditions()
         {
-            HitSoundingSamplePoint point = null!;
-            Vector2 start = default;
-            Vector2 drumLane = default;
-
-            AddStep("grab normal sample", () =>
+            AddStep("open normal bank editor", () => clickCell(HitSoundingLane.SampleSet));
+            AddUntilStep("bank editor opens", () => Editor.ChildrenOfType<HitSoundingSamplePopover>().Any(p => p.IsPresent));
+            AddStep("choose normal and custom set", () =>
             {
-                point = Editor.ChildrenOfType<HitSoundingSamplePoint>().First(p => !p.AdditionsOnly && p.Node == model.Nodes[0]);
-                drumLane = Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.AdditionsOnly && p.Node == model.Nodes[0]).ScreenSpaceDrawQuad.Centre;
-                start = point.ScreenSpaceDrawQuad.Centre;
-                InputManager.MoveMouseTo(start);
-                InputManager.PressButton(MouseButton.Left);
-                InputManager.MoveMouseTo(start + new Vector2(0, 10));
+                var popup = Editor.ChildrenOfType<HitSoundingSamplePopover>().Single(p => p.IsPresent);
+                popup.ChildrenOfType<FormDropdown<string>>().Single().Current.Value = HitSampleInfo.BANK_NORMAL;
+                // The chooser includes sets already used by the map.
+                popup.ChildrenOfType<FormDropdown<int>>().Single().Current.Value = 1;
+                popup.ChildrenOfType<RoundedButton>().Single().TriggerClick();
             });
-            AddStep("drag towards drum lane", () => InputManager.MoveMouseTo(drumLane + new Vector2(30, HitSoundingLayout.BANK_HEIGHT / 4)));
-            AddUntilStep("badge follows cursor", () => Vector2.Distance(point.ScreenSpaceDrawQuad.Centre, InputManager.CurrentState.Mouse.Position) < 1);
-            float firstFrameDistance = float.NaN;
-            AddStep("drop off-centre", () =>
-            {
-                point.OnUpdate += recordFirstFrame;
-                InputManager.ReleaseButton(MouseButton.Left);
-            });
-            AddUntilStep("first frame after drop recorded", () => !float.IsNaN(firstFrameDistance));
-            AddAssert("badge starts from release point", () => firstFrameDistance, () => Is.GreaterThan(10));
-            AddUntilStep("bank changed", () => EditorBeatmap.HitObjects[0].Samples.Single(s => s.Name == HitSampleInfo.HIT_NORMAL).Bank == HitSampleInfo.BANK_DRUM);
-            AddUntilStep("badge settles into drum lane", () => Vector2.Distance(point.ScreenSpaceDrawQuad.Centre, drumLane) < 1);
-
-            AddStep("drag onto lane headers", () =>
-            {
-                start = point.ScreenSpaceDrawQuad.Centre;
-                InputManager.MoveMouseTo(start);
-                InputManager.PressButton(MouseButton.Left);
-                InputManager.MoveMouseTo(start + new Vector2(0, 10));
-            });
-            AddStep("move outside lanes", () => InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingLaneHeader>().First()));
-            AddStep("drop invalid", () => InputManager.ReleaseButton(MouseButton.Left));
-            AddUntilStep("badge returns to its lane", () => Vector2.Distance(point.ScreenSpaceDrawQuad.Centre, start) < 1);
-            AddAssert("bank unchanged", () => EditorBeatmap.HitObjects[0].Samples.Single(s => s.Name == HitSampleInfo.HIT_NORMAL).Bank, () => Is.EqualTo(HitSampleInfo.BANK_DRUM));
-
-            void recordFirstFrame(Drawable d)
-            {
-                if (point.IsDragged)
-                    return;
-
-                firstFrameDistance = Vector2.Distance(point.ScreenSpaceDrawQuad.Centre, drumLane);
-                point.OnUpdate -= recordFirstFrame;
-            }
+            AddUntilStep("normal set one has a badge without custom samples", () => !cell(HitSoundingLane.SampleSet).IsEmpty);
+            AddAssert("explicit addition remains", () => model.Nodes[0].GetBank(true), () => Is.EqualTo(HitSampleInfo.BANK_DRUM));
+            AddAssert("index shared", () => model.Nodes[0].Samples.All(s => s.UseBeatmapSamples && s.Suffix == null));
+            AddStep("change to custom normal two", () => model.SetBank(new[] { model.Nodes[0] }, HitSampleInfo.BANK_NORMAL, 2, false));
+            AddUntilStep("normal two has a badge", () => !cell(HitSoundingLane.SampleSet).IsEmpty && model.Nodes[0].SetIndex == 2);
+            AddStep("reset normal", () => clickCell(HitSoundingLane.SampleSet, MouseButton.Right));
+            AddUntilStep("reset restores blank user skin normal", () => cell(HitSoundingLane.SampleSet).IsEmpty && model.Nodes[0].SetIndex == 0);
+            AddAssert("clap retained", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_CLAP));
+            AddStep("undo reset", () => Editor.Undo());
+            AddUntilStep("custom normal two restored", () => model.Nodes[0].SetIndex == 2 && !cell(HitSoundingLane.SampleSet).IsEmpty);
+            AddStep("reset addition bank", () => clickCell(HitSoundingLane.Additions, MouseButton.Right));
+            AddUntilStep("addition follows normal", () => cell(HitSoundingLane.Additions).IsEmpty);
+            AddAssert("addition reset keeps shared set", () => model.Nodes[0].SetIndex, () => Is.EqualTo(2));
         }
 
         [Test]
-        public void TestCollapsedSetShrinksMovesBelowExpandedAndExpandsOnClick()
+        public void TestIndependentAdditionCellsAndUndo()
         {
-            HitSoundingRoll roll = null!;
-            string[] samplesBefore = null!;
-            int[] setIndicesBefore = null!;
-            float[] markerXsBefore = null!;
-            float collapseFirstHeight = float.NaN;
-            float expandFirstHeight = float.NaN;
-
-            AddStep("get roll", () => roll = Editor.ChildrenOfType<HitSoundingRoll>().Single());
-            AddStep("move last four samples to custom set", () => model.SetBank(model.Nodes.Skip(4).ToArray(), HitSampleInfo.BANK_SOFT, 2, false));
-            AddUntilStep("set rows loaded", () => headerOrder(roll).SequenceEqual(new[] { 0, 1, 2 }) && model.Nodes.Count(n => n.SetIndex == 2) == 4);
-
-            AddStep("record samples and marker positions", () =>
-            {
-                samplesBefore = sampleSnapshot();
-                setIndicesBefore = model.Nodes.Select(n => n.SetIndex).ToArray();
-                markerXsBefore = model.Nodes.Where(n => n.SetIndex == 0)
-                                               .Select(n => Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node == n && !p.AdditionsOnly).ScreenSpaceDrawQuad.Centre.X)
-                                               .OrderBy(x => x)
-                                               .ToArray();
-            });
-
-            AddStep("click expanded set header", () =>
-            {
-                var header = headerFor(roll, 0);
-                header.OnUpdate += recordCollapseFrame;
-                clickHeader(roll, 0);
-            });
-            AddUntilStep("set collapsed", () => headerFor(roll, 0).IsCollapsed);
-            AddUntilStep("first collapse frame recorded", () => !float.IsNaN(collapseFirstHeight));
-            AddAssert("collapse does not jump to final height", () => collapseFirstHeight > HitSoundingLayout.COLLAPSED_SET_HEIGHT);
-            AddUntilStep("collapse animation settles", () => rowsFollowLayout(roll));
-
-            AddAssert("collapsed row is one text line high", () => headerFor(roll, 0).Height, () => Is.EqualTo(22f));
-            AddAssert("expanded rows keep their height", () =>
-                headerFor(roll, 1).Height == HitSoundingLayout.SET_HEIGHT && headerFor(roll, 2).Height == HitSoundingLayout.SET_HEIGHT);
-            AddAssert("collapsed set moved below expanded sets", () => headerOrder(roll), () => Is.EqualTo(new[] { 1, 2, 0 }));
-            AddAssert("display order matches headers", () => roll.SetLayout.DisplayOrder, () => Is.EqualTo(headerOrder(roll)));
-            AddAssert("rows follow layout bounds", () => rowsFollowLayout(roll));
-            AddUntilStep("collapsed set badges removed", () => !roll.ChildrenOfType<HitSoundingSamplePoint>().Any(p => p.Node.SetIndex == 0));
-            AddUntilStep("expanded set badges remain", () => roll.ChildrenOfType<HitSoundingSamplePoint>().Any(p => p.Node.SetIndex == 2));
-            AddUntilStep("sample dots rendered", () => collapsedDots(roll).Count() == 4);
-            AddAssert("dots are pink and ten pixels wide", () =>
-                collapsedDots(roll).All(d => d.Size == new Vector2(HitSoundingLayout.COLLAPSED_SAMPLE_SIZE) && d.Colour == new OsuColour().Pink1));
-            AddAssert("dots sit in the collapsed row", () =>
-                collapsedDots(roll).All(d => System.Math.Abs(d.Position.Y - (headerFor(roll, 0).Y + HitSoundingLayout.COLLAPSED_SET_HEIGHT / 2)) < 0.01f));
-            AddAssert("dots line up with sample times", () =>
-            {
-                float[] xs = collapsedDots(roll).Select(d => d.ScreenSpaceDrawQuad.Centre.X).OrderBy(x => x).ToArray();
-                return xs.Length == markerXsBefore.Length && xs.Zip(markerXsBefore, (a, b) => System.Math.Abs(a - b) < 1).All(match => match);
-            });
-            AddAssert("samples unchanged by collapse", () => sampleSnapshot(), () => Is.EqualTo(samplesBefore));
-            AddAssert("set indices unchanged by collapse", () => model.Nodes.Select(n => n.SetIndex), () => Is.EqualTo(setIndicesBefore));
-
-            AddStep("click collapsed set header", () =>
-            {
-                var header = headerFor(roll, 0);
-                header.OnUpdate += recordExpandFrame;
-                clickHeader(roll, 0);
-            });
-            AddUntilStep("set expanded", () => !headerFor(roll, 0).IsCollapsed);
-            AddUntilStep("first expansion frame recorded", () => !float.IsNaN(expandFirstHeight));
-            AddAssert("expansion does not jump to final height", () => expandFirstHeight < HitSoundingLayout.SET_HEIGHT);
-            AddUntilStep("expansion animation settles", () => rowsFollowLayout(roll));
-
-            AddAssert("expanded row is full height", () => headerFor(roll, 0).Height, () => Is.EqualTo(HitSoundingLayout.SET_HEIGHT));
-            AddAssert("expanded set returns above collapsed space", () => headerOrder(roll), () => Is.EqualTo(new[] { 0, 1, 2 }));
-            AddAssert("rows follow layout bounds after expanding", () => rowsFollowLayout(roll));
-            AddUntilStep("badges restored", () => roll.ChildrenOfType<HitSoundingSamplePoint>().Any(p => p.Node.SetIndex == 0));
-            AddAssert("collapsed dots removed", () => !collapsedDots(roll).Any());
-            AddAssert("samples unchanged by expanding", () => sampleSnapshot(), () => Is.EqualTo(samplesBefore));
-
-            void recordCollapseFrame(Drawable drawable)
-            {
-                collapseFirstHeight = drawable.Height;
-                drawable.OnUpdate -= recordCollapseFrame;
-            }
-
-            void recordExpandFrame(Drawable drawable)
-            {
-                expandFirstHeight = drawable.Height;
-                drawable.OnUpdate -= recordExpandFrame;
-            }
+            AddStep("enable whistle", () => clickCell(HitSoundingLane.Whistle));
+            AddUntilStep("whistle enabled", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_WHISTLE));
+            AddStep("enable finish", () => clickCell(HitSoundingLane.Finish));
+            AddUntilStep("finish enabled", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_FINISH));
+            AddStep("disable clap", () => clickCell(HitSoundingLane.Clap));
+            AddUntilStep("only clap removed", () => !model.Nodes[0].HasAddition(HitSampleInfo.HIT_CLAP)
+                && model.Nodes[0].HasAddition(HitSampleInfo.HIT_WHISTLE) && model.Nodes[0].HasAddition(HitSampleInfo.HIT_FINISH));
+            AddAssert("other sound points untouched", () => model.Nodes.Skip(1).All(n => n.HasAddition(HitSampleInfo.HIT_CLAP)
+                && !n.HasAddition(HitSampleInfo.HIT_WHISTLE) && !n.HasAddition(HitSampleInfo.HIT_FINISH)));
+            AddStep("undo clap toggle", () => Editor.Undo());
+            AddUntilStep("clap restored", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_CLAP));
         }
 
         [Test]
-        public void TestSetOrderOnlyChangesPresentation()
+        public void TestEmptyAdditionBankRequiresEnabledAddition()
         {
-            HitSoundingRoll roll = null!;
-            string[] samplesBefore = null!;
-
-            AddStep("get roll", () => roll = Editor.ChildrenOfType<HitSoundingRoll>().Single());
-            AddStep("move last four samples to custom set", () => model.SetBank(model.Nodes.Skip(4).ToArray(), HitSampleInfo.BANK_SOFT, 2, false));
-            AddUntilStep("three sets loaded", () => headerOrder(roll).SequenceEqual(new[] { 0, 1, 2 }));
-            AddStep("record samples", () => samplesBefore = sampleSnapshot());
-
-            AddStep("open set management", () => clickManagementButton(roll));
-            AddUntilStep("management open", () => Editor.ChildrenOfType<HitSoundingSetManagementPopover>().Any(p => p.IsPresent));
-            AddUntilStep("management rows ready", () => Editor.ChildrenOfType<HitSoundingSetManagementPopover>().Any(p => p.IsPresent && p.ChildrenOfType<IconButton>().Any(b => b.IsLoaded)));
-
-            AddStep("move custom set up from menu", () => clickManagementButton(managementPopover(), 2, HitSoundingStrings.MoveSetUp));
-            AddUntilStep("headers reordered", () => headerOrder(roll).SequenceEqual(new[] { 0, 2, 1 }));
-            AddUntilStep("management reflects new order", () => menuButtonOrDefault(managementPopover(), 1, HitSoundingStrings.MoveSetDown)?.Enabled.Value == false);
-            AddUntilStep("rows settle into order", () => rowsFollowLayout(roll));
-            AddAssert("move only changed presentation", () => sampleSnapshot(), () => Is.EqualTo(samplesBefore));
-
-            AddStep("collapse custom set from menu", () => clickManagementButton(managementPopover(), 2, HitSoundingStrings.CollapseSet));
-            AddUntilStep("collapsed set moves to bottom", () => headerOrder(roll).SequenceEqual(new[] { 0, 1, 2 }));
-            AddAssert("collapsed set cannot move into expanded group", () => !roll.SetLayout.CanMove(2, -1));
-            AddAssert("collapse only changed presentation", () => sampleSnapshot(), () => Is.EqualTo(samplesBefore));
+            AddStep("remove only addition", () => clickCell(HitSoundingLane.Clap));
+            AddUntilStep("addition bank disabled", () => !cell(HitSoundingLane.Additions).IsEnabled);
+            AddStep("try empty addition bank", () => clickCell(HitSoundingLane.Additions));
+            AddAssert("no bank editor", () => !Editor.ChildrenOfType<HitSoundingSamplePopover>().Any(p => p.IsPresent));
+            AddStep("enable whistle", () => clickCell(HitSoundingLane.Whistle));
+            AddUntilStep("auto bank editable", () => cell(HitSoundingLane.Additions).IsEnabled && cell(HitSoundingLane.Additions).IsEmpty);
+            AddStep("open auto bank", () => clickCell(HitSoundingLane.Additions));
+            AddUntilStep("bank editor opens", () => Editor.ChildrenOfType<HitSoundingSamplePopover>().Any(p => p.IsPresent));
         }
 
-        private static IEnumerable<HitSoundingLaneHeader> orderedHeaders(HitSoundingRoll roll)
-            => roll.ChildrenOfType<HitSoundingLaneHeader>().OrderBy(h => h.Y);
+        private HitSoundingSamplePoint cell(HitSoundingLane lane)
+            => Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node == model.Nodes[0] && p.Lane == lane);
 
-        private static int[] headerOrder(HitSoundingRoll roll) => orderedHeaders(roll).Select(h => h.SetIndex).ToArray();
-
-        private static HitSoundingLaneHeader headerFor(HitSoundingRoll roll, int set)
-            => roll.ChildrenOfType<HitSoundingLaneHeader>().Single(h => h.SetIndex == set);
-
-        private static IEnumerable<Circle> collapsedDots(HitSoundingRoll roll)
-            => roll.ChildrenOfType<Circle>().Where(c => c.Name == "collapsed sample");
+        private void clickCell(HitSoundingLane lane, MouseButton button = MouseButton.Left)
+        {
+            InputManager.MoveMouseTo(cell(lane));
+            InputManager.Click(button);
+        }
 
         private bool seekSettled
             => !EditorClock.IsSeeking && System.Math.Abs(EditorClock.CurrentTimeAccurate - EditorClock.CurrentTime) < 0.5;
@@ -562,59 +432,5 @@ namespace osu.Game.Tests.Visual.Editing
             InputManager.ScrollVerticalBy(notches);
         }
 
-        private static bool rowsFollowLayout(HitSoundingRoll roll)
-        {
-            HitSoundingLaneHeader[] headers = orderedHeaders(roll).ToArray();
-
-            for (int i = 0; i < headers.Length; i++)
-            {
-                HitSoundingLaneHeader header = headers[i];
-
-                if (System.Math.Abs(header.Y - roll.SetLayout.RowY(header.SetIndex)!.Value) > 0.01f)
-                    return false;
-
-                if (i < headers.Length - 1 && System.Math.Abs(header.Y + header.Height + HitSoundingLayout.SET_SPACING - headers[i + 1].Y) > 0.01f)
-                    return false;
-            }
-
-            return headers.Length > 0
-                   && System.Math.Abs(roll.SetLayout.TotalHeight - (headers[^1].Y + headers[^1].Height + HitSoundingLayout.SET_SPACING)) < 0.01f;
-        }
-
-        private string[] sampleSnapshot()
-            => EditorBeatmap.HitObjects.Select(h => string.Join("/", h.Samples.Select(s => $"{s.Name}|{s.Bank}|{s.Suffix}|{s.Volume}|{s.UseBeatmapSamples}"))).ToArray();
-
-        private void clickHeader(HitSoundingRoll roll, int set)
-        {
-            InputManager.MoveMouseTo(headerFor(roll, set));
-            InputManager.Click(MouseButton.Left);
-        }
-
-        private HitSoundingSetManagementPopover managementPopover()
-            => Editor.ChildrenOfType<HitSoundingSetManagementPopover>().Single(p => p.IsPresent);
-
-        private void clickManagementButton(HitSoundingRoll roll)
-        {
-            InputManager.MoveMouseTo(roll.ChildrenOfType<HitSoundingSetManagementButton>().Single());
-            InputManager.Click(MouseButton.Left);
-        }
-
-        private void clickManagementButton(HitSoundingSetManagementPopover popover, int set, LocalisableString tooltip)
-        {
-            InputManager.MoveMouseTo(menuButton(popover, set, tooltip));
-            InputManager.Click(MouseButton.Left);
-        }
-
-        private static IconButton menuButton(HitSoundingSetManagementPopover popover, int set, LocalisableString tooltip)
-            => menuButtonOrDefault(popover, set, tooltip) ?? throw new System.InvalidOperationException($"No {tooltip} button for set {set}.");
-
-        private static IconButton? menuButtonOrDefault(HitSoundingSetManagementPopover popover, int set, LocalisableString tooltip)
-        {
-            string label = (set == 0 ? HitSoundingStrings.UserSkin : HitSoundingStrings.CustomSet(set)).ToString();
-
-            return popover.ChildrenOfType<IconButton>().SingleOrDefault(b =>
-                b.TooltipText.ToString() == tooltip.ToString()
-                && b.Parent?.Parent?.ChildrenOfType<TruncatingSpriteText>().Any(t => t.Text.ToString() == label) == true);
-        }
     }
 }
