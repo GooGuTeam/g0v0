@@ -2,12 +2,14 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
+using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Events;
@@ -24,15 +26,16 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// <summary>
     /// An editable cell at an existing sound point, including cells with no visible badge.
     /// </summary>
-    public partial class HitSoundingSamplePoint : CompositeDrawable, IHasPopover, IHasTooltip
+    public partial class HitSoundingSamplePoint : CompositeDrawable, IHasPopover, IHasCustomTooltip<LocalisableString>
     {
         public readonly HitSoundingNode Node;
         public readonly HitSoundingLane Lane;
 
         private readonly HitSoundingEditModel model;
-        private Container badge = null!;
-        private Box background = null!;
-        private Box? bodyFill;
+        private Container? badge;
+        private Box? background;
+        private Container? bodyFill;
+        private Container playbackFlash = null!;
         private float bodyMarkerX;
         private OsuSpriteText bankLabel = null!;
         private OsuSpriteText setLabel = null!;
@@ -68,6 +71,15 @@ namespace osu.Game.Screens.Edit.HitSounding
             _ => HitSoundingStrings.AdditionHint
         };
 
+        public LocalisableString TooltipContent => TooltipText;
+
+        public ITooltip<LocalisableString> GetCustomTooltip() => new HitSoundingTooltip(
+            Lane == HitSoundingLane.Additions && !IsEnabled
+                ? HitSoundingTooltipKind.DisabledAddition
+                : Lane is HitSoundingLane.SampleSet or HitSoundingLane.Additions
+                    ? HitSoundingTooltipKind.Bank
+                    : HitSoundingTooltipKind.Addition);
+
         public HitSoundingSamplePoint(HitSoundingNode node, HitSoundingEditModel model, HitSoundingLane lane)
         {
             Node = node;
@@ -81,7 +93,15 @@ namespace osu.Game.Screens.Edit.HitSounding
         private void load()
         {
             if (Node.IsBody)
-                AddInternal(bodyFill = new Box { RelativeSizeAxes = Axes.Both });
+            {
+                AddInternal(bodyFill = new Container
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Masking = true,
+                    CornerRadius = HitSoundingLayout.SAMPLE_CORNER_RADIUS,
+                    Child = new Box { RelativeSizeAxes = Axes.Both }
+                });
+            }
 
             AddInternal(badge = new Container
             {
@@ -90,7 +110,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 RelativeSizeAxes = Node.IsBody ? Axes.None : Axes.Both,
                 Size = Node.IsBody ? new osuTK.Vector2(56, 28) : osuTK.Vector2.One,
                 Masking = true,
-                CornerRadius = Node.IsBody ? 14 : HitSoundingLayout.SAMPLE_CORNER_RADIUS,
+                CornerRadius = Node.IsBody ? 0 : HitSoundingLayout.SAMPLE_CORNER_RADIUS,
                 BorderColour = osuTK.Graphics.Color4.White,
                 Children = new Drawable[]
                 {
@@ -108,8 +128,45 @@ namespace osu.Game.Screens.Edit.HitSounding
                         Anchor = Node.IsBody ? Anchor.CentreRight : Anchor.BottomCentre,
                         Origin = Node.IsBody ? Anchor.CentreRight : Anchor.BottomCentre,
                         X = Node.IsBody ? -10 : 0, Y = Node.IsBody ? 0 : -3,
-                        Font = OsuFont.Default.With(size: 14, weight: FontWeight.SemiBold),
+                        Font = OsuFont.Default.With(size: 16, weight: FontWeight.SemiBold),
                         Colour = colours.B5
+                    }
+                }
+            });
+            AddInternal(playbackFlash = new Container
+            {
+                RelativeSizeAxes = Axes.Both,
+                Alpha = 0,
+                Children = new Drawable[]
+                {
+                    new Container
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                        Masking = true,
+                        CornerRadius = HitSoundingLayout.SAMPLE_CORNER_RADIUS,
+                        EdgeEffect = new EdgeEffectParameters
+                        {
+                            Type = EdgeEffectType.Glow,
+                            Colour = new osuTK.Graphics.Color4(1, 1, 1, 0.55f),
+                            Radius = 12,
+                            Hollow = true
+                        }
+                    },
+                    new Container
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                        Masking = true,
+                        CornerRadius = HitSoundingLayout.SAMPLE_CORNER_RADIUS,
+                        BorderThickness = 1.5f,
+                        BorderColour = osuTK.Graphics.Color4.White,
+                        EdgeEffect = new EdgeEffectParameters
+                        {
+                            Type = EdgeEffectType.Glow,
+                            Colour = new osuTK.Graphics.Color4(1, 1, 1, 0.9f),
+                            Radius = 4,
+                            Hollow = true
+                        },
+                        Child = new Box { RelativeSizeAxes = Axes.Both, Alpha = 0.35f }
                     }
                 }
             });
@@ -132,29 +189,34 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         public void Refresh()
         {
-            if (background == null)
+            if (background == null || badge == null)
                 return;
 
             bool bankLane = Lane is HitSoundingLane.SampleSet or HitSoundingLane.Additions;
             bool showBank = !IsEmpty || (Node.IsBody && Lane == HitSoundingLane.SampleSet);
             string bank = Node.GetBank(Lane == HitSoundingLane.Additions);
-            background.Colour = bankLane ? bank switch
-            {
-                HitSampleInfo.BANK_SOFT => colours.GreenLight,
-                HitSampleInfo.BANK_DRUM => colours.YellowLight,
-                _ => colours.BlueLight
-            } : Lane switch
-            {
-                HitSoundingLane.Whistle => colours.Blue,
-                HitSoundingLane.Finish => colours.Yellow,
-                _ => colours.Pink
-            };
+            background.Colour = bankLane
+                ? bank switch
+                {
+                    HitSampleInfo.BANK_SOFT => colours.GreenLight,
+                    HitSampleInfo.BANK_DRUM => colours.YellowLight,
+                    _ => colours.BlueLight
+                }
+                : Lane switch
+                {
+                    HitSoundingLane.Whistle => colours.Blue,
+                    HitSoundingLane.Finish => colours.Yellow,
+                    _ => colours.Pink
+                };
             background.Alpha = IsEnabled && showBank ? 1 : IsHovered && IsEnabled ? 0.2f : 0;
+
             if (bodyFill != null)
             {
                 bodyFill.Colour = background.Colour;
-                background.Alpha = IsEnabled ? showBank ? 1 : 0.2f : 0;
+                background.Alpha = 0;
+                bankLabel.Colour = setLabel.Colour = background.Colour;
             }
+
             bankLabel.Text = bank switch
             {
                 HitSampleInfo.BANK_SOFT => "S",
@@ -163,6 +225,14 @@ namespace osu.Game.Screens.Edit.HitSounding
             };
             setLabel.Text = Node.SetIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
             bankLabel.Alpha = setLabel.Alpha = bankLane && IsEnabled && showBank ? 1 : 0;
+            badge.EdgeEffect = !Node.IsBody && background.Alpha == 1
+                ? new EdgeEffectParameters
+                {
+                    Type = EdgeEffectType.Glow,
+                    Colour = new osuTK.Graphics.Color4(1, 1, 1, 0.12f),
+                    Radius = 4
+                }
+                : default;
             updateSelection();
         }
 
@@ -176,9 +246,64 @@ namespace osu.Game.Screens.Edit.HitSounding
         private void updateSelection()
         {
             selected = model.SelectedNodes.Contains(Node);
+
+            if (badge == null)
+                return;
+
             badge.BorderThickness = selected ? 2 : 0;
-            if (bodyFill != null)
-                bodyFill.Alpha = IsEnabled ? selected ? 0.25f : IsHovered ? 0.2f : 0.1f : 0;
+            bodyFill?.Alpha = IsEnabled
+                ? Lane switch
+                {
+                    HitSoundingLane.SampleSet or HitSoundingLane.Additions => selected || IsHovered ? 0.35f : 0.25f,
+                    HitSoundingLane.Whistle => Node.HasAddition(HitSampleInfo.HIT_WHISTLE) ? 0.66f : IsHovered ? 0.2f : 0.08f,
+                    _ => 0
+                }
+                : 0;
+        }
+
+        internal void FlashPlayback()
+        {
+            if (!IsEnabled || (!Node.IsBody && IsEmpty))
+                return;
+
+            playbackFlash.FadeOutFromOne(750, Easing.OutQuint);
+        }
+
+        protected override bool OnScroll(ScrollEvent e)
+        {
+            if (!e.ControlPressed || e.AltPressed || Lane is not (HitSoundingLane.SampleSet or HitSoundingLane.Additions))
+                return false;
+            if (!IsEnabled || e.ScrollDelta.Y == 0)
+                return true;
+
+            var indices = new SortedSet<int> { 0, 1 };
+            var beatmap = Dependencies.Get<EditorBeatmap>();
+
+            if (beatmap.BeatmapSkin != null)
+            {
+                foreach (var set in beatmap.BeatmapSkin.GetAvailableSampleSets())
+                    indices.Add(set.SampleSetIndex);
+            }
+
+            foreach (var node in model.Nodes)
+                indices.Add(node.SetIndex);
+
+            int[] available = indices.ToArray();
+            int index = Array.IndexOf(available, Node.SetIndex);
+            int steps = (int)Math.CopySign(Math.Max(1, Math.Round(Math.Abs(e.ScrollDelta.Y))), e.ScrollDelta.Y);
+            int next = ((index + steps) % available.Length + available.Length) % available.Length;
+            model.SetBank(model.SelectedNodes.Contains(Node) ? model.SelectedNodes : new[] { Node },
+                Node.GetBank(Lane == HitSoundingLane.Additions), available[next], Lane == HitSoundingLane.Additions);
+            return true;
+        }
+
+        private void selectForEdit()
+        {
+            if (model.SelectedNodes.Contains(Node))
+                return;
+
+            model.SelectedNodes.Clear();
+            model.SelectedNodes.Add(Node);
         }
 
         protected override bool OnHover(HoverEvent e)
@@ -194,11 +319,13 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (e.Button == MouseButton.Right && IsEnabled && Lane is HitSoundingLane.SampleSet or HitSoundingLane.Additions)
             {
                 this.HidePopover();
-                var targets = model.SelectedNodes.Contains(Node) ? model.SelectedNodes.ToArray() : new[] { Node };
+                selectForEdit();
+                var targets = model.SelectedNodes.ToArray();
                 model.SetBank(targets, Lane == HitSoundingLane.Additions ? HitObjectComposer.HIT_BANK_AUTO : HitSampleInfo.BANK_NORMAL,
                     Lane == HitSoundingLane.Additions ? -1 : model.DefaultSampleSetIndex, Lane == HitSoundingLane.Additions);
                 return true;
             }
+
             return e.Button == MouseButton.Left;
         }
 
@@ -206,23 +333,25 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             if (e.Button != MouseButton.Left)
                 return false;
+
             if (e.ControlPressed)
             {
                 if (!model.SelectedNodes.Remove(Node))
                     model.SelectedNodes.Add(Node);
+
                 return true;
             }
+
             if (!IsEnabled)
                 return true;
-            if (!model.SelectedNodes.Contains(Node))
-            {
-                model.SelectedNodes.Clear();
-                model.SelectedNodes.Add(Node);
-            }
+
+            selectForEdit();
+
             if (Lane is HitSoundingLane.SampleSet or HitSoundingLane.Additions)
                 this.ShowPopover();
             else
                 model.ToggleAddition(model.SelectedNodes, sampleName);
+
             return true;
         }
 

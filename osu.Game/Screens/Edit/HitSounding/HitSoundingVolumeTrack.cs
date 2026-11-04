@@ -27,10 +27,8 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// Draws the volume of every <see cref="HitSoundingNode"/> over time as a step graph, and edits it by dragging,
     /// double-clicking or Ctrl-clicking a run of nodes sharing the same volume.
     /// </summary>
-    public partial class HitSoundingVolumeTrack : CompositeDrawable, IHasTooltip
+    public partial class HitSoundingVolumeTrack : CompositeDrawable, IHasCustomTooltip<LocalisableString>
     {
-        private static readonly LocalisableString ctrl_split_hint = HitSoundingStrings.CtrlSplitHint;
-
         private readonly HitSoundingEditModel model;
 
         private readonly List<VolumeRun> runs = [];
@@ -94,13 +92,12 @@ namespace osu.Game.Screens.Edit.HitSounding
                         Size = new Vector2(12),
                         Masking = true,
                         BorderThickness = 2,
-                        BorderColour = colours.Pink1,
+                        BorderColour = Colour4.White,
                         Alpha = 0,
                         Child = new Box
                         {
                             RelativeSizeAxes = Axes.Both,
-                            Alpha = 0,
-                            AlwaysPresent = true,
+                            Colour = colours.Pink1,
                         }
                     }
                 },
@@ -155,7 +152,23 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// </summary>
         public float YForVolume(int volume) => HitSoundingVolumeSegment.VolumeToY(volume);
 
-        public LocalisableString TooltipText => previewDot != null && previewDot.Alpha > 0 ? ctrl_split_hint : default;
+        /// <summary>
+        /// The shortcuts to show while hovering a run of the volume graph.
+        /// </summary>
+        public LocalisableString TooltipContent
+        {
+            get
+            {
+                if (hoveredRun == null)
+                    return default;
+
+                return previewVisible ? HitSoundingStrings.CtrlSplitHint : HitSoundingStrings.VolumeHint;
+            }
+        }
+
+        public ITooltip<LocalisableString> GetCustomTooltip() => new HitSoundingTooltip(previewVisible ? HitSoundingTooltipKind.VolumeSplit : HitSoundingTooltipKind.Volume);
+
+        private bool previewVisible => previewDot.Alpha > 0;
 
         private void onModelChanged()
         {
@@ -187,7 +200,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             foreach (var node in model.Nodes)
             {
-                VolumeRun? run = runs.Count > 0 ? runs[runs.Count - 1] : null;
+                VolumeRun? run = runs.Count > 0 ? runs[^1] : null;
 
                 if (run == null || run.Volume != node.Volume)
                 {
@@ -410,8 +423,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private void hidePreview()
         {
-            if (previewDot != null)
-                previewDot.Alpha = 0;
+            previewDot.Alpha = 0;
         }
 
         private void openPopover(Vector2 position, HitSoundingVolumePopover popover)

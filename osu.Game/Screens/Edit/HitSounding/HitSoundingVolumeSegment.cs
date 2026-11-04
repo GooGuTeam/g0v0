@@ -67,7 +67,9 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly Box fill;
         private readonly Box line;
         private readonly Box connector;
-        private readonly Circle dot;
+        private readonly Container dot;
+        private readonly Circle dotBorder;
+        private readonly Circle dotCore;
         private readonly OsuSpriteText label;
         private readonly Container grip;
 
@@ -81,7 +83,6 @@ namespace osu.Game.Screens.Edit.HitSounding
         private Color4 selectedLineColour;
         private Color4 pointColour;
         private Color4 fillColour;
-        private Color4 labelColour;
 
         public HitSoundingVolumeSegment(IReadOnlyList<HitSoundingNode> nodes, int volume, bool hasPrevious)
         {
@@ -106,13 +107,29 @@ namespace osu.Game.Screens.Edit.HitSounding
                 {
                     Height = 2,
                 },
-                dot = new Circle
+                dot = new Container
                 {
-                    Size = new Vector2(8),
+                    Size = new Vector2(16),
+                    Children = new Drawable[]
+                    {
+                        dotBorder = new Circle
+                        {
+                            Anchor = Anchor.Centre,
+                            Origin = Anchor.Centre,
+                            Size = new Vector2(16),
+                            Colour = Colour4.White,
+                        },
+                        dotCore = new Circle
+                        {
+                            Anchor = Anchor.Centre,
+                            Origin = Anchor.Centre,
+                            Size = new Vector2(8),
+                        },
+                    },
                 },
                 label = new OsuSpriteText
                 {
-                    Font = OsuFont.Style.Caption2,
+                    Font = OsuFont.GetFont(size: 12, weight: FontWeight.SemiBold),
                     Origin = Anchor.BottomLeft,
                     Anchor = Anchor.TopLeft,
                 },
@@ -144,7 +161,6 @@ namespace osu.Game.Screens.Edit.HitSounding
             selectedLineColour = colours.Pink1;
             pointColour = colourProvider.Content2;
             fillColour = colourProvider.Light4;
-            labelColour = colourProvider.Light4;
 
             fill.Colour = fillColour;
             applyColours();
@@ -239,14 +255,14 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             // the value sits just above the line so the line never strikes through it; a run starting before the
             // visible window keeps its value readable at the left edge.
-            label.Position = new Vector2(Math.Max(StartX, 0) + 7, LineY - line.Height / 2 - 1);
+            label.Position = new Vector2(Math.Max(StartX, 0) + 6, LineY - line.Height / 2 - 1);
 
             grip.Position = new Vector2(visibleStart + width / 2 - grip.Size.X / 2, LineY - grip.Size.Y / 2);
 
             updateConnector();
         }
 
-        private void updateLabelText() => label.Text = DisplayVolume.ToString(CultureInfo.InvariantCulture) + @"%";
+        private void updateLabelText() => label.Text = DisplayVolume.ToString(CultureInfo.InvariantCulture);
 
         private void updateConnector()
         {
@@ -257,9 +273,16 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private void applyColours()
         {
+            line.Height = selected ? 3 : 2;
             line.Colour = connector.Colour = selected ? selectedLineColour : lineColour;
-            dot.Colour = selected ? selectedLineColour : pointColour;
-            label.Colour = labelColour;
+
+            dotCore.Size = new Vector2(selected ? 12 : 8);
+            dotCore.Colour = selected ? selectedLineColour : pointColour;
+            dotBorder.Alpha = selected ? 1 : 0;
+
+            label.Colour = selected ? selectedLineColour : lineColour;
+
+            updateDrawables();
         }
 
         /// <summary>

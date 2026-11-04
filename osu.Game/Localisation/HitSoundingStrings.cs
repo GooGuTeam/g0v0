@@ -80,11 +80,6 @@ namespace osu.Game.Localisation
         public static LocalisableString AdditionHint => new TranslatableString(getKey(@"addition_hint"), @"Click to toggle this addition · Ctrl-click to select");
 
         /// <summary>
-        /// "Every sample of this object shares one set index"
-        /// </summary>
-        public static LocalisableString SharedSetHint => new TranslatableString(getKey(@"shared_set_hint"), @"Every sample of this object shares one set index");
-
-        /// <summary>
         /// "Enable an addition first to configure its bank"
         /// </summary>
         public static LocalisableString ConfigureAdditionHint => new TranslatableString(getKey(@"configure_addition_hint"), @"Enable an addition first to configure its bank");
@@ -108,6 +103,51 @@ namespace osu.Game.Localisation
         /// "Ctrl-click to edit the volume from this sample point onwards"
         /// </summary>
         public static LocalisableString CtrlSplitHint => new TranslatableString(getKey(@"ctrl_split_hint"), @"Ctrl-click to edit the volume from this sample point onwards");
+
+        /// <summary>
+        /// "Click to edit bank and set"
+        /// </summary>
+        public static LocalisableString TooltipClickEditBank => new TranslatableString(getKey(@"tooltip_click_edit_bank"), @"Click to edit bank and set");
+
+        /// <summary>
+        /// "Select sample point"
+        /// </summary>
+        public static LocalisableString TooltipSelectSamplePoint => new TranslatableString(getKey(@"tooltip_select_sample_point"), @"Select sample point");
+
+        /// <summary>
+        /// "Right click to restore defaults"
+        /// </summary>
+        public static LocalisableString TooltipRestoreDefaults => new TranslatableString(getKey(@"tooltip_restore_defaults"), @"Right click to restore defaults");
+
+        /// <summary>
+        /// "Cycle sample sets on hover; no selection needed"
+        /// </summary>
+        public static LocalisableString TooltipCycleSampleSets => new TranslatableString(getKey(@"tooltip_cycle_sample_sets"), @"Cycle sample sets on hover; no selection needed");
+
+        /// <summary>
+        /// "Click to toggle this addition"
+        /// </summary>
+        public static LocalisableString TooltipToggleAddition => new TranslatableString(getKey(@"tooltip_toggle_addition"), @"Click to toggle this addition");
+
+        /// <summary>
+        /// "Drag to change volume"
+        /// </summary>
+        public static LocalisableString TooltipDragVolume => new TranslatableString(getKey(@"tooltip_drag_volume"), @"Drag to change volume");
+
+        /// <summary>
+        /// "Double click for precise volume editing"
+        /// </summary>
+        public static LocalisableString TooltipDoubleClickVolume => new TranslatableString(getKey(@"tooltip_double_click_volume"), @"Double click for precise volume editing");
+
+        /// <summary>
+        /// "Edit volume from a sample point"
+        /// </summary>
+        public static LocalisableString TooltipEditVolumeFromPoint => new TranslatableString(getKey(@"tooltip_edit_volume_from_point"), @"Edit volume from a sample point");
+
+        /// <summary>
+        /// "Edit volume from this sample point onwards"
+        /// </summary>
+        public static LocalisableString TooltipEditVolumeFromPointOnwards => new TranslatableString(getKey(@"tooltip_edit_volume_from_point_onwards"), @"Edit volume from this sample point onwards");
 
         /// <summary>
         /// "{0} - {1}"

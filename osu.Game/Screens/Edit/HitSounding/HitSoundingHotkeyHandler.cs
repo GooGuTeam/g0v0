@@ -1,7 +1,9 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using osu.Framework.Allocation;
 using osu.Framework.Graphics;
+using osu.Framework.Input;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Game.Audio;
@@ -14,6 +16,17 @@ namespace osu.Game.Screens.Edit.HitSounding
     {
         private readonly HitSoundingEditModel model;
 
+        [Resolved]
+        private HitSoundingRoll roll { get; set; } = null!;
+
+        private InputManager inputManager = null!;
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            inputManager = GetContainingInputManager()!;
+        }
+
         public HitSoundingHotkeyHandler(HitSoundingEditModel model)
         {
             this.model = model;
@@ -22,8 +35,9 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
         {
-            if (e.Repeat || model.SelectedNodes.Count == 0)
+            if (e.Repeat || inputManager.FocusedDrawable != null)
                 return false;
+
             string? sample = e.Action switch
             {
                 GlobalAction.EditorToggleWhistleSound => HitSampleInfo.HIT_WHISTLE,
@@ -31,6 +45,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 GlobalAction.EditorToggleClapSound => HitSampleInfo.HIT_CLAP,
                 _ => null
             };
+
             if (sample == null)
             {
                 string? bank = e.Action switch
@@ -41,15 +56,39 @@ namespace osu.Game.Screens.Edit.HitSounding
                     GlobalAction.EditorToggleAdditionAutoBank => HitObjectComposer.HIT_BANK_AUTO,
                     _ => null
                 };
+
                 if (bank == null)
                     return false;
+
+                selectHovered();
+
+                if (model.SelectedNodes.Count == 0)
+                    return false;
+
                 bool additionsOnly = e.Action is GlobalAction.EditorToggleAdditionNormalBank or GlobalAction.EditorToggleAdditionSoftBank
                     or GlobalAction.EditorToggleAdditionDrumBank or GlobalAction.EditorToggleAdditionAutoBank;
+
                 model.SetBank(model.SelectedNodes, bank, -1, additionsOnly);
                 return true;
             }
+
+            selectHovered();
+
+            if (model.SelectedNodes.Count == 0)
+                return false;
+
             model.ToggleAddition(model.SelectedNodes, sample);
             return true;
+        }
+
+        private void selectHovered()
+        {
+            var hovered = roll.HoveredNode;
+            if (hovered == null || model.SelectedNodes.Contains(hovered))
+                return;
+
+            model.SelectedNodes.Clear();
+            model.SelectedNodes.Add(hovered);
         }
 
         public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)

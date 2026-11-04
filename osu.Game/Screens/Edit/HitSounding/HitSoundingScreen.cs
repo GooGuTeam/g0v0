@@ -31,6 +31,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             var playback = new HitSoundingSamplePlayback(model);
             dependencies.CacheAs(playback);
             roll = new HitSoundingRoll(model);
+            dependencies.CacheAs(roll);
             AddInternal(new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background6, Alpha = 0.6f, Depth = float.MaxValue });
             Children = new Drawable[]
             {

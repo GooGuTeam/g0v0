@@ -8,6 +8,7 @@ using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions;
 using osu.Framework.Extensions.LocalisationExtensions;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
@@ -32,7 +33,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly Dictionary<HitSoundingNode, HitSoundingSamplePoint[]> points = [];
         private readonly Dictionary<HitObject, HitSoundingObject> objects = [];
         private readonly List<Box> columnBoxes = [];
-        private readonly Stack<HitObject> concurrentObjects = new();
+        private readonly Stack<HitObject> concurrentObjects = new Stack<HitObject>();
         private Container lanes = null!;
         private Container topLanes = null!;
         private Container backgrounds = null!;
@@ -66,6 +67,23 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         [Resolved]
         private HitSoundingSamplePlayback samplePlayback { get; set; } = null!;
+
+        internal HitSoundingNode? HoveredNode
+        {
+            get
+            {
+                foreach (var (node, nodePoints) in points)
+                {
+                    foreach (var point in nodePoints)
+                    {
+                        if (point.IsHovered && point.IsEnabled)
+                            return node;
+                    }
+                }
+
+                return null;
+            }
+        }
 
         public HitSoundingRoll(HitSoundingEditModel model)
         {
@@ -127,6 +145,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     }
                 }
             };
+
             for (int i = 0; i < HitSoundingLayout.LANE_COUNT; i++)
             {
                 headers.Add(new HitSoundingLaneHeader((HitSoundingLane)i));
@@ -139,12 +158,14 @@ namespace osu.Game.Screens.Edit.HitSounding
                     Child = createBackground(0, 1).With(b => b.RelativeSizeAxes = Axes.Both)
                 });
             }
+
             model.Changed += invalidate;
             model.SelectedNodes.CollectionChanged += selectionChanged;
             beatmap.ControlPointInfo.ControlPointsChanged += invalidate;
+            samplePlayback.NodePlayed += flashNode;
         }
 
-        private Box createPlayhead() => new()
+        private Box createPlayhead() => new Box
         {
             RelativeSizeAxes = Axes.Y,
             Anchor = Anchor.TopCentre,
@@ -154,9 +175,19 @@ namespace osu.Game.Screens.Edit.HitSounding
         };
 
         private void invalidate() => invalid = true;
+
+        private void flashNode(HitSoundingNode node)
+        {
+            if (!points.TryGetValue(node, out var nodePoints))
+                return;
+
+            foreach (var point in nodePoints)
+                point.FlashPlayback();
+        }
+
         private void selectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => lastTime = double.NaN;
 
-        private Container createHeader(LocalisableString text, float y, float height, bool centred) => new()
+        private Container createHeader(LocalisableString text, float y, float height, bool centred) => new Container
         {
             Y = y,
             Width = header_width,
@@ -165,7 +196,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             CornerRadius = 5,
             Children = new Drawable[]
             {
-                new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5, Alpha = 0.9f },
+                new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5 },
                 new OsuSpriteText
                 {
                     X = 10, Y = centred ? 0 : 10,
@@ -176,34 +207,38 @@ namespace osu.Game.Screens.Edit.HitSounding
             }
         };
 
-        private Container createBackground(float y, float height) => new()
+        private Container createBackground(float y, float height) => new Container
         {
             RelativeSizeAxes = Axes.X,
             Y = y,
             Height = height,
             Masking = true,
             CornerRadius = 5,
-            Child = new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5, Alpha = 0.9f }
+            Child = new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5 }
         };
 
         protected override void Update()
         {
             base.Update();
+
             if (previewingSeek)
             {
                 samplePlayback.PreviewSeek(lastPreviewTime, editorClock.CurrentTime);
                 lastPreviewTime = editorClock.CurrentTime;
                 previewingSeek = editorClock.IsSeeking;
             }
+
             if (!invalid && lastTime == editorClock.CurrentTime && lastDuration == visibleDuration && lastWidth == topLanes.DrawWidth
                 && lastHeight == lanes.DrawHeight)
                 return;
+
             lastTime = editorClock.CurrentTime;
             lastDuration = visibleDuration;
             lastWidth = topLanes.DrawWidth;
             lastHeight = lanes.DrawHeight;
             startTime = editorClock.CurrentTime - visibleDuration / 2;
             double endTime = startTime + visibleDuration;
+
             if (invalid)
             {
                 refreshPoints();
@@ -214,17 +249,23 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 double nodeStart = node.IsBody ? node.HitObject.StartTime : node.Time;
                 double nodeEnd = node.IsBody ? node.HitObject.GetEndTime() : node.Time;
+
                 if (nodeEnd < startTime - 200 || nodeStart > endTime + 200)
                 {
                     if (points.Remove(node, out var removed))
+                    {
                         foreach (var point in removed)
                             markers.Remove(point, true);
+                    }
+
                     continue;
                 }
+
                 if (!points.TryGetValue(node, out var nodePoints))
                 {
                     nodePoints = new HitSoundingSamplePoint[HitSoundingLayout.LANE_COUNT];
                     points.Add(node, nodePoints);
+
                     for (int i = 0; i < nodePoints.Length; i++)
                     {
                         var point = new HitSoundingSamplePoint(node, model, (HitSoundingLane)i) { Depth = node.IsBody ? 1 : 0 };
@@ -232,9 +273,11 @@ namespace osu.Game.Screens.Edit.HitSounding
                         markers.Add(point);
                     }
                 }
+
                 foreach (var point in nodePoints)
                 {
                     point.Position = new Vector2(timeToX((nodeStart + nodeEnd) / 2), ((float)point.Lane + 0.5f) * HitSoundingLayout.LANE_HEIGHT - HitSoundingLayout.LANE_SPACING / 2);
+
                     if (node.IsBody)
                         point.UpdateBodyLayout(timeToX(nodeEnd) - timeToX(nodeStart), timeToX(node.Time) - timeToX(nodeStart));
                 }
@@ -243,6 +286,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             objectLayer.RelativeChildSize = new Vector2((float)visibleDuration, 1);
             objectLayer.RelativeChildOffset = new Vector2((float)startTime, 0);
             concurrentObjects.Clear();
+
             foreach (var hitObject in beatmap.HitObjects)
             {
                 if (hitObject.GetEndTime() < startTime - 200 || hitObject.StartTime > endTime + 200)
@@ -251,19 +295,24 @@ namespace osu.Game.Screens.Edit.HitSounding
                         objectLayer.Remove(removed, true);
                     continue;
                 }
+
                 if (!objects.TryGetValue(hitObject, out HitSoundingObject? drawable))
                 {
                     drawable = new HitSoundingObject(hitObject, selectObject);
                     objects.Add(hitObject, drawable);
                     objectLayer.Add(drawable);
                 }
+
                 while (concurrentObjects.TryPeek(out HitObject? previous) && previous.GetEndTime() < hitObject.StartTime + 1)
                     concurrentObjects.Pop();
+
                 if (concurrentObjects.TryPeek(out HitObject? last) && Math.Abs(last.StartTime - hitObject.StartTime) > 1 && concurrentObjects.Count >= 3)
                     concurrentObjects.Clear();
+
                 drawable.Y = -5 * concurrentObjects.Count;
                 concurrentObjects.Push(hitObject);
             }
+
             grid.Refresh(startTime, endTime);
             topGrid.Refresh(startTime, endTime);
             updateSelectionColumns(endTime);
@@ -279,34 +328,42 @@ namespace osu.Game.Screens.Edit.HitSounding
                 objectLayer.Remove(objects[hitObject], true);
                 objects.Remove(hitObject);
             }
+
             foreach (var node in points.Keys.Where(n => !model.Nodes.Contains(n)).ToArray())
             {
                 foreach (var point in points[node])
                     markers.Remove(point, true);
                 points.Remove(node);
             }
+
             foreach (var nodePoints in points.Values)
+            {
                 foreach (var point in nodePoints)
                     point.Refresh();
+            }
         }
 
         private void updateSelectionColumns(double endTime)
         {
             int selectedCount = 0;
+
             foreach (var node in model.SelectedNodes)
             {
                 if (node.IsBody || node.Time < startTime || node.Time > endTime)
                     continue;
+
                 if (selectedCount == columnBoxes.Count)
                 {
                     var column = new Box { RelativeSizeAxes = Axes.Y, Width = HitSoundingLayout.SAMPLE_WIDTH, Colour = colours.Highlight1 };
                     columnBoxes.Add(column);
                     selectedColumns.Add(column);
                 }
+
                 var box = columnBoxes[selectedCount++];
                 box.X = timeToX(node.Time) - box.Width / 2;
                 box.Alpha = 0.08f;
             }
+
             for (int i = selectedCount; i < columnBoxes.Count; i++)
                 columnBoxes[i].Alpha = 0;
         }
@@ -316,36 +373,47 @@ namespace osu.Game.Screens.Edit.HitSounding
         private void selectObject(HitObject hitObject)
         {
             model.SelectedNodes.Clear();
+
             foreach (var node in model.Nodes)
+            {
                 if (node.HitObject == hitObject)
                     model.SelectedNodes.Add(node);
+            }
         }
 
         protected override bool OnMouseDown(MouseDownEvent e)
         {
             if (e.Button != MouseButton.Right)
                 return false;
+
             Vector2 position = lanes.ToLocalSpace(e.ScreenSpaceMousePosition);
             if (position.X < 0 || position.X > lanes.DrawWidth || position.Y < 0 || position.Y > lanes.DrawHeight)
                 return false;
 
             foreach (var nodePoints in points.Values)
+            {
                 foreach (var point in nodePoints)
+                {
                     if (point.IsPresent && point.ReceivePositionalInputAt(e.ScreenSpaceMousePosition))
                         return false;
+                }
+            }
 
             this.HidePopover();
+
             if (model.SelectedNodes.Count > 1)
                 model.SelectedNodes.Clear();
             else
             {
                 HitSoundingNode? nearest = null;
                 float nearestDistance = float.MaxValue;
+
                 foreach (var (node, nodePoints) in points)
                 {
                     foreach (var point in nodePoints)
                     {
                         float distance = (point.Position - position).LengthSquared;
+
                         if (distance < nearestDistance)
                         {
                             nearest = node;
@@ -353,10 +421,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                         }
                     }
                 }
+
                 model.SelectedNodes.Clear();
+
                 if (nearest != null)
                     model.SelectedNodes.Add(nearest);
             }
+
             return true;
         }
 
@@ -399,6 +470,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             bool movingForward = scrollDelta < 0;
             double snapped = target;
             double nearestDistance = double.MaxValue;
+
             foreach (var node in model.Nodes)
             {
                 double time = node.Time;
@@ -412,6 +484,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 nearestDistance = distance;
                 snapped = time;
             }
+
             return snapped;
         }
 
@@ -423,6 +496,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             Vector2 position = lanes.ToLocalSpace(e.ScreenSpaceMouseDownPosition);
             if (position.X < 0 || position.X > lanes.DrawWidth || position.Y < 0 || position.Y > lanes.DrawHeight)
                 return false;
+
             selectionStart = position;
             if (!e.ControlPressed)
                 model.SelectedNodes.Clear();
@@ -436,6 +510,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             if (selectionStart is not Vector2 start)
                 return;
+
             Vector2 end = lanes.ToLocalSpace(e.ScreenSpaceMousePosition);
             selectionBox.Position = Vector2.ComponentMin(start, end);
             selectionBox.Size = Vector2.ComponentMax(start, end) - selectionBox.Position;
@@ -445,7 +520,9 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             if (selectionStart == null)
                 return;
+
             foreach (var (node, nodePoints) in points)
+            {
                 if (nodePoints.Any(p =>
                         (node.IsBody
                             ? p.X + p.Width / 2 >= selectionBox.X && p.X - p.Width / 2 <= selectionBox.X + selectionBox.Width
@@ -453,6 +530,8 @@ namespace osu.Game.Screens.Edit.HitSounding
                         && p.Y >= selectionBox.Y && p.Y <= selectionBox.Y + selectionBox.Height)
                     && !model.SelectedNodes.Contains(node))
                     model.SelectedNodes.Add(node);
+            }
+
             selectionStart = null;
             selectionBox.Alpha = 0;
         }
@@ -461,8 +540,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             model.Changed -= invalidate;
             model.SelectedNodes.CollectionChanged -= selectionChanged;
-            if (beatmap != null)
+            samplePlayback.NodePlayed -= flashNode;
+
+            if (beatmap.IsNotNull())
                 beatmap.ControlPointInfo.ControlPointsChanged -= invalidate;
+
             base.Dispose(isDisposing);
         }
     }

@@ -42,17 +42,22 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             int used = 0;
             double previousTime = double.NaN;
+
             foreach (var node in model.Nodes)
             {
                 if (node.IsBody || node.Time < start)
                     continue;
+
                 if (node.Time > end)
                     break;
+
                 if (node.Time == previousTime)
                     continue;
+
                 previousTime = node.Time;
 
                 Box line;
+
                 if (used == lines.Count)
                 {
                     lines.Add(line = new Box { RelativeSizeAxes = Axes.Y, Width = 1, Colour = colours.Background2 });
@@ -60,10 +65,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                 }
                 else
                     line = lines[used];
+
                 used++;
+
                 line.X = (float)((node.Time - start) / (end - start) * DrawWidth);
                 line.Alpha = 0.6f;
             }
+
             for (int i = used; i < lines.Count; i++)
                 lines[i].Alpha = 0;
         }

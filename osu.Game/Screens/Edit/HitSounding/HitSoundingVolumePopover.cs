@@ -61,7 +61,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 flow = new FillFlowContainer
                 {
-                    Width = 220,
+                    Width = 283,
                     Direction = FillDirection.Vertical,
                     AutoSizeAxes = Axes.Y,
                     Spacing = new Vector2(0, 10),

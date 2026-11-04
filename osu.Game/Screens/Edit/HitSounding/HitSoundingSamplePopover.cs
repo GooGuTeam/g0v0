@@ -9,7 +9,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Localisation;
 using osu.Game.Audio;
-using osu.Game.Graphics.Containers;
+using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Rulesets.Edit;
@@ -44,9 +44,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                 ? new[] { HitObjectComposer.HIT_BANK_AUTO, HitSampleInfo.BANK_NORMAL, HitSampleInfo.BANK_SOFT, HitSampleInfo.BANK_DRUM }
                 : HitSampleInfo.ALL_BANKS;
             var indices = new SortedSet<int> { 0, 1 };
+
             if (beatmap.BeatmapSkin != null)
+            {
                 foreach (var set in beatmap.BeatmapSkin.GetAvailableSampleSets())
                     indices.Add(set.SampleSetIndex);
+            }
+
             foreach (var node in targets)
                 indices.Add(node.SetIndex);
 
@@ -66,19 +70,14 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 new FillFlowContainer
                 {
-                    Width = 250, AutoSizeAxes = Axes.Y, Direction = FillDirection.Vertical, Spacing = new Vector2(0, 10),
+                    Width = 283, AutoSizeAxes = Axes.Y, Direction = FillDirection.Vertical, Spacing = new Vector2(0, 10),
                     Children = new Drawable[]
                     {
                         bankDropdown,
                         setDropdown,
-                        new OsuTextFlowContainer
+                        new SaveButton
                         {
-                            RelativeSizeAxes = Axes.X, AutoSizeAxes = Axes.Y,
-                            Text = HitSoundingStrings.SharedSetHint
-                        },
-                        new RoundedButton
-                        {
-                            RelativeSizeAxes = Axes.X, Height = 35, Text = osu.Game.Resources.Localisation.Web.CommonStrings.ButtonsSave,
+                            RelativeSizeAxes = Axes.X, Height = 35, Text = Resources.Localisation.Web.CommonStrings.ButtonsSave,
                             Action = () =>
                             {
                                 model.SetBank(targets, bankDropdown.Current.Value, setDropdown.Current.Value, additionsOnly);
@@ -88,6 +87,18 @@ namespace osu.Game.Screens.Edit.HitSounding
                     }
                 }
             };
+        }
+
+        private partial class SaveButton : RoundedButton
+        {
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+
+                SpriteText.Font = OsuFont.GetFont(size: 21, weight: FontWeight.SemiBold);
+
+                Triangles?.Hide();
+            }
         }
 
         private partial class BankDropdown : FormDropdown<string>

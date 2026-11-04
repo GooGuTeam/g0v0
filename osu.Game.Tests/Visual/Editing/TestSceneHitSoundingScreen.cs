@@ -37,6 +37,7 @@ namespace osu.Game.Tests.Visual.Editing
             AddStep("add sample sequence", () =>
             {
                 for (int i = 0; i < 8; i++)
+                {
                     EditorBeatmap.Add(new HitCircle
                     {
                         StartTime = 500 + i * 500,
@@ -46,6 +47,8 @@ namespace osu.Game.Tests.Visual.Editing
                             new HitSampleInfo(HitSampleInfo.HIT_CLAP, HitSampleInfo.BANK_DRUM, volume: i < 4 ? 70 : 90, editorAutoBank: false)
                         ]
                     });
+                }
+
                 Editor.Mode.Value = EditorScreenMode.HitSounding;
                 EditorClock.Seek(2000);
                 EditorClock.Stop();
@@ -190,9 +193,9 @@ namespace osu.Game.Tests.Visual.Editing
                 Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL, volume: 70)],
                 NodeSamples =
                 [
-                    new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL, volume: 60) },
-                    new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL, volume: 60) },
-                    new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL, volume: 60) }
+                    new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, volume: 60) },
+                    new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, volume: 60) },
+                    new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, volume: 60) }
                 ]
             }));
             AddUntilStep("slider nodes loaded", () => model.Nodes.Count(n => n.HitObject is Slider) == 4);
@@ -217,8 +220,8 @@ namespace osu.Game.Tests.Visual.Editing
                     Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT, volume: 70)],
                     NodeSamples =
                     [
-                        new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_DRUM) },
-                        new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_DRUM) }
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_DRUM) },
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_DRUM) }
                     ]
                 });
             });
@@ -231,8 +234,7 @@ namespace osu.Game.Tests.Visual.Editing
                 popup.ChildrenOfType<FormDropdown<string>>().Single().Current.Value = HitSampleInfo.BANK_NORMAL;
                 popup.ChildrenOfType<RoundedButton>().Single().TriggerClick();
             });
-            AddUntilStep("only body bank changes", () => slider.Samples.Single().Bank == HitSampleInfo.BANK_NORMAL
-                && slider.NodeSamples.All(s => s.Single().Bank == HitSampleInfo.BANK_DRUM));
+            AddUntilStep("only body bank changes", () => slider.Samples.Single().Bank == HitSampleInfo.BANK_NORMAL && slider.NodeSamples.All(s => s.Single().Bank == HitSampleInfo.BANK_DRUM));
             AddStep("click body whistle interval", () => clickBody(HitSoundingLane.Whistle));
             AddUntilStep("body whistle enabled", () => slider.Samples.Any(s => s.Name == HitSampleInfo.HIT_WHISTLE));
             AddAssert("head and tail have no whistle", () => slider.NodeSamples.All(s => s.All(sample => sample.Name != HitSampleInfo.HIT_WHISTLE)));
@@ -371,16 +373,21 @@ namespace osu.Game.Tests.Visual.Editing
                     Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL)],
                     NodeSamples =
                     [
-                        new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL) },
-                        new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL) },
-                        new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL) },
-                        new List<HitSampleInfo> { new(HitSampleInfo.HIT_NORMAL) }
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL) },
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL) },
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL) },
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL) }
                     ]
                 });
             });
-            AddUntilStep("sound points loaded", () => model.Nodes.Any(n => System.Math.Abs(n.Time - first_off_grid) < 0.5)
-                && model.Nodes.Any(n => System.Math.Abs(n.Time - second_off_grid) < 0.5)
-                && model.Nodes.Count(n => n.HitObject == slider && n.Time > slider_start + 1) >= 3);
+            AddUntilStep("sound points loaded", () =>
+            {
+                bool firstPointLoaded = model.Nodes.Any(n => System.Math.Abs(n.Time - first_off_grid) < 0.5);
+                bool secondPointLoaded = model.Nodes.Any(n => System.Math.Abs(n.Time - second_off_grid) < 0.5);
+                bool thirdPointLoaded = model.Nodes.Count(n => n.HitObject == slider && n.Time > slider_start + 1) >= 3;
+
+                return firstPointLoaded && secondPointLoaded && thirdPointLoaded;
+            });
 
             AddStep("seek to the last setup sound point", () => EditorClock.Seek(4000));
             AddUntilStep("seek settled", () => seekSettled);
@@ -418,8 +425,12 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("seek settled", () => seekSettled);
             AddStep("wheel forward from the slider head", () => scrollWheel(-1));
             AddUntilStep("seek settled", () => seekSettled);
-            AddAssert("landed on a nested slider sample time", () => model.Nodes.Any(n => n.HitObject == slider && n.Time > slider_start + 1
-                && System.Math.Abs(n.Time - EditorClock.CurrentTime) < 0.5));
+            AddAssert("landed on a nested slider sample time", () =>
+            {
+                bool withinTolerance(double time) => System.Math.Abs(time - EditorClock.CurrentTime) < 0.5;
+
+                return model.Nodes.Any(n => n.HitObject == slider && n.Time > slider_start + 1 && withinTolerance(n.Time));
+            });
 
             AddStep("record last sound point", () => lastSoundPoint = model.Nodes.Max(n => n.Time));
             AddStep("seek past the last sound point", () => EditorClock.Seek(lastSoundPoint + 200));
@@ -496,10 +507,22 @@ namespace osu.Game.Tests.Visual.Editing
             AddStep("enable finish", () => clickCell(HitSoundingLane.Finish));
             AddUntilStep("finish enabled", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_FINISH));
             AddStep("disable clap", () => clickCell(HitSoundingLane.Clap));
-            AddUntilStep("only clap removed", () => !model.Nodes[0].HasAddition(HitSampleInfo.HIT_CLAP)
-                && model.Nodes[0].HasAddition(HitSampleInfo.HIT_WHISTLE) && model.Nodes[0].HasAddition(HitSampleInfo.HIT_FINISH));
-            AddAssert("other sound points untouched", () => model.Nodes.Skip(1).All(n => n.HasAddition(HitSampleInfo.HIT_CLAP)
-                && !n.HasAddition(HitSampleInfo.HIT_WHISTLE) && !n.HasAddition(HitSampleInfo.HIT_FINISH)));
+            AddUntilStep("only clap removed", () =>
+            {
+                var node = model.Nodes[0];
+
+                return !node.HasAddition(HitSampleInfo.HIT_CLAP)
+                       && node.HasAddition(HitSampleInfo.HIT_WHISTLE)
+                       && node.HasAddition(HitSampleInfo.HIT_FINISH);
+            });
+            AddAssert("other sound points untouched", () =>
+            {
+                var others = model.Nodes.Skip(1).ToArray();
+
+                return others.All(n => n.HasAddition(HitSampleInfo.HIT_CLAP))
+                       && others.All(n => !n.HasAddition(HitSampleInfo.HIT_WHISTLE))
+                       && others.All(n => !n.HasAddition(HitSampleInfo.HIT_FINISH));
+            });
             AddStep("undo clap toggle", () => Editor.Undo());
             AddUntilStep("clap restored", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_CLAP));
         }
@@ -515,6 +538,25 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("auto bank editable", () => cell(HitSoundingLane.Additions).IsEnabled && cell(HitSoundingLane.Additions).IsEmpty);
             AddStep("open auto bank", () => clickCell(HitSoundingLane.Additions));
             AddUntilStep("bank editor opens", () => Editor.ChildrenOfType<HitSoundingSamplePopover>().Any(p => p.IsPresent));
+        }
+
+        [Test]
+        public void TestHoveredSetCyclePreservesSelectionAndUndo()
+        {
+            AddStep("hover unselected bank and cycle set", () =>
+            {
+                model.SelectedNodes.Clear();
+                InputManager.MoveMouseTo(cell(HitSoundingLane.SampleSet));
+                InputManager.PressKey(Key.ControlLeft);
+                InputManager.ScrollVerticalBy(1);
+                InputManager.ReleaseKey(Key.ControlLeft);
+            });
+            AddUntilStep("hovered set changes without selecting", () => model.Nodes[0].SetIndex == 1 && model.SelectedNodes.Count == 0);
+            AddAssert("other points retain their sets", () => model.Nodes.Skip(1).All(n => n.SetIndex == 0));
+            AddStep("undo set cycle", () => Editor.Undo());
+            AddUntilStep("hovered set restored", () => model.Nodes[0].SetIndex == 0);
+            AddStep("toggle hovered point with keyboard", () => InputManager.Key(Key.W));
+            AddUntilStep("only hovered point gains whistle", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_WHISTLE) && model.Nodes.Skip(1).All(n => !n.HasAddition(HitSampleInfo.HIT_WHISTLE)));
         }
 
         private HitSoundingSamplePoint cell(HitSoundingLane lane)
@@ -534,6 +576,5 @@ namespace osu.Game.Tests.Visual.Editing
             InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single());
             InputManager.ScrollVerticalBy(notches);
         }
-
     }
 }

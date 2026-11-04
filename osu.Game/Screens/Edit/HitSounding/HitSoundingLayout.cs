@@ -13,7 +13,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         public const float SAMPLE_HEIGHT = 48;
         public const float SAMPLE_WIDTH = 32;
         public const float SAMPLE_CORNER_RADIUS = 5;
-        public const float SAMPLE_FONT_SIZE = 20;
+        public const float SAMPLE_FONT_SIZE = 24;
         public const float LANE_SPACING = 4;
     }
 }
