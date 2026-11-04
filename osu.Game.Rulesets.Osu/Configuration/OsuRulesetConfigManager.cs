@@ -25,7 +25,7 @@ namespace osu.Game.Rulesets.Osu.Configuration
             SetDefault(OsuRulesetSetting.PlayfieldBorderStyle, PlayfieldBorderStyle.None);
             SetDefault(OsuRulesetSetting.ShowSliderHeadJudgements, false);
             SetDefault(OsuRulesetSetting.KeepOverlapCirclesVisible, false);
-            SetDefault(OsuRulesetSetting.ShowHiddenSliders, false);
+            SetDefault(OsuRulesetSetting.ShowHiddenSliders, true);
             SetDefault(OsuRulesetSetting.SliderViewportSize, 0, 0, 65536);
 
             SetDefault(OsuRulesetSetting.ReplayClickMarkersEnabled, false);
