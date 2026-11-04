@@ -69,6 +69,11 @@ namespace osu.Game.Rulesets.Osu.Objects
 
         public bool LegacySpinnerScoring => LegacyScoreV1 || LegacyScoreV2;
 
+        /// <summary>
+        /// Only CL+SV1/CL+SV2 restrict overlapping spinner input to the first active spinner.
+        /// </summary>
+        public bool ExclusiveLegacyInput { get; internal set; }
+
         public int LegacyHalfSpinsRequired { get; private set; }
 
         public void ApplyLegacyScoreV1(ControlPointInfo controlPointInfo, IBeatmapDifficultyInfo difficulty)

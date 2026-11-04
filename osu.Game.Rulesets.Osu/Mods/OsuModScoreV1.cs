@@ -7,15 +7,13 @@ using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Localisation.Osu;
 using osu.Game.Rulesets.Mods;
-using osu.Game.Rulesets.Objects;
-using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Scoring;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 
 namespace osu.Game.Rulesets.Osu.Mods
 {
-    public class OsuModScoreV1 : ModScoreV1, IApplicableToScoreProcessor, IApplicableToHitObject, IApplicableToBeatmap
+    public class OsuModScoreV1 : ModScoreV1, IApplicableToScoreProcessor, IApplicableToBeatmap
     {
         public override ModType Type => ModType.Conversion;
 
@@ -29,23 +27,7 @@ namespace osu.Game.Rulesets.Osu.Mods
 
         public override Type[] IncompatibleMods => base.IncompatibleMods.Concat(new[] { typeof(ModScoreV2) }).ToArray();
 
-        public void ApplyToHitObject(HitObject hitObject)
-        {
-            switch (hitObject)
-            {
-                case Slider slider:
-                    slider.ClassicSliderBehaviour = true;
-                    slider.ClassicSliderJudgement = true;
-                    break;
-
-            }
-        }
-
-        public void ApplyToBeatmap(IBeatmap beatmap)
-        {
-            foreach (var spinner in beatmap.HitObjects.OfType<Spinner>())
-                spinner.ApplyLegacyScoreV1(beatmap.ControlPointInfo, beatmap.Difficulty);
-        }
+        public void ApplyToBeatmap(IBeatmap beatmap) => OsuCompatibilityRules.ApplyScoreVersion(beatmap, scoreV2: false);
 
         public void ApplyToScoreProcessor(ScoreProcessor scoreProcessor)
         {

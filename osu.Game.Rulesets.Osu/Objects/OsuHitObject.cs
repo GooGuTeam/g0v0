@@ -22,6 +22,11 @@ namespace osu.Game.Rulesets.Osu.Objects
         public const float OBJECT_RADIUS = 64;
 
         /// <summary>
+        /// Records Classic's request before the beatmap-level compatibility resolution pass.
+        /// </summary>
+        internal bool ClassicCompatibilityRequested { get; set; }
+
+        /// <summary>
         /// The width and height any element participating in display of a hitcircle (or similarly sized object) should be.
         /// </summary>
         public static readonly Vector2 OBJECT_DIMENSIONS = new Vector2(OBJECT_RADIUS * 2);
