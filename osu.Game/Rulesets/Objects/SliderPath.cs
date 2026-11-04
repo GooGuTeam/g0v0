@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -9,6 +9,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using osu.Framework.Bindables;
 using osu.Framework.Caching;
+using osu.Framework.Graphics.Lines;
 using osu.Framework.Utils;
 using osu.Game.Rulesets.Objects.Types;
 using osuTK;
@@ -176,25 +177,40 @@ namespace osu.Game.Rulesets.Objects
         /// <param name="p1">End progress. Ranges from 0 (beginning of the slider) to 1 (end of the slider).</param>
         public void GetPathToProgress(List<Vector2> path, double p0, double p1)
         {
-            ensureValid();
+            var range = GetPathToProgressRange(p0, p1);
+            path.Clear();
+            path.Add(range.StartPoint);
+            for (int i = range.FirstVertex; i < range.FirstVertex + range.VertexCount; i++)
+                path.Add(calculatedPath[i]);
+            path.Add(range.EndPoint);
+        }
 
+        /// <summary>
+        /// Retrieves the exact visible vertex interval and interpolated endpoints without copying the path.
+        /// </summary>
+        public PathDrawRange GetPathToProgressRange(double p0, double p1)
+        {
+            ensureValid();
             double d0 = progressToDistance(p0);
             double d1 = progressToDistance(p1);
+            int first = findDistanceBound(d0, false);
+            int end = Math.Max(first, findDistanceBound(d1, true));
+            return new PathDrawRange(first, end - first, interpolateVertices(first, d0), interpolateVertices(end, d1));
+        }
 
-            path.Clear();
-
-            int i = 0;
-
-            for (; i < calculatedPath.Count && cumulativeLength[i] < d0; ++i)
+        private int findDistanceBound(double distance, bool afterEqual)
+        {
+            int start = 0;
+            int end = calculatedPath.Count;
+            while (start < end)
             {
+                int mid = start + (end - start) / 2;
+                if (afterEqual ? cumulativeLength[mid] <= distance : cumulativeLength[mid] < distance)
+                    start = mid + 1;
+                else
+                    end = mid;
             }
-
-            path.Add(interpolateVertices(i, d0));
-
-            for (; i < calculatedPath.Count && cumulativeLength[i] <= d1; ++i)
-                path.Add(calculatedPath[i]);
-
-            path.Add(interpolateVertices(i, d1));
+            return start;
         }
 
         /// <summary>

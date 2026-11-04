@@ -1,11 +1,13 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
+using osu.Framework.Utils;
+using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Objects;
@@ -19,7 +21,48 @@ namespace osu.Game.Rulesets.Osu.Skinning
     /// </summary>
     public abstract partial class SnakingSliderBody : SliderBody, ISliderProgress
     {
-        public readonly List<Vector2> CurrentCurve = new List<Vector2>();
+        private readonly List<Vector2> currentCurve = new List<Vector2>();
+        private bool currentCurveValid;
+
+        public List<Vector2> CurrentCurve
+        {
+            get
+            {
+                if (!currentCurveValid)
+                {
+                    currentCurve.Clear();
+                    if (Path.DrawRange is { } range)
+                    {
+                        currentCurve.Add(range.StartPoint);
+                        for (int i = range.FirstVertex; i < range.FirstVertex + range.VertexCount; i++)
+                            currentCurve.Add(Path.Vertices[i]);
+                        currentCurve.Add(range.EndPoint);
+                    }
+                    currentCurveValid = true;
+                }
+                return currentCurve;
+            }
+        }
+
+        /// <summary>
+        /// Finds the first distinct point from a snaking endpoint without materialising the visible curve.
+        /// </summary>
+        public Vector2 GetSnakingDirection(Vector2 position, bool fromEnd)
+        {
+            if (Path.DrawRange is not { } range)
+                return Vector2.Zero;
+
+            int count = range.VertexCount + 2;
+            for (int i = fromEnd ? count - 1 : 0; i >= 0 && i < count; i += fromEnd ? -1 : 1)
+            {
+                Vector2 point = i == 0 ? range.StartPoint
+                    : i == count - 1 ? range.EndPoint
+                    : Path.Vertices[range.FirstVertex + i - 1];
+                if (!Precision.AlmostEquals(point, position))
+                    return point - position;
+            }
+            return -position;
+        }
 
         public readonly Bindable<bool> SnakingIn = new Bindable<bool>();
         public readonly Bindable<bool> SnakingOut = new Bindable<bool>();
@@ -46,21 +89,18 @@ namespace osu.Game.Rulesets.Osu.Skinning
         public override Vector2 PathEndOffset => snakedPathEndOffset;
 
         /// <summary>
-        /// The top-left position of the path when fully snaked.
-        /// </summary>
-        private Vector2 snakedPosition;
-
-        /// <summary>
-        /// The offset of the path from <see cref="snakedPosition"/> when fully snaked.
+        /// The start of the full path relative to its bounding box.
         /// </summary>
         private Vector2 snakedPathOffset;
 
         /// <summary>
-        /// The offset of the end of path from <see cref="snakedPosition"/> when fully snaked.
+        /// The end of the full path relative to its bounding box.
         /// </summary>
         private Vector2 snakedPathEndOffset;
 
         private DrawableSlider drawableSlider = null!;
+        private SliderPath? currentPath;
+        private int currentPathVersion;
 
         [BackgroundDependencyLoader]
         private void load(DrawableHitObject drawableObject)
@@ -104,10 +144,21 @@ namespace osu.Game.Rulesets.Osu.Skinning
             if (drawableSlider.HitObject == null)
                 return;
 
-            // Generate the entire curve
-            CurrentCurve.Clear();
-            CurrentCurve.AddRange(drawableSlider.HitObject.Path.CalculatedPath);
-            SetVertices(CurrentCurve);
+            double lastSnakedStart = SnakedStart ?? 0;
+            double lastSnakedEnd = SnakedEnd ?? 0;
+
+            refreshPath(drawableSlider.HitObject.Path);
+            setRange(lastSnakedStart, lastSnakedEnd);
+        }
+
+        private void refreshPath(SliderPath sliderPath)
+        {
+            // Geometry and bounds remain fixed while only the visible range changes.
+            SetVertices(sliderPath.CalculatedPath);
+            currentPath = sliderPath;
+            currentPathVersion = sliderPath.Version.Value;
+            currentCurveValid = false;
+            Path.Position = Vector2.Zero;
 
             // Force the body to be the final path size to avoid excessive autosize computations
             Path.AutoSizeAxes = Axes.Both;
@@ -115,22 +166,17 @@ namespace osu.Game.Rulesets.Osu.Skinning
 
             updatePathSize();
 
-            snakedPosition = Path.PositionInBoundingBox(Vector2.Zero);
-            snakedPathOffset = Path.PositionInBoundingBox(Path.Vertices[0]);
-            snakedPathEndOffset = Path.PositionInBoundingBox(Path.Vertices[^1]);
-
-            double lastSnakedStart = SnakedStart ?? 0;
-            double lastSnakedEnd = SnakedEnd ?? 0;
+            snakedPathOffset = Path.PositionInBoundingBox(Path.Vertices.Count > 0 ? Path.Vertices[0] : Vector2.Zero);
+            snakedPathEndOffset = Path.PositionInBoundingBox(Path.Vertices.Count > 0 ? Path.Vertices[^1] : Vector2.Zero);
 
             SnakedStart = null;
             SnakedEnd = null;
-
-            setRange(lastSnakedStart, lastSnakedEnd);
         }
 
         public override void RecyclePath()
         {
             base.RecyclePath();
+            currentCurveValid = false;
             updatePathSize();
         }
 
@@ -143,24 +189,22 @@ namespace osu.Game.Rulesets.Osu.Skinning
 
         private void setRange(double p0, double p1)
         {
+            SliderPath sliderPath = drawableSlider.HitObject.Path;
+
+            // A pooled body can receive progress before its scheduled refresh, especially after seeking.
+            // Check identity and version before reusing the range, even when progress has not changed.
+            if (currentPath != sliderPath || currentPathVersion != sliderPath.Version.Value)
+                refreshPath(sliderPath);
+
             if (p0 > p1)
                 (p0, p1) = (p1, p0);
 
             if (SnakedStart == p0 && SnakedEnd == p1) return;
 
+            Path.DrawRange = sliderPath.GetPathToProgressRange(p0, p1);
             SnakedStart = p0;
             SnakedEnd = p1;
-
-            drawableSlider.HitObject.Path.GetPathToProgress(CurrentCurve, p0, p1);
-
-            SetVertices(CurrentCurve);
-
-            // The bounding box of the path expands as it snakes, which in turn shifts the position of the path.
-            // Depending on the direction of expansion, it may appear as if the path is expanding towards the position of the slider
-            // rather than expanding out from the position of the slider.
-            // To remove this effect, the path's position is shifted towards its final snaked position
-
-            Path.Position = snakedPosition - Path.PositionInBoundingBox(Vector2.Zero);
+            currentCurveValid = false;
         }
     }
 }
