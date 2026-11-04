@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -72,7 +72,7 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                 editor.ShowSampleEditPopoverRequested += onShowSampleEditPopoverRequested;
         }
 
-        private readonly Bindable<bool> contracted = new Bindable<bool>();
+        private readonly Bindable<bool> contracted = new();
 
         protected override void LoadComplete()
         {
@@ -427,7 +427,7 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
 
             private void updateSampleSetState()
             {
-                HashSet<int> activeSets = new HashSet<int>();
+                HashSet<int> activeSets = [];
 
                 foreach (var sample in allRelevantSamples.SelectMany(h => h.samples))
                 {
@@ -546,13 +546,19 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
 
             #region hitsound toggles
 
-            private readonly Dictionary<string, Bindable<TernaryState>> selectionSampleStates = new Dictionary<string, Bindable<TernaryState>>();
+            private readonly Dictionary<string, Bindable<TernaryState>> selectionSampleStates = [];
 
-            private readonly List<string> banks = new List<string>();
+            private readonly List<string> banks = [];
+
+            /// <summary>
+            /// The addition samples which can be toggled for the samples currently being edited.
+            /// </summary>
+            /// <returns>The supported addition sample names.</returns>
+            protected virtual IEnumerable<string> GetAdditionSamples() => HitSampleInfo.ALL_ADDITIONS;
 
             private void createStateBindables()
             {
-                foreach (string sampleName in HitSampleInfo.ALL_ADDITIONS)
+                foreach (string sampleName in GetAdditionSamples())
                 {
                     var bindable = new Bindable<TernaryState>
                     {
