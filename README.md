@@ -38,9 +38,13 @@ bank (Auto); an object needs at least one addition sound before its addition ban
 Additions to Auto leaves the shared set index untouched.
 
 Whistle, Finish and Clap toggle the matching addition sound on the selection; the object's own body sample supports
-only the whistle, so Finish and Clap exist purely as additions. A direct click toggles a single cell while
-Ctrl-click or a box selection collects several; bank and set edits and every toggle are undoable as one change.
-Cells that cannot be edited — file-backed samples, or slider nodes that were never materialised — are disabled.
+only the whistle, so Finish and Clap exist purely as additions. Clicking an unselected point targets that point;
+clicking a selected point edits the current selection. Ctrl-click or a box selection collects several points.
+The existing bank and addition keyboard shortcuts also work on the hovered point without selecting it first.
+Ctrl + mouse wheel over a bank badge cycles the available sample sets without changing the selection.
+Bank and set edits and every toggle are undoable as one change. Cells that cannot be edited — file-backed samples,
+or slider nodes that were never materialised — are disabled. Hover panels show each available action with its shortcut
+in a separate keycap; holding Ctrl over the Volume graph switches the panel to the sample-point split action.
 
 Slider body samples use a translucent, clickable rectangle spanning the slider's duration instead of a middle
 vertical guide. The body bank appears as a horizontal capsule (`N 1`, with the bank on the left and set on the
@@ -48,6 +52,12 @@ right), with matching positions in the Additions and Whistle rows. Finish and Cl
 Capsules disappear when a slider span is too narrow to fit them between its hit nodes, but the interval remains
 clickable for bank edits, whistle toggles and selection. Head, repeat and tail cells stay above the fill and keep
 their own independent editing targets.
+
+Explicit sample edits audition the resulting sounds without moving the playhead; unchanged values and undo do not
+trigger an audition. Normal playback lights the sounding points with a soft white edge bloom and a 35% white
+overlay, fading together over 750 ms with OutQuint easing. Seeking and edit auditions do not trigger playback flashes.
+The Volume graph uses compact numeric labels, pink selected runs and a white-ringed point for precise Ctrl-click
+editing; dragging changes a run, while double-clicking opens its precise volume editor.
 
 The Objects and Volume rows behave as before, and the mouse wheel still seeks the cursor, snapping to the closest
 sound point rather than to the editor's beat grid.
