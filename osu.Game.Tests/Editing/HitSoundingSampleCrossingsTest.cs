@@ -50,10 +50,10 @@ namespace osu.Game.Tests.Editing
             Slider slider = createSlider();
             HitSoundingNode[] nodes =
             {
-                new(slider, -1),
-                new(slider, 0),
-                new(slider, 1),
-                new(slider, 2),
+                new HitSoundingNode(slider, -1),
+                new HitSoundingNode(slider, 0),
+                new HitSoundingNode(slider, 1),
+                new HitSoundingNode(slider, 2),
             };
 
             nodes = nodes.OrderBy(node => node.Time).ToArray();

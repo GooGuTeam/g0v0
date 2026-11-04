@@ -28,7 +28,7 @@ namespace osu.Game.Tests.Visual.Editing
 
             AddUntilStep("beatmap settled", () => !EditorBeatmap.UpdateInProgress.Value);
             AddStep("preview across hit", () => playback.PreviewSeek(900, 1100));
-            AddUntilStep("sample played", () => hasPlayedSample());
+            AddUntilStep("sample played", hasPlayedSample);
         }
 
         [Test]
@@ -39,7 +39,7 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("beatmap settled", () => !EditorBeatmap.UpdateInProgress.Value);
             AddStep("seek before hit", () => EditorClock.Seek(500));
             AddStep("start playback", () => EditorClock.Start());
-            AddUntilStep("sample played", () => hasPlayedSample());
+            AddUntilStep("sample played", hasPlayedSample);
             AddStep("stop playback", () => EditorClock.Stop());
         }
 
@@ -57,7 +57,7 @@ namespace osu.Game.Tests.Visual.Editing
                 EditorClock.Seek(0);
             });
 
-            AddUntilStep("playback loaded", () => playback?.IsLoaded == true);
+            AddUntilStep("playback loaded", () => playback.IsLoaded);
             AddUntilStep("hitnormal sample available", () => skinProvider.GetSample(new HitSampleInfo(HitSampleInfo.HIT_NORMAL)) != null);
         }
 

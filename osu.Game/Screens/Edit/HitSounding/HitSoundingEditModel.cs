@@ -59,6 +59,24 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// </summary>
         public event Action? Changed;
 
+        /// <summary>
+        /// Invoked after an explicit sample edit performed through this model has been committed to the beatmap.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Raised by <see cref="SetBank"/>, <see cref="RestoreDefaults"/>, <see cref="SetVolume"/> and <see cref="ToggleAddition"/>,
+        /// after the beatmap transaction has ended and the node list has been refreshed, and only when at least one node actually
+        /// had its samples changed. Edits which resolve to no change (an already-selected bank, an unchanged volume, an additions-only
+        /// bank change on nodes without additions) never raise it, so listeners can audition unconditionally.
+        /// </para>
+        /// <para>
+        /// Undo / redo, beatmap reprocessing and skin changes only raise <see cref="Changed"/>; they never raise this event.
+        /// The supplied list is a fresh snapshot which the model does not retain; the node instances remain pooled, so listeners must
+        /// read their samples during the callback rather than storing the list.
+        /// </para>
+        /// </remarks>
+        public event Action<IReadOnlyList<HitSoundingNode>>? SamplesEdited;
+
         private readonly EditorBeatmap beatmap;
 
         private readonly List<HitSoundingNode> nodes = [];
@@ -119,7 +137,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             foreach (var node in enumerateNodes(targets))
                 planBankChange(node, bank, setIndex, additionsOnly, plans);
 
-            commit(plans);
+            raiseSamplesEdited(commit(plans));
         }
 
         /// <summary>
@@ -161,6 +179,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             beatmap.EndChange();
             applyPendingChanges();
+            raiseSamplesEdited(reset);
         }
 
         /// <summary>
@@ -217,7 +236,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     plans.Add(new PendingNodeUpdate(node, updates));
             }
 
-            commit(plans);
+            raiseSamplesEdited(commit(plans));
         }
 
         /// <summary>
@@ -269,29 +288,42 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             beatmap.BeginChange();
 
+            var edited = new List<HitSoundingNode>();
+
             foreach (var node in candidates)
             {
                 IList<HitSampleInfo> samples = node.Samples;
+                bool changed = false;
 
                 if (add)
                 {
                     if (!containsSample(samples, sampleName))
+                    {
                         samples.Add(createAdditionSample(samples, sampleName));
+                        changed = true;
+                    }
                 }
                 else
                 {
                     for (int i = samples.Count - 1; i >= 0; i--)
                     {
-                        if (samples[i].Name == sampleName)
-                            samples.RemoveAt(i);
+                        if (samples[i].Name != sampleName)
+                            continue;
+
+                        samples.RemoveAt(i);
+                        changed = true;
                     }
                 }
+
+                if (changed)
+                    edited.Add(node);
 
                 beatmap.Update(node.HitObject);
             }
 
             beatmap.EndChange();
             applyPendingChanges();
+            raiseSamplesEdited(edited);
         }
 
         /// <summary>
@@ -414,30 +446,58 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// <summary>
         /// Applies prepared sample updates to the beatmap within a single reversible transaction.
         /// </summary>
-        private void commit(List<PendingNodeUpdate> plans)
+        /// <returns>
+        /// The nodes whose samples were actually changed, or <c>null</c> when no update could be applied.
+        /// </returns>
+        private List<HitSoundingNode>? commit(List<PendingNodeUpdate> plans)
         {
             if (plans.Count == 0)
-                return;
+                return null;
+
+            List<HitSoundingNode>? edited = null;
 
             beatmap.BeginChange();
 
             foreach (var plan in plans)
             {
                 IList<HitSampleInfo> samples = plan.Node.Samples;
+                bool applied = false;
 
                 foreach (var update in plan.Updates)
                 {
                     if (update.Index == append_index)
+                    {
                         samples.Add(update.Sample);
+                        applied = true;
+                    }
                     else if (update.Index < samples.Count)
+                    {
                         samples[update.Index] = update.Sample;
+                        applied = true;
+                    }
                 }
+
+                if (applied)
+                    (edited ??= []).Add(plan.Node);
 
                 beatmap.Update(plan.Node.HitObject);
             }
 
             beatmap.EndChange();
             applyPendingChanges();
+
+            return edited;
+        }
+
+        /// <summary>
+        /// Raises <see cref="SamplesEdited"/> when a sample mutation actually changed at least one node.
+        /// </summary>
+        private void raiseSamplesEdited(List<HitSoundingNode>? edited)
+        {
+            if (edited == null || edited.Count == 0)
+                return;
+
+            SamplesEdited?.Invoke(edited);
         }
 
         private static string getNormalBank(IList<HitSampleInfo> samples)
@@ -445,10 +505,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             for (int i = 0; i < samples.Count; i++)
             {
                 if (samples[i].Name == HitSampleInfo.HIT_NORMAL)
-                {
-                    string? bank = samples[i].Bank;
-                    return bank ?? HitSampleInfo.BANK_SOFT;
-                }
+                    return samples[i].Bank;
             }
 
             return HitSampleInfo.BANK_SOFT;
@@ -636,7 +693,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             dirty = false;
             applying = true;
 
-            bool selectionPruned = false;
+            bool selectionPruned;
 
             try
             {

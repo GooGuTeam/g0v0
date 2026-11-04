@@ -7,6 +7,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Threading;
 using osu.Game.Audio;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Skinning;
@@ -24,7 +25,7 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// does not silence hitsounding previews. The global editor state is never modified.
     /// </para>
     /// <para>
-    /// Two playback paths are handled independently:
+    /// Three playback paths are handled independently:
     /// <list type="bullet">
     /// <item><description>
     /// <see cref="Update"/> tracks <see cref="EditorClock"/> and fires the discrete hit nodes crossed by normal playback.
@@ -37,11 +38,22 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// Slider loop samples are not started while scrubbing, as they have no discrete hit time and would either be a fake hit or
     /// linger after the scrub ends.
     /// </description></item>
+    /// <item><description>
+    /// <see cref="HitSoundingEditModel.SamplesEdited"/> auditions an explicit sample edit without moving the playhead. Discrete
+    /// nodes are played once through the hit pool, with identical sample lists collapsed so a batch edit does not stack the same
+    /// sound. Body nodes start their actual sliding samples as a short bounded loop which is always stopped afterwards.
+    /// </description></item>
     /// </list>
     /// </para>
     /// <para>
+    /// <see cref="NodePlayed"/> reports the nodes heard by actual playhead playback only: discrete hits crossed by <see cref="Update"/>
+    /// and body loops started by it. Wheel scrubs and edit auditions deliberately do not report, so callers can use it to flash
+    /// points which the playhead is passing rather than points the user just edited.
+    /// </para>
+    /// <para>
     /// Playback is suppressed while the owning <see cref="EditorScreen"/> is hidden, while the screen is not present, and while
-    /// <see cref="EditorBeatmap.UpdateInProgress"/> is set (sample edits and undo never emit a burst of sounds).
+    /// <see cref="EditorBeatmap.UpdateInProgress"/> is set (undo and reprocessing never emit a burst of sounds; an explicit edit is
+    /// auditioned after its beatmap transaction has completed).
     /// All samples are resolved through the current skin and are played by a lazily grown pool of reusable
     /// <see cref="PausableSkinnableSound"/>s: idle players are reused and new players are only created for the actual number of
     /// simultaneous sounds, so no drawables or sample lookups are created per frame. No chord or overlap is silently truncated.
@@ -56,24 +68,49 @@ namespace osu.Game.Screens.Edit.HitSounding
     public partial class HitSoundingSamplePlayback : CompositeDrawable
     {
         /// <summary>
+        /// Invoked when uninterrupted playhead playback plays a discrete hit node, or starts a slider body loop.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Raised once per node when its samples are actually played: discrete nodes crossed by <see cref="Update"/>, and body
+        /// loops when the playhead enters their slider span. Nodes without any playable samples never raise it.
+        /// </para>
+        /// <para>
+        /// Wheel scrubs (<see cref="PreviewSeek"/>), seeks, discontinuities and explicit sample-edit auditions deliberately do not
+        /// raise it, so callers can flash the points the playhead is passing rather than everything that made a sound.
+        /// Invoked on the update thread.
+        /// </para>
+        /// </remarks>
+        public event Action<HitSoundingNode>? NodePlayed;
+
+        /// <summary>
         /// The largest clock step treated as continuous playback. Larger steps are seeks / tab-out jumps and are not replayed.
         /// </summary>
         private const double maximum_continuous_step = 250;
 
+        /// <summary>
+        /// The bounded duration of a slider body edit audition.
+        /// </summary>
+        private const double edit_audition_loop_duration = 300;
+
         private readonly HitSoundingEditModel model;
-        private readonly SamplePlaybackDisabler localDisabler = new();
+        private readonly SamplePlaybackDisabler localDisabler = new SamplePlaybackDisabler();
         private readonly List<SamplePlayer> hitPlayers = [];
         private readonly List<SamplePlayer> loopPlayers = [];
         private readonly Dictionary<HitSoundingNode, ISampleInfo[]> sampleCache = [];
         private readonly Dictionary<HitSoundingNode, ISampleInfo[]> loopSampleCache = [];
         private readonly Dictionary<HitSoundingNode, SamplePlayer> activeLoops = [];
         private readonly List<HitSoundingNode> crossings = [];
+        private readonly List<ISampleInfo[]> auditionGroups = [];
 
         private readonly List<HitSoundingNode> crossingNodes = [];
         private readonly List<HitSoundingNode> bodyNodes = [];
 
         private Container hitContainer = null!;
         private Container loopContainer = null!;
+
+        private SamplePlayer? auditionLoopPlayer;
+        private ScheduledDelegate? auditionStop;
 
         private bool nodesDirty = true;
 
@@ -108,6 +145,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private void load()
         {
             model.Changed += onModelChanged;
+            model.SamplesEdited += onSamplesEdited;
 
             AddInternal(hitContainer = new Container { RelativeSizeAxes = Axes.Both });
             AddInternal(loopContainer = new Container { RelativeSizeAxes = Axes.Both });
@@ -140,7 +178,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// </para>
         /// <para>
         /// Slider body / loop nodes are intentionally excluded: they have no discrete hit time, and firing their normal sample at
-        /// the body marker would produce a fake extra circle.
+        /// the body marker would produce a fake extra circle. <see cref="NodePlayed"/> is not raised for these preview hits.
         /// </para>
         /// </remarks>
         /// <param name="from">The previously displayed clock position.</param>
@@ -200,7 +238,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         /// <summary>
-        /// Clears all playback state and stops every preview sound.
+        /// Clears all playback state and stops every preview and edit-audition sound.
         /// </summary>
         /// <remarks>
         /// Automatically invoked when the owning <see cref="EditorScreen"/> is hidden or shown (including editor mode switches), so
@@ -216,6 +254,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             stopLoops();
             stopHitPlayers();
+            stopAudition();
 
             localDisabler.Set(!screenVisible || beatmap.UpdateInProgress.Value);
         }
@@ -239,6 +278,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 previewRequested = false;
                 stopLoops();
                 stopHitPlayers();
+                stopAudition();
                 return;
             }
 
@@ -260,18 +300,25 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (double.IsNaN(lastPlaybackTime))
             {
                 lastPlaybackTime = current;
-                updateLoops(current);
+                updateLoops(current, reportStarts: true);
                 return;
             }
 
             double elapsed = current - lastPlaybackTime;
 
-            if (elapsed <= 0 || elapsed > maximum_continuous_step)
+            if (elapsed == 0)
+            {
+                // No clock movement. Nothing was crossed and any loop restart is left to the first moving frame, which reports it
+                // as a normal loop start.
+                return;
+            }
+
+            if (elapsed < 0 || elapsed > maximum_continuous_step)
             {
                 // Discontinuity (seek, mode switch, or a stalled frame). Resync rather than firing everything in between.
                 lastPlaybackTime = current;
                 stopLoops();
-                updateLoops(current);
+                updateLoops(current, reportStarts: false);
                 return;
             }
 
@@ -279,16 +326,26 @@ namespace osu.Game.Screens.Edit.HitSounding
             HitSoundingSampleCrossings.Collect(crossingNodes, lastPlaybackTime, current, crossings);
 
             for (int i = 0; i < crossings.Count; i++)
-                playNode(crossings[i]);
+            {
+                HitSoundingNode node = crossings[i];
+
+                if (playNode(node))
+                    NodePlayed?.Invoke(node);
+            }
 
             lastPlaybackTime = current;
-            updateLoops(current);
+            updateLoops(current, reportStarts: true);
         }
 
         /// <summary>
         /// Starts / stops slider loop samples for the current playhead position.
         /// </summary>
-        private void updateLoops(double current)
+        /// <param name="current">The current playhead position.</param>
+        /// <param name="reportStarts">
+        /// Whether newly started loops raise <see cref="NodePlayed"/>. Discontinuities resync the loop state without reporting,
+        /// as their start was caused by a seek rather than by continuous playback.
+        /// </param>
+        private void updateLoops(double current, bool reportStarts)
         {
             for (int i = 0; i < bodyNodes.Count; i++)
             {
@@ -298,27 +355,35 @@ namespace osu.Game.Screens.Edit.HitSounding
                     continue;
 
                 if (current >= node.HitObject.StartTime && current < hasRepeats.EndTime)
-                    startLoop(node);
+                {
+                    if (startLoop(node) && reportStarts)
+                        NodePlayed?.Invoke(node);
+                }
                 else
                     stopLoop(node);
             }
         }
 
-        private void startLoop(HitSoundingNode node)
+        /// <summary>
+        /// Starts the loop samples of a body node, if it is not already sounding.
+        /// </summary>
+        /// <returns>Whether a new loop was started (and therefore produced sound).</returns>
+        private bool startLoop(HitSoundingNode node)
         {
             if (activeLoops.ContainsKey(node))
-                return;
+                return false;
 
             ISampleInfo[] samples = getLoopSamples(node);
 
             if (samples.Length == 0)
-                return;
+                return false;
 
             SamplePlayer player = getLoopPlayer();
             player.Reserved = true;
             player.Samples = samples;
             activeLoops.Add(node, player);
             player.QueuePlay();
+            return true;
         }
 
         /// <summary>
@@ -364,17 +429,30 @@ namespace osu.Game.Screens.Edit.HitSounding
                 hitPlayers[i].Stop();
         }
 
-        private void playNode(HitSoundingNode node)
+        /// <summary>
+        /// Plays the discrete samples of a node.
+        /// </summary>
+        /// <returns>Whether a sound was queued.</returns>
+        private bool playNode(HitSoundingNode node)
         {
             // Body nodes are handled as continuous loops by updateLoops(), never as discrete hits.
             if (node.IsBody)
-                return;
+                return false;
 
             ISampleInfo[] samples = getSamples(node);
 
             if (samples.Length == 0)
-                return;
+                return false;
 
+            playSamples(samples);
+            return true;
+        }
+
+        /// <summary>
+        /// Plays a prepared sample list from the next free player in the hit pool.
+        /// </summary>
+        private void playSamples(ISampleInfo[] samples)
+        {
             SamplePlayer player = getHitPlayer();
             player.Samples = samples;
             player.QueuePlay();
@@ -433,6 +511,156 @@ namespace osu.Game.Screens.Edit.HitSounding
             return copy;
         }
 
+        /// <summary>
+        /// Auditions the nodes of an explicit sample edit without moving the playhead.
+        /// </summary>
+        /// <remarks>
+        /// Only sound is produced: neither the clock nor any playback cursor is touched, <see cref="NodePlayed"/> is not raised, and no
+        /// loop is left running. Identical discrete sample lists are collapsed so a batch edit which gives every node the same sound is
+        /// heard once, and only the first edited body node is looped, as all edited bodies normally share the new configuration.
+        /// </remarks>
+        private void onSamplesEdited(IReadOnlyList<HitSoundingNode> nodes)
+        {
+            if (!IsLoaded || !IsPresent || !screenVisible || beatmap.UpdateInProgress.Value)
+                return;
+
+            ensureNodes();
+            localDisabler.Set(false);
+
+            auditionHits(nodes);
+            auditionLoop(nodes);
+        }
+
+        private void auditionHits(IReadOnlyList<HitSoundingNode> nodes)
+        {
+            auditionGroups.Clear();
+
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                HitSoundingNode node = nodes[i];
+
+                if (node.IsBody)
+                    continue;
+
+                ISampleInfo[] samples = getSamples(node);
+
+                if (samples.Length == 0 || containsAuditionGroup(samples))
+                    continue;
+
+                auditionGroups.Add(samples);
+                playSamples(samples);
+            }
+        }
+
+        private bool containsAuditionGroup(ISampleInfo[] samples)
+        {
+            for (int i = 0; i < auditionGroups.Count; i++)
+            {
+                if (samplesEqual(auditionGroups[i], samples))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void auditionLoop(IReadOnlyList<HitSoundingNode> nodes)
+        {
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                HitSoundingNode node = nodes[i];
+
+                if (!node.IsBody)
+                    continue;
+
+                ISampleInfo[] samples = getLoopSamples(node);
+
+                if (samples.Length == 0)
+                    continue;
+
+                startAuditionLoop(samples);
+                break;
+            }
+        }
+
+        /// <summary>
+        /// Plays sliding samples as a loop which is stopped after <see cref="edit_audition_loop_duration"/> milliseconds.
+        /// </summary>
+        private void startAuditionLoop(ISampleInfo[] samples)
+        {
+            auditionStop?.Cancel();
+            auditionStop = null;
+
+            // Reuse the loop pool; the player is only held (reserved) for the bounded audition duration.
+            auditionLoopPlayer ??= getLoopPlayer();
+
+            // Restart from the new samples rather than stacking a second loop; only one edit audition is ever active.
+            auditionLoopPlayer.Reserved = true;
+            auditionLoopPlayer.Stop();
+            auditionLoopPlayer.Samples = samples;
+            auditionLoopPlayer.QueuePlay();
+
+            auditionStop = Scheduler.AddDelayed(stopAuditionLoop, edit_audition_loop_duration);
+        }
+
+        private void stopAuditionLoop()
+        {
+            auditionStop = null;
+            releaseAuditionLoop();
+        }
+
+        private void stopAudition()
+        {
+            auditionStop?.Cancel();
+            auditionStop = null;
+            releaseAuditionLoop();
+        }
+
+        /// <summary>
+        /// Stops the audition loop and returns its player to the loop pool.
+        /// </summary>
+        private void releaseAuditionLoop()
+        {
+            if (auditionLoopPlayer == null)
+                return;
+
+            auditionLoopPlayer.Stop();
+            auditionLoopPlayer.Reserved = false;
+            auditionLoopPlayer = null;
+        }
+
+        /// <summary>
+        /// Compares two sample lists for audibly identical content.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="HitSampleInfo"/> equality deliberately ignores the volume, which is exactly the field a volume edit changes, so
+        /// the audible fields are compared explicitly here.
+        /// </remarks>
+        private static bool samplesEqual(ISampleInfo[] a, ISampleInfo[] b)
+        {
+            if (a.Length != b.Length)
+                return false;
+
+            for (int i = 0; i < a.Length; i++)
+            {
+                if (a[i] is not HitSampleInfo left || b[i] is not HitSampleInfo right)
+                {
+                    if (!ReferenceEquals(a[i], b[i]))
+                        return false;
+
+                    continue;
+                }
+
+                if (!string.Equals(left.Name, right.Name, StringComparison.Ordinal)
+                    || !string.Equals(left.Bank, right.Bank, StringComparison.Ordinal)
+                    || !string.Equals(left.Suffix, right.Suffix, StringComparison.Ordinal)
+                    || left.Volume != right.Volume
+                    || left.UseBeatmapSamples != right.UseBeatmapSamples)
+                    return false;
+            }
+
+            return true;
+        }
+
         private void ensureNodes()
         {
             if (!nodesDirty)
@@ -462,6 +690,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             stopLoops();
             stopHitPlayers();
+            stopAudition();
         }
 
         private void onScreenStateChanged(ValueChangedEvent<Visibility> state)
@@ -473,6 +702,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         protected override void Dispose(bool isDisposing)
         {
             model.Changed -= onModelChanged;
+            model.SamplesEdited -= onSamplesEdited;
 
             if (screenState != null)
             {
@@ -482,6 +712,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             stopLoops();
             stopHitPlayers();
+            stopAudition();
 
             base.Dispose(isDisposing);
         }
@@ -542,7 +773,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// </summary>
         private sealed class SamplePlaybackDisabler : ISamplePlaybackDisabler
         {
-            private readonly BindableBool disabled = new(true);
+            private readonly BindableBool disabled = new BindableBool(true);
 
             public IBindable<bool> SamplePlaybackDisabled => disabled;
 
