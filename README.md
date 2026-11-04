@@ -16,6 +16,16 @@ g0v0-server. Any client that implements the g0v0! Standard is fully compatible w
 server, and g0v0! is the reference implementation. g0v0! Standard changes have been flagged in the differences list
 above.
 
+## Hitsounding
+
+The editor includes a dedicated hitsounding mode which lays out every sample point of the beatmap per sample set and
+bank instead of hiding them in the timeline. Custom sample sets are created and configured in the editor's Setup
+screen, under the Resources section; hitsounding mode only assigns samples and manages how the existing sets are
+presented. Sets can be reordered and collapsed from the set manager below the lanes. Collapsing animates a set down
+below the expanded sets and shrinks it to a single 22px text row, with unlabelled pink dots at its sample times;
+expanding animates it back. Click a set header to collapse or expand it; its samples keep playing back. The mouse
+wheel seeks the cursor, snapping to the closest sound point rather than to the editor's beat grid.
+
 ## Download
 
 g0v0! is available for Windows (x64 / ARM64), macOS (Intel / Apple Silicon), Linux (x64 / ARM64), Android, and iOS. Grab
