@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
@@ -28,10 +28,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         private AudioDeviceDropdown dropdown = null!;
 
         private FormCheckBox? legacyAudio;
-        private FormCheckBox? exclusive;
         private FormCheckBox? autoSharedOnBackground;
-        private FormSliderBar<double>? buffer;
-        private FormSliderBar<double>? period;
         private FillFlowContainer? wasapiSettings;
 
         [BackgroundDependencyLoader]
@@ -74,7 +71,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                     Masking = true,
                     Children = new Drawable[]
                     {
-                        new SettingsItemV2(exclusive = new FormCheckBox
+                        new SettingsItemV2(new FormCheckBox
                         {
                             Current = audio.WasapiIsExclusive,
                             Caption = AudioSettingsStrings.ExclusiveAudioMode,
@@ -94,7 +91,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                             Keywords = new[] { "wasapi", "latency", "exclusive", "background", "shared" },
                             CanBeShown = { BindTarget = audio.UseWasapi },
                         },
-                        new SettingsItemV2(buffer = new FormSliderBar<double>
+                        new SettingsItemV2(new FormSliderBar<double>
                         {
                             Current = audio.WasapiBufferSize,
                             Caption = AudioSettingsStrings.BufferSize,
@@ -104,7 +101,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                             Keywords = new[] { "wasapi", "latency", "exclusive" },
                             CanBeShown = { BindTarget = audio.UseWasapi },
                         },
-                        new SettingsItemV2(period = new FormSliderBar<double>
+                        new SettingsItemV2(new FormSliderBar<double>
                         {
                             Current = audio.WasapiPeriod,
                             Caption = AudioSettingsStrings.Period,
