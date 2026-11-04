@@ -26,7 +26,6 @@ using osu.Game.Screens.Play.Leaderboards;
 using osu.Game.Screens.Play.PlayerSettings;
 using osu.Game.Screens.Ranking;
 using osu.Game.Screens.Ranking.Expanded;
-using osu.Game.Skinning;
 using osu.Game.Users;
 
 namespace osu.Game.Screens.Play
@@ -143,21 +142,19 @@ namespace osu.Game.Screens.Play
                 Origin = Anchor.TopCentre,
             });
 
-            RulesetSkinProvidingContainer rulesetSkinProvider;
-            AddInternal(rulesetSkinProvider = new RulesetSkinProvidingContainer(GameplayState.Ruleset, GameplayState.Beatmap, Beatmap.Value.Skin)
+            var rulesetSkinProvider = CreateRulesetSkinProvider(GameplayState.Ruleset, GameplayState.Beatmap, Beatmap.Value.Skin);
+            rulesetSkinProvider.Child = failIndicator = new ReplayFailIndicator(GameplayClockContainer)
             {
-                Child = failIndicator = new ReplayFailIndicator(GameplayClockContainer)
+                GoToResults = () =>
                 {
-                    GoToResults = () =>
-                    {
-                        if (!this.IsCurrentScreen())
-                            return;
+                    if (!this.IsCurrentScreen())
+                        return;
 
-                        ValidForResume = false;
-                        this.Push(new SoloResultsScreen(Score.ScoreInfo));
-                    }
+                    ValidForResume = false;
+                    this.Push(new SoloResultsScreen(Score.ScoreInfo));
                 }
-            });
+            };
+            AddInternal(rulesetSkinProvider);
             config.BindWith(OsuSetting.BeatmapSkins, rulesetSkinProvider.BeatmapSkins);
             config.BindWith(OsuSetting.BeatmapColours, rulesetSkinProvider.BeatmapColours);
             config.BindWith(OsuSetting.BeatmapHitsounds, rulesetSkinProvider.BeatmapHitsounds);

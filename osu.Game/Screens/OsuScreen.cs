@@ -91,7 +91,8 @@ namespace osu.Game.Screens
 
         public virtual float BackgroundParallaxAmount => 1;
 
-        [Resolved]
+        // Absent when the screen runs outside the game, as in offline replay export.
+        [Resolved(canBeNull: true)]
         private MusicController musicController { get; set; }
 
         public virtual bool? ApplyModTrackAdjustments => null;
@@ -199,9 +200,9 @@ namespace osu.Game.Screens
             // it's feasible to resume to a screen if the target screen never loaded successfully.
             // in such a case there's no need to restore this value.
             if (modTrackAdjustmentStateAtSuspend != null)
-                musicController.ApplyModTrackAdjustments = modTrackAdjustmentStateAtSuspend.Value;
+                musicController?.ApplyModTrackAdjustments = modTrackAdjustmentStateAtSuspend.Value;
             if (globalMusicControlStateAtSuspend != null)
-                musicController.AllowTrackControl.Value = globalMusicControlStateAtSuspend.Value;
+                musicController?.AllowTrackControl.Value = globalMusicControlStateAtSuspend.Value;
 
             base.OnResuming(e);
         }
@@ -210,8 +211,8 @@ namespace osu.Game.Screens
         {
             base.OnSuspending(e);
 
-            modTrackAdjustmentStateAtSuspend = musicController.ApplyModTrackAdjustments;
-            globalMusicControlStateAtSuspend = musicController.AllowTrackControl.Value;
+            modTrackAdjustmentStateAtSuspend = musicController?.ApplyModTrackAdjustments;
+            globalMusicControlStateAtSuspend = musicController?.AllowTrackControl.Value;
 
             onSuspendingLogo();
         }
@@ -221,10 +222,10 @@ namespace osu.Game.Screens
             applyArrivingDefaults(false);
 
             if (ApplyModTrackAdjustments != null)
-                musicController.ApplyModTrackAdjustments = ApplyModTrackAdjustments.Value;
+                musicController?.ApplyModTrackAdjustments = ApplyModTrackAdjustments.Value;
 
             if (AllowGlobalTrackControl != null)
-                musicController.AllowTrackControl.Value = AllowGlobalTrackControl.Value;
+                musicController?.AllowTrackControl.Value = AllowGlobalTrackControl.Value;
 
             if (backgroundStack?.Push(ownedBackground = CreateBackground()) != true)
             {

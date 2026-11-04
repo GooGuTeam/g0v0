@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -54,10 +54,25 @@ namespace osu.Game.Skinning
             this.beatmapSkin = beatmapSkin;
         }
 
-        [BackgroundDependencyLoader]
-        private void load(SkinManager skinManager)
+        private readonly ISkin privateClassicSkin;
+        private readonly bool? privateUserSkinIsLegacy;
+
+        /// <summary>
+        /// Uses a classic skin and selected-skin state supplied by the caller instead of the <see cref="SkinManager"/>, as offline replay export does.
+        /// The caller owns the supplied skin.
+        /// </summary>
+        public RulesetSkinProvidingContainer(Ruleset ruleset, IBeatmap beatmap, [CanBeNull] ISkin beatmapSkin, ISkin classicSkin, bool userSkinIsLegacy)
+            : this(ruleset, beatmap, beatmapSkin)
         {
-            InternalChild = new BeatmapSkinProvidingContainer(GetRulesetTransformedSkin(beatmapSkin), GetRulesetTransformedSkin(skinManager.DefaultClassicSkin))
+            privateClassicSkin = classicSkin;
+            privateUserSkinIsLegacy = userSkinIsLegacy;
+        }
+
+        [BackgroundDependencyLoader(true)]
+        private void load([CanBeNull] SkinManager skinManager)
+        {
+            InternalChild = new BeatmapSkinProvidingContainer(GetRulesetTransformedSkin(beatmapSkin), GetRulesetTransformedSkin(privateClassicSkin ?? skinManager!.DefaultClassicSkin),
+                privateUserSkinIsLegacy)
             {
                 Child = Content,
                 BeatmapSkins = BeatmapSkins,

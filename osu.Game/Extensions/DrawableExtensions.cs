@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Graphics;
 using osu.Framework.Platform;
@@ -56,6 +56,10 @@ namespace osu.Game.Extensions
         /// </summary>
         public static void ApplyGameWideClock(this Drawable drawable, GameHost host)
         {
+            // A host that never runs (OfflineSceneHost, in offline replay export) has no update thread; the drawable then keeps its deterministic scene clock.
+            if (host.UpdateThread == null)
+                return;
+
             drawable.Clock = host.UpdateThread.Clock;
             drawable.ProcessCustomClock = false;
         }

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -98,6 +98,8 @@ namespace osu.Game.Input.Bindings
 
             new KeyBinding(new[] { InputKey.Alt, InputKey.Home }, GlobalAction.Home),
 
+            new KeyBinding(InputKey.None, GlobalAction.ToggleVideoRecording),
+            new KeyBinding(InputKey.None, GlobalAction.ToggleLiveStreaming),
             new KeyBinding(InputKey.None, GlobalAction.ToggleFPSDisplay),
             new KeyBinding(new[] { InputKey.Control, InputKey.T }, GlobalAction.ToggleToolbar),
             new KeyBinding(new[] { InputKey.Control, InputKey.Shift, InputKey.S }, GlobalAction.ToggleSkinEditor),
@@ -635,6 +637,12 @@ namespace osu.Game.Input.Bindings
 
         [LocalisableDescription(typeof(EditorStrings), nameof(EditorStrings.SeekToEnd))]
         EditorSeekToEnd,
+
+        [LocalisableDescription(typeof(VideoRecordingStrings), nameof(VideoRecordingStrings.ToggleRecording))]
+        ToggleVideoRecording,
+
+        [LocalisableDescription(typeof(VideoRecordingStrings), nameof(VideoRecordingStrings.ToggleStreaming))]
+        ToggleLiveStreaming,
     }
 
     public enum GlobalActionCategory

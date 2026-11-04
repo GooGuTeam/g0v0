@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -18,6 +18,7 @@ using osu.Framework.Graphics.Visualisation;
 using osu.Framework.Input;
 using osu.Framework.Input.Events;
 using osu.Framework.Timing;
+using osu.Game.Recording.Export;
 using osuTK;
 using osuTK.Graphics;
 using osuTK.Graphics.ES30;
@@ -95,9 +96,17 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
             }
         }
 
+        [Resolved(canBeNull: true)]
+        private ReplayExportPresentationClock presentationClock { get; set; }
+
         [BackgroundDependencyLoader]
         private void load(IRenderer renderer, ShaderManager shaders)
         {
+            // Preserve real-time trails in live gameplay. Export must use output time even
+            // when rendering faster than real time or playing a rate-adjusted beatmap.
+            if (presentationClock != null)
+                Clock = new FramedClock(presentationClock, processSource: false);
+
             texture ??= renderer.WhitePixel;
             shader = shaders.Load(@"CursorTrail", FragmentShaderDescriptor.TEXTURE);
         }

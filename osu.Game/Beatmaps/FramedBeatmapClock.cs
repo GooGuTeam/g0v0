@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -67,7 +67,7 @@ namespace osu.Game.Beatmaps
 
         public bool IsRewinding { get; private set; }
 
-        public FramedBeatmapClock(bool applyOffsets, bool requireDecoupling, IClock? source = null)
+        public FramedBeatmapClock(bool applyOffsets, bool requireDecoupling, IClock? source = null, bool interpolate = true)
         {
             this.applyOffsets = applyOffsets;
 
@@ -92,7 +92,7 @@ namespace osu.Game.Beatmaps
             }
             else
             {
-                finalClockSource = interpolatedTrack;
+                finalClockSource = interpolate ? interpolatedTrack : decoupledTrack;
             }
         }
 

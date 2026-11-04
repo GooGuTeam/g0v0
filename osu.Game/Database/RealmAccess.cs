@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -52,7 +52,17 @@ namespace osu.Game.Database
         /// </summary>
         public readonly string Filename;
 
+        private readonly GameThread? updateThread;
         private readonly SynchronizationContext? updateThreadSyncContext;
+
+        private bool isUpdateThread => !IsPrivateSceneThread && (updateThread != null ? updateThread.IsCurrent : ThreadSafety.IsUpdateThread);
+
+        /// <summary>
+        /// Whether the current thread updates a private scene, as offline replay export's worker does. Such a thread claims to be an update thread,
+        /// which in single-threaded execution is indistinguishable from the game's, but must never use the game's update realm.
+        /// </summary>
+        [field: ThreadStatic]
+        internal static bool IsPrivateSceneThread { get; set; }
 
         /// <summary>
         /// Version history:
@@ -173,7 +183,7 @@ namespace osu.Game.Database
             if (isSendingNotificationResetEvents)
                 throw new InvalidOperationException("Cannot retrieve a realm context from a notification callback during a blocking operation.");
 
-            if (!ThreadSafety.IsUpdateThread)
+            if (!isUpdateThread)
                 throw new InvalidOperationException(@$"Use {nameof(getRealmInstance)} when performing realm operations from a non-update thread");
 
             if (updateRealm == null)
@@ -206,6 +216,7 @@ namespace osu.Game.Database
         public RealmAccess(Storage storage, string filename, GameThread? updateThread = null)
         {
             this.storage = storage;
+            this.updateThread = updateThread;
 
             updateThreadSyncContext = updateThread?.SynchronizationContext ?? SynchronizationContext.Current;
 
@@ -453,7 +464,7 @@ namespace osu.Game.Database
         /// <typeparam name="T">The return type.</typeparam>
         public T Run<T>(Func<Realm, T> action)
         {
-            if (ThreadSafety.IsUpdateThread)
+            if (isUpdateThread)
             {
                 total_reads_update.Value++;
                 return action(Realm);
@@ -470,7 +481,7 @@ namespace osu.Game.Database
         /// <param name="action">The work to run.</param>
         public void Run(Action<Realm> action)
         {
-            if (ThreadSafety.IsUpdateThread)
+            if (isUpdateThread)
             {
                 total_reads_update.Value++;
                 action(Realm);
@@ -492,7 +503,7 @@ namespace osu.Game.Database
 
             // Required to ensure the read is tracked and accounted for before disposal.
             // Can potentially be avoided if we have a need to do so in the future.
-            if (!ThreadSafety.IsUpdateThread)
+            if (!isUpdateThread)
                 throw new InvalidOperationException($@"{nameof(RunAsync)} must be called from the update thread.");
 
             // CountdownEvent will fail if already at zero.
@@ -513,7 +524,7 @@ namespace osu.Game.Database
         /// <param name="action">The work to run.</param>
         public T Write<T>(Func<Realm, T> action)
         {
-            if (ThreadSafety.IsUpdateThread)
+            if (isUpdateThread)
             {
                 total_writes_update.Value++;
                 return Realm.Write(action);
@@ -533,7 +544,7 @@ namespace osu.Game.Database
         /// <param name="action">The work to run.</param>
         public void Write(Action<Realm> action)
         {
-            if (ThreadSafety.IsUpdateThread)
+            if (isUpdateThread)
             {
                 total_writes_update.Value++;
                 Realm.Write(action);
@@ -557,7 +568,7 @@ namespace osu.Game.Database
 
             // Required to ensure the write is tracked and accounted for before disposal.
             // Can potentially be avoided if we have a need to do so in the future.
-            if (!ThreadSafety.IsUpdateThread)
+            if (!isUpdateThread)
                 throw new InvalidOperationException(@$"{nameof(WriteAsync)} must be called from the update thread.");
 
             // CountdownEvent will fail if already at zero.
@@ -593,7 +604,7 @@ namespace osu.Game.Database
 
             // Required to ensure the write is tracked and accounted for before disposal.
             // Can potentially be avoided if we have a need to do so in the future.
-            if (!ThreadSafety.IsUpdateThread)
+            if (!isUpdateThread)
                 throw new InvalidOperationException(@$"{nameof(WriteAsync)} must be called from the update thread.");
 
             // CountdownEvent will fail if already at zero.
@@ -726,7 +737,7 @@ namespace osu.Game.Database
 
             total_subscriptions.Value++;
 
-            if (ThreadSafety.IsUpdateThread)
+            if (isUpdateThread)
                 updateThreadSyncContext.Send(_ => registerSubscription(action), null);
             else
                 updateThreadSyncContext.Post(_ => registerSubscription(action), null);
@@ -735,7 +746,7 @@ namespace osu.Game.Database
             // When disposed, it will cause the registration to be permanently ceased (unsubscribed with realm and unregistered by this class).
             return new InvokeOnDisposal(() =>
             {
-                if (ThreadSafety.IsUpdateThread)
+                if (isUpdateThread)
                     updateThreadSyncContext.Send(_ => unsubscribe(), null);
                 else
                     updateThreadSyncContext.Post(_ => unsubscribe(), null);
@@ -760,7 +771,7 @@ namespace osu.Game.Database
 
         private void registerSubscription(Func<Realm, IDisposable?> action)
         {
-            Debug.Assert(ThreadSafety.IsUpdateThread);
+            Debug.Assert(isUpdateThread);
 
             // Retrieve realm instance outside of flag update to ensure that the instance is retrieved,
             // as attempting to access it inside the subscription if it's not constructed would lead to
@@ -1380,7 +1391,7 @@ namespace osu.Game.Database
         {
             Logger.Log($@"Attempting to block all realm operations for {reason}.", LoggingTarget.Database);
 
-            if (!ThreadSafety.IsUpdateThread)
+            if (!isUpdateThread)
                 throw new InvalidOperationException(@$"{nameof(BlockAllOperations)} must be called from the update thread.");
 
             ObjectDisposedException.ThrowIf(isDisposed, this);
@@ -1481,7 +1492,7 @@ namespace osu.Game.Database
                 // Post back to the update thread to revive any subscriptions.
                 // In the case we are on the update thread, let's also require this to run synchronously.
                 // This requirement is mostly due to test coverage, but shouldn't cause any harm.
-                if (ThreadSafety.IsUpdateThread)
+                if (isUpdateThread)
                 {
                     syncContext.Send(_ =>
                     {
