@@ -44,6 +44,13 @@ namespace osu.Game.Screens.Edit.HitSounding
         private HitSoundingSampleGuides topGrid = null!;
         private HitSoundingVolumeTrack volume = null!;
         private Box selectionBox = null!;
+        private Container previewRange = null!;
+        private Box previewStart = null!;
+        private Box previewEnd = null!;
+
+        [Resolved]
+        private HitSoundingPreviewState previewState { get; set; } = null!;
+
         private Vector2? selectionStart;
         private double visibleDuration { get; set; } = 6000;
         private double targetVisibleDuration = 6000;
@@ -143,6 +150,21 @@ namespace osu.Game.Screens.Edit.HitSounding
                             }
                         }
                     }
+                },
+                new Container
+                {
+                    RelativeSizeAxes = Axes.X, Height = 500,
+                    Padding = new MarginPadding { Left = header_width + 1 }, Masking = true,
+                    Child = previewRange = new Container
+                    {
+                        RelativeSizeAxes = Axes.Y,
+                        Children = new Drawable[]
+                        {
+                            new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Highlight1, Alpha = 0.065f },
+                            previewStart = new Box { RelativeSizeAxes = Axes.Y, Width = 1, Colour = colours.Highlight1, Alpha = 0.35f },
+                            previewEnd = new Box { RelativeSizeAxes = Axes.Y, Anchor = Anchor.TopRight, Origin = Anchor.TopRight, Width = 1, Colour = colours.Highlight1, Alpha = 0.35f }
+                        }
+                    }
                 }
             };
 
@@ -220,6 +242,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         protected override void Update()
         {
             base.Update();
+
+            updatePreviewRange();
 
             if (previewingSeek)
             {
@@ -319,6 +343,26 @@ namespace osu.Game.Screens.Edit.HitSounding
             volume.VisibleStartTime = startTime;
             volume.VisibleEndTime = endTime;
             volume.Refresh();
+        }
+
+        private void updatePreviewRange()
+        {
+            previewRange.Alpha = 0;
+            if (!previewState.ShowHighlight.Value || previewState.StartTime is not double rangeStart || previewState.EndTime is not double rangeEnd)
+                return;
+
+            double visibleStart = editorClock.CurrentTime - visibleDuration / 2;
+            double visibleEnd = visibleStart + visibleDuration;
+            rangeStart = Math.Max(0, rangeStart);
+            rangeEnd = Math.Min(editorClock.TrackLength, rangeEnd);
+            if (rangeEnd <= visibleStart || rangeStart >= visibleEnd)
+                return;
+
+            previewRange.Alpha = 1;
+            previewRange.X = (float)((Math.Max(rangeStart, visibleStart) - visibleStart) / visibleDuration * topLanes.DrawWidth);
+            previewRange.Width = (float)((Math.Min(rangeEnd, visibleEnd) - Math.Max(rangeStart, visibleStart)) / visibleDuration * topLanes.DrawWidth);
+            previewStart.Alpha = rangeStart >= visibleStart ? 0.35f : 0;
+            previewEnd.Alpha = rangeEnd <= visibleEnd ? 0.35f : 0;
         }
 
         private void refreshPoints()

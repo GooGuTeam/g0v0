@@ -30,16 +30,42 @@ namespace osu.Game.Screens.Edit.HitSounding
             dependencies.CacheAs(model);
             var playback = new HitSoundingSamplePlayback(model);
             dependencies.CacheAs(playback);
+            var preview = new HitSoundingPreviewState(model);
+            dependencies.CacheAs(preview);
             roll = new HitSoundingRoll(model);
             dependencies.CacheAs(roll);
             AddInternal(new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background6, Alpha = 0.6f, Depth = float.MaxValue });
             Children = new Drawable[]
             {
                 model,
+                preview,
                 new EditorSkinProvidingContainer(EditorBeatmap)
                 {
                     RelativeSizeAxes = Axes.Both,
-                    Children = new Drawable[] { playback, new HitSoundingHotkeyHandler(model), roll }
+                    Children = new Drawable[]
+                    {
+                        playback,
+                        new HitSoundingHotkeyHandler(model),
+                        roll,
+                        new Container
+                        {
+                            RelativeSizeAxes = Axes.Both,
+                            Padding = new MarginPadding { Top = 505 },
+                            Children = new Drawable[]
+                            {
+                                new Container
+                                {
+                                    Width = 200, RelativeSizeAxes = Axes.Y,
+                                    Child = new HitSoundingSelectionPanel(model)
+                                },
+                                new Container
+                                {
+                                    RelativeSizeAxes = Axes.Both, Padding = new MarginPadding { Left = 205 },
+                                    Child = new HitSoundingPreviewPanel(model, preview)
+                                }
+                            }
+                        }
+                    }
                 }
             };
         }
