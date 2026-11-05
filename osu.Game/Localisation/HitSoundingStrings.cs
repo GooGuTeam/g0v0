@@ -165,6 +165,46 @@ namespace osu.Game.Localisation
         public static LocalisableString SetCaption => new TranslatableString(getKey(@"set_caption"), @"Set");
 
         /// <summary>
+        /// "Preview"
+        /// </summary>
+        public static LocalisableString Preview => new TranslatableString(getKey(@"preview"), @"Preview");
+
+        /// <summary>
+        /// "Set ID"
+        /// </summary>
+        public static LocalisableString SetId => new TranslatableString(getKey(@"set_id"), @"Set ID");
+
+        /// <summary>
+        /// "Search sets…"
+        /// </summary>
+        public static LocalisableString SearchSets => new TranslatableString(getKey(@"search_sets"), @"Search sets…");
+
+        /// <summary>
+        /// "Preview length"
+        /// </summary>
+        public static LocalisableString PreviewLength => new TranslatableString(getKey(@"preview_length"), @"Preview length");
+
+        /// <summary>
+        /// "Open preview highlights"
+        /// </summary>
+        public static LocalisableString PreviewHighlights => new TranslatableString(getKey(@"preview_highlights"), @"Open preview highlights");
+
+        /// <summary>
+        /// "Selected"
+        /// </summary>
+        public static LocalisableString Selected => new TranslatableString(getKey(@"selected"), @"Selected");
+
+        /// <summary>
+        /// "▶  Play preview"
+        /// </summary>
+        public static LocalisableString PlayPreview => new TranslatableString(getKey(@"play_preview"), @"▶  Play preview");
+
+        /// <summary>
+        /// "■  Stop preview"
+        /// </summary>
+        public static LocalisableString StopPreview => new TranslatableString(getKey(@"stop_preview"), @"■  Stop preview");
+
+        /// <summary>
         /// "Time of the selected sample point"
         /// </summary>
         public static LocalisableString TooltipTime => new TranslatableString(getKey(@"tooltip_time"), @"Time of the selected sample point");
@@ -213,6 +253,31 @@ namespace osu.Game.Localisation
         /// "Toggle Clap for selected points"
         /// </summary>
         public static LocalisableString HotkeyToggleClap => new TranslatableString(getKey(@"hotkey_toggle_clap"), @"Toggle Clap for selected points");
+
+        /// <summary>
+        /// "Preview the hitsound under different samplesets!"
+        /// </summary>
+        public static LocalisableString TooltipPreview => new TranslatableString(getKey(@"tooltip_preview"), @"Preview the hitsound under different samplesets!");
+
+        /// <summary>
+        /// "The set number to filter"
+        /// </summary>
+        public static LocalisableString TooltipSearchSets => new TranslatableString(getKey(@"tooltip_search_sets"), @"The set number to filter");
+
+        /// <summary>
+        /// "The preview length around the selected sound points"
+        /// </summary>
+        public static LocalisableString TooltipPreviewLength => new TranslatableString(getKey(@"tooltip_preview_length"), @"The preview length around the selected sound points");
+
+        /// <summary>
+        /// "Turn on to show the preview range highlight"
+        /// </summary>
+        public static LocalisableString TooltipPreviewHighlights => new TranslatableString(getKey(@"tooltip_preview_highlights"), @"Turn on to show the preview range highlight");
+
+        /// <summary>
+        /// "Use samples from the current user skin"
+        /// </summary>
+        public static LocalisableString TooltipUserSkin => new TranslatableString(getKey(@"tooltip_user_skin"), @"Use samples from the current user skin");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

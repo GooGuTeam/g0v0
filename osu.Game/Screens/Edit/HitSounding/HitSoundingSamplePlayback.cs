@@ -9,6 +9,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Threading;
 using osu.Game.Audio;
+using osu.Game.Rulesets.Objects.Legacy;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Skinning;
 
@@ -25,7 +26,7 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// does not silence hitsounding previews. The global editor state is never modified.
     /// </para>
     /// <para>
-    /// Three playback paths are handled independently:
+    /// Four playback paths are handled independently:
     /// <list type="bullet">
     /// <item><description>
     /// <see cref="Update"/> tracks <see cref="EditorClock"/> and fires the discrete hit nodes crossed by normal playback.
@@ -42,6 +43,12 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// <see cref="HitSoundingEditModel.SamplesEdited"/> auditions an explicit sample edit without moving the playhead. Discrete
     /// nodes are played once through the hit pool, with identical sample lists collapsed so a batch edit does not stack the same
     /// sound. Body nodes start their actual sliding samples as a short bounded loop which is always stopped afterwards.
+    /// </description></item>
+    /// <item><description>
+    /// <see cref="StartSetPreview"/> auditions a sample set over a time range through the normal clock path: it seeks the editor
+    /// clock to the range start, plays through the range, and stops at its end. Only the supplied target nodes are played with an
+    /// overridden sample set; every other node keeps its own samples, and the beatmap is never modified. The override is cleared
+    /// as soon as the preview ends or is cancelled by a user seek, pause, scrub, screen change, edit or model change.
     /// </description></item>
     /// </list>
     /// </para>
@@ -84,6 +91,17 @@ namespace osu.Game.Screens.Edit.HitSounding
         public event Action<HitSoundingNode>? NodePlayed;
 
         /// <summary>
+        /// The sample set index currently being auditioned by <see cref="StartSetPreview"/>, or <c>null</c> when no bounded set
+        /// preview is running.
+        /// </summary>
+        /// <remarks>
+        /// Becomes <c>null</c> as soon as the preview stops for any reason: reaching the end of its range, an explicit
+        /// <see cref="StopSetPreview"/>, a user seek or pause, the screen being hidden, an explicit edit or any other beatmap
+        /// change. This is the state a set preview card should use for its playing indicator.
+        /// </remarks>
+        public int? PreviewSetIndex { get; private set; }
+
+        /// <summary>
         /// The largest clock step treated as continuous playback. Larger steps are seeks / tab-out jumps and are not replayed.
         /// </summary>
         private const double maximum_continuous_step = 250;
@@ -103,6 +121,10 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly List<HitSoundingNode> crossings = [];
         private readonly List<ISampleInfo[]> auditionGroups = [];
 
+        private readonly HashSet<HitSoundingNode> setPreviewTargets = [];
+        private readonly Dictionary<HitSoundingNode, ISampleInfo[]> setPreviewSampleCache = [];
+        private readonly Dictionary<HitSoundingNode, ISampleInfo[]> setPreviewLoopSampleCache = [];
+
         private readonly List<HitSoundingNode> crossingNodes = [];
         private readonly List<HitSoundingNode> bodyNodes = [];
 
@@ -120,6 +142,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         private bool previewRequested;
         private bool screenVisible = true;
         private Bindable<Visibility>? screenState;
+
+        private bool setPreviewActive;
+        private bool setPreviewStarting;
+        private double setPreviewStartTime;
+        private double setPreviewEndTime;
 
         [Resolved]
         private EditorClock editorClock { get; set; } = null!;
@@ -162,6 +189,10 @@ namespace osu.Game.Screens.Edit.HitSounding
                 screenVisible = screenState.Value == Visibility.Visible;
                 screenState.ValueChanged += onScreenStateChanged;
             }
+
+            // Seeks and pauses are reported by the clock itself, so a user navigation ends a bounded preview even when the
+            // resulting jump is too small to look like a discontinuity.
+            editorClock.SeekingOrStopped.ValueChanged += onClockSeekingOrStopped;
 
             ResetPlayback();
         }
@@ -238,15 +269,106 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         /// <summary>
+        /// Auditions a sample set over a time range through the normal editor clock.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The clock is started at <paramref name="startTime"/>, so the range is heard in its musical context exactly like normal
+        /// playback. The playhead is stopped at <paramref name="endTime"/> (both ends clamped to the track length), at which point
+        /// the override is cleared again.
+        /// </para>
+        /// <para>
+        /// Only the supplied <paramref name="targets"/> have their sample set overridden. Each of their samples is copied with the
+        /// requested set (<c>0</c> user skin, <c>1</c> beatmap skin, <c>&gt;= 2</c> custom set) while its bank, volume and
+        /// additions are retained, so the preview sounds exactly like applying that set would. Slider body loop samples are
+        /// overridden as well. Converted file samples keep their filename lookup, as the editor cannot express a set for them.
+        /// Every other node, and the beatmap itself, is never touched.
+        /// </para>
+        /// <para>
+        /// The preview ends without touching the playhead when the user pauses, seeks or scrubs, when the screen is hidden, when a
+        /// node is edited, or when the beatmap changes for any other reason. Call <see cref="StopSetPreview"/> to stop it
+        /// explicitly while leaving the playhead where it stopped.
+        /// </para>
+        /// </remarks>
+        /// <param name="setIndex">The sample set to audition.</param>
+        /// <param name="startTime">The time to start playback from, in milliseconds.</param>
+        /// <param name="endTime">The time to stop playback at, in milliseconds.</param>
+        /// <param name="targets">The nodes whose samples should use the set. Nodes not in this list keep their own samples.</param>
+        public void StartSetPreview(int setIndex, double startTime, double endTime, IReadOnlyList<HitSoundingNode> targets)
+        {
+            if (!IsLoaded || !IsPresent || !screenVisible || beatmap.UpdateInProgress.Value)
+            {
+                StopSetPreview();
+                return;
+            }
+
+            if (setIndex < 0 || targets.Count == 0 || double.IsNaN(startTime) || double.IsNaN(endTime))
+            {
+                StopSetPreview();
+                return;
+            }
+
+            double trackLength = editorClock.TrackLength;
+            double start = Math.Clamp(startTime, 0, trackLength);
+            double end = Math.Clamp(endTime, 0, trackLength);
+
+            if (end <= start)
+            {
+                StopSetPreview();
+                return;
+            }
+
+            // A new preview completely replaces the previous one; no sound from before the seek may linger.
+            stopAudition();
+            stopLoops();
+            stopHitPlayers();
+
+            beginSetPreview(setIndex, targets);
+
+            setPreviewActive = true;
+            setPreviewStarting = true;
+            setPreviewStartTime = start;
+            setPreviewEndTime = end;
+            PreviewSetIndex = setIndex;
+
+            // The scrub cursor is unrelated to a bounded preview; starting playback must not replay a previous scrub session.
+            previewActive = false;
+            previewRequested = false;
+            previewPosition = start;
+            lastPlaybackTime = start;
+            localDisabler.Set(false);
+
+            // Starting first makes the seek authoritative: Start() rewinds a clock which previously played to the end.
+            editorClock.Start();
+            editorClock.Seek(start);
+        }
+
+        /// <summary>
+        /// Stops a bounded set preview started by <see cref="StartSetPreview"/>, leaving the playhead where it stopped.
+        /// </summary>
+        /// <remarks>
+        /// Does nothing when no set preview is running, so calling it unconditionally never interrupts normal editor playback.
+        /// </remarks>
+        public void StopSetPreview()
+        {
+            if (!setPreviewActive)
+                return;
+
+            endSetPreview(stopClock: true, stopSounds: true);
+        }
+
+        /// <summary>
         /// Clears all playback state and stops every preview and edit-audition sound.
         /// </summary>
         /// <remarks>
         /// Automatically invoked when the owning <see cref="EditorScreen"/> is hidden or shown (including editor mode switches), so
         /// callers normally do not need to invoke this. It is public so a host can force a resync after moving the playhead without
-        /// scrubbing.
+        /// scrubbing. A running bounded set preview is ended, but the clock is never started or stopped here.
         /// </remarks>
         public void ResetPlayback()
         {
+            cancelSetPreview();
+
             lastPlaybackTime = double.NaN;
             previewPosition = 0;
             previewActive = false;
@@ -273,6 +395,10 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             if (blocked)
             {
+                // A hidden screen or a beatmap transaction ends the bounded preview, but the clock is left alone.
+                if (setPreviewActive)
+                    cancelSetPreview();
+
                 lastPlaybackTime = double.NaN;
                 previewActive = false;
                 previewRequested = false;
@@ -284,6 +410,37 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             double current = editorClock.CurrentTime;
             bool playing = editorClock.IsRunning && !editorClock.SeekingOrStopped.Value && !editorClock.IsSeeking;
+
+            if (setPreviewActive)
+            {
+                if (setPreviewStarting)
+                {
+                    // The seek performed by StartSetPreview() is not user navigation and must not end the preview. Keep the
+                    // baseline at the requested start so the first audible frame covers the whole untracked interval.
+                    if (editorClock.SeekingOrStopped.Value || editorClock.IsSeeking)
+                    {
+                        lastPlaybackTime = setPreviewStartTime;
+                        previewRequested = false;
+                        previewActive = false;
+                        return;
+                    }
+
+                    setPreviewStarting = false;
+
+                    // The audio track can report a position a fraction behind the requested start right after the seek. Taking
+                    // the lower value keeps a node sitting exactly on the start from being skipped by the exclusive interval.
+                    lastPlaybackTime = Math.Min(current, setPreviewStartTime);
+                    previewRequested = false;
+                    previewActive = false;
+                }
+
+                if (!playing)
+                {
+                    // The user paused, seeked, or the clock already ran into the track end. An explicit seek is normally handled
+                    // by the clock callback; this also covers the automatic stop at the end of the track. Leave the playhead alone.
+                    endSetPreview(stopClock: false, stopSounds: true);
+                }
+            }
 
             if (previewRequested || !playing)
             {
@@ -316,14 +473,19 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (elapsed < 0 || elapsed > maximum_continuous_step)
             {
                 // Discontinuity (seek, mode switch, or a stalled frame). Resync rather than firing everything in between.
+                // A bounded preview is not cancelled here: a genuine user seek is reported by the clock callback, and the audio
+                // track settling after the preview's own seek must not end it.
                 lastPlaybackTime = current;
                 stopLoops();
                 updateLoops(current, reportStarts: false);
                 return;
             }
 
+            // A bounded preview never plays past its requested end, so the final partial frame is clamped to it.
+            double playhead = setPreviewActive ? Math.Min(current, setPreviewEndTime) : current;
+
             crossings.Clear();
-            HitSoundingSampleCrossings.Collect(crossingNodes, lastPlaybackTime, current, crossings);
+            HitSoundingSampleCrossings.Collect(crossingNodes, lastPlaybackTime, playhead, crossings);
 
             for (int i = 0; i < crossings.Count; i++)
             {
@@ -334,7 +496,14 @@ namespace osu.Game.Screens.Edit.HitSounding
             }
 
             lastPlaybackTime = current;
-            updateLoops(current, reportStarts: true);
+
+            if (setPreviewActive && current >= setPreviewEndTime)
+            {
+                finishSetPreview();
+                return;
+            }
+
+            updateLoops(playhead, reportStarts: true);
         }
 
         /// <summary>
@@ -475,6 +644,9 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private ISampleInfo[] getSamples(HitSoundingNode node)
         {
+            if (setPreviewActive && setPreviewTargets.Contains(node) && setPreviewSampleCache.TryGetValue(node, out ISampleInfo[]? overridden))
+                return overridden;
+
             if (!sampleCache.TryGetValue(node, out ISampleInfo[]? samples))
             {
                 samples = copySamples(node.Samples);
@@ -486,6 +658,9 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private ISampleInfo[] getLoopSamples(HitSoundingNode node)
         {
+            if (setPreviewActive && setPreviewTargets.Contains(node) && setPreviewLoopSampleCache.TryGetValue(node, out ISampleInfo[]? overridden))
+                return overridden;
+
             if (!loopSampleCache.TryGetValue(node, out ISampleInfo[]? samples))
             {
                 samples = copySamples(node.HitObject.CreateSlidingSamples());
@@ -493,6 +668,105 @@ namespace osu.Game.Screens.Edit.HitSounding
             }
 
             return samples;
+        }
+
+        /// <summary>
+        /// Prepares the set override of a bounded preview. Every target resolves through its own cache entry so the override can
+        /// never leak into the original sample caches, and dropping both caches at the end cannot leave a stale override behind.
+        /// </summary>
+        private void beginSetPreview(int setIndex, IReadOnlyList<HitSoundingNode> targets)
+        {
+            setPreviewTargets.Clear();
+            setPreviewSampleCache.Clear();
+            setPreviewLoopSampleCache.Clear();
+
+            for (int i = 0; i < targets.Count; i++)
+            {
+                HitSoundingNode node = targets[i];
+
+                setPreviewTargets.Add(node);
+
+                if (node.IsBody)
+                    setPreviewLoopSampleCache[node] = createSetOverrideSamples(node.HitObject.CreateSlidingSamples(), setIndex);
+                else
+                    setPreviewSampleCache[node] = createSetOverrideSamples(node.Samples, setIndex);
+            }
+        }
+
+        /// <summary>
+        /// Copies a sample list with the given sample set applied, retaining each sample's bank, volume and addition name.
+        /// </summary>
+        /// <remarks>
+        /// <paramref name="setIndex"/> follows the editor convention: <c>0</c> is the user skin, <c>1</c> the beatmap skin and
+        /// <c>&gt;= 2</c> a numeric custom set. Converted file samples are kept as-is: their lookup is a filename which cannot
+        /// express a set, and the editor treats them as uneditable for the same reason.
+        /// </remarks>
+        private static ISampleInfo[] createSetOverrideSamples(IList<HitSampleInfo> samples, int setIndex)
+        {
+            if (samples.Count == 0)
+                return Array.Empty<ISampleInfo>();
+
+            string? suffix = setIndex >= 2 ? setIndex.ToString() : null;
+
+            var copy = new ISampleInfo[samples.Count];
+
+            for (int i = 0; i < samples.Count; i++)
+            {
+                HitSampleInfo sample = samples[i];
+
+                copy[i] = sample is ConvertHitObjectParser.FileHitSampleInfo
+                    ? sample
+                    : sample.With(newSuffix: suffix, newUseBeatmapSamples: setIndex >= 1);
+            }
+
+            return copy;
+        }
+
+        /// <summary>
+        /// Ends a bounded preview because its range was played through, leaving the clock stopped exactly on the range end.
+        /// </summary>
+        private void finishSetPreview()
+        {
+            double end = setPreviewEndTime;
+
+            endSetPreview(stopClock: false, stopSounds: false);
+
+            // The frame which crossed the end overshoots it, so land the stopped playhead on the exact boundary instead.
+            editorClock.Stop();
+            editorClock.Seek(end);
+        }
+
+        /// <summary>
+        /// Ends a bounded preview. The override is dropped before any player is stopped, so no later frame can start a sound with it.
+        /// </summary>
+        /// <param name="stopClock">Whether to stop the editor clock (an explicit stop) or leave it to the user's action.</param>
+        /// <param name="stopSounds">Whether to cut currently sounding preview hits as well as slider loops.</param>
+        private void endSetPreview(bool stopClock, bool stopSounds)
+        {
+            bool wasActive = setPreviewActive;
+
+            cancelSetPreview();
+
+            stopLoops();
+
+            if (stopSounds)
+                stopHitPlayers();
+
+            if (stopClock && wasActive)
+                editorClock.Stop();
+        }
+
+        /// <summary>
+        /// Drops the bounded preview state and every override sample. The clock and players are left alone; callers decide what to stop.
+        /// </summary>
+        private void cancelSetPreview()
+        {
+            setPreviewActive = false;
+            setPreviewStarting = false;
+            PreviewSetIndex = null;
+            setPreviewTargets.Clear();
+            setPreviewSampleCache.Clear();
+            setPreviewLoopSampleCache.Clear();
         }
 
         /// <summary>
@@ -684,6 +958,9 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private void onModelChanged()
         {
+            // Any beatmap change (an explicit edit, undo, reprocessing, ...) invalidates the previewed nodes and their samples.
+            cancelSetPreview();
+
             nodesDirty = true;
             sampleCache.Clear();
             loopSampleCache.Clear();
@@ -699,6 +976,21 @@ namespace osu.Game.Screens.Edit.HitSounding
             ResetPlayback();
         }
 
+        /// <summary>
+        /// Ends a bounded preview when the clock is stopped or seeked by anyone but <see cref="StartSetPreview"/> itself.
+        /// </summary>
+        /// <remarks>
+        /// The clock reports a seek through this bindable before any of its own update logic runs, so even a small scrub which
+        /// would not look like a discontinuity ends the preview. The playhead is deliberately left where the user moved it.
+        /// </remarks>
+        private void onClockSeekingOrStopped(ValueChangedEvent<bool> state)
+        {
+            if (!state.NewValue || !setPreviewActive || setPreviewStarting)
+                return;
+
+            endSetPreview(stopClock: false, stopSounds: true);
+        }
+
         protected override void Dispose(bool isDisposing)
         {
             model.Changed -= onModelChanged;
@@ -709,6 +1001,11 @@ namespace osu.Game.Screens.Edit.HitSounding
                 screenState.ValueChanged -= onScreenStateChanged;
                 screenState = null;
             }
+
+            if (IsLoaded)
+                editorClock.SeekingOrStopped.ValueChanged -= onClockSeekingOrStopped;
+
+            cancelSetPreview();
 
             stopLoops();
             stopHitPlayers();
