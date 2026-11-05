@@ -9,6 +9,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Testing;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Rulesets;
@@ -33,6 +34,9 @@ namespace osu.Game.Tests.Visual.Editing
         protected override IBeatmap CreateBeatmap(RulesetInfo ruleset) => new TestBeatmap(ruleset, false);
         private HitSoundingEditModel model => Editor.ChildrenOfType<HitSoundingEditModel>().Single();
 
+        [Resolved]
+        private OsuConfigManager config { get; set; } = null!;
+
         public override void SetUpSteps()
         {
             base.SetUpSteps();
@@ -56,6 +60,35 @@ namespace osu.Game.Tests.Visual.Editing
                 EditorClock.Stop();
             });
             AddUntilStep("roll loaded", () => Editor.ChildrenOfType<HitSoundingSamplePoint>().Any(p => p.IsLoaded));
+        }
+
+        [Test]
+        public void TestNormalVisibilityConfigurationUpdatesLoadedPoints()
+        {
+            HitSoundingNormalVisibility original = default;
+            AddStep("capture visibility preference", () => original = config.Get<HitSoundingNormalVisibility>(OsuSetting.EditorHitSoundingNormalVisibility));
+            AddStep("assign Normal0 and Normal1", () =>
+            {
+                var nodes = model.Nodes.ToArray();
+                model.SetBank(new[] { nodes[0] }, HitSampleInfo.BANK_NORMAL, 0, false);
+                model.SetBank(new[] { nodes[1] }, HitSampleInfo.BANK_NORMAL, 1, false);
+                System.GC.Collect();
+                System.GC.WaitForPendingFinalizers();
+            });
+
+            foreach (var visibility in System.Enum.GetValues<HitSoundingNormalVisibility>())
+            {
+                AddStep("choose " + visibility, () => config.SetValue(OsuSetting.EditorHitSoundingNormalVisibility, visibility));
+                AddUntilStep("badges follow " + visibility, () =>
+                {
+                    var nodes = model.Nodes.Take(2).ToArray();
+                    var points = Editor.ChildrenOfType<HitSoundingSamplePoint>().Where(p => p.Lane == HitSoundingLane.SampleSet).ToArray();
+                    return points.Single(p => p.Node == nodes[0]).IsEmpty == (visibility == HitSoundingNormalVisibility.HideNormal0)
+                           && points.Single(p => p.Node == nodes[1]).IsEmpty == (visibility == HitSoundingNormalVisibility.HideNormal1);
+                });
+            }
+
+            AddStep("restore visibility preference", () => config.SetValue(OsuSetting.EditorHitSoundingNormalVisibility, original));
         }
 
         [Test]

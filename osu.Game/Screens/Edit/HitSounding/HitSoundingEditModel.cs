@@ -10,6 +10,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Game.Audio;
+using osu.Game.Configuration;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
@@ -50,9 +51,14 @@ namespace osu.Game.Screens.Edit.HitSounding
         public BindableList<HitSoundingNode> SelectedNodes { get; } = [];
 
         /// <summary>
-        /// The normal-bank set displayed as an empty cell: beatmap samples when available, otherwise the user skin.
+        /// The normal-bank set restored by default: beatmap samples when available, otherwise the user skin.
         /// </summary>
         public int DefaultSampleSetIndex { get; private set; }
+
+        /// <summary>
+        /// Controls which normal-bank badges are hidden without changing samples or playback.
+        /// </summary>
+        public Bindable<HitSoundingNormalVisibility> NormalVisibility { get; } = new Bindable<HitSoundingNormalVisibility>(HitSoundingNormalVisibility.HideNormal0);
 
         /// <summary>
         /// Invoked when the node list or the samples backing it may have changed.

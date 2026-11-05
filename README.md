@@ -30,11 +30,12 @@ numeric set index, with room for two characters and horizontal padding. Only dis
 vertical guides, and neither the guides nor badge sizes depend on Compose's beat divisor. Alt + mouse wheel
 smoothly changes the time spacing without shrinking badges or text; rapid wheel input accumulates towards one
 zoom target. Hit samples store one set index per object, shared by all of its samples, so
-changing the set on any row changes it for the whole object. The Normal-bank badge is left blank for set 1 when
-the beatmap has custom hitsound files, or for user skin set 0 when it has none. All other bank and set combinations
-show both parts — for example, the Normal bank with set 2 reads `N` over `2`. Importing or removing custom
-hitsound files updates this presentation without changing existing sample assignments. Resetting the Sample set
-row returns it to the currently blank default. A blank Additions badge means the addition bank follows the normal
+changing the set on any row changes it for the whole object. **View → Default Normal**, directly below **Timeline**, offers three
+mutually exclusive display modes: **Do not hide**, **Hide Normal0** (the initial setting), and **Hide Normal1**.
+The preference is saved and updates badges immediately, without changing selection, sample assignments or playback.
+Other bank and set combinations remain visible — for example, Normal set 2 reads `N` over `2`.
+Resetting the Sample set row still chooses beatmap set 1 when custom hitsound files exist, otherwise user skin set 0;
+this is independent of the visibility preference. A blank Additions badge means the addition bank follows the normal
 bank (Auto); an object needs at least one addition sound before its addition bank can be configured. Resetting
 Additions to Auto leaves the shared set index untouched.
 

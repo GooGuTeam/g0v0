@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -14,6 +14,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Track;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
@@ -224,6 +225,7 @@ namespace osu.Game.Screens.Edit
         private Bindable<bool> editorTimelineShowBreaks;
         private Bindable<bool> editorTimelineShowTicks;
         private Bindable<bool> editorContractSidebars;
+        private readonly Bindable<HitSoundingNormalVisibility> editorHitSoundingNormalVisibility = new Bindable<HitSoundingNormalVisibility>();
 
         /// <summary>
         /// This controls the opacity of components like the timelines, sidebars, etc.
@@ -340,6 +342,7 @@ namespace osu.Game.Screens.Edit
             editorTimelineShowBreaks = config.GetBindable<bool>(OsuSetting.EditorTimelineShowBreaks);
             editorTimelineShowTicks = config.GetBindable<bool>(OsuSetting.EditorTimelineShowTicks);
             editorContractSidebars = config.GetBindable<bool>(OsuSetting.EditorContractSidebars);
+            config.BindWith(OsuSetting.EditorHitSoundingNormalVisibility, editorHitSoundingNormalVisibility);
 
             // These two settings don't work together. Make them mutually exclusive to let the user know.
             editorAutoSeekOnPlacement.BindValueChanged(enabled =>
@@ -423,6 +426,7 @@ namespace osu.Game.Screens.Edit
                                                     },
                                                 ]
                                             },
+                                            createNormalVisibilityMenu(editorHitSoundingNormalVisibility),
                                             new OsuMenuItemSpacer(),
                                             new BackgroundDimMenuItem(editorBackgroundDim),
                                             new ToggleMenuItem(EditorStrings.ShowStoryboard)
@@ -479,6 +483,20 @@ namespace osu.Game.Screens.Edit
 
             changeHandler?.CanUndo.BindValueChanged(v => undoMenuItem.Action.Disabled = !v.NewValue, true);
             changeHandler?.CanRedo.BindValueChanged(v => redoMenuItem.Action.Disabled = !v.NewValue, true);
+        }
+
+        private static MenuItem createNormalVisibilityMenu(Bindable<HitSoundingNormalVisibility> visibility)
+        {
+            var items = new List<MenuItem>();
+
+            foreach (var value in Enum.GetValues<HitSoundingNormalVisibility>())
+            {
+                var item = new TernaryStateRadioMenuItem(value.GetLocalisableDescription(), action: _ => visibility.Value = value);
+                visibility.BindValueChanged(change => item.State.Value = change.NewValue == value ? TernaryState.True : TernaryState.False, true);
+                items.Add(item);
+            }
+
+            return new MenuItem(HitSoundingStrings.DefaultNormal) { Items = items };
         }
 
         [Resolved]

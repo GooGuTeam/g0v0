@@ -279,6 +279,26 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString TooltipUserSkin => new TranslatableString(getKey(@"tooltip_user_skin"), @"Use samples from the current user skin");
 
+        /// <summary>
+        /// "Default Normal"
+        /// </summary>
+        public static LocalisableString DefaultNormal => new TranslatableString(getKey(@"default_normal"), @"Default Normal");
+
+        /// <summary>
+        /// "Do not hide"
+        /// </summary>
+        public static LocalisableString ShowAllNormal => new TranslatableString(getKey(@"show_all_normal"), @"Do not hide");
+
+        /// <summary>
+        /// "Hide Normal0"
+        /// </summary>
+        public static LocalisableString HideNormal0 => new TranslatableString(getKey(@"hide_normal_0"), @"Hide Normal0");
+
+        /// <summary>
+        /// "Hide Normal1"
+        /// </summary>
+        public static LocalisableString HideNormal1 => new TranslatableString(getKey(@"hide_normal_1"), @"Hide Normal1");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

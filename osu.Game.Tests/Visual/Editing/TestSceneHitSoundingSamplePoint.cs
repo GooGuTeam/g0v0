@@ -9,8 +9,11 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Rendering.Dummy;
 using osu.Framework.IO.Stores;
+using osu.Framework.Testing;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
+using osu.Game.Graphics.Sprites;
 using osu.Game.IO;
 using osu.Game.Overlays;
 using osu.Game.Rulesets.Edit;
@@ -40,7 +43,7 @@ namespace osu.Game.Tests.Visual.Editing
 
         [TestCase("normal-hitnormal.wav")]
         [TestCase("soft-hitclap2.ogg")]
-        public void TestDefaultBadgeFollowsCustomSampleAvailability(string filename)
+        public void TestNormalVisibilityRemainsUserControlledWhenSamplesChange(string filename)
         {
             var filenames = new List<string>();
             LegacyBeatmapSkin skin = null!;
@@ -95,21 +98,29 @@ namespace osu.Game.Tests.Visual.Editing
                     }
                 };
             });
-            AddUntilStep("N0 hidden without custom samples", () => cells[0].IsEmpty && !cells[1].IsEmpty && !cells[2].IsEmpty);
+            AddStep("hide Normal0", () => model.NormalVisibility.Value = HitSoundingNormalVisibility.HideNormal0);
+            AddAssert("only N0 badge hidden", () => cells[0].IsEmpty && !cells[1].IsEmpty && !cells[2].IsEmpty);
+            AddStep("show all", () => model.NormalVisibility.Value = HitSoundingNormalVisibility.ShowAll);
+            AddAssert("all badges visible", () => cells.All(c => !c.IsEmpty && c.ChildrenOfType<OsuSpriteText>().All(t => t.Alpha == 1)));
+            AddStep("hide Normal1", () => model.NormalVisibility.Value = HitSoundingNormalVisibility.HideNormal1);
+            AddAssert("only N1 badge hidden", () => !cells[0].IsEmpty && cells[1].IsEmpty && !cells[2].IsEmpty);
+            AddAssert("N1 labels hidden", () => cells[1].ChildrenOfType<OsuSpriteText>().All(t => t.Alpha == 0));
             AddStep("add custom hitsound file", () =>
             {
                 filenames.Add(filename);
                 skin.RecycleSamples();
                 editorSkin.InvokeSkinChanged();
             });
-            AddUntilStep("N1 hidden with custom samples", () => !cells[0].IsEmpty && cells[1].IsEmpty && !cells[2].IsEmpty);
+            AddUntilStep("N1 remains hidden after import", () => !cells[0].IsEmpty && cells[1].IsEmpty && !cells[2].IsEmpty);
             AddStep("remove custom hitsound file", () =>
             {
                 filenames.Clear();
                 skin.RecycleSamples();
                 editorSkin.InvokeSkinChanged();
             });
-            AddUntilStep("N0 hidden again after removal", () => cells[0].IsEmpty && !cells[1].IsEmpty && !cells[2].IsEmpty);
+            AddUntilStep("N1 remains hidden after removal", () => !cells[0].IsEmpty && cells[1].IsEmpty && !cells[2].IsEmpty);
+            AddStep("hide Normal0 again", () => model.NormalVisibility.Value = HitSoundingNormalVisibility.HideNormal0);
+            AddAssert("N0 hidden and N1 labels restored", () => cells[0].IsEmpty && !cells[1].IsEmpty && cells[1].ChildrenOfType<OsuSpriteText>().All(t => t.Alpha == 1));
             AddAssert("sample assignments are unchanged", () => model.Nodes.Select(n => n.SetIndex), () => Is.EqualTo(new[] { 0, 1, 0 }));
             AddStep("dispose sample resources", () =>
             {

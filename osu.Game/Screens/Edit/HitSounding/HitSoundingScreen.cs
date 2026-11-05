@@ -5,6 +5,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Game.Configuration;
 using osu.Game.Overlays;
 
 namespace osu.Game.Screens.Edit.HitSounding
@@ -24,9 +25,10 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         [BackgroundDependencyLoader]
-        private void load(OverlayColourProvider colours)
+        private void load(OverlayColourProvider colours, OsuConfigManager config)
         {
             var model = new HitSoundingEditModel(EditorBeatmap);
+            config.BindWith(OsuSetting.EditorHitSoundingNormalVisibility, model.NormalVisibility);
             dependencies.CacheAs(model);
             var playback = new HitSoundingSamplePlayback(model);
             dependencies.CacheAs(playback);

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -15,6 +16,7 @@ using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Game.Audio;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Localisation;
@@ -40,6 +42,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private OsuSpriteText bankLabel = null!;
         private OsuSpriteText setLabel = null!;
         private bool selected;
+        private IBindable<HitSoundingNormalVisibility> normalVisibility = null!;
 
         [Resolved]
         private OsuColour colours { get; set; } = null!;
@@ -51,7 +54,12 @@ namespace osu.Game.Screens.Edit.HitSounding
         public bool IsEmpty => Lane switch
         {
             // This is a display convention, not a change to the stored sample format.
-            HitSoundingLane.SampleSet => Node.GetBank(false) == HitSampleInfo.BANK_NORMAL && Node.SetIndex == model.DefaultSampleSetIndex,
+            HitSoundingLane.SampleSet => Node.GetBank(false) == HitSampleInfo.BANK_NORMAL && model.NormalVisibility.Value switch
+            {
+                HitSoundingNormalVisibility.HideNormal0 => Node.SetIndex == 0,
+                HitSoundingNormalVisibility.HideNormal1 => Node.SetIndex == 1,
+                _ => false
+            },
             HitSoundingLane.Additions => Node.GetBank(true) == HitObjectComposer.HIT_BANK_AUTO,
             _ => !Node.HasAddition(sampleName)
         };
@@ -173,6 +181,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (Node.IsBody)
                 UpdateBodyLayout(Width, bodyMarkerX);
             Refresh();
+            normalVisibility = model.NormalVisibility.GetBoundCopy();
+            normalVisibility.BindValueChanged(_ => Refresh());
         }
 
         internal void UpdateBodyLayout(float width, float markerX)
@@ -201,7 +211,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 return;
 
             bool bankLane = Lane is HitSoundingLane.SampleSet or HitSoundingLane.Additions;
-            bool showBank = !IsEmpty || (Node.IsBody && Lane == HitSoundingLane.SampleSet);
+            bool showBank = !IsEmpty;
             string bank = Node.GetBank(Lane == HitSoundingLane.Additions);
             background.Colour = bankLane
                 ? bank switch
