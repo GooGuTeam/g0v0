@@ -46,8 +46,8 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// </description></item>
     /// <item><description>
     /// <see cref="StartSetPreview"/> auditions a sample set over a time range through the normal clock path: it seeks the editor
-    /// clock to the range start, plays through the range, and stops at its end. Only the supplied target nodes are played with an
-    /// overridden sample set; every other node keeps its own samples, and the beatmap is never modified. The override is cleared
+    /// clock to the range start, plays through the range, and stops at its end. Only the supplied target nodes are audible, with
+    /// an overridden sample set; every other node is silent, and the beatmap is never modified. The override is cleared
     /// as soon as the preview ends or is cancelled by a user seek, pause, scrub, screen change, edit or model change.
     /// </description></item>
     /// </list>
@@ -121,7 +121,6 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly List<HitSoundingNode> crossings = [];
         private readonly List<ISampleInfo[]> auditionGroups = [];
 
-        private readonly HashSet<HitSoundingNode> setPreviewTargets = [];
         private readonly Dictionary<HitSoundingNode, ISampleInfo[]> setPreviewSampleCache = [];
         private readonly Dictionary<HitSoundingNode, ISampleInfo[]> setPreviewLoopSampleCache = [];
 
@@ -282,7 +281,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// requested set (<c>0</c> user skin, <c>1</c> beatmap skin, <c>&gt;= 2</c> custom set) while its bank, volume and
         /// additions are retained, so the preview sounds exactly like applying that set would. Slider body loop samples are
         /// overridden as well. Converted file samples keep their filename lookup, as the editor cannot express a set for them.
-        /// Every other node, and the beatmap itself, is never touched.
+        /// Every other node is silent during the preview. The beatmap itself is never touched.
         /// </para>
         /// <para>
         /// The preview ends without touching the playhead when the user pauses, seeks or scrubs, when the screen is hidden, when a
@@ -293,7 +292,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// <param name="setIndex">The sample set to audition.</param>
         /// <param name="startTime">The time to start playback from, in milliseconds.</param>
         /// <param name="endTime">The time to stop playback at, in milliseconds.</param>
-        /// <param name="targets">The nodes whose samples should use the set. Nodes not in this list keep their own samples.</param>
+        /// <param name="targets">The only nodes whose samples should play, using the previewed set.</param>
         public void StartSetPreview(int setIndex, double startTime, double endTime, IReadOnlyList<HitSoundingNode> targets)
         {
             if (!IsLoaded || !IsPresent || !screenVisible || beatmap.UpdateInProgress.Value)
@@ -644,8 +643,8 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private ISampleInfo[] getSamples(HitSoundingNode node)
         {
-            if (setPreviewActive && setPreviewTargets.Contains(node) && setPreviewSampleCache.TryGetValue(node, out ISampleInfo[]? overridden))
-                return overridden;
+            if (setPreviewActive)
+                return setPreviewSampleCache.TryGetValue(node, out ISampleInfo[]? overridden) ? overridden : Array.Empty<ISampleInfo>();
 
             if (!sampleCache.TryGetValue(node, out ISampleInfo[]? samples))
             {
@@ -658,8 +657,8 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private ISampleInfo[] getLoopSamples(HitSoundingNode node)
         {
-            if (setPreviewActive && setPreviewTargets.Contains(node) && setPreviewLoopSampleCache.TryGetValue(node, out ISampleInfo[]? overridden))
-                return overridden;
+            if (setPreviewActive)
+                return setPreviewLoopSampleCache.TryGetValue(node, out ISampleInfo[]? overridden) ? overridden : Array.Empty<ISampleInfo>();
 
             if (!loopSampleCache.TryGetValue(node, out ISampleInfo[]? samples))
             {
@@ -676,15 +675,12 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// </summary>
         private void beginSetPreview(int setIndex, IReadOnlyList<HitSoundingNode> targets)
         {
-            setPreviewTargets.Clear();
             setPreviewSampleCache.Clear();
             setPreviewLoopSampleCache.Clear();
 
             for (int i = 0; i < targets.Count; i++)
             {
                 HitSoundingNode node = targets[i];
-
-                setPreviewTargets.Add(node);
 
                 if (node.IsBody)
                     setPreviewLoopSampleCache[node] = createSetOverrideSamples(node.HitObject.CreateSlidingSamples(), setIndex);
@@ -764,7 +760,6 @@ namespace osu.Game.Screens.Edit.HitSounding
             setPreviewActive = false;
             setPreviewStarting = false;
             PreviewSetIndex = null;
-            setPreviewTargets.Clear();
             setPreviewSampleCache.Clear();
             setPreviewLoopSampleCache.Clear();
         }

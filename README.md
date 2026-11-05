@@ -82,8 +82,9 @@ The Preview tab stays visible while its settings and sample cards scroll togethe
 when a short window forces the settings onto multiple rows.
 The optional range highlight spans the selected points, including a slider body's full duration. Playing a card
 starts the editor's music over that range and temporarily replaces only the selected points' sample set; their
-banks, additions and volumes remain intact, and surrounding objects retain their original samples. Preview does
-not edit the beatmap. It stops at the range boundary; selecting other points, editing, seeking or changing mode
+banks, additions and volumes remain intact. Every unselected point is silent during Preview, including slider
+heads, repeats, tails and body loops. Preview does not edit the beatmap. It stops at the range boundary;
+selecting other points, editing, seeking or changing mode
 clears the temporary override. Set-only edits in the selection panel preserve independently assigned banks and
 remain undoable as one change.
 
