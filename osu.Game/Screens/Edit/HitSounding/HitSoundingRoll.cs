@@ -210,14 +210,12 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                 for (int i = 0; i < flashes.Length; i++)
                 {
-                    foreach (var (related, relatedPoints) in points)
+                    if (points.TryGetValue(node, out var sliderPoints))
                     {
-                        bool visibleBody = related.IsBody && i == (int)HitSoundingLane.SampleSet;
-                        if (related.HitObject != node.HitObject || !relatedPoints[i].IsEnabled || (relatedPoints[i].IsEmpty && !visibleBody))
-                            continue;
-
-                        flashes[i].Trigger(node.IsBody ? node.HitObject.StartTime : node.Time, node.HitObject.StartTime, node.HitObject.GetEndTime());
-                        break;
+                        var point = sliderPoints[i];
+                        bool visibleBody = node.IsBody && i == (int)HitSoundingLane.SampleSet;
+                        if (point.IsEnabled && (!point.IsEmpty || visibleBody))
+                            flashes[i].Trigger(node);
                     }
                 }
 
@@ -348,8 +346,20 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                     for (int i = 0; i < flashes.Length; i++)
                     {
+                        bool hasBody = nodePoints[i].IsEnabled && (!nodePoints[i].IsEmpty || i == (int)HitSoundingLane.SampleSet);
+                        flashes[i].HasBody = hasBody;
+                        flashes[i].HasTail = false;
                         flashes[i].Position = nodePoints[i].Position;
                         flashes[i].Width = nodePoints[i].Width + HitSoundingLayout.SAMPLE_WIDTH;
+                    }
+
+                    foreach (var (related, relatedPoints) in points)
+                    {
+                        if (related.HitObject != node.HitObject || related.IsBody || related.Time < nodeEnd)
+                            continue;
+
+                        for (int i = 0; i < flashes.Length; i++)
+                            flashes[i].HasTail = relatedPoints[i].IsEnabled && !relatedPoints[i].IsEmpty;
                     }
                 }
             }

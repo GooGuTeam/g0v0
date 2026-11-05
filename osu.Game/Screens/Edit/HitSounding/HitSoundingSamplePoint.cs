@@ -166,7 +166,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                             Radius = 4,
                             Hollow = true
                         },
-                        Child = new Box { RelativeSizeAxes = Axes.Both, Alpha = 0.35f }
+                        Child = new Box { RelativeSizeAxes = Axes.Both, Alpha = HitSoundingLayout.PLAYBACK_FLASH_OPACITY }
                     }
                 }
             });
@@ -179,6 +179,14 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             Width = Math.Max(0, width);
             bodyMarkerX = markerX;
+
+            if (bodyFill != null)
+            {
+                bodyFill.RelativeSizeAxes = Axes.Y;
+                bodyFill.X = -HitSoundingLayout.SAMPLE_WIDTH / 2;
+                bodyFill.Width = Width + HitSoundingLayout.SAMPLE_WIDTH;
+            }
+
             if (badge == null)
                 return;
 
@@ -266,7 +274,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (!IsEnabled || (!Node.IsBody && IsEmpty))
                 return;
 
-            playbackFlash.FadeOutFromOne(750, Easing.OutQuint);
+            playbackFlash.FadeOutFromOne(HitSoundingLayout.PLAYBACK_FLASH_DURATION, Easing.OutQuint);
         }
 
         protected override bool OnScroll(ScrollEvent e)

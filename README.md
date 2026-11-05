@@ -55,11 +55,16 @@ clickable for bank edits, whistle toggles and selection. Head, repeat and tail c
 their own independent editing targets.
 
 Explicit sample edits audition the resulting sounds without moving the playhead; unchanged values and undo do not
-trigger an audition. Normal playback lights sounding points with a soft white edge bloom and a 35% white
-overlay, fading together over 750 ms with OutQuint easing. Sliders instead use one continuous outer contour
-above their editable head, body and tail, with extra emphasis on the outer head/tail edge when each is crossed.
-The contour stays lit throughout the slider and fades as a whole after its tail passes. The playhead stays above
-these highlights. Seeking and edit auditions do not trigger playback flashes. The workspace background is 90% opaque.
+trigger an audition. Normal playback lights sounding points with a soft white edge bloom and a 70% white
+overlay, fading together over 700 ms with OutQuint easing. Slider heads flash independently, while the body
+keeps a much fainter contour during playback. At the tail, the body and tail brighten together and share
+the same 700 ms fade. The body overlay includes the complete head badge. Its 5 px rounded outer
+contour retains space for the soft bloom rather than clipping it into square corners. Repeat nodes
+emphasise their top and bottom edges, with much fainter side edges.
+All slider highlights follow the outer contour without bright internal joins. Body fills extend to the
+same endpoint edges as their contour. Each lane only flashes its own sounding nodes; head-only additions
+never create an empty body or tail outline. The playhead stays above these highlights. Seeking and edit
+auditions do not trigger playback flashes. The workspace background is 90% opaque.
 The Volume graph uses compact numeric labels, pink selected runs and a white-ringed point for precise Ctrl-click
 editing; dragging changes a run, while double-clicking opens its precise volume editor.
 

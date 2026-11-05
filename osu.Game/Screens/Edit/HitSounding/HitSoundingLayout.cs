@@ -15,5 +15,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         public const float SAMPLE_CORNER_RADIUS = 5;
         public const float SAMPLE_FONT_SIZE = 24;
         public const float LANE_SPACING = 4;
+        public const double PLAYBACK_FLASH_DURATION = 700;
+        public const float PLAYBACK_FLASH_OPACITY = 0.7f;
     }
 }

@@ -57,9 +57,10 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
-        public void TestSliderContourHoldsUntilTailAndFadesTogether()
+        public void TestSliderHighlightsHeadBodyRepeatAndTailSeparately()
         {
             Slider slider = null!;
+            HitSoundingSliderPlaybackFlash[] flashes = [];
             AddStep("replace sequence with sounding slider", () =>
             {
                 foreach (var hitObject in EditorBeatmap.HitObjects.ToArray())
@@ -67,10 +68,12 @@ namespace osu.Game.Tests.Visual.Editing
                 EditorBeatmap.Add(slider = new Slider
                 {
                     StartTime = 1000,
+                    RepeatCount = 1,
                     Path = new SliderPath(new[] { new PathControlPoint(Vector2.Zero), new PathControlPoint(new Vector2(600, 0)) }),
                     Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT), new HitSampleInfo(HitSampleInfo.HIT_WHISTLE)],
                     NodeSamples =
                     [
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT), new HitSampleInfo(HitSampleInfo.HIT_WHISTLE), new HitSampleInfo(HitSampleInfo.HIT_CLAP) },
                         new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT), new HitSampleInfo(HitSampleInfo.HIT_WHISTLE) },
                         new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT), new HitSampleInfo(HitSampleInfo.HIT_WHISTLE) }
                     ]
@@ -79,18 +82,54 @@ namespace osu.Game.Tests.Visual.Editing
             });
             AddUntilStep("slider outlines loaded", () => Editor.ChildrenOfType<HitSoundingSliderPlaybackFlash>().All(f => f.IsLoaded)
                                                          && model.Nodes.Any(n => n.HitObject == slider && n.IsBody));
+            AddStep("retain slider highlights", () => flashes = Editor.ChildrenOfType<HitSoundingSliderPlaybackFlash>().OrderBy(f => f.Y).ToArray());
+            AddAssert("all body fills reach the contour endpoints", () =>
+            {
+                var points = Editor.ChildrenOfType<HitSoundingSamplePoint>().Where(p => p.Node.HitObject == slider && p.Node.IsBody);
+                return points.All(point =>
+                {
+                    var fill = point.ChildrenOfType<osu.Framework.Graphics.Containers.Container>().First();
+                    return System.Math.Abs(fill.X + HitSoundingLayout.SAMPLE_WIDTH / 2) < 0.01f
+                           && System.Math.Abs(fill.DrawWidth - point.DrawWidth - HitSoundingLayout.SAMPLE_WIDTH) < 0.01f;
+                });
+            });
+            AddAssert("body overlay covers the complete head badge", () =>
+            {
+                var headPoint = Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node.HitObject == slider && p.Node.NodeIndex == 0 && p.Lane == HitSoundingLane.SampleSet);
+                var overlay = ((osu.Framework.Graphics.Containers.Container)highlight(@"Slider body highlight")).Children[0];
+                return System.Math.Abs(overlay.ScreenSpaceDrawQuad.TopLeft.X - headPoint.ScreenSpaceDrawQuad.TopLeft.X) < 1
+                       && overlay.ScreenSpaceDrawQuad.TopRight.X >= headPoint.ScreenSpaceDrawQuad.TopRight.X;
+            });
             AddStep("play through slider", () => EditorClock.Start());
-            AddUntilStep("head starts whole outline", () => EditorClock.CurrentTime > 1100 && contour().Alpha == 1);
-            AddUntilStep("body remains lit beyond old flash duration", () => EditorClock.CurrentTime > 1900 && contour().Alpha == 1);
-            AddUntilStep("tail passes", () => EditorClock.CurrentTime >= slider.GetEndTime() + 100);
-            AddAssert("outline fades only after tail", () => contour().Alpha, () => Is.InRange(0.001f, 0.99f));
-            AddUntilStep("entire outline extinguishes", () => contour().Alpha == 0);
+            AddUntilStep("head flashes independently", () => EditorClock.CurrentTime > 1080 && highlight(@"Slider head highlight").Alpha > highlight(@"Slider body highlight").Alpha);
+            AddAssert("tail is dark before it is crossed", () => highlight(@"Slider tail highlight").Alpha == 0);
+            AddAssert("head-only clap does not light an empty body", () => highlight(@"Slider body highlight", HitSoundingLane.Clap).Alpha == 0);
+            AddAssert("head-only clap outline fits the badge", () =>
+            {
+                var head = (osu.Framework.Graphics.Containers.Container)highlight(@"Slider head highlight", HitSoundingLane.Clap);
+                return head.Children[0].DrawWidth <= HitSoundingLayout.SAMPLE_WIDTH;
+            });
+            AddUntilStep("head extinguishes while body stays faint", () => EditorClock.CurrentTime > 1900 && highlight(@"Slider head highlight").Alpha == 0 && highlight(@"Slider body highlight").Alpha is > 0 and < 0.2f);
+            AddUntilStep("repeat flashes", () =>
+            {
+                double repeatTime = model.Nodes.First(n => n.HitObject == slider && n.NodeIndex == 1).Time;
+                return EditorClock.CurrentTime > repeatTime && highlight(@"Slider repeat highlight").Alpha > highlight(@"Slider body highlight").Alpha;
+            });
+            AddAssert("repeat sides are much fainter than top and bottom", () =>
+            {
+                var section = (osu.Framework.Graphics.Containers.Container)highlight(@"Slider repeat highlight");
+                return section.Children[1].Alpha < section.Children[0].Alpha / 4;
+            });
+            AddUntilStep("tail and body brighten together", () => highlight(@"Slider tail highlight").Alpha > 0 && highlight(@"Slider body highlight").Alpha > 0.12f);
+            AddAssert("missing clap tail never flashes", () => highlight(@"Slider tail highlight", HitSoundingLane.Clap).Alpha == 0);
+            AddAssert("tail and body share their fade", () => System.Math.Abs(highlight(@"Slider body highlight").Alpha - highlight(@"Slider tail highlight").Alpha) < 0.01f);
+            AddUntilStep("tail and body extinguish", () => highlight(@"Slider tail highlight").Alpha == 0 && highlight(@"Slider body highlight").Alpha == 0);
             AddStep("stop", () => EditorClock.Stop());
 
-            Drawable contour()
+            Drawable highlight(string name, HitSoundingLane lane = HitSoundingLane.SampleSet)
             {
-                var flash = Editor.ChildrenOfType<HitSoundingSliderPlaybackFlash>().First();
-                return flash.ChildrenOfType<Drawable>().Single(d => d.Name == "Slider outer contour");
+                var flash = flashes[(int)lane];
+                return flash.ChildrenOfType<Drawable>().Single(d => d.Name == name);
             }
         }
 
