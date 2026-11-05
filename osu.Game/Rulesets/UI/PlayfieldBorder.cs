@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using osu.Framework.Allocation;
@@ -76,9 +76,11 @@ namespace osu.Game.Rulesets.UI
         }
 
         [BackgroundDependencyLoader]
-        private void load(GameHost host)
+        private void load(GameHost? host)
         {
-            this.ApplyGameWideClock(host);
+            // Windowless scenes inherit their deterministic gameplay clock.
+            if (host != null)
+                this.ApplyGameWideClock(host);
         }
 
         protected override void LoadComplete()

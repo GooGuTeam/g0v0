@@ -1,11 +1,12 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Sample;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
+using osu.Framework.Graphics.Rendering;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.IO.Stores;
 using osu.Framework.Platform;
@@ -21,10 +22,15 @@ namespace osu.Game.Skinning
         private readonly TextureStore textures;
         private readonly ISampleStore samples;
 
-        public ResourceStoreBackedSkin(IResourceStore<byte[]> resources, GameHost host, AudioManager audio)
+        public ResourceStoreBackedSkin(IResourceStore<byte[]> resources, IRenderer renderer, AudioManager audio)
         {
-            textures = new TextureStore(host.Renderer, host.CreateTextureLoaderStore(new NamespacedResourceStore<byte[]>(resources, @"Textures")));
+            textures = new TextureStore(renderer, new TextureLoaderStore(new NamespacedResourceStore<byte[]>(resources, @"Textures")));
             samples = audio.GetSampleStore(new NamespacedResourceStore<byte[]>(resources, @"Samples"));
+        }
+
+        public ResourceStoreBackedSkin(IResourceStore<byte[]> resources, GameHost host, AudioManager audio)
+            : this(resources, host.Renderer, audio)
+        {
         }
 
         public Drawable? GetDrawableComponent(ISkinComponentLookup lookup) => null;

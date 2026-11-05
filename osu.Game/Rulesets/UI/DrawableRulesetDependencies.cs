@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -60,19 +60,35 @@ namespace osu.Game.Rulesets.UI
             var resources = ruleset.CreateResourceStore();
 
             var host = parent.Get<GameHost>();
+            var renderer = parent.Get<IRenderer>() ?? host?.Renderer ?? throw new InvalidOperationException("No IRenderer available");
 
-            TextureStore = new TextureStore(host.Renderer, parent.Get<GameHost>().CreateTextureLoaderStore(new NamespacedResourceStore<byte[]>(resources, @"Textures")));
-            CacheAs(TextureStore = new FallbackTextureStore(host.Renderer, TextureStore, parent.Get<TextureStore>()));
+            var textureLoader = host?.CreateTextureLoaderStore(new NamespacedResourceStore<byte[]>(resources, @"Textures"))
+                                ?? new TextureLoaderStore(new NamespacedResourceStore<byte[]>(resources, @"Textures"));
 
-            SampleStore = parent.Get<AudioManager>().GetSampleStore(new NamespacedResourceStore<byte[]>(resources, @"Samples"));
-            SampleStore.PlaybackConcurrency = OsuGameBase.SAMPLE_CONCURRENCY;
-            CacheAs(SampleStore = new FallbackSampleStore(SampleStore, parent.Get<ISampleStore>()));
+            TextureStore = new TextureStore(renderer, textureLoader);
+            CacheAs(TextureStore = new FallbackTextureStore(renderer, TextureStore, parent.Get<TextureStore>()));
 
-            CacheAs(ShaderManager = new RulesetShaderManager(host.Renderer, new NamespacedResourceStore<byte[]>(resources, @"Shaders"), parent.Get<ShaderManager>()));
+            var audioManager = parent.Get<AudioManager>();
+            if (audioManager != null)
+            {
+                SampleStore = audioManager.GetSampleStore(new NamespacedResourceStore<byte[]>(resources, @"Samples"));
+                SampleStore.PlaybackConcurrency = OsuGameBase.SAMPLE_CONCURRENCY;
+                CacheAs(SampleStore = new FallbackSampleStore(SampleStore, parent.Get<ISampleStore>()));
+            }
+            else
+            {
+                SampleStore = parent.Get<ISampleStore>()!;
+            }
 
-            RulesetConfigManager = parent.Get<IRulesetConfigCache>().GetConfigFor(ruleset);
-            if (RulesetConfigManager != null)
-                Cache(RulesetConfigManager);
+            CacheAs(ShaderManager = new RulesetShaderManager(renderer, new NamespacedResourceStore<byte[]>(resources, @"Shaders"), parent.Get<ShaderManager>()));
+
+            var rulesetConfigCache = parent.Get<IRulesetConfigCache>();
+            if (rulesetConfigCache != null)
+            {
+                RulesetConfigManager = rulesetConfigCache.GetConfigFor(ruleset);
+                if (RulesetConfigManager != null)
+                    Cache(RulesetConfigManager);
+            }
         }
 
         #region Disposal
@@ -200,19 +216,19 @@ namespace osu.Game.Rulesets.UI
 
         private class RulesetShaderManager : ShaderManager
         {
-            private readonly ShaderManager parent;
+            private readonly ShaderManager? parent;
 
-            public RulesetShaderManager(IRenderer renderer, NamespacedResourceStore<byte[]> rulesetResources, ShaderManager parent)
+            public RulesetShaderManager(IRenderer renderer, NamespacedResourceStore<byte[]> rulesetResources, ShaderManager? parent)
                 : base(renderer, rulesetResources)
             {
                 this.parent = parent;
             }
 
-            public override IShader? GetCachedShader(string vertex, string fragment) => base.GetCachedShader(vertex, fragment) ?? parent.GetCachedShader(vertex, fragment);
+            public override IShader? GetCachedShader(string vertex, string fragment) => base.GetCachedShader(vertex, fragment) ?? parent?.GetCachedShader(vertex, fragment);
 
-            public override IShaderPart? GetCachedShaderPart(string name) => base.GetCachedShaderPart(name) ?? parent.GetCachedShaderPart(name);
+            public override IShaderPart? GetCachedShaderPart(string name) => base.GetCachedShaderPart(name) ?? parent?.GetCachedShaderPart(name);
 
-            public override byte[]? GetRawData(string fileName) => base.GetRawData(fileName) ?? parent.GetRawData(fileName);
+            public override byte[]? GetRawData(string fileName) => base.GetRawData(fileName) ?? parent?.GetRawData(fileName);
         }
     }
 }

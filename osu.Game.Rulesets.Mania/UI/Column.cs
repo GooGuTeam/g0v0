@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -83,7 +83,7 @@ namespace osu.Game.Rulesets.Mania.UI
         private ISkinSource skin { get; set; } = null!;
 
         [BackgroundDependencyLoader]
-        private void load(GameHost host, ManiaRulesetConfigManager? rulesetConfig)
+        private void load(GameHost? host, ManiaRulesetConfigManager? rulesetConfig)
         {
             SkinnableDrawable keyArea;
 
@@ -110,8 +110,12 @@ namespace osu.Game.Rulesets.Mania.UI
                 RelativeSizeAxes = Axes.Both,
             };
 
-            background.ApplyGameWideClock(host);
-            keyArea.ApplyGameWideClock(host);
+            // Windowless replay scenes must retain their deterministic inherited clock.
+            if (host != null)
+            {
+                background.ApplyGameWideClock(host);
+                keyArea.ApplyGameWideClock(host);
+            }
 
             BackgroundContainer.Add(background);
             TopLevelContainer.Add(HitObjectArea.Explosions.CreateProxy());

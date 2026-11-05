@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -21,6 +21,7 @@ using osu.Game.Localisation.SkinComponents;
 using osu.Game.Resources.Localisation.Web;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Screens.Play;
 using osu.Game.Utils;
 
 namespace osu.Game.Skinning.Components
@@ -44,7 +45,10 @@ namespace osu.Game.Skinning.Components
         private IBindable<RulesetInfo> ruleset { get; set; } = null!;
 
         [Resolved]
-        private BeatmapDifficultyCache difficultyCache { get; set; } = null!;
+        private BeatmapDifficultyCache? difficultyCache { get; set; }
+
+        [Resolved]
+        private ReplayExportDifficulty? exportDifficulty { get; set; }
 
         private readonly OsuSpriteText text;
         private IBindable<StarDifficulty>? difficultyBindable;
@@ -75,6 +79,16 @@ namespace osu.Game.Skinning.Components
 
             beatmap.BindValueChanged(b =>
             {
+                if (exportDifficulty != null)
+                {
+                    starDifficulty = exportDifficulty.Difficulty;
+                    updateText();
+                    return;
+                }
+
+                if (difficultyCache == null)
+                    throw new InvalidOperationException(@"A difficulty cache or precomputed replay difficulty is required.");
+
                 difficultyCancellationSource?.Cancel();
                 difficultyCancellationSource = new CancellationTokenSource();
 

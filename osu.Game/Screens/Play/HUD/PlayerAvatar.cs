@@ -1,10 +1,12 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.Textures;
 using osu.Game.Configuration;
 using osu.Game.Localisation.SkinComponents;
 using osu.Game.Online.API;
@@ -35,7 +37,7 @@ namespace osu.Game.Screens.Play.HUD
         private GameplayState? gameplayState { get; set; }
 
         [Resolved]
-        private IAPIProvider api { get; set; } = null!;
+        private IAPIProvider? api { get; set; }
 
         private IBindable<APIUser>? apiUser;
 
@@ -60,8 +62,24 @@ namespace osu.Game.Screens.Play.HUD
         }
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(LargeTextureStore textures)
         {
+            if (api == null)
+            {
+                // Keep private scenes synchronous and independent of online avatar services.
+                cornerContainer.Remove(avatar, false);
+                avatar.Dispose();
+                cornerContainer.Child = new Sprite
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    FillMode = FillMode.Fill,
+                    Texture = textures.Get(@"Online/avatar-guest"),
+                };
+                return;
+            }
+
             if (gameplayState != null)
                 avatar.User = gameplayState.Score.ScoreInfo.User;
             else

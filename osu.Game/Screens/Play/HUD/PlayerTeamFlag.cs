@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -27,7 +27,7 @@ namespace osu.Game.Screens.Play.HUD
         private GameplayState? gameplayState { get; set; }
 
         [Resolved]
-        private IAPIProvider api { get; set; } = null!;
+        private IAPIProvider? api { get; set; }
 
         private IBindable<APIUser>? apiUser;
 
@@ -42,13 +42,22 @@ namespace osu.Game.Screens.Play.HUD
         }
 
         [BackgroundDependencyLoader]
-        private void load(UserLookupCache userLookupCache)
+        private void load(UserLookupCache? userLookupCache)
         {
+            if (api == null)
+            {
+                // Team logos require online assets, which are not available in a private replay scene.
+                RemoveInternal(flag, false);
+                flag.Dispose();
+                InternalChild = Empty();
+                return;
+            }
+
             if (gameplayState != null)
             {
                 if (gameplayState.Score.ScoreInfo.User.Team != null)
                     flag.Team = gameplayState.Score.ScoreInfo.User.Team;
-                else
+                else if (userLookupCache != null)
                 {
                     // We only store very basic information about a user to realm, so there's a high chance we don't have the team information.
                     userLookupCache.GetUserAsync(gameplayState.Score.ScoreInfo.User.Id)

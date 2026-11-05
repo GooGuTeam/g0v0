@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -48,8 +48,8 @@ namespace osu.Game.Screens.Play.HUD
 
         private Mod[] clonedMods;
 
-        [BackgroundDependencyLoader]
-        private void load(BeatmapDifficultyCache difficultyCache)
+        [BackgroundDependencyLoader(true)]
+        private void load(BeatmapDifficultyCache difficultyCache, ReplayExportDifficulty exportDifficulty)
         {
             if (gameplayState != null)
             {
@@ -57,6 +57,16 @@ namespace osu.Game.Screens.Play.HUD
                 clonedMods = gameplayState.Mods.Select(m => m.DeepClone()).ToArray();
 
                 scoreInfo = new ScoreInfo(gameplayState.Score.ScoreInfo.BeatmapInfo, gameplayState.Score.ScoreInfo.Ruleset) { Mods = clonedMods };
+
+                if (exportDifficulty != null)
+                {
+                    timedAttributes = exportDifficulty.Attributes;
+                    IsValid = true;
+                    return;
+                }
+
+                if (difficultyCache == null)
+                    throw new InvalidOperationException(@"A difficulty cache or precomputed replay difficulty is required.");
 
                 var gameplayWorkingBeatmap = new GameplayWorkingBeatmap(gameplayState.Beatmap);
                 difficultyCache.GetTimedDifficultyAttributesAsync(gameplayWorkingBeatmap, gameplayState.Ruleset, clonedMods, loadCancellationSource.Token)

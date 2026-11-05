@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -59,13 +59,14 @@ namespace osu.Game.Screens.Play
         /// <param name="sourceClock">The source <see cref="IClock"/> used for timing.</param>
         /// <param name="applyOffsets">Whether to apply platform, user and beatmap offsets to the mix.</param>
         /// <param name="requireDecoupling">Whether decoupling logic should be applied on the source clock.</param>
-        public GameplayClockContainer(IClock sourceClock, bool applyOffsets, bool requireDecoupling)
+        /// <param name="interpolate">Whether to smooth the source against wall time. Disable for deterministic export.</param>
+        public GameplayClockContainer(IClock sourceClock, bool applyOffsets, bool requireDecoupling, bool interpolate = true)
         {
             RelativeSizeAxes = Axes.Both;
 
             InternalChildren = new Drawable[]
             {
-                GameplayClock = new FramedBeatmapClock(applyOffsets, requireDecoupling, sourceClock),
+                GameplayClock = new FramedBeatmapClock(applyOffsets, requireDecoupling, sourceClock, interpolate),
                 Content
             };
         }
