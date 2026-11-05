@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Net;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Screens;
@@ -49,7 +50,7 @@ namespace osu.Game.Online.Chat
             request.Failure += e =>
             {
                 target?.AddNewMessages(new ErrorMessage(
-                    e.InnerException?.Message == @"NotFound"
+                    e.HasStatusCode(HttpStatusCode.NotFound)
                         ? $"User '{username}' was not found."
                         : $"Could not fetch user '{username}'."));
                 Expire();
