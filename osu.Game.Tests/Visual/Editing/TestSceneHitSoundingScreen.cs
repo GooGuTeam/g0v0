@@ -320,6 +320,47 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
+        public void TestWhistleUnderlayFollowsBodyAndEndpoints([Values] bool headWhistle, [Values] bool tailWhistle, [Values] bool bodyWhistle)
+        {
+            Slider slider = null!;
+            AddStep("create slider with independent whistle samples", () =>
+            {
+                foreach (var hitObject in EditorBeatmap.HitObjects.ToArray())
+                    EditorBeatmap.Remove(hitObject);
+
+                slider = new Slider
+                {
+                    StartTime = 1000,
+                    Path = new SliderPath(new[] { new PathControlPoint(Vector2.Zero), new PathControlPoint(new Vector2(500, 0)) }),
+                    Samples = samples(bodyWhistle),
+                    NodeSamples = [samples(headWhistle), samples(tailWhistle)]
+                };
+                EditorBeatmap.Add(slider);
+                EditorClock.Seek(1500);
+                InputManager.MoveMouseTo(Vector2.Zero);
+            });
+            AddUntilStep("whistle interval loaded", () => Editor.ChildrenOfType<HitSoundingSamplePoint>().Any(p => p.Node.HitObject == slider && p.Node.IsBody && p.IsLoaded));
+            AddUntilStep("only relevant whistle underlay is visible", () =>
+            {
+                var point = Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node.HitObject == slider && p.Node.IsBody && p.Lane == HitSoundingLane.Whistle);
+                var fill = point.ChildrenOfType<osu.Framework.Graphics.Containers.Container>().First();
+                float expectedAlpha = bodyWhistle ? 0.66f : headWhistle || tailWhistle ? 0.08f : 0;
+                return System.Math.Abs(fill.Alpha - expectedAlpha) < 0.001f;
+            });
+            AddAssert("rendering preserves whistle assignments", () => slider.Samples.Any(s => s.Name == HitSampleInfo.HIT_WHISTLE) == bodyWhistle
+                                                                       && slider.NodeSamples[0].Any(s => s.Name == HitSampleInfo.HIT_WHISTLE) == headWhistle
+                                                                       && slider.NodeSamples[1].Any(s => s.Name == HitSampleInfo.HIT_WHISTLE) == tailWhistle);
+
+            static List<HitSampleInfo> samples(bool whistle)
+            {
+                var result = new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT) };
+                if (whistle)
+                    result.Add(new HitSampleInfo(HitSampleInfo.HIT_WHISTLE));
+                return result;
+            }
+        }
+
+        [Test]
         public void TestSliderBodyIntervalEditsWithoutRetargetingHeadOrTail()
         {
             Slider slider = null!;
@@ -610,16 +651,16 @@ namespace osu.Game.Tests.Visual.Editing
                 popup.ChildrenOfType<FormDropdown<int>>().Single().Current.Value = 1;
                 popup.ChildrenOfType<RoundedButton>().Single().TriggerClick();
             });
-            AddUntilStep("normal set one has a badge without custom samples", () => !cell(HitSoundingLane.SampleSet).IsEmpty);
+            AddUntilStep("normal bank and set applied", () => model.Nodes[0].GetBank(false) == HitSampleInfo.BANK_NORMAL && model.Nodes[0].SetIndex == 1);
             AddAssert("explicit addition remains", () => model.Nodes[0].GetBank(true), () => Is.EqualTo(HitSampleInfo.BANK_DRUM));
             AddAssert("index shared", () => model.Nodes[0].Samples.All(s => s.UseBeatmapSamples && s.Suffix == null));
             AddStep("change to custom normal two", () => model.SetBank(new[] { model.Nodes[0] }, HitSampleInfo.BANK_NORMAL, 2, false));
-            AddUntilStep("normal two has a badge", () => !cell(HitSoundingLane.SampleSet).IsEmpty && model.Nodes[0].SetIndex == 2);
+            AddUntilStep("custom normal two applied", () => model.Nodes[0].GetBank(false) == HitSampleInfo.BANK_NORMAL && model.Nodes[0].SetIndex == 2);
             AddStep("reset normal", () => clickCell(HitSoundingLane.SampleSet, MouseButton.Right));
-            AddUntilStep("reset restores blank user skin normal", () => cell(HitSoundingLane.SampleSet).IsEmpty && model.Nodes[0].SetIndex == 0);
+            AddUntilStep("reset restores user skin normal", () => model.Nodes[0].GetBank(false) == HitSampleInfo.BANK_NORMAL && model.Nodes[0].SetIndex == 0);
             AddAssert("clap retained", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_CLAP));
             AddStep("undo reset", () => Editor.Undo());
-            AddUntilStep("custom normal two restored", () => model.Nodes[0].SetIndex == 2 && !cell(HitSoundingLane.SampleSet).IsEmpty);
+            AddUntilStep("custom normal two restored", () => model.Nodes[0].GetBank(false) == HitSampleInfo.BANK_NORMAL && model.Nodes[0].SetIndex == 2);
             AddStep("reset addition bank", () => clickCell(HitSoundingLane.Additions, MouseButton.Right));
             AddUntilStep("addition follows normal", () => cell(HitSoundingLane.Additions).IsEmpty);
             AddAssert("addition reset keeps shared set", () => model.Nodes[0].SetIndex, () => Is.EqualTo(2));

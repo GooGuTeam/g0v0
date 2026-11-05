@@ -54,6 +54,9 @@ right), with matching positions in the Additions and Whistle rows. Finish and Cl
 Capsules disappear when a slider span is too narrow to fit them between its hit nodes, but the interval remains
 clickable for bank edits, whistle toggles and selection. Head, repeat and tail cells stay above the fill and keep
 their own independent editing targets.
+An inactive Whistle interval has a faint resting underlay only when its head or tail has Whistle enabled.
+When neither endpoint nor the body has Whistle, the resting underlay is hidden; hovering still reveals the
+editable interval. A body's own Whistle sample remains visible independently of the head and tail.
 
 Explicit sample edits audition the resulting sounds without moving the playhead; unchanged values and undo do not
 trigger an audition. Normal playback lights sounding points with a soft white edge bloom and a 70% white

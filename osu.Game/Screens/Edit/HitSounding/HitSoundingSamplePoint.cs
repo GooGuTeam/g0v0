@@ -21,6 +21,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Localisation;
 using osu.Game.Rulesets.Edit;
+using osu.Game.Rulesets.Objects.Types;
 using osuTK.Input;
 
 namespace osu.Game.Screens.Edit.HitSounding
@@ -273,10 +274,19 @@ namespace osu.Game.Screens.Edit.HitSounding
                 ? Lane switch
                 {
                     HitSoundingLane.SampleSet or HitSoundingLane.Additions => selected || IsHovered ? 0.35f : 0.25f,
-                    HitSoundingLane.Whistle => Node.HasAddition(HitSampleInfo.HIT_WHISTLE) ? 0.66f : IsHovered ? 0.2f : 0.08f,
+                    HitSoundingLane.Whistle => Node.HasAddition(HitSampleInfo.HIT_WHISTLE) ? 0.66f : IsHovered ? 0.2f : hasWhistleEndpoint() ? 0.08f : 0,
                     _ => 0
                 }
                 : 0;
+        }
+
+        private bool hasWhistleEndpoint()
+        {
+            if (Node.HitObject is not IHasRepeats repeats || repeats.NodeSamples.Count == 0)
+                return false;
+
+            return repeats.NodeSamples[0].Any(s => s.Name == HitSampleInfo.HIT_WHISTLE)
+                   || repeats.NodeSamples[^1].Any(s => s.Name == HitSampleInfo.HIT_WHISTLE);
         }
 
         internal void FlashPlayback()

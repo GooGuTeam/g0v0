@@ -426,7 +426,6 @@ namespace osu.Game.Screens.Edit
                                                     },
                                                 ]
                                             },
-                                            createNormalVisibilityMenu(editorHitSoundingNormalVisibility),
                                             new OsuMenuItemSpacer(),
                                             new BackgroundDimMenuItem(editorBackgroundDim),
                                             new ToggleMenuItem(EditorStrings.ShowStoryboard)
@@ -454,7 +453,7 @@ namespace osu.Game.Screens.Edit
                                     },
                                     new MenuItem(EditorStrings.Timing)
                                     {
-                                        Items = new MenuItem[]
+                                        Items = new[]
                                         {
                                             new EditorMenuItem(EditorStrings.SetPreviewPointToCurrent, MenuItemType.Standard, SetPreviewPointToCurrentTime),
                                             new EditorMenuItem(EditorStrings.SnapAllNotesToCurrentSnapDivisor, MenuItemType.Destructive, confirmSnapAllHitObjectsToCurrentDivisor),
@@ -463,6 +462,7 @@ namespace osu.Game.Screens.Edit
                                                 Action = { Disabled = loadableBeatmap.BeatmapSetInfo.Beatmaps.Count < 2 }
                                             },
                                             bookmarkController.Menu,
+                                            createNormalVisibilityMenu(editorHitSoundingNormalVisibility),
                                         }
                                     }
                                 }
