@@ -17,10 +17,12 @@ using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Input;
+using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osu.Game.Overlays;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
+using osu.Game.Screens.Edit.Compose.Components.Timeline;
 using osuTK;
 using osuTK.Input;
 
@@ -29,7 +31,7 @@ namespace osu.Game.Screens.Edit.HitSounding
     public partial class HitSoundingRoll : CompositeDrawable, IBlockGlobalAltScrollVolume
     {
         private const float header_width = 200;
-        private const float lane_top = 180;
+        private const float lane_top = 185;
         private readonly HitSoundingEditModel model;
         private readonly Dictionary<HitSoundingNode, HitSoundingSamplePoint[]> points = [];
         private readonly Dictionary<HitObject, HitSoundingObject> objects = [];
@@ -41,9 +43,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         private Container backgrounds = null!;
         private Container markers = null!;
         private Container objectLayer = null!;
+        private TimelineArea timelineArea = null!;
+        private TimelineTickDisplay timingRuler = null!;
+        private Box topPlayhead = null!;
+        private Box samplePlayhead = null!;
         private Container selectedColumns = null!;
-        private HitSoundingSampleGuides grid = null!;
-        private HitSoundingSampleGuides topGrid = null!;
         private HitSoundingVolumeTrack volume = null!;
         private Box selectionBox = null!;
         private Container previewRange = null!;
@@ -54,8 +58,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private HitSoundingPreviewState previewState { get; set; } = null!;
 
         private Vector2? selectionStart;
-        private double visibleDuration { get; set; } = 6000;
-        private double targetVisibleDuration = 6000;
+        private double visibleDuration = 6000;
         private double startTime;
         private bool invalid = true;
         private bool previewingSeek;
@@ -94,6 +97,31 @@ namespace osu.Game.Screens.Edit.HitSounding
             }
         }
 
+        private bool cycleHoveredSet(GlobalAction action)
+        {
+            if (action is not (GlobalAction.EditorCycleNextBeatSnapDivisor or GlobalAction.EditorCyclePreviousBeatSnapDivisor))
+                return false;
+
+            var mouse = GetContainingInputManager()!.CurrentState.Mouse.Position;
+
+            foreach (var nodePoints in points.Values)
+            {
+                foreach (var point in nodePoints)
+                {
+                    if (!point.IsEnabled || point.Lane is not (HitSoundingLane.SampleSet or HitSoundingLane.Additions))
+                        continue;
+
+                    if (!point.ReceivePositionalInputAt(mouse))
+                        continue;
+
+                    point.CycleSet(action == GlobalAction.EditorCycleNextBeatSnapDivisor ? 1 : -1);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public HitSoundingRoll(HitSoundingEditModel model)
         {
             this.model = model;
@@ -106,24 +134,30 @@ namespace osu.Game.Screens.Edit.HitSounding
             Container headers;
             InternalChildren = new Drawable[]
             {
-                createHeader(HitSoundingStrings.Objects, 0, 70, true),
-                createHeader(EditorStrings.SampleVolume, 75, 100, false),
+                createHeader(HitSoundingStrings.Objects, 0, 80, true),
+                createHeader(EditorStrings.SampleVolume, 80, 100, false),
                 new Container
                 {
-                    RelativeSizeAxes = Axes.X, Height = 175,
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
+                    Padding = new MarginPadding { Left = header_width + 1 },
+                    Child = timelineArea = new TimelineArea(objectLayer = new Container { RelativeSizeAxes = Axes.Both })
+                    {
+                        HandleBeatDivisorAction = cycleHoveredSet
+                    }
+                },
+                new Container
+                {
+                    RelativeSizeAxes = Axes.X, Y = 80, Height = 100,
                     Padding = new MarginPadding { Left = header_width + 1 },
                     Child = topLanes = new Container
                     {
                         RelativeSizeAxes = Axes.Both, Masking = true,
                         Children = new Drawable[]
                         {
-                            createBackground(0, 70),
-                            createBackground(75, 100),
-                            topGrid = [],
-                            objectLayer = new Container { RelativeSizeAxes = Axes.X, Height = 70 },
-                            volume = new HitSoundingVolumeTrack(model) { Y = 75 },
-                            createPlayhead(),
-                            new Box { Anchor = Anchor.TopCentre, Origin = Anchor.TopCentre, Width = 12, Height = 6, Colour = colours.Highlight1, Depth = -2 }
+                            createBackground(0, 100),
+                            volume = new HitSoundingVolumeTrack(model),
+                            topPlayhead = createPlayhead()
                         }
                     }
                 },
@@ -143,10 +177,9 @@ namespace osu.Game.Screens.Edit.HitSounding
                                 Children = new Drawable[]
                                 {
                                     backgrounds = new Container { RelativeSizeAxes = Axes.Both },
-                                    grid = [],
                                     selectedColumns = new Container { RelativeSizeAxes = Axes.Both },
                                     markers = new Container { RelativeSizeAxes = Axes.Both },
-                                    createPlayhead(),
+                                    samplePlayhead = createPlayhead(),
                                     selectionBox = new Box { Colour = colours.Highlight1, Alpha = 0 }
                                 }
                             }
@@ -155,7 +188,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                 },
                 new Container
                 {
-                    RelativeSizeAxes = Axes.X, Height = 500,
+                    RelativeSizeAxes = Axes.X, Y = 80, Height = 425,
+                    Padding = new MarginPadding { Left = header_width + 1 }, Masking = true,
+                    Child = timingRuler = new TimelineTickDisplay(fullHeight: true) { RelativeSizeAxes = Axes.Y }
+                },
+                new Container
+                {
+                    RelativeSizeAxes = Axes.X, Height = 505,
                     Padding = new MarginPadding { Left = header_width + 1 }, Masking = true,
                     Child = previewRange = new Container
                     {
@@ -261,11 +300,29 @@ namespace osu.Game.Screens.Edit.HitSounding
             Child = new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5 }
         };
 
-        protected override void Update()
+        protected override void UpdateAfterChildren()
         {
-            base.Update();
+            base.UpdateAfterChildren();
 
+            var timeline = timelineArea.Timeline;
+            if (!timeline.IsLoaded || timeline.DrawWidth <= 0 || editorClock.TrackLength <= 0)
+                return;
+
+            double visibleStart = timeline.TimeAtScreenSpacePosition(lanes.ScreenSpaceDrawQuad.TopLeft);
+            double visibleEnd = timeline.TimeAtScreenSpacePosition(lanes.ScreenSpaceDrawQuad.TopRight);
+            visibleDuration = visibleEnd - visibleStart;
+            if (visibleDuration <= 0)
+                return;
+
+            startTime = visibleStart;
             updatePreviewRange();
+            float playheadX = (float)((editorClock.CurrentTime - visibleStart) / visibleDuration * lanes.DrawWidth);
+            topPlayhead.Anchor = samplePlayhead.Anchor = Anchor.TopLeft;
+            topPlayhead.X = samplePlayhead.X = playheadX;
+
+            timingRuler.Width = timeline.PositionAtTime(editorClock.TrackLength);
+            timingRuler.X = -(float)(visibleStart / visibleDuration * lanes.DrawWidth);
+            timingRuler.SetVisibleRange((float)visibleStart, (float)visibleEnd);
 
             if (previewingSeek)
             {
@@ -274,15 +331,15 @@ namespace osu.Game.Screens.Edit.HitSounding
                 previewingSeek = editorClock.IsSeeking;
             }
 
-            if (!invalid && lastTime == editorClock.CurrentTime && lastDuration == visibleDuration && lastWidth == topLanes.DrawWidth
+            if (!invalid && lastTime == visibleStart && lastDuration == visibleDuration && lastWidth == topLanes.DrawWidth
                 && lastHeight == lanes.DrawHeight)
                 return;
 
-            lastTime = editorClock.CurrentTime;
+            lastTime = visibleStart;
             lastDuration = visibleDuration;
             lastWidth = topLanes.DrawWidth;
             lastHeight = lanes.DrawHeight;
-            startTime = editorClock.CurrentTime - visibleDuration / 2;
+            startTime = visibleStart;
             double endTime = startTime + visibleDuration;
 
             if (invalid)
@@ -364,8 +421,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 }
             }
 
-            objectLayer.RelativeChildSize = new Vector2((float)visibleDuration, 1);
-            objectLayer.RelativeChildOffset = new Vector2((float)startTime, 0);
+            objectLayer.RelativeChildSize = new Vector2((float)editorClock.TrackLength, 1);
             concurrentObjects.Clear();
 
             foreach (var hitObject in beatmap.HitObjects)
@@ -394,8 +450,6 @@ namespace osu.Game.Screens.Edit.HitSounding
                 concurrentObjects.Push(hitObject);
             }
 
-            grid.Refresh(startTime, endTime);
-            topGrid.Refresh(startTime, endTime);
             updateSelectionColumns(endTime);
             volume.VisibleStartTime = startTime;
             volume.VisibleEndTime = endTime;
@@ -408,7 +462,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (!previewState.ShowHighlight.Value || previewState.StartTime is not double rangeStart || previewState.EndTime is not double rangeEnd)
                 return;
 
-            double visibleStart = editorClock.CurrentTime - visibleDuration / 2;
+            double visibleStart = startTime;
             double visibleEnd = visibleStart + visibleDuration;
             rangeStart = Math.Max(0, rangeStart);
             rangeEnd = Math.Min(editorClock.TrackLength, rangeEnd);
@@ -545,8 +599,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             if (e.AltPressed)
             {
-                targetVisibleDuration = Math.Clamp(targetVisibleDuration * Math.Pow(0.9, e.ScrollDelta.Y), 500, 30000);
-                this.TransformTo(nameof(visibleDuration), targetVisibleDuration, 250, Easing.OutQuint);
+                timelineArea.Timeline.AdjustZoomRelatively(e.ScrollDelta.Y);
                 return true;
             }
 

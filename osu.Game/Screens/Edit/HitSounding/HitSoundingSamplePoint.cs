@@ -284,6 +284,12 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (!IsEnabled || e.ScrollDelta.Y == 0)
                 return true;
 
+            CycleSet(e.ScrollDelta.Y);
+            return true;
+        }
+
+        internal void CycleSet(float direction)
+        {
             var indices = new SortedSet<int> { 0, 1 };
             var beatmap = Dependencies.Get<EditorBeatmap>();
 
@@ -298,11 +304,10 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             int[] available = indices.ToArray();
             int index = Array.IndexOf(available, Node.SetIndex);
-            int steps = (int)Math.CopySign(Math.Max(1, Math.Round(Math.Abs(e.ScrollDelta.Y))), e.ScrollDelta.Y);
+            int steps = (int)Math.CopySign(Math.Max(1, Math.Round(Math.Abs(direction))), direction);
             int next = ((index + steps) % available.Length + available.Length) % available.Length;
             model.SetBank(model.SelectedNodes.Contains(Node) ? model.SelectedNodes : new[] { Node },
                 Node.GetBank(Lane == HitSoundingLane.Additions), available[next], Lane == HitSoundingLane.Additions);
-            return true;
         }
 
         private void selectForEdit()

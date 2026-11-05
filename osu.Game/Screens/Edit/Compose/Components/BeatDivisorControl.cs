@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -32,6 +32,8 @@ namespace osu.Game.Screens.Edit.Compose.Components
     public partial class BeatDivisorControl : CompositeDrawable, IKeyBindingHandler<GlobalAction>
     {
         private int? lastCustomDivisor;
+
+        internal Func<GlobalAction, bool>? HandleAction;
 
         [Resolved]
         private BindableBeatDivisor beatDivisor { get; set; } = null!;
@@ -214,6 +216,9 @@ namespace osu.Game.Screens.Edit.Compose.Components
 
         public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
         {
+            if (HandleAction?.Invoke(e.Action) == true)
+                return true;
+
             switch (e.Action)
             {
                 case GlobalAction.EditorCycleNextBeatSnapDivisor:

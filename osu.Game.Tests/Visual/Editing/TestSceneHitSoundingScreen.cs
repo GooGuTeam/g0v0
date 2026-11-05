@@ -17,6 +17,8 @@ using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Screens.Edit;
 using osu.Game.Screens.Edit.Compose;
+using osu.Game.Screens.Edit.Compose.Components;
+using osu.Game.Screens.Edit.Compose.Components.Timeline;
 using osu.Game.Screens.Edit.HitSounding;
 using osu.Game.Skinning;
 using osu.Game.Tests.Beatmaps;
@@ -139,12 +141,14 @@ namespace osu.Game.Tests.Visual.Editing
             Vector2 badgeSize = Vector2.Zero;
             Vector2[] textScales = [];
             float originalSpacing = 0;
+            float originalZoom = 0;
 
             AddStep("record badge and text size", () =>
             {
                 badgeSize = cell(HitSoundingLane.SampleSet).DrawSize;
                 textScales = cell(HitSoundingLane.SampleSet).ChildrenOfType<OsuSpriteText>().Select(t => t.Scale).ToArray();
                 originalSpacing = pointSpacing();
+                originalZoom = Editor.ChildrenOfType<HitSoundingScreen>().Single().ChildrenOfType<Timeline>().Single().Zoom;
             });
             AddStep("switch to Compose", () => Editor.Mode.Value = EditorScreenMode.Compose);
             AddUntilStep("Compose loaded", () => Editor.ChildrenOfType<ComposeScreen>().Any(s => s.IsLoaded && s.IsPresent));
@@ -154,7 +158,7 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("badges retain size at 1/16", badgesKeepSize);
             AddStep("zoom out", () => zoom(-8));
             AddUntilStep("spacing shrinks but badges keep size", () => pointSpacing() < originalSpacing && badgesKeepSize());
-            AddStep("zoom back in", () => zoom(8));
+            AddStep("restore timeline zoom", () => Editor.ChildrenOfType<HitSoundingScreen>().Single().ChildrenOfType<Timeline>().Single().Zoom = originalZoom);
             AddUntilStep("spacing returns but badges keep size", () => System.Math.Abs(pointSpacing() - originalSpacing) < 0.1f && badgesKeepSize());
             AddStep("toggle whistle after zoom", () => clickCell(HitSoundingLane.Whistle));
             AddUntilStep("whistle remains editable", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_WHISTLE));
@@ -347,43 +351,6 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
-        public void TestZoomInterpolatesAndAccumulatesRapidWheelInput()
-        {
-            float initialSpacing = 0;
-            float finalSpacing = 0;
-            bool sawIntermediateSpacing = false;
-            HitSoundingRoll roll = null!;
-            HitSoundingSamplePoint first = null!;
-            HitSoundingSamplePoint second = null!;
-
-            AddStep("observe zoom frames", () =>
-            {
-                first = cell(HitSoundingLane.SampleSet);
-                second = Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node == model.Nodes[1] && p.Lane == HitSoundingLane.SampleSet);
-                initialSpacing = sampleSpacing();
-                finalSpacing = initialSpacing / (float)System.Math.Pow(0.9, 6);
-                roll = Editor.ChildrenOfType<HitSoundingRoll>().Single();
-                roll.OnUpdate += observe;
-                InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single());
-                InputManager.PressKey(Key.AltLeft);
-                InputManager.ScrollVerticalBy(3);
-                InputManager.ScrollVerticalBy(3);
-                InputManager.ReleaseKey(Key.AltLeft);
-            });
-            AddUntilStep("both wheel inputs reach their combined target", () => System.Math.Abs(sampleSpacing() - finalSpacing) < 0.1f);
-            AddAssert("zoom passed through intermediate frames", () => sawIntermediateSpacing);
-            AddStep("stop observing", () => roll.OnUpdate -= observe);
-
-            float sampleSpacing() => second.X - first.X;
-
-            void observe(Drawable _)
-            {
-                float spacing = sampleSpacing();
-                sawIntermediateSpacing |= spacing > initialSpacing + 0.1f && spacing < finalSpacing - 0.1f;
-            }
-        }
-
-        [Test]
         public void TestRightClickBlankClearsMultipleThenSelectsNearest()
         {
             HitSoundingNode nearest = null!;
@@ -545,6 +512,55 @@ namespace osu.Game.Tests.Visual.Editing
                 }
 
                 return true;
+            }
+        }
+
+        [Test]
+        public void TestComposeRulerStaysAlignedThroughZoomSeekAndDivisorChanges()
+        {
+            Timeline timeline = null!;
+            TimelineTickDisplay ruler = null!;
+            TimelineTickDisplay ticks = null!;
+
+            AddStep("find shared timeline", () =>
+            {
+                var screen = Editor.ChildrenOfType<HitSoundingScreen>().Single();
+                timeline = screen.ChildrenOfType<Timeline>().Single();
+                ticks = timeline.ChildrenOfType<TimelineTickDisplay>().Single();
+                ruler = screen.ChildrenOfType<TimelineTickDisplay>().Single(t => t != ticks);
+            });
+            AddUntilStep("ruler aligns with timeline", aligned);
+            AddStep("zoom with original toolbar", () => Editor.ChildrenOfType<HitSoundingScreen>().Single().ChildrenOfType<TimelineButton>().First().TriggerClick());
+            AddUntilStep("ruler and objects align after zoom", aligned);
+            AddStep("seek shared timeline", () => EditorClock.Seek(3000));
+            AddUntilStep("ruler aligns after seek", aligned);
+            AddStep("open custom divisor", () =>
+            {
+                InputManager.MoveMouseTo(Editor.ChildrenOfType<HitSoundingScreen>().Single().ChildrenOfType<BeatDivisorControl.DivisorDisplay>().Single());
+                InputManager.Click(MouseButton.Left);
+            });
+            AddUntilStep("custom divisor opens", () => Editor.ChildrenOfType<BeatDivisorControl.CustomDivisorPopover>().Any(p => p.IsPresent));
+            AddStep("choose triplets", () => Editor.ChildrenOfType<BeatDivisorControl.CustomDivisorPopover>().Single(p => p.IsPresent).BeatDivisor.SetArbitraryDivisor(3));
+            AddUntilStep("triplet ruler aligns", aligned);
+
+            bool aligned()
+            {
+                float left = timeline.ScreenSpaceDrawQuad.TopLeft.X;
+                float right = timeline.ScreenSpaceDrawQuad.TopRight.X;
+                var visibleTicks = ticks.Children.Where(t => t.Alpha > 0 && t.ScreenSpaceDrawQuad.Centre.X >= left && t.ScreenSpaceDrawQuad.Centre.X <= right).ToArray();
+                if (visibleTicks.Length == 0)
+                    return false;
+
+                foreach (var tick in visibleTicks)
+                {
+                    var line = ruler.Children.SingleOrDefault(l => l.Alpha > 0 && l.X == tick.X);
+                    if (line == null || System.Math.Abs(line.ScreenSpaceDrawQuad.Centre.X - tick.ScreenSpaceDrawQuad.Centre.X) > 1)
+                        return false;
+                }
+
+                var clap = Editor.ChildrenOfType<HitSoundingSamplePoint>().First(p => p.Lane == HitSoundingLane.Clap);
+                return ruler.ScreenSpaceDrawQuad.BottomLeft.Y > clap.ScreenSpaceDrawQuad.BottomLeft.Y
+                       && ruler.ScreenSpaceDrawQuad.BottomLeft.Y <= Editor.ChildrenOfType<HitSoundingPreviewPanel>().Single().ScreenSpaceDrawQuad.TopLeft.Y;
             }
         }
 

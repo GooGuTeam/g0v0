@@ -68,8 +68,13 @@ auditions do not trigger playback flashes. The workspace background is 90% opaqu
 The Volume graph uses compact numeric labels, pink selected runs and a white-ringed point for precise Ctrl-click
 editing; dragging changes a run, while double-clicking opens its precise volume editor.
 
-The Objects and Volume rows behave as before, and the mouse wheel still seeks the cursor, snapping to the closest
-sound point rather than to the editor's beat grid.
+The Objects row retains its left header and reuses Compose's complete TimelineArea, including its zoom buttons,
+beat-divisor slider, custom divisor input and preset selector. Volume and sample lanes use the timeline's current
+animated zoom and scroll coordinates, keeping objects, sound points and the playhead aligned. Bar, beat and
+subdivision ticks extend through Volume to the bottom of Clap, but never into the sample workspace.
+These Objects ticks are the only timing grid; sound points do not add independent vertical guide lines.
+The mouse wheel still seeks the cursor, snapping to the closest sound point rather than to the editor's beat grid;
+Alt-wheel uses the same zoom as the Compose toolbar.
 
 The lower **Preview** workspace lists user skin set 0, beatmap set 1 and available custom sets in a wrapping grid
 of up to five columns. Filter cards by set number and adjust the preview radius in seconds (default ±3 seconds).

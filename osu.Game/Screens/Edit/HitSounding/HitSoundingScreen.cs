@@ -50,7 +50,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                         new Container
                         {
                             RelativeSizeAxes = Axes.Both,
-                            Padding = new MarginPadding { Top = 505 },
+                            Padding = new MarginPadding { Top = 510 },
                             Children = new Drawable[]
                             {
                                 new Container
