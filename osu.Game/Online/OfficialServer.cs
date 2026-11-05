@@ -14,12 +14,12 @@ namespace osu.Game.Online
         /// <summary>
         /// The host of the official API server.
         /// </summary>
-        public const string HOST = @"lazer-api.g0v0.top";
+        public const string HOST = @"osu.g0v0.top";
 
         /// <summary>
         /// Hosts belonging to the official deployment.
         /// </summary>
-        private static readonly string[] official_hosts = [HOST, @"osu.g0v0.top"];
+        private static readonly string[] official_hosts = [HOST, @"lazer-api.g0v0.top"];
 
         /// <summary>
         /// Whether <paramref name="url"/> points at the official deployment.
