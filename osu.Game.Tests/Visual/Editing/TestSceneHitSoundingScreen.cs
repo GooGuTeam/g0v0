@@ -57,6 +57,44 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
+        public void TestSliderContourHoldsUntilTailAndFadesTogether()
+        {
+            Slider slider = null!;
+            AddStep("replace sequence with sounding slider", () =>
+            {
+                foreach (var hitObject in EditorBeatmap.HitObjects.ToArray())
+                    EditorBeatmap.Remove(hitObject);
+                EditorBeatmap.Add(slider = new Slider
+                {
+                    StartTime = 1000,
+                    Path = new SliderPath(new[] { new PathControlPoint(Vector2.Zero), new PathControlPoint(new Vector2(600, 0)) }),
+                    Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT), new HitSampleInfo(HitSampleInfo.HIT_WHISTLE)],
+                    NodeSamples =
+                    [
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT), new HitSampleInfo(HitSampleInfo.HIT_WHISTLE) },
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT), new HitSampleInfo(HitSampleInfo.HIT_WHISTLE) }
+                    ]
+                });
+                EditorClock.Seek(500);
+            });
+            AddUntilStep("slider outlines loaded", () => Editor.ChildrenOfType<HitSoundingSliderPlaybackFlash>().All(f => f.IsLoaded)
+                                                         && model.Nodes.Any(n => n.HitObject == slider && n.IsBody));
+            AddStep("play through slider", () => EditorClock.Start());
+            AddUntilStep("head starts whole outline", () => EditorClock.CurrentTime > 1100 && contour().Alpha == 1);
+            AddUntilStep("body remains lit beyond old flash duration", () => EditorClock.CurrentTime > 1900 && contour().Alpha == 1);
+            AddUntilStep("tail passes", () => EditorClock.CurrentTime >= slider.GetEndTime() + 100);
+            AddAssert("outline fades only after tail", () => contour().Alpha, () => Is.InRange(0.001f, 0.99f));
+            AddUntilStep("entire outline extinguishes", () => contour().Alpha == 0);
+            AddStep("stop", () => EditorClock.Stop());
+
+            Drawable contour()
+            {
+                var flash = Editor.ChildrenOfType<HitSoundingSliderPlaybackFlash>().First();
+                return flash.ChildrenOfType<Drawable>().Single(d => d.Name == "Slider outer contour");
+            }
+        }
+
+        [Test]
         public void TestBadgesKeepSizeAfterComposeSixteenthDivisorAndZoom()
         {
             Vector2 badgeSize = Vector2.Zero;

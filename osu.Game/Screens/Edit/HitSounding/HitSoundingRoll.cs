@@ -20,6 +20,7 @@ using osu.Game.Input;
 using osu.Game.Localisation;
 using osu.Game.Overlays;
 using osu.Game.Rulesets.Objects;
+using osu.Game.Rulesets.Objects.Types;
 using osuTK;
 using osuTK.Input;
 
@@ -32,6 +33,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly HitSoundingEditModel model;
         private readonly Dictionary<HitSoundingNode, HitSoundingSamplePoint[]> points = [];
         private readonly Dictionary<HitObject, HitSoundingObject> objects = [];
+        private readonly Dictionary<HitObject, HitSoundingSliderPlaybackFlash[]> sliderFlashes = [];
         private readonly List<Box> columnBoxes = [];
         private readonly Stack<HitObject> concurrentObjects = new Stack<HitObject>();
         private Container lanes = null!;
@@ -121,7 +123,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                             objectLayer = new Container { RelativeSizeAxes = Axes.X, Height = 70 },
                             volume = new HitSoundingVolumeTrack(model) { Y = 75 },
                             createPlayhead(),
-                            new Box { Anchor = Anchor.TopCentre, Origin = Anchor.TopCentre, Width = 12, Height = 6, Colour = colours.Highlight1 }
+                            new Box { Anchor = Anchor.TopCentre, Origin = Anchor.TopCentre, Width = 12, Height = 6, Colour = colours.Highlight1, Depth = -2 }
                         }
                     }
                 },
@@ -193,6 +195,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             Anchor = Anchor.TopCentre,
             Origin = Anchor.TopCentre,
             Width = 2,
+            Depth = -2,
             Colour = colours.Highlight1
         };
 
@@ -200,11 +203,32 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private void flashNode(HitSoundingNode node)
         {
-            if (!points.TryGetValue(node, out var nodePoints))
-                return;
+            if (node.HitObject is IHasRepeats)
+            {
+                if (!sliderFlashes.TryGetValue(node.HitObject, out var flashes))
+                    return;
 
-            foreach (var point in nodePoints)
-                point.FlashPlayback();
+                for (int i = 0; i < flashes.Length; i++)
+                {
+                    foreach (var (related, relatedPoints) in points)
+                    {
+                        bool visibleBody = related.IsBody && i == (int)HitSoundingLane.SampleSet;
+                        if (related.HitObject != node.HitObject || !relatedPoints[i].IsEnabled || (relatedPoints[i].IsEmpty && !visibleBody))
+                            continue;
+
+                        flashes[i].Trigger(node.IsBody ? node.HitObject.StartTime : node.Time, node.HitObject.StartTime, node.HitObject.GetEndTime());
+                        break;
+                    }
+                }
+
+                return;
+            }
+
+            if (points.TryGetValue(node, out var nodePoints))
+            {
+                foreach (var point in nodePoints)
+                    point.FlashPlayback();
+            }
         }
 
         private void selectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => lastTime = double.NaN;
@@ -282,6 +306,12 @@ namespace osu.Game.Screens.Edit.HitSounding
                             markers.Remove(point, true);
                     }
 
+                    if (node.IsBody && sliderFlashes.Remove(node.HitObject, out var flashes))
+                    {
+                        foreach (var flash in flashes)
+                            markers.Remove(flash, true);
+                    }
+
                     continue;
                 }
 
@@ -304,6 +334,23 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                     if (node.IsBody)
                         point.UpdateBodyLayout(timeToX(nodeEnd) - timeToX(nodeStart), timeToX(node.Time) - timeToX(nodeStart));
+                }
+
+                if (node.IsBody)
+                {
+                    if (!sliderFlashes.TryGetValue(node.HitObject, out var flashes))
+                    {
+                        flashes = new HitSoundingSliderPlaybackFlash[HitSoundingLayout.LANE_COUNT];
+                        sliderFlashes.Add(node.HitObject, flashes);
+                        for (int i = 0; i < flashes.Length; i++)
+                            markers.Add(flashes[i] = new HitSoundingSliderPlaybackFlash { Depth = -1 });
+                    }
+
+                    for (int i = 0; i < flashes.Length; i++)
+                    {
+                        flashes[i].Position = nodePoints[i].Position;
+                        flashes[i].Width = nodePoints[i].Width + HitSoundingLayout.SAMPLE_WIDTH;
+                    }
                 }
             }
 
@@ -378,6 +425,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                 foreach (var point in points[node])
                     markers.Remove(point, true);
                 points.Remove(node);
+            }
+
+            foreach (var hitObject in sliderFlashes.Keys.Where(h => !beatmap.HitObjects.Contains(h)).ToArray())
+            {
+                foreach (var flash in sliderFlashes[hitObject])
+                    markers.Remove(flash, true);
+                sliderFlashes.Remove(hitObject);
             }
 
             foreach (var nodePoints in points.Values)
