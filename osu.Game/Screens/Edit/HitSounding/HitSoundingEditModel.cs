@@ -141,6 +141,48 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         /// <summary>
+        /// Changes the shared sample set without changing each node's normal or addition banks.
+        /// </summary>
+        public void SetSetIndex(IEnumerable<HitSoundingNode> targets, int setIndex)
+        {
+            if (setIndex < 0)
+                return;
+
+            applyPendingChanges();
+            var plans = new List<PendingNodeUpdate>();
+
+            foreach (var node in enumerateNodes(targets))
+            {
+                if (!node.CanEditSamples)
+                    continue;
+
+                if (node.Samples.Count == 0)
+                {
+                    planBankChange(node, node.GetBank(false), setIndex, false, plans);
+                    continue;
+                }
+
+                List<PendingSampleUpdate>? updates = null;
+
+                for (int i = 0; i < node.Samples.Count; i++)
+                {
+                    var sample = node.Samples[i];
+                    var updated = sample.With(newSuffix: setIndex >= 2 ? setIndex.ToString() : null, newUseBeatmapSamples: setIndex >= 1);
+                    if (!hasSampleChanges(sample, updated))
+                        continue;
+
+                    updates ??= [];
+                    updates.Add(new PendingSampleUpdate(i, updated));
+                }
+
+                if (updates != null)
+                    plans.Add(new PendingNodeUpdate(node, updates));
+            }
+
+            raiseSamplesEdited(commit(plans));
+        }
+
+        /// <summary>
         /// Restores the given nodes to the editor's default hit sample (normal hit sound, default bank, default set, volume 100).
         /// </summary>
         /// <remarks>

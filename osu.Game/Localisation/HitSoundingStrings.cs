@@ -154,6 +154,66 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString TimeRange(string start, string end) => new TranslatableString(getKey(@"time_range"), @"{0} - {1}", start, end);
 
+        /// <summary>
+        /// "Time"
+        /// </summary>
+        public static LocalisableString Time => new TranslatableString(getKey(@"time"), @"Time");
+
+        /// <summary>
+        /// "Set"
+        /// </summary>
+        public static LocalisableString SetCaption => new TranslatableString(getKey(@"set_caption"), @"Set");
+
+        /// <summary>
+        /// "Time of the selected sample point"
+        /// </summary>
+        public static LocalisableString TooltipTime => new TranslatableString(getKey(@"tooltip_time"), @"Time of the selected sample point");
+
+        /// <summary>
+        /// "Every sample of this object shares one set index"
+        /// </summary>
+        public static LocalisableString TooltipSelectedSet => new TranslatableString(getKey(@"tooltip_selected_set"), @"Every sample of this object shares one set index");
+
+        /// <summary>
+        /// "Click to choose the normal bank"
+        /// </summary>
+        public static LocalisableString TooltipSelectedBank => new TranslatableString(getKey(@"tooltip_selected_bank"), @"Click to choose the normal bank");
+
+        /// <summary>
+        /// "Choose the addition bank"
+        /// </summary>
+        public static LocalisableString TooltipSelectedAddition => new TranslatableString(getKey(@"tooltip_selected_addition"), @"Choose the addition bank");
+
+        /// <summary>
+        /// "Click to toggle Whistle"
+        /// </summary>
+        public static LocalisableString TooltipWhistle => new TranslatableString(getKey(@"tooltip_whistle"), @"Click to toggle Whistle");
+
+        /// <summary>
+        /// "Click to toggle Finish"
+        /// </summary>
+        public static LocalisableString TooltipFinish => new TranslatableString(getKey(@"tooltip_finish"), @"Click to toggle Finish");
+
+        /// <summary>
+        /// "Click to toggle Clap"
+        /// </summary>
+        public static LocalisableString TooltipClap => new TranslatableString(getKey(@"tooltip_clap"), @"Click to toggle Clap");
+
+        /// <summary>
+        /// "Toggle Whistle for selected points"
+        /// </summary>
+        public static LocalisableString HotkeyToggleWhistle => new TranslatableString(getKey(@"hotkey_toggle_whistle"), @"Toggle Whistle for selected points");
+
+        /// <summary>
+        /// "Toggle Finish for selected points"
+        /// </summary>
+        public static LocalisableString HotkeyToggleFinish => new TranslatableString(getKey(@"hotkey_toggle_finish"), @"Toggle Finish for selected points");
+
+        /// <summary>
+        /// "Toggle Clap for selected points"
+        /// </summary>
+        public static LocalisableString HotkeyToggleClap => new TranslatableString(getKey(@"hotkey_toggle_clap"), @"Toggle Clap for selected points");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }
