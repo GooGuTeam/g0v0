@@ -20,9 +20,10 @@ above.
 
 The editor includes a dedicated hitsounding mode. Every object gets the same five compact rows below
 **Objects** and **Volume**: **Sample set** (the normal bank), **Additions** (the addition bank), then **Whistle**,
-**Finish** and **Clap**. The rows keep a fixed height rather than stretching to fill the screen; the unused area
-reveals the beatmap background through a translucent overlay. Custom sample sets are created and configured in
-the editor's Setup screen, under the Resources section; hitsounding mode only assigns samples to those rows.
+**Finish** and **Clap**. The rows keep a fixed height rather than stretching to fill the screen. Below them,
+the selection panel edits the selected points' shared set, normal bank and addition bank, with Whistle / Finish / Clap
+toggles (default shortcuts W / E / R).
+Custom sample sets are created and configured in the editor's Setup screen, under the Resources section.
 
 The Sample set and Additions rows show a compact, fixed-size badge — the bank letter (`N` / `S` / `D`) above the
 numeric set index, with room for two characters and horizontal padding. Only discrete sound point times get
@@ -61,6 +62,17 @@ editing; dragging changes a run, while double-clicking opens its precise volume 
 
 The Objects and Volume rows behave as before, and the mouse wheel still seeks the cursor, snapping to the closest
 sound point rather than to the editor's beat grid.
+
+The lower **Preview** workspace lists user skin set 0, beatmap set 1 and available custom sets in a wrapping grid
+of up to five columns. Filter cards by set number and adjust the preview radius in seconds (default ±3 seconds).
+The Preview tab stays visible while its settings and sample cards scroll together, keeping the sets reachable
+when a short window forces the settings onto multiple rows.
+The optional range highlight spans the selected points, including a slider body's full duration. Playing a card
+starts the editor's music over that range and temporarily replaces only the selected points' sample set; their
+banks, additions and volumes remain intact, and surrounding objects retain their original samples. Preview does
+not edit the beatmap. It stops at the range boundary; selecting other points, editing, seeking or changing mode
+clears the temporary override. Set-only edits in the selection panel preserve independently assigned banks and
+remain undoable as one change.
 
 ## Download
 
