@@ -140,7 +140,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                         Anchor = Node.IsBody ? Anchor.CentreRight : Anchor.BottomCentre,
                         Origin = Node.IsBody ? Anchor.CentreRight : Anchor.BottomCentre,
                         X = Node.IsBody ? -10 : 0, Y = Node.IsBody ? 0 : -3,
-                        Font = OsuFont.Default.With(size: 16, weight: FontWeight.SemiBold),
+                        Font = OsuFont.Default.With(size: 14, weight: FontWeight.SemiBold),
                         Colour = colours.B5
                     }
                 }

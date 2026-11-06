@@ -9,12 +9,16 @@ namespace osu.Game.Screens.Edit.HitSounding
     public static class HitSoundingLayout
     {
         public const int LANE_COUNT = 5;
-        public const float LANE_HEIGHT = 64;
-        public const float SAMPLE_HEIGHT = 48;
+        public const float LANE_HEIGHT = 56;
+        public const float SAMPLE_HEIGHT = 40;
         public const float SAMPLE_WIDTH = 32;
         public const float SAMPLE_CORNER_RADIUS = 5;
-        public const float SAMPLE_FONT_SIZE = 24;
+        public const float SAMPLE_FONT_SIZE = 20;
         public const float LANE_SPACING = 4;
+        public const float OBJECTS_HEIGHT = 80;
+        public const float VOLUME_HEIGHT = 80;
+        public const float LANE_TOP = OBJECTS_HEIGHT + VOLUME_HEIGHT + 5;
+        public const float ROLL_HEIGHT = LANE_TOP + LANE_COUNT * LANE_HEIGHT;
         public const double PLAYBACK_FLASH_DURATION = 700;
         public const float PLAYBACK_FLASH_OPACITY = 0.7f;
     }

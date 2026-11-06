@@ -31,7 +31,6 @@ namespace osu.Game.Screens.Edit.HitSounding
     public partial class HitSoundingRoll : CompositeDrawable, IBlockGlobalAltScrollVolume
     {
         private const float header_width = 200;
-        private const float lane_top = 185;
         private readonly HitSoundingEditModel model;
         private readonly Dictionary<HitSoundingNode, HitSoundingSamplePoint[]> points = [];
         private readonly Dictionary<HitObject, HitSoundingObject> objects = [];
@@ -134,8 +133,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             Container headers;
             InternalChildren = new Drawable[]
             {
-                createHeader(HitSoundingStrings.Objects, 0, 80, true),
-                createHeader(EditorStrings.SampleVolume, 80, 100, false),
+                createHeader(HitSoundingStrings.Objects, 0, HitSoundingLayout.OBJECTS_HEIGHT, true),
+                createHeader(EditorStrings.SampleVolume, HitSoundingLayout.OBJECTS_HEIGHT, HitSoundingLayout.VOLUME_HEIGHT, false),
                 new Container
                 {
                     RelativeSizeAxes = Axes.X,
@@ -148,14 +147,14 @@ namespace osu.Game.Screens.Edit.HitSounding
                 },
                 new Container
                 {
-                    RelativeSizeAxes = Axes.X, Y = 80, Height = 100,
+                    RelativeSizeAxes = Axes.X, Y = HitSoundingLayout.OBJECTS_HEIGHT, Height = HitSoundingLayout.VOLUME_HEIGHT,
                     Padding = new MarginPadding { Left = header_width + 1 },
                     Child = topLanes = new Container
                     {
                         RelativeSizeAxes = Axes.Both, Masking = true,
                         Children = new Drawable[]
                         {
-                            createBackground(0, 100),
+                            createBackground(0, HitSoundingLayout.VOLUME_HEIGHT),
                             volume = new HitSoundingVolumeTrack(model),
                             topPlayhead = createPlayhead()
                         }
@@ -163,7 +162,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 },
                 new Container
                 {
-                    RelativeSizeAxes = Axes.X, Y = lane_top,
+                    RelativeSizeAxes = Axes.X, Y = HitSoundingLayout.LANE_TOP,
                     Height = HitSoundingLayout.LANE_COUNT * HitSoundingLayout.LANE_HEIGHT,
                     Children = new Drawable[]
                     {
@@ -188,13 +187,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                 },
                 new Container
                 {
-                    RelativeSizeAxes = Axes.X, Y = 80, Height = 425,
+                    RelativeSizeAxes = Axes.X, Y = HitSoundingLayout.OBJECTS_HEIGHT, Height = HitSoundingLayout.ROLL_HEIGHT - HitSoundingLayout.OBJECTS_HEIGHT,
                     Padding = new MarginPadding { Left = header_width + 1 }, Masking = true,
                     Child = timingRuler = new TimelineTickDisplay(fullHeight: true) { RelativeSizeAxes = Axes.Y }
                 },
                 new Container
                 {
-                    RelativeSizeAxes = Axes.X, Height = 505,
+                    RelativeSizeAxes = Axes.X, Height = HitSoundingLayout.ROLL_HEIGHT,
                     Padding = new MarginPadding { Left = header_width + 1 }, Masking = true,
                     Child = previewRange = new Container
                     {
