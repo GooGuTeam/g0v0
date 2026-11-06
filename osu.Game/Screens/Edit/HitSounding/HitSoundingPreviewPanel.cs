@@ -124,11 +124,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                         {
                             RelativeSizeAxes = Axes.Both,
                             Padding = new MarginPadding { Top = 40 },
-                            Child = new OsuScrollContainer
-                            {
-                                RelativeSizeAxes = Axes.Both,
-                                Child = gallery = new HitSoundingSampleGallery { RelativeSizeAxes = Axes.X, Height = 390, Alpha = 0 }
-                            }
+                            Child = gallery = new HitSoundingSampleGallery { Alpha = 0 }
                         }
                     }
                 }
@@ -251,7 +247,11 @@ namespace osu.Game.Screens.Edit.HitSounding
             public PreviewTabControl(Action<bool> showGallery)
             {
                 Current.BindValueChanged(e => showGallery(e.NewValue.Equals(HitSoundingStrings.SampleGallery)));
+                BarHeight = 0;
             }
+
+            [BackgroundDependencyLoader]
+            private void load(OverlayColourProvider colours) => StripColour = colours.Highlight1;
 
             protected override TabItem<LocalisableString> CreateTabItem(LocalisableString value) => new PreviewTabItem(value);
 

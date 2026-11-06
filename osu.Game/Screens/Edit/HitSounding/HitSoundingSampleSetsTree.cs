@@ -327,7 +327,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         /// <summary>
-        /// Clips the set columns and pans them horizontally (mouse wheel) or vertically when the gallery is short.
+        /// Clips the set columns and pans them vertically with the wheel, or horizontally with Shift + wheel.
         /// </summary>
         private partial class TreeViewport : CompositeDrawable
         {
@@ -385,15 +385,13 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             protected override bool OnScroll(ScrollEvent e)
             {
-                float delta = -e.ScrollDelta.Y * 50;
+                bool horizontal = e.ShiftPressed || e.ScrollDelta.X != 0;
+                float delta = -(e.ScrollDelta.X != 0 ? e.ScrollDelta.X : e.ScrollDelta.Y) * 50;
 
-                if (delta == 0)
-                    delta = e.ScrollDelta.X * 50;
-
-                if (MaxScrollX > 0)
-                    ScrollX += delta;
+                if (horizontal)
+                    ScrollX = Math.Clamp(ScrollX + delta, 0, MaxScrollX);
                 else
-                    ScrollY += delta;
+                    ScrollY = Math.Clamp(ScrollY + delta, 0, MaxScrollY);
 
                 return true;
             }
