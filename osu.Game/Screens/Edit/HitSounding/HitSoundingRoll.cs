@@ -44,6 +44,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private Container objectLayer = null!;
         private TimelineArea timelineArea = null!;
         private TimelineTickDisplay timingRuler = null!;
+        private TimelineTickDisplay volumeTimingRuler = null!;
         private Box topPlayhead = null!;
         private Box samplePlayhead = null!;
         private Container selectedColumns = null!;
@@ -155,6 +156,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                         Children = new Drawable[]
                         {
                             createBackground(0, HitSoundingLayout.VOLUME_HEIGHT),
+                            volumeTimingRuler = new TimelineTickDisplay(fullHeight: true) { RelativeSizeAxes = Axes.Y },
                             volume = new HitSoundingVolumeTrack(model),
                             topPlayhead = createPlayhead()
                         }
@@ -176,6 +178,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                                 Children = new Drawable[]
                                 {
                                     backgrounds = new Container { RelativeSizeAxes = Axes.Both },
+                                    timingRuler = new TimelineTickDisplay(fullHeight: true) { RelativeSizeAxes = Axes.Y },
                                     selectedColumns = new Container { RelativeSizeAxes = Axes.Both },
                                     markers = new Container { RelativeSizeAxes = Axes.Both },
                                     samplePlayhead = createPlayhead(),
@@ -184,12 +187,6 @@ namespace osu.Game.Screens.Edit.HitSounding
                             }
                         }
                     }
-                },
-                new Container
-                {
-                    RelativeSizeAxes = Axes.X, Y = HitSoundingLayout.OBJECTS_HEIGHT, Height = HitSoundingLayout.ROLL_HEIGHT - HitSoundingLayout.OBJECTS_HEIGHT,
-                    Padding = new MarginPadding { Left = header_width + 1 }, Masking = true,
-                    Child = timingRuler = new TimelineTickDisplay(fullHeight: true) { RelativeSizeAxes = Axes.Y }
                 },
                 new Container
                 {
@@ -319,9 +316,10 @@ namespace osu.Game.Screens.Edit.HitSounding
             topPlayhead.Anchor = samplePlayhead.Anchor = Anchor.TopLeft;
             topPlayhead.X = samplePlayhead.X = playheadX;
 
-            timingRuler.Width = timeline.PositionAtTime(editorClock.TrackLength);
-            timingRuler.X = -(float)(visibleStart / visibleDuration * lanes.DrawWidth);
+            timingRuler.Width = volumeTimingRuler.Width = timeline.PositionAtTime(editorClock.TrackLength);
+            timingRuler.X = volumeTimingRuler.X = -(float)(visibleStart / visibleDuration * lanes.DrawWidth);
             timingRuler.SetVisibleRange((float)visibleStart, (float)visibleEnd);
+            volumeTimingRuler.SetVisibleRange((float)visibleStart, (float)visibleEnd);
 
             if (previewingSeek)
             {

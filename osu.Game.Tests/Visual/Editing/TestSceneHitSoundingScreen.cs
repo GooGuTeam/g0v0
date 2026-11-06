@@ -636,7 +636,7 @@ namespace osu.Game.Tests.Visual.Editing
         public void TestComposeRulerStaysAlignedThroughZoomSeekAndDivisorChanges()
         {
             Timeline timeline = null!;
-            TimelineTickDisplay ruler = null!;
+            TimelineTickDisplay[] rulers = null!;
             TimelineTickDisplay ticks = null!;
 
             AddStep("find shared timeline", () =>
@@ -644,7 +644,7 @@ namespace osu.Game.Tests.Visual.Editing
                 var screen = Editor.ChildrenOfType<HitSoundingScreen>().Single();
                 timeline = screen.ChildrenOfType<Timeline>().Single();
                 ticks = timeline.ChildrenOfType<TimelineTickDisplay>().Single();
-                ruler = screen.ChildrenOfType<TimelineTickDisplay>().Single(t => t != ticks);
+                rulers = screen.ChildrenOfType<TimelineTickDisplay>().Where(t => t != ticks).ToArray();
             });
             AddUntilStep("ruler aligns with timeline", aligned);
             AddStep("zoom with original toolbar", () => Editor.ChildrenOfType<HitSoundingScreen>().Single().ChildrenOfType<TimelineButton>().First().TriggerClick());
@@ -668,16 +668,19 @@ namespace osu.Game.Tests.Visual.Editing
                 if (visibleTicks.Length == 0)
                     return false;
 
-                foreach (var tick in visibleTicks)
+                foreach (var ruler in rulers)
                 {
-                    var line = ruler.Children.SingleOrDefault(l => l.Alpha > 0 && l.X == tick.X);
-                    if (line == null || System.Math.Abs(line.ScreenSpaceDrawQuad.Centre.X - tick.ScreenSpaceDrawQuad.Centre.X) > 1)
-                        return false;
+                    foreach (var tick in visibleTicks)
+                    {
+                        var line = ruler.Children.SingleOrDefault(l => l.Alpha > 0 && l.X == tick.X);
+                        if (line == null || System.Math.Abs(line.ScreenSpaceDrawQuad.Centre.X - tick.ScreenSpaceDrawQuad.Centre.X) > 1)
+                            return false;
+                    }
                 }
 
                 var clap = Editor.ChildrenOfType<HitSoundingSamplePoint>().First(p => p.Lane == HitSoundingLane.Clap);
-                return ruler.ScreenSpaceDrawQuad.BottomLeft.Y > clap.ScreenSpaceDrawQuad.BottomLeft.Y
-                       && ruler.ScreenSpaceDrawQuad.BottomLeft.Y <= Editor.ChildrenOfType<HitSoundingPreviewPanel>().Single().ScreenSpaceDrawQuad.TopLeft.Y;
+                return rulers.Any(r => r.ScreenSpaceDrawQuad.BottomLeft.Y > clap.ScreenSpaceDrawQuad.BottomLeft.Y)
+                       && rulers.All(r => r.ScreenSpaceDrawQuad.BottomLeft.Y <= Editor.ChildrenOfType<HitSoundingPreviewPanel>().Single().ScreenSpaceDrawQuad.TopLeft.Y);
             }
         }
 
