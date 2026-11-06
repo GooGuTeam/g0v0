@@ -129,17 +129,17 @@ namespace osu.Game.Screens.Edit.HitSounding
                     background = new Box { RelativeSizeAxes = Axes.Both },
                     bankLabel = new OsuSpriteText
                     {
-                        Anchor = Node.IsBody ? Anchor.CentreLeft : Anchor.TopCentre,
+                        Anchor = Node.IsBody ? Anchor.Centre : Anchor.TopCentre,
                         Origin = Node.IsBody ? Anchor.CentreLeft : Anchor.TopCentre,
-                        X = Node.IsBody ? 10 : 0, Y = Node.IsBody ? 0 : 3,
+                        Y = Node.IsBody ? 0 : 3,
                         Font = OsuFont.Default.With(size: HitSoundingLayout.SAMPLE_FONT_SIZE, weight: FontWeight.Bold),
                         Colour = colours.B5
                     },
                     setLabel = new OsuSpriteText
                     {
-                        Anchor = Node.IsBody ? Anchor.CentreRight : Anchor.BottomCentre,
-                        Origin = Node.IsBody ? Anchor.CentreRight : Anchor.BottomCentre,
-                        X = Node.IsBody ? -10 : 0, Y = Node.IsBody ? 0 : -3,
+                        Anchor = Node.IsBody ? Anchor.Centre : Anchor.BottomCentre,
+                        Origin = Node.IsBody ? Anchor.CentreLeft : Anchor.BottomCentre,
+                        Y = Node.IsBody ? 0 : -3,
                         Font = OsuFont.Default.With(size: 14, weight: FontWeight.SemiBold),
                         Colour = colours.B5
                     }
@@ -205,8 +205,8 @@ namespace osu.Game.Screens.Edit.HitSounding
                 return;
 
             badge.X = markerX - Width / 2;
-            // Leave room for the head/repeat badges as well as the body capsule within the first span.
-            badge.Alpha = markerX >= HitSoundingLayout.SAMPLE_WIDTH + badge.Width / 2 + 4 ? 1 : 0;
+            // The label only needs to fit between the inner edges of the first span's node badges.
+            badge.Alpha = markerX * 2 >= HitSoundingLayout.SAMPLE_WIDTH + badge.Width ? 1 : 0;
         }
 
         public void Refresh()
@@ -263,6 +263,20 @@ namespace osu.Game.Screens.Edit.HitSounding
             base.Update();
             if (selected != model.SelectedNodes.Contains(Node))
                 updateSelection();
+        }
+
+        protected override void UpdateAfterChildren()
+        {
+            base.UpdateAfterChildren();
+
+            if (!Node.IsBody || badge == null)
+                return;
+
+            float textWidth = bankLabel.DrawWidth + 8 + setLabel.DrawWidth;
+            badge.Width = Math.Max(56, textWidth + 20);
+            bankLabel.X = -textWidth / 2;
+            setLabel.X = bankLabel.X + bankLabel.DrawWidth + 8;
+            UpdateBodyLayout(Width, bodyMarkerX);
         }
 
         private void updateSelection()

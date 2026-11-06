@@ -129,6 +129,62 @@ namespace osu.Game.Tests.Visual.Editing
             });
         }
 
+        [TestCase(1)]
+        [TestCase(1234)]
+        public void TestBodyLabelFitsBetweenEndpointBadges(int setIndex)
+        {
+            HitSoundingSamplePoint point = null!;
+            osu.Framework.Graphics.Containers.Container badge = null!;
+            AddStep("create narrow slider body label", () =>
+            {
+                createModel(new Slider
+                {
+                    Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT, useBeatmapSamples: true)]
+                });
+                model.SetBank(model.Nodes.Where(n => n.IsBody), HitSampleInfo.BANK_SOFT, setIndex, false);
+                point = new HitSoundingSamplePoint(getBodyNode(), model, HitSoundingLane.SampleSet)
+                {
+                    Position = new Vector2(250, 150)
+                };
+                Child = new DependencyProvidingContainer
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    CachedDependencies = [(typeof(OverlayColourProvider), new OverlayColourProvider(OverlayColourScheme.Aquamarine))],
+                    Children = new Drawable[] { model, point }
+                };
+            });
+            AddUntilStep("body label loaded", () => point.IsLoaded);
+            AddStep("fit label exactly between endpoints", () =>
+            {
+                badge = point.ChildrenOfType<OsuSpriteText>().First().Parent! as osu.Framework.Graphics.Containers.Container ?? throw new System.InvalidOperationException();
+                float span = HitSoundingLayout.SAMPLE_WIDTH + badge.Width;
+                point.UpdateBodyLayout(span, span / 2);
+            });
+            AddUntilStep("label visible at exact fit", () => badge.Alpha == 1);
+            AddAssert("text has eight pixel gap", () =>
+            {
+                var labels = point.ChildrenOfType<OsuSpriteText>().ToArray();
+                return System.Math.Abs(labels[1].X - labels[0].X - labels[0].DrawWidth - 8) < 0.01f;
+            });
+            AddAssert("text retains at least ten pixels on both sides", () =>
+            {
+                var labels = point.ChildrenOfType<OsuSpriteText>().ToArray();
+                return badge.Width / 2 + labels[0].X >= 9.99f && badge.Width / 2 - labels[1].X - labels[1].DrawWidth >= 9.99f;
+            });
+            AddStep("shrink span below fit", () =>
+            {
+                float span = HitSoundingLayout.SAMPLE_WIDTH + badge.Width - 1;
+                point.UpdateBodyLayout(span, span / 2);
+            });
+            AddUntilStep("label hides rather than overlapping endpoints", () => badge.Alpha == 0);
+            AddStep("widen span again", () =>
+            {
+                float span = HitSoundingLayout.SAMPLE_WIDTH + badge.Width + 1;
+                point.UpdateBodyLayout(span, span / 2);
+            });
+            AddUntilStep("label returns", () => badge.Alpha == 1);
+        }
+
         [Test]
         public void TestNormalBankAndSharedSet()
         {
