@@ -28,15 +28,7 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// </remarks>
     public partial class HitSoundingVolumeSegment : CompositeDrawable
     {
-        /// <summary>
-        /// The top of the volume graph, corresponding to a volume of 100.
-        /// </summary>
-        public const float CHART_TOP = 22;
-
-        /// <summary>
-        /// The bottom of the volume graph, corresponding to a volume of 0.
-        /// </summary>
-        public const float CHART_BOTTOM = 92;
+        private const float chart_top = 22;
 
         /// <summary>
         /// The nodes which share <see cref="Volume"/>, ordered by time.
@@ -87,6 +79,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private bool selected;
         private bool gripHovered;
         private float viewportWidth;
+        private float chartHeight;
 
         private Color4 lineColour;
         private Color4 selectedLineColour;
@@ -151,9 +144,6 @@ namespace osu.Game.Screens.Edit.HitSounding
                 }
             };
 
-            LineY = VolumeToY(DisplayVolume);
-            previousLineY = LineY;
-
             updateLabelText();
             updateDrawables();
         }
@@ -172,8 +162,6 @@ namespace osu.Game.Screens.Edit.HitSounding
             Volume = volume;
             DisplayVolume = volume;
 
-            LineY = VolumeToY(volume);
-            previousLineY = LineY;
             this.hasPrevious = hasPrevious;
 
             // a recycled segment may still be fading the grip of the run it showed before, so take the new state
@@ -209,7 +197,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// <param name="previousLineY">The vertical position of the preceding run's step line.</param>
         /// <param name="hasPrevious">Whether there is a preceding run to connect to.</param>
         /// <param name="viewportWidth">The width of the visible time window.</param>
-        public void UpdateLayout(float startX, float endX, float lineY, float previousLineY, bool hasPrevious, float viewportWidth)
+        /// <param name="chartHeight">The actual height of the volume row, whose bottom is volume zero.</param>
+        public void UpdateLayout(float startX, float endX, float lineY, float previousLineY, bool hasPrevious, float viewportWidth, float chartHeight)
         {
             StartX = startX;
             EndX = endX;
@@ -217,6 +206,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             this.previousLineY = previousLineY;
             this.hasPrevious = hasPrevious;
             this.viewportWidth = viewportWidth;
+            this.chartHeight = chartHeight;
 
             updateDrawables();
         }
@@ -230,7 +220,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 return;
 
             DisplayVolume = volume;
-            LineY = VolumeToY(volume);
+            LineY = VolumeToY(volume, chartHeight);
 
             updateLabelText();
             updateDrawables();
@@ -281,7 +271,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             float width = Math.Max(0, visibleEnd - visibleStart);
 
             fill.Position = new Vector2(visibleStart, LineY);
-            fill.Size = new Vector2(width, CHART_BOTTOM - LineY);
+            fill.Size = new Vector2(width, Math.Max(0, chartHeight - LineY));
 
             line.Position = new Vector2(visibleStart, LineY - line.Height / 2);
             line.Width = width;
@@ -323,11 +313,13 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// <summary>
         /// Maps a volume in [0, 100] to its vertical position in the graph.
         /// </summary>
-        public static float VolumeToY(int volume) => CHART_BOTTOM - Math.Clamp(volume, 0, 100) / 100f * (CHART_BOTTOM - CHART_TOP);
+        public static float VolumeToY(int volume, float height) => height - Math.Clamp(volume, 0, 100) / 100f * chartHeightFor(height);
 
         /// <summary>
         /// Maps a vertical position in the graph to the nearest volume.
         /// </summary>
-        public static int YToVolume(float y) => (int)Math.Round((CHART_BOTTOM - y) / (CHART_BOTTOM - CHART_TOP) * 100);
+        public static int YToVolume(float y, float height) => (int)Math.Round((height - y) / Math.Max(1, chartHeightFor(height)) * 100);
+
+        private static float chartHeightFor(float height) => Math.Max(0, height - chart_top);
     }
 }

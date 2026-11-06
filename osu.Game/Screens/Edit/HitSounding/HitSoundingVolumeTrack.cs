@@ -60,6 +60,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly HashSet<HitSoundingNode> selectedNodes = [];
 
         private Container<HitSoundingVolumeSegment> segmentLayer = null!;
+        private Box fullVolumeLine = null!;
+        private Box halfVolumeLine = null!;
         private CircularContainer previewDot = null!;
         private PopoverAnchor popoverAnchor = null!;
         private InputManager inputManager = null!;
@@ -71,6 +73,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private double laidOutStartTime;
         private double laidOutEndTime;
         private float laidOutWidth = -1;
+        private float laidOutHeight = -1;
 
         /// <summary>
         /// The half-open range of <see cref="runs"/> which currently owns a segment, in run order.
@@ -105,8 +108,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             this.model = model;
 
-            RelativeSizeAxes = Axes.X;
-            Height = 100;
+            RelativeSizeAxes = Axes.Both;
         }
 
         [BackgroundDependencyLoader]
@@ -114,8 +116,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             InternalChildren = new Drawable[]
             {
-                new Box { RelativeSizeAxes = Axes.X, Height = 1, Y = HitSoundingVolumeSegment.VolumeToY(100), Colour = colourProvider.Background4 },
-                new Box { RelativeSizeAxes = Axes.X, Height = 1, Y = HitSoundingVolumeSegment.VolumeToY(50), Colour = colourProvider.Background4 },
+                fullVolumeLine = new Box { RelativeSizeAxes = Axes.X, Height = 1, Colour = colourProvider.Background4 },
+                halfVolumeLine = new Box { RelativeSizeAxes = Axes.X, Height = 1, Colour = colourProvider.Background4 },
                 segmentLayer = new Container<HitSoundingVolumeSegment>
                 {
                     RelativeSizeAxes = Axes.Both,
@@ -186,7 +188,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// <summary>
         /// Maps a volume to the vertical coordinate used by this drawable.
         /// </summary>
-        public float YForVolume(int volume) => HitSoundingVolumeSegment.VolumeToY(volume);
+        public float YForVolume(int volume) => HitSoundingVolumeSegment.VolumeToY(volume, DrawHeight);
 
         /// <summary>
         /// The shortcuts to show while hovering a run of the volume graph.
@@ -268,11 +270,15 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             // a refresh can arrive without the window changing (a control point edit, a vertical resize), so only
             // reposition the graph when the mapping it uses actually changed or the runs were rebuilt.
-            if (!layoutPending && width == laidOutWidth && VisibleStartTime == laidOutStartTime && VisibleEndTime == laidOutEndTime)
+            if (!layoutPending && width == laidOutWidth && DrawHeight == laidOutHeight
+                && VisibleStartTime == laidOutStartTime && VisibleEndTime == laidOutEndTime)
                 return;
 
             layoutPending = false;
             laidOutWidth = width;
+            laidOutHeight = DrawHeight;
+            fullVolumeLine.Y = YForVolume(100);
+            halfVolumeLine.Y = YForVolume(50);
             laidOutStartTime = VisibleStartTime;
             laidOutEndTime = VisibleEndTime;
 
@@ -299,16 +305,16 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             // the run before the window still anchors the first materialised run's connector, so start from its line
             // rather than from the left edge of the graph.
-            float previousY = first > 0 ? HitSoundingVolumeSegment.VolumeToY(runs[first - 1].DisplayVolume) : 0;
+            float previousY = first > 0 ? YForVolume(runs[first - 1].DisplayVolume) : 0;
 
             for (int i = first; i < end; i++)
             {
                 VolumeRun run = runs[i];
                 HitSoundingVolumeSegment segment = run.Segment!;
-                float y = HitSoundingVolumeSegment.VolumeToY(run.DisplayVolume);
+                float y = YForVolume(run.DisplayVolume);
 
                 segment.UpdateLayout((float)((run.StartTime - visibleStart) * scale), (float)((run.EndTime - visibleStart) * scale),
-                    y, previousY, i > 0, width);
+                    y, previousY, i > 0, width, DrawHeight);
 
                 segments.Add(segment);
                 previousY = y;
@@ -474,7 +480,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 if (!inside && !nearStart)
                     continue;
 
-                double distance = Math.Abs(position.Y - HitSoundingVolumeSegment.VolumeToY(run.DisplayVolume));
+                double distance = Math.Abs(position.Y - YForVolume(run.DisplayVolume));
 
                 if (distance < bestDistance)
                 {
@@ -611,7 +617,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 return;
             }
 
-            previewDot.Position = new Vector2(TimeToX(node.Time) - previewDot.Size.X / 2, HitSoundingVolumeSegment.VolumeToY(run.DisplayVolume) - previewDot.Size.Y / 2);
+            previewDot.Position = new Vector2(TimeToX(node.Time) - previewDot.Size.X / 2, YForVolume(run.DisplayVolume) - previewDot.Size.Y / 2);
             previewDot.Alpha = 1;
         }
 
@@ -637,7 +643,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             HitSoundingNode[] targets = run.Nodes.ToArray();
 
-            openPopover(new Vector2(x, HitSoundingVolumeSegment.VolumeToY(run.DisplayVolume)),
+            openPopover(new Vector2(x, YForVolume(run.DisplayVolume)),
                 new HitSoundingVolumePopover(model, targets, run.StartTime, run.EndTime));
         }
 
@@ -653,7 +659,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             for (int i = 0; i < targets.Length; i++)
                 targets[i] = run.Nodes[index + i];
 
-            openPopover(new Vector2(TimeToX(node.Time), HitSoundingVolumeSegment.VolumeToY(run.DisplayVolume)),
+            openPopover(new Vector2(TimeToX(node.Time), YForVolume(run.DisplayVolume)),
                 new HitSoundingVolumePopover(model, targets, node.Time, run.EndTime));
         }
 
@@ -729,7 +735,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 return;
             }
 
-            int volume = Math.Clamp(HitSoundingVolumeSegment.YToVolume(ToLocalSpace(e.ScreenSpaceMousePosition).Y), DrawableHitObject.MINIMUM_SAMPLE_VOLUME, 100);
+            int volume = Math.Clamp(HitSoundingVolumeSegment.YToVolume(ToLocalSpace(e.ScreenSpaceMousePosition).Y, DrawHeight), DrawableHitObject.MINIMUM_SAMPLE_VOLUME, 100);
 
             if (volume == previewVolume)
                 return;
@@ -740,7 +746,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             // the following run's connector starts at this run's line.
             if (dragIndex + 1 < runs.Count)
-                runs[dragIndex + 1].Segment?.SetPreviousLineY(HitSoundingVolumeSegment.VolumeToY(volume));
+                runs[dragIndex + 1].Segment?.SetPreviousLineY(YForVolume(volume));
         }
 
         protected override void OnDragEnd(DragEndEvent e)
@@ -792,6 +798,13 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             if (!IsLoaded)
                 return;
+
+            if (DrawHeight != laidOutHeight || DrawWidth != laidOutWidth)
+            {
+                layout();
+                if (previewVisible)
+                    updatePreview(ToLocalSpace(inputManager.CurrentState.Mouse.Position));
+            }
 
             bool control = inputManager.CurrentState.Keyboard.ControlPressed;
 

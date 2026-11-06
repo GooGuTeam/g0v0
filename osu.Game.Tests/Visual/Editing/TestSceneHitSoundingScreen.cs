@@ -788,6 +788,42 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
+        public void TestVolumeGraphFollowsResizedRow()
+        {
+            HitSoundingVolumeTrack track = null!;
+            float previousHeight = 0;
+            AddStep("find volume graph", () => track = Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single());
+            AddAssert("graph fills initial row", followsRow);
+
+            foreach (float offset in new[] { -100f, 160f, -80f })
+            {
+                AddStep("resize volume row " + offset, () =>
+                {
+                    previousHeight = track.DrawHeight;
+                    var divider = Editor.ChildrenOfType<Drawable>().Single(d => d.Name == "Hitsounding workspace splitter");
+                    InputManager.MoveMouseTo(divider);
+                    InputManager.PressButton(MouseButton.Left);
+                    InputManager.MoveMouseTo(divider.ScreenSpaceDrawQuad.Centre + new Vector2(0, offset));
+                    InputManager.ReleaseButton(MouseButton.Left);
+                });
+                AddUntilStep("graph follows changed row", () => track.DrawHeight != previousHeight && followsRow());
+            }
+
+            TestVolumeDragMergesAndUndoes();
+
+            bool followsRow()
+            {
+                float bottom = track.Parent!.ScreenSpaceDrawQuad.BottomLeft.Y;
+                return System.Math.Abs(track.ScreenSpaceDrawQuad.BottomLeft.Y - bottom) < 0.1f
+                       && System.Math.Abs(track.ToScreenSpace(new Vector2(0, track.YForVolume(0))).Y - bottom) < 0.1f
+                       && track.Segments.Any(s => s.IsPresent)
+                       && track.Segments.Where(s => s.IsPresent).All(s =>
+                           System.Math.Abs(s.ChildrenOfType<Framework.Graphics.Shapes.Box>().Max(b => b.ScreenSpaceDrawQuad.BottomLeft.Y) - bottom) < 0.1f
+                           && System.Math.Abs((track.DrawHeight - s.LineY) / (track.DrawHeight - track.YForVolume(100)) - s.DisplayVolume / 100f) < 0.001f);
+            }
+        }
+
+        [Test]
         public void TestComposeRulerStaysAlignedThroughZoomSeekAndDivisorChanges()
         {
             Timeline timeline = null!;
