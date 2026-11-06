@@ -147,8 +147,10 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (!IsLoaded)
                 return;
 
-            previewContent.Alpha = visible ? 0 : 1;
-            gallery.Alpha = visible ? 1 : 0;
+            previewContent.FadeTo(visible ? 0 : 1, 180, Easing.OutQuint);
+            previewContent.MoveToX(visible ? -10 : 0, 180, Easing.OutQuint);
+            gallery.FadeTo(visible ? 1 : 0, 180, Easing.OutQuint);
+            gallery.MoveToX(visible ? 0 : 10, 180, Easing.OutQuint);
             playback.StopSetPreview();
             library.StopPreview();
         }

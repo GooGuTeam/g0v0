@@ -98,8 +98,6 @@ namespace osu.Game.Screens.Edit.HitSounding
         public const float SLOT_INDENT = 32;
         public const float SECTION_SPACING = 5;
 
-        private const float minimum_viewport_height = 54;
-
         private readonly HitSoundingSampleGallery gallery;
         private readonly List<HitSoundingSampleSetColumn> columns = new List<HitSoundingSampleSetColumn>();
         private readonly List<int> currentSets = new List<int>();
@@ -127,8 +125,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             this.gallery = gallery;
 
-            RelativeSizeAxes = Axes.X;
-            AutoSizeAxes = Axes.Y;
+            RelativeSizeAxes = Axes.Both;
         }
 
         [BackgroundDependencyLoader]
@@ -136,24 +133,31 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             this.colours = colours;
 
-            InternalChild = new FillFlowContainer
+            InternalChildren = new Drawable[]
             {
-                RelativeSizeAxes = Axes.X,
-                AutoSizeAxes = Axes.Y,
-                Direction = FillDirection.Vertical,
-                Spacing = new Vector2(0, SECTION_SPACING),
-                Children = new[]
+                createHeader(),
+                new Container
                 {
-                    createHeader(),
-                    viewport = new TreeViewport(),
-                    scrollbar = new SetsScrollbar(),
-                    new OsuSpriteText
+                    RelativeSizeAxes = Axes.Both,
+                    Padding = new MarginPadding { Top = HEADER_HEIGHT + SECTION_SPACING, Bottom = HINT_HEIGHT + SECTION_SPACING },
+                    Children = new Drawable[]
                     {
-                        Name = "Sample sets hint",
-                        Text = HitSoundingStrings.TreeHint,
-                        Font = OsuFont.Default.With(size: 12),
-                        Colour = colours.Light3,
+                        viewport = new TreeViewport(),
+                        scrollbar = new SetsScrollbar
+                        {
+                            Anchor = Anchor.BottomLeft,
+                            Origin = Anchor.BottomLeft,
+                        },
                     },
+                },
+                new OsuSpriteText
+                {
+                    Name = "Sample sets hint",
+                    Anchor = Anchor.BottomLeft,
+                    Origin = Anchor.BottomLeft,
+                    Text = HitSoundingStrings.TreeHint,
+                    Font = OsuFont.Default.With(size: 12),
+                    Colour = colours.Light3,
                 },
             };
 
@@ -177,8 +181,6 @@ namespace osu.Game.Screens.Edit.HitSounding
                 rebuildIfNeeded();
                 rebuildQueued = false;
             }
-
-            updateViewportHeight();
 
             scrollbar.UpdateState(viewport.ScrollX, viewport.MaxScrollX, viewport.DrawWidth, viewport.ContentWidth);
         }
@@ -295,16 +297,6 @@ namespace osu.Game.Screens.Edit.HitSounding
             viewport.ScrollX = scroll;
         }
 
-        private void updateViewportHeight()
-        {
-            float parentHeight = Parent?.DrawHeight ?? 0;
-            float available = parentHeight - (HEADER_HEIGHT + SCROLLBAR_HEIGHT + HINT_HEIGHT + SECTION_SPACING * 3);
-            float height = Math.Clamp(available, minimum_viewport_height, TREE_HEIGHT);
-
-            if (viewport.Height != height)
-                viewport.Height = height;
-        }
-
         protected override void Dispose(bool isDisposing)
         {
             if (isDisposing && IsLoaded)
@@ -337,8 +329,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 Name = "Sample sets tree";
 
-                RelativeSizeAxes = Axes.X;
-                Height = TREE_HEIGHT;
+                RelativeSizeAxes = Axes.Both;
                 Masking = true;
 
                 InternalChild = new Container
@@ -398,7 +389,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         /// <summary>
-        /// The 8px rule underneath the tree, whose thumb tracks the horizontal scroll position.
+        /// The translucent horizontal scrollbar overlaid on the bottom edge of the tree viewport.
         /// </summary>
         private partial class SetsScrollbar : CompositeDrawable
         {
@@ -419,13 +410,13 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                 InternalChildren = new Drawable[]
                 {
-                    track = new Box { RelativeSizeAxes = Axes.Both },
+                    track = new Box { RelativeSizeAxes = Axes.Both, Alpha = 0.2f },
                     thumb = new Container
                     {
                         Height = SCROLLBAR_HEIGHT,
                         Masking = true,
                         CornerRadius = SCROLLBAR_HEIGHT / 2,
-                        Child = thumbFill = new Box { RelativeSizeAxes = Axes.Both },
+                        Child = thumbFill = new Box { RelativeSizeAxes = Axes.Both, Alpha = 0.6f },
                     },
                 };
             }
@@ -441,11 +432,11 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 if (maxScrollX <= 0 || contentWidth <= 0 || DrawWidth <= 0)
                 {
-                    thumb.Hide();
+                    Hide();
                     return;
                 }
 
-                thumb.Show();
+                Show();
 
                 float thumbWidth = Math.Clamp(DrawWidth * (viewportWidth / contentWidth), 24, DrawWidth);
                 thumb.Width = thumbWidth;
@@ -457,6 +448,8 @@ namespace osu.Game.Screens.Edit.HitSounding
                 dragTo(e.MousePosition.X);
                 return true;
             }
+
+            protected override bool OnDragStart(DragStartEvent e) => true;
 
             protected override void OnDrag(DragEvent e) => dragTo(e.MousePosition.X);
 

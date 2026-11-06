@@ -141,6 +141,33 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("alias finds original file", () => gallery.FileLibrary.Tiles.Select(t => t.Filename).SequenceEqual(new[] { "impact_bell_03.wav" }));
         }
 
+        [Test]
+        public void TestTallGalleryShowsAllSlotsWithoutVerticalScrolling()
+        {
+            HitSoundingSampleGallery gallery = null!;
+            Vector2 initial = default;
+            AddStep("give gallery room for all banks", () =>
+            {
+                gallery = Editor.ChildrenOfType<HitSoundingSampleGallery>().Single();
+                gallery.RelativeSizeAxes = Axes.X;
+                gallery.Height = 420;
+                library.AddSet();
+            });
+            AddUntilStep("all twelve slots visible", () => gallery.Tree.Columns.All(c => c.Slots.All(s => gallery.Tree.GetSlotAt(s.ScreenSpaceDrawQuad.Centre) == s)));
+            AddStep("try scrolling complete tree", () =>
+            {
+                initial = gallery.Tree.Columns[0].ScreenSpaceDrawQuad.TopLeft;
+                InputManager.MoveMouseTo(gallery.Tree.Columns[0]);
+                InputManager.ScrollVerticalBy(-10);
+            });
+            AddAssert("complete tree does not scroll vertically", () => gallery.Tree.Columns[0].ScreenSpaceDrawQuad.TopLeft == initial);
+            AddAssert("hint stays at gallery bottom", () =>
+            {
+                var hint = gallery.Tree.ChildrenOfType<Drawable>().Single(d => d.Name == "Sample sets hint");
+                return Math.Abs(hint.ScreenSpaceDrawQuad.BottomLeft.Y - gallery.ScreenSpaceDrawQuad.BottomLeft.Y) < 1;
+            });
+        }
+
         [TestCase(180)]
         [TestCase(260)]
         public void TestTreeScrollAxesInShortGallery(float height)

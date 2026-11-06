@@ -633,6 +633,30 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
+        public void TestWorkspaceDividerResizesBothPanels()
+        {
+            HitSoundingRoll roll = null!;
+            HitSoundingPreviewPanel panel = null!;
+            float initialHeight = 0;
+            float initialPanelHeight = 0;
+            AddStep("drag workspace divider upwards", () =>
+            {
+                roll = Editor.ChildrenOfType<HitSoundingRoll>().Single();
+                panel = Editor.ChildrenOfType<HitSoundingPreviewPanel>().Single();
+                initialHeight = roll.Height;
+                initialPanelHeight = panel.DrawHeight;
+                var divider = Editor.ChildrenOfType<Drawable>().Single(d => d.Name == "Hitsounding workspace splitter");
+                InputManager.MoveMouseTo(divider);
+                InputManager.PressButton(MouseButton.Left);
+                InputManager.MoveMouseTo(divider.ScreenSpaceDrawQuad.Centre - new Vector2(0, 100));
+                InputManager.ReleaseButton(MouseButton.Left);
+            });
+            AddUntilStep("roll contracts and workspace grows", () => roll.Height < initialHeight - 50 && panel.DrawHeight > initialPanelHeight + 50);
+            AddAssert("sample lanes remain accessible", () => Editor.ChildrenOfType<HitSoundingSamplePoint>()
+                .Where(p => p.IsEnabled).All(p => p.ScreenSpaceDrawQuad.BottomLeft.Y <= panel.ScreenSpaceDrawQuad.TopLeft.Y));
+        }
+
+        [Test]
         public void TestComposeRulerStaysAlignedThroughZoomSeekAndDivisorChanges()
         {
             Timeline timeline = null!;

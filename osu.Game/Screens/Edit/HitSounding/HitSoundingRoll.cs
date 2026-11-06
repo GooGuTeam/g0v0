@@ -40,6 +40,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         private Container lanes = null!;
         private Container topLanes = null!;
         private Container backgrounds = null!;
+        private Container laneSection = null!;
+        private Container laneHeaders = null!;
+        private Container volumeSection = null!;
+        private Container volumeHeader = null!;
+        private Container rangeContainer = null!;
         private Container markers = null!;
         private Container objectLayer = null!;
         private TimelineArea timelineArea = null!;
@@ -125,17 +130,17 @@ namespace osu.Game.Screens.Edit.HitSounding
         public HitSoundingRoll(HitSoundingEditModel model)
         {
             this.model = model;
-            RelativeSizeAxes = Axes.Both;
+            RelativeSizeAxes = Axes.X;
+            Height = HitSoundingLayout.ROLL_HEIGHT;
         }
 
         [BackgroundDependencyLoader]
         private void load()
         {
-            Container headers;
             InternalChildren = new Drawable[]
             {
                 createHeader(HitSoundingStrings.Objects, 0, HitSoundingLayout.OBJECTS_HEIGHT, true),
-                createHeader(EditorStrings.SampleVolume, HitSoundingLayout.OBJECTS_HEIGHT, HitSoundingLayout.VOLUME_HEIGHT, false),
+                volumeHeader = createHeader(EditorStrings.SampleVolume, HitSoundingLayout.OBJECTS_HEIGHT, HitSoundingLayout.VOLUME_HEIGHT, false),
                 new Container
                 {
                     RelativeSizeAxes = Axes.X,
@@ -146,7 +151,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                         HandleBeatDivisorAction = cycleHoveredSet
                     }
                 },
-                new Container
+                volumeSection = new Container
                 {
                     RelativeSizeAxes = Axes.X, Y = HitSoundingLayout.OBJECTS_HEIGHT, Height = HitSoundingLayout.VOLUME_HEIGHT,
                     Padding = new MarginPadding { Left = header_width + 1 },
@@ -155,20 +160,20 @@ namespace osu.Game.Screens.Edit.HitSounding
                         RelativeSizeAxes = Axes.Both, Masking = true,
                         Children = new Drawable[]
                         {
-                            createBackground(0, HitSoundingLayout.VOLUME_HEIGHT),
+                            createBackground(0, 1).With(b => b.RelativeSizeAxes = Axes.Both),
                             volumeTimingRuler = new TimelineTickDisplay(fullHeight: true) { RelativeSizeAxes = Axes.Y },
                             volume = new HitSoundingVolumeTrack(model),
                             topPlayhead = createPlayhead()
                         }
                     }
                 },
-                new Container
+                laneSection = new Container
                 {
                     RelativeSizeAxes = Axes.X, Y = HitSoundingLayout.LANE_TOP,
                     Height = HitSoundingLayout.LANE_COUNT * HitSoundingLayout.LANE_HEIGHT,
                     Children = new Drawable[]
                     {
-                        headers = new Container { Width = header_width, RelativeSizeAxes = Axes.Y },
+                        laneHeaders = new Container { Width = header_width, RelativeSizeAxes = Axes.Y },
                         new Container
                         {
                             RelativeSizeAxes = Axes.Both, Padding = new MarginPadding { Left = header_width + 1 },
@@ -188,7 +193,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                         }
                     }
                 },
-                new Container
+                rangeContainer = new Container
                 {
                     RelativeSizeAxes = Axes.X, Height = HitSoundingLayout.ROLL_HEIGHT,
                     Padding = new MarginPadding { Left = header_width + 1 }, Masking = true,
@@ -207,7 +212,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             for (int i = 0; i < HitSoundingLayout.LANE_COUNT; i++)
             {
-                headers.Add(new HitSoundingLaneHeader((HitSoundingLane)i));
+                laneHeaders.Add(new HitSoundingLaneHeader((HitSoundingLane)i));
                 backgrounds.Add(new Container
                 {
                     RelativeSizeAxes = Axes.X,
@@ -299,6 +304,19 @@ namespace osu.Game.Screens.Edit.HitSounding
         protected override void UpdateAfterChildren()
         {
             base.UpdateAfterChildren();
+            float volumeHeight = Math.Clamp(Math.Min(HitSoundingLayout.VOLUME_HEIGHT + (DrawHeight - HitSoundingLayout.ROLL_HEIGHT) * 0.25f,
+                DrawHeight - HitSoundingLayout.OBJECTS_HEIGHT - 5 - HitSoundingLayout.LANE_COUNT * (HitSoundingLayout.SAMPLE_HEIGHT + HitSoundingLayout.LANE_SPACING)), 40, 120);
+            float laneTop = HitSoundingLayout.OBJECTS_HEIGHT + volumeHeight + 5;
+            float laneHeight = Math.Max(HitSoundingLayout.SAMPLE_HEIGHT + HitSoundingLayout.LANE_SPACING, (DrawHeight - laneTop) / HitSoundingLayout.LANE_COUNT);
+            volumeHeader.Height = volumeSection.Height = volumeHeight;
+            laneSection.Y = laneTop;
+            laneSection.Height = laneHeight * HitSoundingLayout.LANE_COUNT;
+            rangeContainer.Height = DrawHeight;
+            for (int i = 0; i < HitSoundingLayout.LANE_COUNT; i++)
+            {
+                laneHeaders[i].Y = backgrounds[i].Y = i * laneHeight;
+                laneHeaders[i].Height = backgrounds[i].Height = laneHeight;
+            }
 
             var timeline = timelineArea.Timeline;
             if (!timeline.IsLoaded || timeline.DrawWidth <= 0 || editorClock.TrackLength <= 0)
@@ -382,7 +400,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                 foreach (var point in nodePoints)
                 {
-                    point.Position = new Vector2(timeToX((nodeStart + nodeEnd) / 2), ((float)point.Lane + 0.5f) * HitSoundingLayout.LANE_HEIGHT - HitSoundingLayout.LANE_SPACING / 2);
+                    point.Position = new Vector2(timeToX((nodeStart + nodeEnd) / 2), ((float)point.Lane + 0.5f) * laneHeight - HitSoundingLayout.LANE_SPACING / 2);
 
                     if (node.IsBody)
                         point.UpdateBodyLayout(timeToX(nodeEnd) - timeToX(nodeStart), timeToX(node.Time) - timeToX(nodeStart));
