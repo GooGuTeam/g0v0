@@ -33,6 +33,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private const float header_width = 200;
         private readonly HitSoundingEditModel model;
         private readonly Dictionary<HitSoundingNode, HitSoundingSamplePoint[]> points = [];
+        private readonly Dictionary<HitSoundingSamplePoint[], Container> pointGroups = [];
         private readonly Dictionary<HitObject, HitSoundingObject> objects = [];
         private readonly Dictionary<HitObject, HitSoundingSliderPlaybackFlash[]> sliderFlashes = [];
         private readonly Stack<HitSoundingSamplePoint[]> pointPool = [];
@@ -322,6 +323,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             laneSection.Y = laneTop;
             laneSection.Height = laneHeight * HitSoundingLayout.LANE_COUNT;
             rangeContainer.Height = DrawHeight;
+
             for (int i = 0; i < HitSoundingLayout.LANE_COUNT; i++)
             {
                 laneHeaders[i].Y = backgrounds[i].Y = i * laneHeight;
@@ -369,6 +371,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             var nodes = model.Nodes;
             var hitObjects = beatmap.HitObjects;
+
             if (invalid)
             {
                 refreshPoints();
@@ -384,6 +387,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             double rangeStart = startTime - 200;
             double rangeEnd = endTime + 200;
             removedNodes.Clear();
+
             foreach (var node in points.Keys)
             {
                 double nodeStart = node.IsBody ? node.HitObject.StartTime : node.Time;
@@ -396,6 +400,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 recyclePoints(points[node]);
                 points.Remove(node);
+
                 if (node.IsBody && sliderFlashes.Remove(node.HitObject, out var flashes))
                 {
                     recycleFlashes(flashes);
@@ -403,6 +408,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             }
 
             var (firstNode, lastNode) = nodeRange.Find(rangeStart, rangeEnd);
+
             for (int nodeIndex = firstNode; nodeIndex < lastNode; nodeIndex++)
             {
                 var node = nodes[nodeIndex];
@@ -414,6 +420,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 if (!points.TryGetValue(node, out var nodePoints))
                 {
                     var pool = node.IsBody ? bodyPointPool : pointPool;
+
                     if (pool.TryPop(out nodePoints))
                     {
                         foreach (var point in nodePoints)
@@ -424,11 +431,30 @@ namespace osu.Game.Screens.Edit.HitSounding
                         nodePoints = new HitSoundingSamplePoint[HitSoundingLayout.LANE_COUNT];
                         for (int i = 0; i < nodePoints.Length; i++)
                             nodePoints[i] = new HitSoundingSamplePoint(node, model, (HitSoundingLane)i) { Depth = node.IsBody ? 1 : 0 };
+
+                        if (!node.IsBody)
+                        {
+                            // Only commute glows across the other lanes of this node. Their contents are disjoint
+                            // even at the minimum lane pitch (40px content + 4px glow), unlike neighbouring nodes.
+                            var group = new Container { RelativeSizeAxes = Axes.Both };
+                            foreach (var point in nodePoints)
+                                group.Add(point.CreateGlowProxy());
+                            foreach (var point in nodePoints)
+                                group.Add(point);
+                            // Parent is assigned only once a drawable loads; retain ownership before then as well.
+                            pointGroups.Add(nodePoints, group);
+                        }
                     }
 
                     points.Add(node, nodePoints);
-                    foreach (var point in nodePoints)
-                        markers.Add(point);
+
+                    if (node.IsBody)
+                    {
+                        foreach (var point in nodePoints)
+                            markers.Add(point);
+                    }
+                    else
+                        markers.Add(pointGroups[nodePoints]);
                 }
 
                 foreach (var point in nodePoints)
@@ -479,6 +505,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             concurrentObjects.Clear();
 
             removedObjects.Clear();
+
             foreach (var hitObject in objects.Keys)
             {
                 if (hitObject.GetEndTime() < rangeStart || hitObject.StartTime > rangeEnd)
@@ -493,6 +520,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             }
 
             var (firstObject, lastObject) = objectRange.Find(rangeStart, rangeEnd);
+
             for (int objectIndex = firstObject; objectIndex < lastObject; objectIndex++)
             {
                 var hitObject = hitObjects[objectIndex];
@@ -583,8 +611,12 @@ namespace osu.Game.Screens.Edit.HitSounding
             foreach (var point in nodePoints)
             {
                 point.ResetForReuse();
-                markers.Remove(point, false);
+                if (point.Node.IsBody)
+                    markers.Remove(point, false);
             }
+
+            if (!nodePoints[0].Node.IsBody)
+                markers.Remove(pointGroups[nodePoints], false);
 
             (nodePoints[0].Node.IsBody ? bodyPointPool : pointPool).Push(nodePoints);
         }
@@ -643,6 +675,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 }
 
                 double end = double.NegativeInfinity;
+
                 for (int i = 0; i < count; i++)
                 {
                     var range = getRange(i);
@@ -658,6 +691,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 int low = 0;
                 int high = ends.Length;
+
                 while (low < high)
                 {
                     int mid = low + (high - low) / 2;
@@ -669,6 +703,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                 int first = low;
                 high = starts.Length;
+
                 while (low < high)
                 {
                     int mid = low + (high - low) / 2;
@@ -860,8 +895,13 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 foreach (var pooled in pointPool.Concat(bodyPointPool))
                 {
-                    foreach (var point in pooled)
-                        point.Dispose();
+                    if (pooled[0].Node.IsBody)
+                    {
+                        foreach (var point in pooled)
+                            point.Dispose();
+                    }
+                    else
+                        pointGroups[pooled].Dispose();
                 }
 
                 foreach (var pooled in flashPool)

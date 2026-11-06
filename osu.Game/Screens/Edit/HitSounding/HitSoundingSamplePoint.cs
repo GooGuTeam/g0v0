@@ -40,6 +40,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private readonly HitSoundingEditModel model;
         private Container? badge;
+        private readonly Container? glow;
         private Box? background;
         private Container? bodyFill;
         private Container playbackFlash = null!;
@@ -103,11 +104,32 @@ namespace osu.Game.Screens.Edit.HitSounding
             this.model = model;
             Origin = Anchor.Centre;
             Size = new osuTK.Vector2(HitSoundingLayout.SAMPLE_WIDTH, HitSoundingLayout.SAMPLE_HEIGHT);
+
+            if (!node.IsBody)
+            {
+                glow = new Container
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Masking = true,
+                    Blending = BlendingParameters.Additive,
+                    CornerRadius = HitSoundingLayout.SAMPLE_CORNER_RADIUS,
+                };
+            }
+        }
+
+        internal Drawable CreateGlowProxy()
+        {
+            var proxy = glow!.CreateProxy();
+            proxy.Blending = BlendingParameters.Additive;
+            return proxy;
         }
 
         [BackgroundDependencyLoader]
         private void load()
         {
+            if (glow != null)
+                AddInternal(glow);
+
             if (Node.IsBody)
             {
                 AddInternal(bodyFill = new Container
@@ -226,7 +248,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (popoverContainer != null && ReferenceEquals(popoverContainer.CurrentTarget, this))
                 this.HidePopover();
 
-            if (playbackFlash == null)
+            if (!IsLoaded)
                 return;
 
             // A fade started for the previous node must not carry over as a glow on the reused control.
@@ -292,7 +314,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             };
             setLabel.Text = Node.SetIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
             bankLabel.Alpha = setLabel.Alpha = bankLane && IsEnabled && showBank ? 1 : 0;
-            badge.EdgeEffect = !Node.IsBody && background.Alpha == 1
+
+            glow?.EdgeEffect = background.Alpha == 1
                 ? new EdgeEffectParameters
                 {
                     Type = EdgeEffectType.Glow,
@@ -300,6 +323,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     Radius = 4
                 }
                 : default;
+
             updateSelection();
         }
 
