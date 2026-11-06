@@ -277,19 +277,42 @@ namespace osu.Game.Screens.Edit.HitSounding
                 ? Lane switch
                 {
                     HitSoundingLane.SampleSet or HitSoundingLane.Additions => selected || IsHovered ? 0.35f : 0.25f,
-                    HitSoundingLane.Whistle => Node.HasAddition(HitSampleInfo.HIT_WHISTLE) ? 0.66f : IsHovered ? 0.2f : hasWhistleEndpoint() ? 0.08f : 0,
+                    HitSoundingLane.Whistle => Node.HasAddition(HitSampleInfo.HIT_WHISTLE) ? 0.66f : IsHovered ? 0.2f : hasEndpointSample(HitSampleInfo.HIT_WHISTLE) ? 0.08f : 0,
                     _ => 0
                 }
-                : 0;
+                : Lane == HitSoundingLane.Additions && Node.CanEditSamples && hasAdditionEndpoint()
+                    ? 0.25f
+                    : 0;
         }
 
-        private bool hasWhistleEndpoint()
+        private bool hasAdditionEndpoint()
+        {
+            foreach (string addition in HitSampleInfo.ALL_ADDITIONS)
+            {
+                if (hasEndpointSample(addition))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private bool hasEndpointSample(string sample)
         {
             if (Node.HitObject is not IHasRepeats repeats || repeats.NodeSamples.Count == 0)
                 return false;
 
-            return repeats.NodeSamples[0].Any(s => s.Name == HitSampleInfo.HIT_WHISTLE)
-                   || repeats.NodeSamples[^1].Any(s => s.Name == HitSampleInfo.HIT_WHISTLE);
+            return containsSample(repeats.NodeSamples[0], sample) || containsSample(repeats.NodeSamples[^1], sample);
+        }
+
+        private static bool containsSample(IList<HitSampleInfo> samples, string name)
+        {
+            for (int i = 0; i < samples.Count; i++)
+            {
+                if (samples[i].Name == name)
+                    return true;
+            }
+
+            return false;
         }
 
         internal void FlashPlayback()

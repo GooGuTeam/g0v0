@@ -361,6 +361,49 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
+        public void TestAdditionUnderlayFollowsEndpoints(
+            [Values(HitSampleInfo.HIT_WHISTLE, HitSampleInfo.HIT_FINISH, HitSampleInfo.HIT_CLAP)]
+            string addition,
+            [Values] bool headAddition, [Values] bool tailAddition)
+        {
+            Slider slider = null!;
+            AddStep("create slider without body additions", () =>
+            {
+                foreach (var hitObject in EditorBeatmap.HitObjects.ToArray())
+                    EditorBeatmap.Remove(hitObject);
+
+                slider = new Slider
+                {
+                    StartTime = 1000,
+                    Path = new SliderPath(new[] { new PathControlPoint(Vector2.Zero), new PathControlPoint(new Vector2(500, 0)) }),
+                    Samples = samples(false),
+                    NodeSamples = [samples(headAddition), samples(tailAddition)]
+                };
+                EditorBeatmap.Add(slider);
+                EditorClock.Seek(1500);
+                InputManager.MoveMouseTo(Vector2.Zero);
+            });
+            AddUntilStep("addition interval loaded", () => Editor.ChildrenOfType<HitSoundingSamplePoint>().Any(p => p.Node.HitObject == slider && p.Node.IsBody && p.IsLoaded));
+            AddUntilStep("addition underlay follows endpoints", () => underlayVisible() == (headAddition || tailAddition));
+            AddAssert("body addition bank remains disabled", () => !bodyPoint().IsEnabled);
+            AddAssert("body addition labels remain hidden", () => bodyPoint().ChildrenOfType<OsuSpriteText>().All(t => t.Alpha == 0));
+            AddStep("remove endpoint additions", () => model.ToggleAddition(model.Nodes.Where(n => n.HitObject == slider && !n.IsBody && n.HasAddition(addition)), addition));
+            AddUntilStep("addition underlay clears", () => !underlayVisible());
+            AddAssert("body gains no addition", () => !slider.Samples.Any(s => HitSampleInfo.ALL_ADDITIONS.Contains(s.Name)));
+
+            HitSoundingSamplePoint bodyPoint() => Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node.HitObject == slider && p.Node.IsBody && p.Lane == HitSoundingLane.Additions);
+            bool underlayVisible() => bodyPoint().ChildrenOfType<osu.Framework.Graphics.Containers.Container>().First().Alpha > 0;
+
+            List<HitSampleInfo> samples(bool enabled)
+            {
+                var result = new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT) };
+                if (enabled)
+                    result.Add(new HitSampleInfo(addition, HitSampleInfo.BANK_SOFT, editorAutoBank: false));
+                return result;
+            }
+        }
+
+        [Test]
         public void TestSliderBodyIntervalEditsWithoutRetargetingHeadOrTail()
         {
             Slider slider = null!;
