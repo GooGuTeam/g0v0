@@ -1,4 +1,4 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
@@ -31,6 +31,7 @@ namespace osu.Game.Rulesets.Osu.Skinning
                 if (!currentCurveValid)
                 {
                     currentCurve.Clear();
+
                     if (Path.DrawRange is { } range)
                     {
                         currentCurve.Add(range.StartPoint);
@@ -38,8 +39,10 @@ namespace osu.Game.Rulesets.Osu.Skinning
                             currentCurve.Add(Path.Vertices[i]);
                         currentCurve.Add(range.EndPoint);
                     }
+
                     currentCurveValid = true;
                 }
+
                 return currentCurve;
             }
         }
@@ -53,6 +56,7 @@ namespace osu.Game.Rulesets.Osu.Skinning
                 return Vector2.Zero;
 
             int count = range.VertexCount + 2;
+
             for (int i = fromEnd ? count - 1 : 0; i >= 0 && i < count; i += fromEnd ? -1 : 1)
             {
                 Vector2 point = i == 0 ? range.StartPoint
@@ -61,6 +65,7 @@ namespace osu.Game.Rulesets.Osu.Skinning
                 if (!Precision.AlmostEquals(point, position))
                     return point - position;
             }
+
             return -position;
         }
 

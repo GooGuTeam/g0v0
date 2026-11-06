@@ -4,10 +4,10 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
-using osu.Framework.Development;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Logging;
@@ -71,7 +71,9 @@ namespace osu.Game.Rulesets.Osu.UI
         [BackgroundDependencyLoader]
         private void load(OsuRulesetConfigManager? config, IBeatmap? beatmap)
         {
-            config?.BindWith(OsuRulesetSetting.KeepOverlapCirclesVisible, stableRendering);
+            // Proxy creation changes a drawable's render-tree ownership and cannot be undone safely in place.
+            // Latch this option per playfield so toggling it cannot leave existing objects split between both renderers.
+            stableRendering.Value = config?.Get<bool>(OsuRulesetSetting.KeepOverlapCirclesVisible) ?? false;
             config?.BindWith(OsuRulesetSetting.ShowHiddenSliders, showHiddenSliders);
             this.beatmap = beatmap;
             RefreshBeatmap();
@@ -206,6 +208,7 @@ namespace osu.Game.Rulesets.Osu.UI
             // A nested object keeps its last IsAlive value once its parent leaves the hit object container, as nothing updates it any more.
             bool parentAlive = ReferenceEquals(parent, owner) || parent.IsAlive;
             bool repeatFinished = false;
+
             if (owner is DrawableSliderRepeat repeat && repeat.AllJudged)
             {
                 double animDuration = Math.Min(300, repeat.HitObject.SpanDuration);
@@ -230,17 +233,26 @@ namespace osu.Game.Rulesets.Osu.UI
             }
 
             int declaration = declarationOrder.GetValueOrDefault(parentModel!);
+
             if (entry.Kind == OsuVisualKind.Approach && entry.Gate.Depth != declaration)
             {
                 if (entry.Gate.Parent == null)
                     entry.Gate.Depth = declaration;
                 else if (entry.ChangeFallbackDepth != null && entry.InFallback)
                     entry.ChangeFallbackDepth(entry.Gate, declaration);
+                else if (ReferenceEquals(entry.Gate.Parent, ordered))
+                {
+                    // Earlier entries may already have changed their keys during this update. ChangeChildDepth()
+                    // uses a binary search, so restore the current key order before looking up the gate.
+                    ordered.RefreshOrder();
+                    ordered.ChangeChildDepth(entry.Gate, declaration);
+                }
                 else if (entry.Gate.Parent is Container container)
                     container.ChangeChildDepth(entry.Gate, declaration);
                 else
                     entry.Gate.Depth = declaration;
             }
+
             bool tail = owner is DrawableSliderTail;
             int role = owner switch
             {
@@ -249,9 +261,6 @@ namespace osu.Game.Rulesets.Osu.UI
                 DrawableSliderRepeat => 3,
                 _ => 1,
             };
-            double time = entry.Kind == OsuVisualKind.Body ? parentModel!.GetEndTime() : model!.StartTime;
-            if (tail)
-                time = parentModel!.GetEndTime();
 
             int phase = entry.Kind switch
             {
@@ -272,20 +281,19 @@ namespace osu.Game.Rulesets.Osu.UI
                 entry.Model = model;
                 entry.ParentModel = parentModel;
                 entry.EventOrdinal = 0;
+
                 if (!ReferenceEquals(parent, owner))
                 {
-                    foreach (var nested in parentModel!.NestedHitObjects)
+                    foreach (HitObject? nested in parentModel!.NestedHitObjects.TakeWhile(nested => !ReferenceEquals(nested, model)))
                     {
-                        if (ReferenceEquals(nested, model))
-                            break;
                         entry.EventOrdinal++;
                     }
                 }
             }
 
             var key = new VisualKey(
+                GetStableDepth(model!, parentModel!, entry.Kind, entry.OverlayAboveNumber),
                 entry.Kind == OsuVisualKind.Ball ? 1 : 0,
-                double.IsFinite(time) ? time : 0,
                 phase,
                 tail ? -declaration : declaration,
                 role,
@@ -293,13 +301,14 @@ namespace osu.Game.Rulesets.Osu.UI
                 (int)entry.Kind);
 
             bool changed = !key.Equals(entry.Gate.Key);
+
             if (changed)
             {
                 entry.Gate.Key = key;
                 ordered.InvalidateOrder();
             }
 
-            bool global = entry.Kind == OsuVisualKind.Object || stableRendering.Value && entry.Kind != OsuVisualKind.Approach;
+            bool global = entry.Kind == OsuVisualKind.Object || stableRendering.Value;
             bool moved = false;
 
             if (!global && entry.AddFallback != null)
@@ -315,6 +324,7 @@ namespace osu.Game.Rulesets.Osu.UI
             else
             {
                 Container? target = global ? ordered : entry.Fallback?.Invoke();
+
                 if (!ReferenceEquals(entry.Gate.Parent, target))
                 {
                     detach(entry.Gate, entry);
@@ -326,6 +336,53 @@ namespace osu.Game.Rulesets.Osu.UI
 
             return moved || changed;
         }
+
+        /// <summary>
+        /// Gets the depth used by stable for one visual piece. Larger depths are drawn later, in front of smaller depths.
+        /// </summary>
+        internal static float GetStableDepth(HitObject model, HitObject parentModel, OsuVisualKind kind, bool overlayAboveNumber = true)
+        {
+            switch (kind)
+            {
+                case OsuVisualKind.Body:
+                    return drawOrderBwd((int)parentModel.GetEndTime() + 10);
+
+                case OsuVisualKind.Number:
+                    return drawOrderBwd((int)model.StartTime - (overlayAboveNumber ? 1 : 2));
+
+                case OsuVisualKind.Overlay:
+                    return drawOrderBwd((int)model.StartTime - (overlayAboveNumber ? 2 : 1));
+
+                case OsuVisualKind.Arrow:
+                    if (model is SliderRepeat repeat)
+                    {
+                        // The first arrow belongs to the slider's first span. Later arrows use their own span start,
+                        // rather than the repeat's judgement time at the end of that span.
+                        return drawOrderBwd(repeat.RepeatIndex == 0
+                            ? (int)parentModel.StartTime - 1
+                            : (int)repeat.StartTime - (int)repeat.SpanDuration - 1);
+                    }
+
+                    return drawOrderBwd((int)model.StartTime - 1);
+
+                case OsuVisualKind.Tick:
+                    // Every tick in a stable slider shares the same depth, derived from the slider start.
+                    return drawOrderBwd((int)parentModel.StartTime - 5);
+
+                case OsuVisualKind.Ball:
+                    // Stable uses 0.99 for both the ball and its follow circle, and 0.98/1.0 for the optional ball pieces.
+                    return 0.99f;
+
+                case OsuVisualKind.Approach:
+                    double appearanceTime = model.StartTime - ((OsuHitObject)model).TimePreempt;
+                    return 0.8f + (int)appearanceTime % 6000000f / 30000000f;
+
+                default:
+                    return drawOrderBwd(model.StartTime);
+            }
+        }
+
+        private static float drawOrderBwd(double time) => 0.8f - (int)time % 6000000f / 10000000f;
 
         /// <summary>
         /// Compares a proxy's visibility with the lifetimes of its owner and parent object, which the hit object container is expected to apply,
@@ -354,8 +411,10 @@ namespace osu.Game.Rulesets.Osu.UI
             // reverts one), so visibility can trail a lifetime change by one frame, as it does in upstream gameplay. While seeking, the
             // clock can also sit just past a boundary for several frames before the container updates again. Only a mismatch lasting
             // longer than a frame and further than a frame's time from every boundary is visible to the player.
-            bool nearBoundary = Math.Abs(time - owner.LifetimeStart) < lifetime_tolerance || Math.Abs(time - owner.LifetimeEnd) < lifetime_tolerance
-                                || Math.Abs(time - parent.LifetimeStart) < lifetime_tolerance || Math.Abs(time - parent.LifetimeEnd) < lifetime_tolerance;
+            bool nearBoundary = Math.Abs(time - owner.LifetimeStart) < lifetime_tolerance
+                                || Math.Abs(time - owner.LifetimeEnd) < lifetime_tolerance
+                                || Math.Abs(time - parent.LifetimeStart) < lifetime_tolerance
+                                || Math.Abs(time - parent.LifetimeEnd) < lifetime_tolerance;
 
             if (visible != expected && !nearBoundary)
                 entry.MismatchedFrames++;
@@ -473,12 +532,12 @@ namespace osu.Game.Rulesets.Osu.UI
             }
         }
 
-        private readonly record struct VisualKey(int Group, double Time, int Phase, int Declaration, int Role, int EventOrdinal, int Piece) : IComparable<VisualKey>
+        internal readonly record struct VisualKey(float Depth, int Group, int Phase, int Declaration, int Role, int EventOrdinal, int Piece) : IComparable<VisualKey>
         {
             public int CompareTo(VisualKey other)
             {
-                int result = Group.CompareTo(other.Group);
-                if (result == 0) result = other.Time.CompareTo(Time);
+                int result = Depth.CompareTo(other.Depth);
+                if (result == 0) result = Group.CompareTo(other.Group);
                 if (result == 0) result = Phase.CompareTo(other.Phase);
                 if (result == 0) result = Declaration.CompareTo(other.Declaration);
                 if (result == 0) result = Role.CompareTo(other.Role);

@@ -64,7 +64,10 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         {
             base.LoadComplete();
 
-            proxy = CreateProxy();
+            // The visual-ordering proxy is the only drawn copy when stable rendering is active.
+            // Creating the legacy overlay proxy as well would make this source render at neither location.
+            if (visualOrdering?.IsStableRendering != true)
+                proxy = CreateProxy();
 
             drawableRepeat.HitObjectApplied += onHitObjectApplied;
             onHitObjectApplied(drawableRepeat);
@@ -78,10 +81,11 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
 
         private void onHitObjectApplied(DrawableHitObject drawableObject)
         {
-            Debug.Assert(proxy.Parent == null);
+            Debug.Assert(proxy?.Parent == null);
 
             // see logic in LegacySliderHeadHitCircle.
-            drawableRepeat.DrawableSlider.OverlayElementContainer.Add(proxy);
+            if (proxy != null)
+                drawableRepeat.DrawableSlider.OverlayElementContainer.Add(proxy);
 
             arrow.Alpha = 1f;
             arrow.Scale = Vector2.One;
@@ -93,7 +97,8 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         {
             base.Update();
 
-            if (Time.Current >= drawableRepeat.HitStateUpdateTime && drawableRepeat.State.Value == ArmedState.Hit)
+            if (Time.Current >= drawableRepeat.HitStateUpdateTime && drawableRepeat.State.Value == ArmedState.Hit
+                                                                && drawableRepeat.HitObject.SpanDuration > 0)
             {
                 double animDuration = Math.Min(300, drawableRepeat.HitObject.SpanDuration);
                 float progress = Math.Clamp((float)((Time.Current - drawableRepeat.HitStateUpdateTime) / animDuration), 0f, 1f);

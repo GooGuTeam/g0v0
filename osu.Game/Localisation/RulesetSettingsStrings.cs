@@ -314,9 +314,9 @@ namespace osu.Game.Localisation
         public static LocalisableString KeepOverlapCirclesVisible => new TranslatableString(getKey(@"keep_overlap_circles_visible"), @"Use stable-style 2B rendering");
 
         /// <summary>
-        /// "Order slider bodies, circles and markers separately using stable-style visual priorities. Does not change hit judgement."
+        /// "Order slider bodies, circles and markers separately using stable-style visual priorities. Does not change hit judgement. Applies on the next gameplay load."
         /// </summary>
-        public static LocalisableString KeepOverlapCirclesVisibleDescription => new TranslatableString(getKey(@"keep_overlap_circles_visible_description"), @"Order slider bodies, circles and markers separately using stable-style visual priorities. Does not change hit judgement.");
+        public static LocalisableString KeepOverlapCirclesVisibleDescription => new TranslatableString(getKey(@"keep_overlap_circles_visible_description"), @"Order slider bodies, circles and markers separately using stable-style visual priorities. Does not change hit judgement. Applies on the next gameplay load.");
 
         /// <summary>
         /// "Show hidden sliders"
@@ -334,9 +334,9 @@ namespace osu.Game.Localisation
         public static LocalisableString SliderViewportSize => new TranslatableString(getKey(@"slider_viewport_size"), @"Slider viewport size");
 
         /// <summary>
-        /// "Simulated viewport limit in pixels for large slider bodies. 0 uses the active renderer's automatic limit."
+        /// "Maximum slider-body framebuffer size in pixels. The path is clipped, not scaled. 0 uses the window size."
         /// </summary>
-        public static LocalisableString SliderViewportSizeDescription => new TranslatableString(getKey(@"slider_viewport_size_description"), @"Simulated viewport limit in pixels for large slider bodies. 0 uses the active renderer's automatic limit.");
+        public static LocalisableString SliderViewportSizeDescription => new TranslatableString(getKey(@"slider_viewport_size_description"), @"Maximum slider-body framebuffer size in pixels. The path is clipped, not scaled. 0 uses the window size.");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

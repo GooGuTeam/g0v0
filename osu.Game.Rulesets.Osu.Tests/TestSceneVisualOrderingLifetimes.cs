@@ -16,6 +16,7 @@ using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Skinning.Legacy;
 using osu.Game.Rulesets.Osu.UI;
+using osu.Game.Rulesets.UI;
 using osu.Game.Skinning;
 using osu.Game.Tests.Visual;
 using osuTK;
@@ -125,6 +126,80 @@ namespace osu.Game.Rulesets.Osu.Tests
 
         private void assertNoViolations()
             => AddAssert("no lifetime violations", () => ordering.LifetimeViolations.ToArray(), () => Is.Empty);
+    }
+
+    /// <summary>
+    /// Exercises dense Aspire-style patterns with enough objects to recycle approach-circle proxies, then seeks across their lifetimes.
+    /// </summary>
+    public partial class TestSceneVisualOrderingPoolReuse : PlayerTestScene
+    {
+        protected override Ruleset CreatePlayerRuleset() => new OsuRuleset();
+
+        protected override bool Autoplay => true;
+
+        protected override bool AllowBackwardsSeeks => true;
+
+        private OsuVisualOrdering ordering => ((OsuPlayfield)Player.DrawableRuleset.Playfield).VisualOrdering;
+
+        public override void SetUpSteps()
+        {
+            AddStep("enable visual ordering", () => ((OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(Ruleset.Value.CreateInstance()).AsNonNull()).SetValue(OsuRulesetSetting.KeepOverlapCirclesVisible, true));
+            base.SetUpSteps();
+            AddUntilStep("wait for gameplay", () => Player.IsLoaded && Player.GameplayClockContainer.IsRunning);
+            AddStep("enable lifetime checks", () => ordering.CheckLifetimes = true);
+        }
+
+        protected override IBeatmap CreateBeatmap(RulesetInfo ruleset)
+        {
+            var beatmap = new Beatmap<OsuHitObject>
+            {
+                BeatmapInfo = { Ruleset = ruleset },
+            };
+
+            // The playfield's initial circle pool has 20 entries. Dense overlapping circles ensure that
+            // later objects reuse existing drawables and assign new declaration indices to their approach proxies.
+            for (int i = 0; i < 80; i++)
+            {
+                beatmap.HitObjects.Add(new HitCircle
+                {
+                    StartTime = 1000 + i * 50,
+                    Position = new Vector2(256 + i % 3 * 10, 192),
+                });
+            }
+
+            return beatmap;
+        }
+
+        [Test]
+        public void TestApproachProxiesSurvivePoolReuseAndSeeking()
+        {
+            AddAssert("visual ordering is active", () => ordering.IsActive);
+            AddUntilStep("play into pool reuse", () => Player.GameplayClockContainer.CurrentTime > 3000);
+            AddStep("refresh all declaration indices", () =>
+            {
+                // Change every existing entry's key in one refresh. This deterministically covers the same
+                // partially-updated container state that can occur when many pooled objects are reused together.
+                var beatmap = ((DrawableRuleset<OsuHitObject>)Player.DrawableRuleset).Beatmap;
+
+                for (int i = 0; i < beatmap.HitObjects.Count; i++)
+                {
+                    double shuffledAppearanceTime = i * 37 % beatmap.HitObjects.Count * 10;
+                    beatmap.HitObjects[i].TimePreempt = beatmap.HitObjects[i].StartTime - shuffledAppearanceTime;
+                }
+
+                beatmap.HitObjects.Reverse();
+                ordering.RefreshBeatmap();
+            });
+            AddWaitStep("let ordering refresh", 2);
+
+            foreach (double time in new[] { 1200, 4000, 1500, 4500, 800, 5000 })
+            {
+                AddStep($"seek to {time}", () => Player.Seek(time));
+                AddUntilStep("wait for seek", () => Player.GameplayClockContainer.CurrentTime, () => Is.EqualTo(time).Within(500));
+                AddWaitStep("let recycled objects update", 10);
+                AddAssert("no lifetime violations", () => ordering.LifetimeViolations.ToArray(), () => Is.Empty);
+            }
+        }
     }
 
     public partial class TestSceneDisabledVisualOrdering : PlayerTestScene

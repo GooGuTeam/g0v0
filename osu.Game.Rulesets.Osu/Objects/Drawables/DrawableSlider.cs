@@ -278,7 +278,9 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             // It is crucial to perform the code below in UpdateAfterChildren. This ensures that the SliderBody has the opportunity
             // to update its Size and PathOffset beforehand, ensuring correct placement.
 
-            double completionProgress = Math.Clamp((Time.Current - HitObject.StartTime) / HitObject.Duration, 0, 1);
+            // Zero-span Aspire sliders have no meaningful travel progress. Treat them as the start of the path
+            // rather than allowing 0 / 0 to produce NaN and propagate it through ball and body updates.
+            double completionProgress = GetCompletionProgress(Time.Current, HitObject.StartTime, HitObject.Duration);
 
             Ball.UpdateProgress(completionProgress);
             SliderBody?.UpdateProgress(HeadCircle.IsHit ? completionProgress : 0);
@@ -299,6 +301,10 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                 relativeAnchorPositionLayout.Validate();
             }
         }
+
+        internal static double GetCompletionProgress(double time, double startTime, double duration) => duration > 0
+            ? Math.Clamp((time - startTime) / duration, 0, 1)
+            : 0;
 
         public override void OnKilled()
         {

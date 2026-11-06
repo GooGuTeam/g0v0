@@ -1,15 +1,16 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
-// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using System;
-using System.IO;
 using NUnit.Framework;
 using osu.Game.Beatmaps;
-using osu.Game.Beatmaps.Formats;
-using osu.Game.IO;
+using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Rulesets.Osu.Objects.Drawables;
+using osu.Game.Rulesets.Osu.Skinning.Default;
+using osu.Game.Rulesets.Osu.UI;
+using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Tests
 {
@@ -17,181 +18,157 @@ namespace osu.Game.Rulesets.Osu.Tests
     public class TwoBRenderingTest
     {
         [Test]
-        public void TestStandardStackOrdering()
+        public void TestEarlierCirclesDrawInFront()
         {
-            // Standard stack: Circle 1 at 1000, Circle 2 at 1200, Circle 3 at 1400.
-            // Circle 1 must be on top of Circle 2, and Circle 2 on top of Circle 3.
-            var c1 = new HitCircle { StartTime = 1000 };
-            var c2 = new HitCircle { StartTime = 1200 };
-            var c3 = new HitCircle { StartTime = 1400 };
+            var first = new HitCircle { StartTime = 1000 };
+            var second = new HitCircle { StartTime = 1200 };
+            var third = new HitCircle { StartTime = 1400 };
 
-            var beatmap = new Beatmap<OsuHitObject>
+            Assert.Multiple(() =>
             {
-                HitObjects = { c1, c2, c3 }
-            };
-
-            var order = computeDrawOrder(beatmap);
-            Assert.That(order[c1], Is.GreaterThan(order[c2]));
-            Assert.That(order[c2], Is.GreaterThan(order[c3]));
+                Assert.That(depth(first, OsuVisualKind.CircleBase), Is.GreaterThan(depth(second, OsuVisualKind.CircleBase)));
+                Assert.That(depth(second, OsuVisualKind.CircleBase), Is.GreaterThan(depth(third, OsuVisualKind.CircleBase)));
+            });
         }
 
         [Test]
-        public void TestInnerSliderInsideOuterSlider()
+        public void TestSliderBodiesAndCirclesUseStableEventTimes()
         {
-            // 2B-Lab 01 Window: Outer slider @ 4000..6000, Inner slider @ 4375..4875.
-            // Inner slider must be on top of outer slider.
-            var outerSlider = createSlider(4000, 2000);
-            var innerSlider = createSlider(4375, 500);
-
-            var beatmap = new Beatmap<OsuHitObject>
-            {
-                HitObjects = { outerSlider, innerSlider }
-            };
-
-            var order = computeDrawOrder(beatmap);
-            Assert.That(order[innerSlider], Is.GreaterThan(order[outerSlider]));
-        }
-
-        [Test]
-        public void TestCircleInsideSlider()
-        {
-            // 2B-Lab 02 Markers: Outer slider @ 4000..6000, Circle @ 4375.
-            // Circle must be on top of outer slider.
-            var slider = createSlider(4000, 2000);
+            var outer = createSlider(4000, 1000, 1);
+            var inner = createSlider(4375, 500);
             var circle = new HitCircle { StartTime = 4375 };
 
-            var beatmap = new Beatmap<OsuHitObject>
+            Assert.Multiple(() =>
             {
-                HitObjects = { slider, circle }
-            };
+                Assert.That(depth(inner, OsuVisualKind.Body, inner), Is.GreaterThan(depth(outer, OsuVisualKind.Body, outer)));
+                Assert.That(depth(circle, OsuVisualKind.CircleBase), Is.GreaterThan(depth(outer, OsuVisualKind.Body, outer)));
+                Assert.That(depth(outer, OsuVisualKind.Body, outer), Is.EqualTo(0.8f - 6010f / 10000000f).Within(0.0000001f));
+            });
+        }
 
-            var order = computeDrawOrder(beatmap);
-            Assert.That(order[circle], Is.GreaterThan(order[slider]));
+        [TestCase(true)]
+        [TestCase(false)]
+        public void TestCircleNumberAndOverlayOffsets(bool overlayAboveNumber)
+        {
+            var circle = new HitCircle { StartTime = 1000 };
+            float baseDepth = depth(circle, OsuVisualKind.CircleBase);
+            float numberDepth = OsuVisualOrdering.GetStableDepth(circle, circle, OsuVisualKind.Number, overlayAboveNumber);
+            float overlayDepth = OsuVisualOrdering.GetStableDepth(circle, circle, OsuVisualKind.Overlay, overlayAboveNumber);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(numberDepth, Is.GreaterThan(baseDepth));
+                Assert.That(overlayDepth, Is.GreaterThan(baseDepth));
+
+                if (overlayAboveNumber)
+                    Assert.That(overlayDepth, Is.GreaterThan(numberDepth));
+                else
+                    Assert.That(numberDepth, Is.GreaterThan(overlayDepth));
+            });
         }
 
         [Test]
-        public void TestSimultaneousObjectsFileOrder()
+        public void TestRepeatArrowUsesSpanStartRatherThanRepeatEnd()
         {
-            // 2B-Lab 03 SameTime AB vs BA
-            // When two objects start at the exact same time, the later one in the file is on top.
-            var objA = new HitCircle { StartTime = 4000 };
-            var objB = new HitCircle { StartTime = 4000 };
+            var slider = createSlider(1000, 500, 2);
+            var firstRepeat = new SliderRepeat(slider) { RepeatIndex = 0, StartTime = 1500 };
+            var secondRepeat = new SliderRepeat(slider) { RepeatIndex = 1, StartTime = 2000 };
 
-            // AB order
-            var beatmapAB = new Beatmap<OsuHitObject>
+            Assert.Multiple(() =>
             {
-                HitObjects = { objA, objB }
-            };
-            var orderAB = computeDrawOrder(beatmapAB);
-            Assert.That(orderAB[objB], Is.GreaterThan(orderAB[objA]));
-
-            // BA order
-            var beatmapBA = new Beatmap<OsuHitObject>
-            {
-                HitObjects = { objB, objA }
-            };
-            var orderBA = computeDrawOrder(beatmapBA);
-            Assert.That(orderBA[objA], Is.GreaterThan(orderBA[objB]));
+                Assert.That(depth(firstRepeat, OsuVisualKind.Arrow, slider), Is.EqualTo(0.8f - 999f / 10000000f).Within(0.0000001f));
+                Assert.That(depth(secondRepeat, OsuVisualKind.Arrow, slider), Is.EqualTo(0.8f - 1499f / 10000000f).Within(0.0000001f));
+                Assert.That(depth(secondRepeat, OsuVisualKind.Arrow, slider), Is.Not.EqualTo(0.8f - 2000f / 10000000f).Within(0.0000001f));
+            });
         }
 
         [Test]
-        public void TestSimultaneousCircleAndSlider()
+        public void TestTicksShareTheSliderStartDepth()
         {
-            // Section 2: Circle @ 10000, Slider @ 10000..10500.
-            var circle = new HitCircle { StartTime = 10000 };
-            var slider = createSlider(10000, 500);
+            var slider = createSlider(1000, 500, 1);
+            var firstTick = new SliderTick { StartTime = 1200 };
+            var secondTick = new SliderTick { StartTime = 1700 };
 
-            // Circle then Slider
-            var beatmap1 = new Beatmap<OsuHitObject>
+            Assert.Multiple(() =>
             {
-                HitObjects = { circle, slider }
-            };
-            var order1 = computeDrawOrder(beatmap1);
-            Assert.That(order1[slider], Is.GreaterThan(order1[circle]));
-
-            // Slider then Circle
-            var beatmap2 = new Beatmap<OsuHitObject>
-            {
-                HitObjects = { slider, circle }
-            };
-            var order2 = computeDrawOrder(beatmap2);
-            Assert.That(order2[circle], Is.GreaterThan(order2[slider]));
+                Assert.That(depth(firstTick, OsuVisualKind.Tick, slider), Is.EqualTo(0.8f - 995f / 10000000f).Within(0.0000001f));
+                Assert.That(depth(secondTick, OsuVisualKind.Tick, slider), Is.EqualTo(depth(firstTick, OsuVisualKind.Tick, slider)));
+            });
         }
 
         [Test]
-        public void TestTestBeatmapFiles()
+        public void TestApproachCirclesAndBallsShareStableDepthSpace()
         {
-            string songsFolder = @"C:\Users\ASUS\AppData\Local\osu!\Songs\beatmap-639284171832554788-audio";
-            if (!Directory.Exists(songsFolder))
-                return;
+            var earlyApproach = new HitCircle { StartTime = 1000, TimePreempt = 600 };
+            var lateApproach = new HitCircle { StartTime = 5800000, TimePreempt = 0 };
 
-            foreach (string file in Directory.GetFiles(songsFolder, "*.osu"))
+            float earlyDepth = depth(earlyApproach, OsuVisualKind.Approach);
+            float lateDepth = depth(lateApproach, OsuVisualKind.Approach);
+            float ballDepth = depth(earlyApproach, OsuVisualKind.Ball);
+
+            Assert.Multiple(() =>
             {
-                using var stream = File.OpenRead(file);
-                using var reader = new LineBufferedReader(stream);
-                var beatmap = Decoder.GetDecoder<Beatmap>(reader).Decode(reader);
-
-                var order = computeDrawOrder(beatmap);
-                Assert.That(order.Count, Is.EqualTo(beatmap.HitObjects.Count));
-            }
+                Assert.That(ballDepth, Is.EqualTo(0.99f));
+                Assert.That(earlyDepth, Is.LessThan(ballDepth));
+                Assert.That(lateDepth, Is.GreaterThan(ballDepth));
+                Assert.That(key(lateDepth).CompareTo(key(ballDepth, 1)), Is.GreaterThan(0));
+            });
         }
 
-        private Slider createSlider(double startTime, double duration)
+        [Test]
+        public void TestEqualDepthUsesDeterministicDeclarationTieBreak()
+        {
+            Assert.That(key(0.8f, declaration: 1).CompareTo(key(0.8f)), Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void TestViewportLimitsFramebufferWithoutScalingGeometry()
+        {
+            Vector2 limited = PlaySliderBody.GetViewportLimitedSize(new Vector2(4000, 3000), new Vector2(1920, 1080), new Vector2(2));
+            Vector2 unchanged = PlaySliderBody.GetViewportLimitedSize(new Vector2(400, 300), new Vector2(1920, 1080), new Vector2(2));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(limited.X, Is.EqualTo(960).Within(0.0001));
+                Assert.That(limited.Y, Is.EqualTo(540).Within(0.0001));
+                Assert.That(unchanged, Is.EqualTo(new Vector2(400, 300)));
+            });
+        }
+
+        [Test]
+        public void TestZeroSpanProgressIsFinite()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(DrawableSlider.GetCompletionProgress(1000, 1000, 0), Is.Zero);
+                Assert.That(double.IsFinite(DrawableSlider.GetCompletionProgress(1000, 1000, 0)), Is.True);
+                Assert.That(DrawableSlider.GetCompletionProgress(1500, 1000, 1000), Is.EqualTo(0.5).Within(0.0001));
+            });
+        }
+
+        private static OsuVisualOrdering.VisualKey key(float depth, int group = 0, int declaration = 0) =>
+            new OsuVisualOrdering.VisualKey(depth, group, 0, declaration, 0, 0, 0);
+
+        private static float depth(HitObject model, OsuVisualKind kind, HitObject? parent = null) =>
+            OsuVisualOrdering.GetStableDepth(model, parent ?? model, kind);
+
+        private static Slider createSlider(double startTime, double spanDuration, int repeatCount = 0)
         {
             var slider = new Slider
             {
                 StartTime = startTime,
+                RepeatCount = repeatCount,
                 Path = new SliderPath(PathType.LINEAR, new[]
                 {
-                    osuTK.Vector2.Zero,
-                    new osuTK.Vector2(100, 0)
-                }, 100)
+                    Vector2.Zero,
+                    new Vector2(100, 0),
+                }, 100),
             };
+
+            // TimingControlPoint.DEFAULT has a 1000 ms beat, so this multiplier produces the requested span duration for a 100-unit path.
+            slider.ApplyDefaults(new ControlPointInfo(), new BeatmapDifficulty { SliderMultiplier = 1000 / spanDuration });
+            Assert.That(slider.SpanDuration, Is.EqualTo(spanDuration).Within(0.0001));
             return slider;
-        }
-
-        private System.Collections.Generic.Dictionary<HitObject, int> computeDrawOrder(IBeatmap beatmap)
-        {
-            var drawOrderMap = new System.Collections.Generic.Dictionary<HitObject, int>();
-            var rawObjects = beatmap.HitObjects;
-            var indexed = new (HitObject obj, int index)[rawObjects.Count];
-            for (int i = 0; i < rawObjects.Count; i++)
-                indexed[i] = (rawObjects[i], i);
-
-            Array.Sort(indexed, (a, b) =>
-            {
-                if (a.index == b.index) return 0;
-                if (a.index < b.index)
-                {
-                    bool bOnTop = b.obj.StartTime <= a.obj.GetEndTime();
-                    return bOnTop ? -1 : 1;
-                }
-                else
-                {
-                    bool aOnTop = a.obj.StartTime <= b.obj.GetEndTime();
-                    return aOnTop ? 1 : -1;
-                }
-            });
-
-            for (int i = 0; i < indexed.Length; i++)
-                drawOrderMap[indexed[i].obj] = i;
-
-            return drawOrderMap;
-        }
-
-        [Test]
-        public void TestFontResourceStream()
-        {
-            var store = new osu.Framework.IO.Stores.NamespacedResourceStore<byte[]>(
-                new osu.Framework.IO.Stores.DllResourceStore(typeof(osu.Game.OsuGameBase).Assembly), "Resources");
-            using (var stream = store.GetStream("Fonts/MapleMono/MapleMono-Bold-ASCII-HD_0.png"))
-            {
-                Assert.That(stream, Is.Not.Null, "PNG stream should not be null!");
-                var img = osu.Framework.Imaging.Image.Load<osu.Framework.Imaging.Rgba32>(stream);
-                Assert.That(img, Is.Not.Null);
-                Assert.That(img.Width, Is.GreaterThan(0));
-                Assert.That(img.Height, Is.GreaterThan(0));
-            }
         }
     }
 }
