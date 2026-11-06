@@ -23,6 +23,8 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// <remarks>
     /// Only one marker is drawn per run, at the time its volume starts changing. Runs that are completely overlapped
     /// in time (two nodes at the same time with different volumes) still get their own marker, so neither value is lost.
+    /// A segment holds no run of its own: the track keeps a pool of them and <see cref="Bind"/>s one to whichever run
+    /// is currently inside the visible window, so nothing here may depend on the run it showed before.
     /// </remarks>
     public partial class HitSoundingVolumeSegment : CompositeDrawable
     {
@@ -39,12 +41,12 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// <summary>
         /// The nodes which share <see cref="Volume"/>, ordered by time.
         /// </summary>
-        public IReadOnlyList<HitSoundingNode> Nodes { get; }
+        public IReadOnlyList<HitSoundingNode> Nodes { get; private set; } = Array.Empty<HitSoundingNode>();
 
         /// <summary>
         /// The volume stored in the beatmap for <see cref="Nodes"/>.
         /// </summary>
-        public int Volume { get; }
+        public int Volume { get; private set; }
 
         /// <summary>
         /// The volume currently displayed. This differs from <see cref="Volume"/> while the user is dragging the run.
@@ -63,6 +65,13 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// The horizontal centre of the run.
         /// </summary>
         public float CentreX => StartX + (EndX - StartX) / 2;
+
+        /// <summary>
+        /// Whether the run currently intersects the visible time window. The track materialises a segment slightly
+        /// ahead of the window, so a segment living in the prefetch margin remains transparent until the window
+        /// reaches it.
+        /// </summary>
+        internal bool IsWithinVisibleWindow { get; private set; }
 
         private readonly Box fill;
         private readonly Box line;
@@ -84,13 +93,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         private Color4 pointColour;
         private Color4 fillColour;
 
-        public HitSoundingVolumeSegment(IReadOnlyList<HitSoundingNode> nodes, int volume, bool hasPrevious)
+        public HitSoundingVolumeSegment()
         {
-            Nodes = nodes;
-            Volume = volume;
-            DisplayVolume = volume;
-            this.hasPrevious = hasPrevious;
-
             RelativeSizeAxes = Axes.Both;
 
             InternalChildren = new Drawable[]
@@ -147,11 +151,40 @@ namespace osu.Game.Screens.Edit.HitSounding
                 }
             };
 
-            LineY = VolumeToY(volume);
+            LineY = VolumeToY(DisplayVolume);
             previousLineY = LineY;
 
             updateLabelText();
             updateDrawables();
+        }
+
+        /// <summary>
+        /// Binds this segment to a run of nodes. Segments are pooled by the track and re-bound as the visible window
+        /// moves, so every piece of state which belongs to the run has to be reset here.
+        /// </summary>
+        /// <param name="nodes">The nodes which share <paramref name="volume"/>, ordered by time.</param>
+        /// <param name="volume">The volume stored in the beatmap for the run.</param>
+        /// <param name="selected">Whether the run is currently selected.</param>
+        /// <param name="hasPrevious">Whether there is a preceding run to connect to.</param>
+        public void Bind(IReadOnlyList<HitSoundingNode> nodes, int volume, bool selected, bool hasPrevious)
+        {
+            Nodes = nodes;
+            Volume = volume;
+            DisplayVolume = volume;
+
+            LineY = VolumeToY(volume);
+            previousLineY = LineY;
+            this.hasPrevious = hasPrevious;
+
+            // a recycled segment may still be fading the grip of the run it showed before, so take the new state
+            // on instantly instead of animating from it.
+            this.selected = selected;
+            gripHovered = false;
+            grip.ClearTransforms();
+            grip.Alpha = selected ? 1 : 0;
+
+            updateLabelText();
+            applyColours();
         }
 
         [BackgroundDependencyLoader]
@@ -237,6 +270,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         private void updateDrawables()
         {
             bool visible = StartX < viewportWidth && (EndX > 0 || (StartX == EndX && StartX >= 0));
+            IsWithinVisibleWindow = visible;
+
             Alpha = visible ? 1 : 0;
             if (!visible)
                 return;

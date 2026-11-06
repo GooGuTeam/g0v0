@@ -32,6 +32,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         private FormCheckBox highlight = null!;
         private bool invalid = true;
         private float lastWidth;
+        private int? lastSelectedSet;
+        private int? lastPreviewSet;
+        private bool? lastEnabled;
+        private readonly List<int> cardIndices = new List<int>();
+        private readonly List<int> candidateIndices = new List<int>();
         private Container previewContent = null!;
         private HitSoundingSampleGallery gallery = null!;
 
@@ -176,19 +181,51 @@ namespace osu.Game.Screens.Edit.HitSounding
                     sets.Add(set.SampleSetIndex);
             }
 
-            foreach (var node in model.SelectedNodes)
-                sets.Add(node.SetIndex);
+            for (int i = 0; i < model.SelectedNodes.Count; i++)
+                sets.Add(model.SelectedNodes[i].SetIndex);
 
             string filter = search.Current.Value.Trim();
-            cards.Clear();
+            candidateIndices.Clear();
 
             foreach (int index in sets)
             {
-                if (index.ToString(CultureInfo.InvariantCulture).Contains(filter, StringComparison.OrdinalIgnoreCase))
-                    cards.Add(new HitSoundingPreviewCard(index, play));
+                if (filter.Length == 0 || index.ToString(CultureInfo.InvariantCulture).Contains(filter, StringComparison.OrdinalIgnoreCase))
+                    candidateIndices.Add(index);
             }
 
+            // Every model change invalidates the panel, but most of them do not change the set of visible cards. Recreating
+            // identical cards would dispose and re-create their drawables and reset the toolbar layout for nothing.
+            if (hasCards(candidateIndices))
+                return;
+
+            cards.Clear();
+
+            foreach (int index in candidateIndices)
+                cards.Add(new HitSoundingPreviewCard(index, play));
+
+            cardIndices.Clear();
+            cardIndices.AddRange(candidateIndices);
+
             lastWidth = 0;
+
+            // New cards start without any state applied, so the cached inputs must not suppress their first refresh.
+            lastSelectedSet = null;
+            lastPreviewSet = null;
+            lastEnabled = null;
+        }
+
+        private bool hasCards(List<int> indices)
+        {
+            if (cardIndices.Count != indices.Count)
+                return false;
+
+            for (int i = 0; i < cardIndices.Count; i++)
+            {
+                if (cardIndices[i] != indices[i])
+                    return false;
+            }
+
+            return true;
         }
 
         private void play(int setIndex)
@@ -229,19 +266,34 @@ namespace osu.Game.Screens.Edit.HitSounding
                     card.Width = cardWidth;
             }
 
-            int? selectedSet = model.SelectedNodes.Count == 0 ? null : model.SelectedNodes[0].SetIndex;
+            int? selectedSet = null;
+            bool enabled = model.SelectedNodes.Count > 0;
 
-            foreach (var node in model.SelectedNodes)
+            if (enabled)
             {
-                if (node.SetIndex != selectedSet)
+                selectedSet = model.SelectedNodes[0].SetIndex;
+
+                for (int i = 1; i < model.SelectedNodes.Count; i++)
                 {
-                    selectedSet = null;
-                    break;
+                    if (model.SelectedNodes[i].SetIndex != selectedSet)
+                    {
+                        selectedSet = null;
+                        break;
+                    }
                 }
             }
 
+            int? previewSet = playback.PreviewSetIndex;
+
+            if (selectedSet == lastSelectedSet && previewSet == lastPreviewSet && enabled == lastEnabled)
+                return;
+
+            lastSelectedSet = selectedSet;
+            lastPreviewSet = previewSet;
+            lastEnabled = enabled;
+
             foreach (var card in cards)
-                card.Refresh(selectedSet == card.SetIndex, playback.PreviewSetIndex == card.SetIndex, model.SelectedNodes.Count > 0);
+                card.Refresh(selectedSet == card.SetIndex, previewSet == card.SetIndex, enabled);
         }
 
         private partial class PreviewTabControl : OverlayTabControl<LocalisableString>

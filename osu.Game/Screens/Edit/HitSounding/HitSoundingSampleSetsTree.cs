@@ -90,7 +90,6 @@ namespace osu.Game.Screens.Edit.HitSounding
         public const float HEADER_HEIGHT = 40;
         public const float ADD_BUTTON_WIDTH = 130;
         public const float SCROLLBAR_HEIGHT = 8;
-        public const float HINT_HEIGHT = 16;
         public const float SET_HEADING_HEIGHT = 24;
         public const float BANK_HEADING_HEIGHT = 18;
         public const float BANK_INDENT = 16;
@@ -139,7 +138,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                 new Container
                 {
                     RelativeSizeAxes = Axes.Both,
-                    Padding = new MarginPadding { Top = HEADER_HEIGHT + SECTION_SPACING, Bottom = HINT_HEIGHT + SECTION_SPACING },
+                    Padding = new MarginPadding { Top = HEADER_HEIGHT + SECTION_SPACING },
                     Children = new Drawable[]
                     {
                         viewport = new TreeViewport(),
@@ -149,15 +148,6 @@ namespace osu.Game.Screens.Edit.HitSounding
                             Origin = Anchor.BottomLeft,
                         },
                     },
-                },
-                new OsuSpriteText
-                {
-                    Name = "Sample sets hint",
-                    Anchor = Anchor.BottomLeft,
-                    Origin = Anchor.BottomLeft,
-                    Text = HitSoundingStrings.TreeHint,
-                    Font = OsuFont.Default.With(size: 12),
-                    Colour = colours.Light3,
                 },
             };
 
@@ -254,7 +244,18 @@ namespace osu.Game.Screens.Edit.HitSounding
             },
         };
 
-        private void onLibraryChanged() => Schedule(() => rebuildQueued = true);
+        private void onLibraryChanged()
+        {
+            // Slots refresh from pushed changes rather than polling the library every frame. The rebuild below only
+            // recreates the columns when the set list itself changed.
+            foreach (var column in columns)
+            {
+                foreach (var slot in column.Slots)
+                    slot.RefreshFromLibrary();
+            }
+
+            Schedule(() => rebuildQueued = true);
+        }
 
         private void rebuildIfNeeded()
         {

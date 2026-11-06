@@ -251,7 +251,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (!gallery.IsVisibleInHierarchy)
                 return;
 
-            refresh();
+            // The assignment and its alias only change together with a library change, which is pushed via
+            // RefreshFromLibrary(). Only the audition state is polled here, as it ends whenever the sample channel finishes.
             updatePlayback();
         }
 
@@ -279,6 +280,11 @@ namespace osu.Game.Screens.Edit.HitSounding
             updateSurface();
             updateGlyph();
         }
+
+        /// <summary>
+        /// Re-reads the assignment and its alias after a library change.
+        /// </summary>
+        internal void RefreshFromLibrary() => refresh();
 
         private void refresh()
         {

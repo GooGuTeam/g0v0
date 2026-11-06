@@ -325,11 +325,6 @@ namespace osu.Game.Localisation
         public static LocalisableString TooltipAddSet => new TranslatableString(getKey(@"tooltip_add_set"), @"Add another sample set");
 
         /// <summary>
-        /// "Drag files onto N / W / F / C"
-        /// </summary>
-        public static LocalisableString TreeHint => new TranslatableString(getKey(@"tree_hint"), @"Drag files onto N / W / F / C");
-
-        /// <summary>
         /// "Drop a file here to replace the assigned sample"
         /// </summary>
         public static LocalisableString TooltipAssignedSlotRow => new TranslatableString(getKey(@"tooltip_assigned_slot_row"), @"Drop a file here to replace the assigned sample");

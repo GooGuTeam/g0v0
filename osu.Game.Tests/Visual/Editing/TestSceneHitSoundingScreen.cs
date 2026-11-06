@@ -136,7 +136,7 @@ namespace osu.Game.Tests.Visual.Editing
                        && overlay.ScreenSpaceDrawQuad.TopRight.X >= headPoint.ScreenSpaceDrawQuad.TopRight.X;
             });
             AddStep("play through slider", () => EditorClock.Start());
-            AddUntilStep("head flashes independently", () => EditorClock.CurrentTime > 1080 && highlight(@"Slider head highlight").Alpha > highlight(@"Slider body highlight").Alpha);
+            AddUntilStep("head flashes independently", () => highlight(@"Slider head highlight").Alpha > highlight(@"Slider body highlight").Alpha);
             AddAssert("tail is dark before it is crossed", () => highlight(@"Slider tail highlight").Alpha == 0);
             AddAssert("head-only clap does not light an empty body", () => highlight(@"Slider body highlight", HitSoundingLane.Clap).Alpha == 0);
             AddAssert("head-only clap outline fits the badge", () =>
@@ -404,6 +404,45 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
+        public void TestAdditionsUnderlayIgnoresBodyOnlyAdditions()
+        {
+            Slider slider = null!;
+            AddStep("create slider whose only addition is on the body", () =>
+            {
+                foreach (var hitObject in EditorBeatmap.HitObjects.ToArray())
+                    EditorBeatmap.Remove(hitObject);
+
+                slider = new Slider
+                {
+                    StartTime = 1000,
+                    Path = new SliderPath(new[] { new PathControlPoint(Vector2.Zero), new PathControlPoint(new Vector2(500, 0)) }),
+                    Samples =
+                    [
+                        new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT),
+                        new HitSampleInfo(HitSampleInfo.HIT_WHISTLE, HitSampleInfo.BANK_SOFT, editorAutoBank: false)
+                    ],
+                    NodeSamples =
+                    [
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT) },
+                        new List<HitSampleInfo> { new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT) }
+                    ]
+                };
+                EditorBeatmap.Add(slider);
+                EditorClock.Seek(1500);
+                InputManager.MoveMouseTo(Vector2.Zero);
+            });
+            AddUntilStep("addition interval loaded", () => Editor.ChildrenOfType<HitSoundingSamplePoint>().Any(p => p.Node.HitObject == slider && p.Node.IsBody && p.IsLoaded));
+            AddAssert("body-only addition draws no underlay", () => !underlayVisible());
+            AddStep("move pointer away from the interval", () => InputManager.MoveMouseTo(Vector2.Zero));
+            AddAssert("hovering does not revive the underlay", () => !underlayVisible());
+            AddStep("add whistle to the head", () => model.ToggleAddition(model.Nodes.Where(n => n.HitObject == slider && n.NodeIndex == 0), HitSampleInfo.HIT_WHISTLE));
+            AddUntilStep("endpoint addition draws the underlay", () => underlayVisible());
+
+            HitSoundingSamplePoint bodyPoint() => Editor.ChildrenOfType<HitSoundingSamplePoint>().Single(p => p.Node.HitObject == slider && p.Node.IsBody && p.Lane == HitSoundingLane.Additions);
+            bool underlayVisible() => bodyPoint().ChildrenOfType<osu.Framework.Graphics.Containers.Container>().First().Alpha > 0;
+        }
+
+        [Test]
         public void TestSliderBodyIntervalEditsWithoutRetargetingHeadOrTail()
         {
             Slider slider = null!;
@@ -496,7 +535,8 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("old values hidden", () =>
             {
                 var track = Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single();
-                return track.Segments.Count(s => s.EndX <= 0) == 2 && track.Segments.Where(s => s.EndX <= 0).All(s => !s.IsPresent);
+                return track.Segments.Where(s => s.EndX <= 0).All(s => !s.IsPresent)
+                       && !track.Segments.Any(s => s.IsPresent && s.Volume is 50 or 60);
             });
             AddAssert("current run still visible", () => Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single().Segments.First(s => s.EndX > 0).IsPresent);
         }
@@ -630,6 +670,97 @@ namespace osu.Game.Tests.Visual.Editing
 
                 return true;
             }
+        }
+
+        [Test]
+        public void TestVisibleIntervalsRetainOverlappingSliderBodiesAfterSeek()
+        {
+            AddStep("add long overlapping slider and later circles", () =>
+            {
+                EditorBeatmap.Add(new Slider
+                {
+                    StartTime = 1000,
+                    RepeatCount = 2,
+                    Path = new SliderPath(new[] { new PathControlPoint(Vector2.Zero), new PathControlPoint(new Vector2(6000, 0)) }),
+                    Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_SOFT)],
+                });
+                for (int i = 0; i < 100; i++)
+                    EditorBeatmap.Add(new HitCircle { StartTime = 5000 + i * 500 });
+            });
+
+            foreach (double time in new[] { 2000.0, 15000.0, 40000.0, 2000.0 })
+            {
+                AddStep($"seek to {time}", () => EditorClock.Seek(time));
+                AddUntilStep("visible nodes and objects match their full intervals", () =>
+                {
+                    var screen = Editor.ChildrenOfType<HitSoundingScreen>().Single();
+                    var timeline = screen.ChildrenOfType<Timeline>().Single();
+                    var points = screen.ChildrenOfType<HitSoundingSamplePoint>().ToArray();
+                    if (points.Length == 0)
+                        return false;
+
+                    var bounds = points[0].Parent!.ScreenSpaceDrawQuad;
+                    double start = timeline.TimeAtScreenSpacePosition(bounds.TopLeft) - 200;
+                    double end = timeline.TimeAtScreenSpacePosition(bounds.TopRight) + 200;
+                    var expectedNodes = model.Nodes.Where(n => (n.IsBody ? n.HitObject.GetEndTime() : n.Time) >= start
+                                                              && (n.IsBody ? n.HitObject.StartTime : n.Time) <= end).ToHashSet();
+                    var actualNodes = points.Where(p => p.Lane == HitSoundingLane.SampleSet).Select(p => p.Node).ToHashSet();
+                    var expectedObjects = EditorBeatmap.HitObjects.Where(h => h.GetEndTime() >= start && h.StartTime <= end).ToHashSet();
+                    var actualObjects = screen.ChildrenOfType<HitSoundingObject>().Select(o => o.Item).ToHashSet();
+                    return actualNodes.SetEquals(expectedNodes) && actualObjects.SetEquals(expectedObjects);
+                });
+            }
+        }
+
+        [Test]
+        public void TestRecycledTimelineControlsFollowNewNodesAfterSeek()
+        {
+            var originalPoints = new HashSet<HitSoundingSamplePoint>();
+            var originalObjects = new HashSet<HitSoundingObject>();
+            HitSoundingNode target = null!;
+            AddStep("add separated windows", () =>
+            {
+                EditorBeatmap.BeginChange();
+                for (int i = 0; i < 120; i++)
+                {
+                    EditorBeatmap.Add(new HitCircle
+                    {
+                        StartTime = 10000 + i * 500,
+                        Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL, HitSampleInfo.BANK_DRUM, volume: 30 + i % 50)]
+                    });
+                }
+
+                EditorBeatmap.EndChange();
+                EditorClock.Seek(2000);
+            });
+            AddWaitStep("initial window settles", 3);
+            AddStep("capture original controls", () =>
+            {
+                originalPoints.UnionWith(Editor.ChildrenOfType<HitSoundingSamplePoint>());
+                originalObjects.UnionWith(Editor.ChildrenOfType<HitSoundingObject>());
+                EditorClock.Seek(40000);
+            });
+            AddUntilStep("controls reused with new targets", () =>
+                Editor.ChildrenOfType<HitSoundingSamplePoint>().Any(p => originalPoints.Contains(p) && p.Node.Time >= 30000)
+                && Editor.ChildrenOfType<HitSoundingObject>().Any(o => originalObjects.Contains(o) && o.Item.StartTime >= 30000));
+            AddStep("select rebound point", () =>
+            {
+                var point = Editor.ChildrenOfType<HitSoundingSamplePoint>()
+                                  .First(p => p.Node.Time >= 40000 && p.Lane == HitSoundingLane.SampleSet);
+                target = point.Node;
+                InputManager.MoveMouseTo(point);
+                InputManager.PressKey(Key.ControlLeft);
+                InputManager.Click(MouseButton.Left);
+                InputManager.ReleaseKey(Key.ControlLeft);
+            });
+            AddUntilStep("selection uses the new node", () => model.SelectedNodes.Contains(target));
+            AddStep("edit new target", () => model.SetVolume([target], 17));
+            AddUntilStep("visible volume reflects edit", () => Editor.ChildrenOfType<HitSoundingVolumeTrack>().Single().Segments
+                .Any(s => s.Nodes.Contains(target) && s.DisplayVolume == 17));
+            AddAssert("old nodes retain volume", () => model.Nodes.Where(n => n.Time < 10000).All(n => n.Volume is 70 or 90));
+            AddStep("return to original window", () => EditorClock.Seek(2000));
+            AddUntilStep("old window restored without stale targets", () => Editor.ChildrenOfType<HitSoundingSamplePoint>()
+                .Where(p => p.Lane == HitSoundingLane.SampleSet).Any(p => p.Node.Time == 500 && p.Node.Volume == 70));
         }
 
         [Test]

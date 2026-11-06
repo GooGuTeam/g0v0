@@ -174,7 +174,15 @@ namespace osu.Game.Screens.Edit.HitSounding
             rebuildQueued = true;
         }
 
-        private void onLibraryChanged() => Schedule(() => rebuildQueued = true);
+        private void onLibraryChanged()
+        {
+            // Aliases are not polled per frame, so every change is pushed to the existing tiles before the rebuild that
+            // eventually replaces them.
+            foreach (var tile in tiles)
+                tile.RefreshFromLibrary();
+
+            Schedule(() => rebuildQueued = true);
+        }
 
         private void rebuild()
         {

@@ -25,6 +25,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly Container body;
         private readonly Container tail;
         private readonly Dictionary<int, (Container Section, double Time)> repeats = [];
+        private readonly Stack<Container> repeatPool = [];
         private double startTime;
         private double endTime;
         private bool active;
@@ -101,15 +102,20 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 if (!repeats.TryGetValue(node.NodeIndex, out var repeat))
                 {
-                    var section = createSection(@"Slider repeat highlight");
+                    bool reused = repeatPool.TryPop(out var section);
+                    section ??= createSection(@"Slider repeat highlight");
                     // The separate badge outline is deliberately faint; the clipped outer contour above it
                     // supplies the strong top and bottom edges without bright internal vertical joins.
-                    var sides = createContour();
-                    sides.RelativeSizeAxes = Axes.Both;
-                    sides.Alpha = body_alpha;
-                    section.Add(sides);
+                    if (!reused)
+                    {
+                        var sides = createContour();
+                        sides.RelativeSizeAxes = Axes.Both;
+                        sides.Alpha = body_alpha;
+                        section.Add(sides);
+                        surface.Add(section);
+                    }
+
                     repeats.Add(node.NodeIndex, repeat = (section, node.Time));
-                    surface.Add(section);
                 }
 
                 repeat.Section.FadeOutFromOne(HitSoundingLayout.PLAYBACK_FLASH_DURATION, Easing.OutQuint);
@@ -127,6 +133,22 @@ namespace osu.Game.Screens.Edit.HitSounding
             tailTriggered = true;
             if (HasBody)
                 body.FadeOutFromOne(HitSoundingLayout.PLAYBACK_FLASH_DURATION, Easing.OutQuint);
+        }
+
+        internal void ResetForReuse()
+        {
+            foreach (var child in surface.Children)
+            {
+                child.ClearTransforms();
+                child.Alpha = 0;
+            }
+
+            foreach (var repeat in repeats.Values)
+                repeatPool.Push(repeat.Section);
+
+            repeats.Clear();
+            active = tailTriggered = HasBody = HasTail = false;
+            startTime = endTime = 0;
         }
 
         protected override void Update()

@@ -35,8 +35,18 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly Dictionary<HitSoundingNode, HitSoundingSamplePoint[]> points = [];
         private readonly Dictionary<HitObject, HitSoundingObject> objects = [];
         private readonly Dictionary<HitObject, HitSoundingSliderPlaybackFlash[]> sliderFlashes = [];
+        private readonly Stack<HitSoundingSamplePoint[]> pointPool = [];
+        private readonly Stack<HitSoundingSamplePoint[]> bodyPointPool = [];
+        private readonly Stack<HitSoundingSliderPlaybackFlash[]> flashPool = [];
+        private readonly Stack<HitSoundingObject> objectPool = [];
         private readonly List<Box> columnBoxes = [];
         private readonly Stack<HitObject> concurrentObjects = new Stack<HitObject>();
+        private readonly TimeRangeIndex nodeRange = new TimeRangeIndex();
+        private readonly TimeRangeIndex objectRange = new TimeRangeIndex();
+        private readonly List<HitSoundingNode> removedNodes = [];
+        private readonly List<HitObject> removedObjects = [];
+        private readonly HashSet<HitSoundingNode> currentNodes = [];
+        private readonly HashSet<HitObject> currentObjects = [];
         private Container lanes = null!;
         private Container topLanes = null!;
         private Container backgrounds = null!;
@@ -357,45 +367,68 @@ namespace osu.Game.Screens.Edit.HitSounding
             startTime = visibleStart;
             double endTime = startTime + visibleDuration;
 
+            var nodes = model.Nodes;
+            var hitObjects = beatmap.HitObjects;
             if (invalid)
             {
                 refreshPoints();
+                nodeRange.Rebuild(nodes.Count, i =>
+                {
+                    var node = nodes[i];
+                    return node.IsBody ? (node.HitObject.StartTime, node.HitObject.GetEndTime()) : (node.Time, node.Time);
+                });
+                objectRange.Rebuild(hitObjects.Count, i => (hitObjects[i].StartTime, hitObjects[i].GetEndTime()));
                 invalid = false;
             }
 
-            foreach (var node in model.Nodes)
+            double rangeStart = startTime - 200;
+            double rangeEnd = endTime + 200;
+            removedNodes.Clear();
+            foreach (var node in points.Keys)
             {
                 double nodeStart = node.IsBody ? node.HitObject.StartTime : node.Time;
                 double nodeEnd = node.IsBody ? node.HitObject.GetEndTime() : node.Time;
+                if (nodeEnd < rangeStart || nodeStart > rangeEnd)
+                    removedNodes.Add(node);
+            }
 
-                if (nodeEnd < startTime - 200 || nodeStart > endTime + 200)
+            foreach (var node in removedNodes)
+            {
+                recyclePoints(points[node]);
+                points.Remove(node);
+                if (node.IsBody && sliderFlashes.Remove(node.HitObject, out var flashes))
                 {
-                    if (points.Remove(node, out var removed))
-                    {
-                        foreach (var point in removed)
-                            markers.Remove(point, true);
-                    }
-
-                    if (node.IsBody && sliderFlashes.Remove(node.HitObject, out var flashes))
-                    {
-                        foreach (var flash in flashes)
-                            markers.Remove(flash, true);
-                    }
-
-                    continue;
+                    recycleFlashes(flashes);
                 }
+            }
+
+            var (firstNode, lastNode) = nodeRange.Find(rangeStart, rangeEnd);
+            for (int nodeIndex = firstNode; nodeIndex < lastNode; nodeIndex++)
+            {
+                var node = nodes[nodeIndex];
+                double nodeStart = node.IsBody ? node.HitObject.StartTime : node.Time;
+                double nodeEnd = node.IsBody ? node.HitObject.GetEndTime() : node.Time;
+                if (nodeEnd < rangeStart || nodeStart > rangeEnd)
+                    continue;
 
                 if (!points.TryGetValue(node, out var nodePoints))
                 {
-                    nodePoints = new HitSoundingSamplePoint[HitSoundingLayout.LANE_COUNT];
-                    points.Add(node, nodePoints);
-
-                    for (int i = 0; i < nodePoints.Length; i++)
+                    var pool = node.IsBody ? bodyPointPool : pointPool;
+                    if (pool.TryPop(out nodePoints))
                     {
-                        var point = new HitSoundingSamplePoint(node, model, (HitSoundingLane)i) { Depth = node.IsBody ? 1 : 0 };
-                        nodePoints[i] = point;
-                        markers.Add(point);
+                        foreach (var point in nodePoints)
+                            point.BindNode(node);
                     }
+                    else
+                    {
+                        nodePoints = new HitSoundingSamplePoint[HitSoundingLayout.LANE_COUNT];
+                        for (int i = 0; i < nodePoints.Length; i++)
+                            nodePoints[i] = new HitSoundingSamplePoint(node, model, (HitSoundingLane)i) { Depth = node.IsBody ? 1 : 0 };
+                    }
+
+                    points.Add(node, nodePoints);
+                    foreach (var point in nodePoints)
+                        markers.Add(point);
                 }
 
                 foreach (var point in nodePoints)
@@ -410,10 +443,16 @@ namespace osu.Game.Screens.Edit.HitSounding
                 {
                     if (!sliderFlashes.TryGetValue(node.HitObject, out var flashes))
                     {
-                        flashes = new HitSoundingSliderPlaybackFlash[HitSoundingLayout.LANE_COUNT];
+                        if (!flashPool.TryPop(out flashes))
+                        {
+                            flashes = new HitSoundingSliderPlaybackFlash[HitSoundingLayout.LANE_COUNT];
+                            for (int i = 0; i < flashes.Length; i++)
+                                flashes[i] = new HitSoundingSliderPlaybackFlash { Depth = -1 };
+                        }
+
                         sliderFlashes.Add(node.HitObject, flashes);
-                        for (int i = 0; i < flashes.Length; i++)
-                            markers.Add(flashes[i] = new HitSoundingSliderPlaybackFlash { Depth = -1 });
+                        foreach (var flash in flashes)
+                            markers.Add(flash);
                     }
 
                     for (int i = 0; i < flashes.Length; i++)
@@ -439,18 +478,33 @@ namespace osu.Game.Screens.Edit.HitSounding
             objectLayer.RelativeChildSize = new Vector2((float)editorClock.TrackLength, 1);
             concurrentObjects.Clear();
 
-            foreach (var hitObject in beatmap.HitObjects)
+            removedObjects.Clear();
+            foreach (var hitObject in objects.Keys)
             {
-                if (hitObject.GetEndTime() < startTime - 200 || hitObject.StartTime > endTime + 200)
-                {
-                    if (objects.Remove(hitObject, out var removed))
-                        objectLayer.Remove(removed, true);
+                if (hitObject.GetEndTime() < rangeStart || hitObject.StartTime > rangeEnd)
+                    removedObjects.Add(hitObject);
+            }
+
+            foreach (var hitObject in removedObjects)
+            {
+                objectLayer.Remove(objects[hitObject], false);
+                objectPool.Push(objects[hitObject]);
+                objects.Remove(hitObject);
+            }
+
+            var (firstObject, lastObject) = objectRange.Find(rangeStart, rangeEnd);
+            for (int objectIndex = firstObject; objectIndex < lastObject; objectIndex++)
+            {
+                var hitObject = hitObjects[objectIndex];
+                if (hitObject.GetEndTime() < rangeStart || hitObject.StartTime > rangeEnd)
                     continue;
-                }
 
                 if (!objects.TryGetValue(hitObject, out HitSoundingObject? drawable))
                 {
-                    drawable = new HitSoundingObject(hitObject, selectObject);
+                    if (objectPool.TryPop(out drawable))
+                        drawable.BindObject(hitObject);
+                    else
+                        drawable = new HitSoundingObject(hitObject, selectObject);
                     objects.Add(hitObject, drawable);
                     objectLayer.Add(drawable);
                 }
@@ -493,23 +547,27 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private void refreshPoints()
         {
-            foreach (var hitObject in objects.Keys.Where(h => !beatmap.HitObjects.Contains(h)).ToArray())
+            currentNodes.Clear();
+            currentNodes.UnionWith(model.Nodes);
+            currentObjects.Clear();
+            currentObjects.UnionWith(beatmap.HitObjects);
+
+            foreach (var hitObject in objects.Keys.Where(h => !currentObjects.Contains(h)).ToArray())
             {
-                objectLayer.Remove(objects[hitObject], true);
+                objectLayer.Remove(objects[hitObject], false);
+                objectPool.Push(objects[hitObject]);
                 objects.Remove(hitObject);
             }
 
-            foreach (var node in points.Keys.Where(n => !model.Nodes.Contains(n)).ToArray())
+            foreach (var node in points.Keys.Where(n => !currentNodes.Contains(n)).ToArray())
             {
-                foreach (var point in points[node])
-                    markers.Remove(point, true);
+                recyclePoints(points[node]);
                 points.Remove(node);
             }
 
-            foreach (var hitObject in sliderFlashes.Keys.Where(h => !beatmap.HitObjects.Contains(h)).ToArray())
+            foreach (var hitObject in sliderFlashes.Keys.Where(h => !currentObjects.Contains(h)).ToArray())
             {
-                foreach (var flash in sliderFlashes[hitObject])
-                    markers.Remove(flash, true);
+                recycleFlashes(sliderFlashes[hitObject]);
                 sliderFlashes.Remove(hitObject);
             }
 
@@ -518,6 +576,28 @@ namespace osu.Game.Screens.Edit.HitSounding
                 foreach (var point in nodePoints)
                     point.Refresh();
             }
+        }
+
+        private void recyclePoints(HitSoundingSamplePoint[] nodePoints)
+        {
+            foreach (var point in nodePoints)
+            {
+                point.ResetForReuse();
+                markers.Remove(point, false);
+            }
+
+            (nodePoints[0].Node.IsBody ? bodyPointPool : pointPool).Push(nodePoints);
+        }
+
+        private void recycleFlashes(HitSoundingSliderPlaybackFlash[] flashes)
+        {
+            foreach (var flash in flashes)
+            {
+                flash.ResetForReuse();
+                markers.Remove(flash, false);
+            }
+
+            flashPool.Push(flashes);
         }
 
         private void updateSelectionColumns(double endTime)
@@ -546,6 +626,61 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         private float timeToX(double time) => (float)((time - startTime) / visibleDuration * lanes.DrawWidth);
+
+        // Prefix ends and suffix starts are monotonic even for overlapping sliders and body nodes
+        // ordered by their sample time. Keep the original order for stacking and endpoint highlights.
+        private sealed class TimeRangeIndex
+        {
+            private double[] ends = [];
+            private double[] starts = [];
+
+            public void Rebuild(int count, Func<int, (double Start, double End)> getRange)
+            {
+                if (ends.Length != count)
+                {
+                    ends = new double[count];
+                    starts = new double[count];
+                }
+
+                double end = double.NegativeInfinity;
+                for (int i = 0; i < count; i++)
+                {
+                    var range = getRange(i);
+                    starts[i] = range.Start;
+                    ends[i] = end = Math.Max(end, range.End);
+                }
+
+                for (int i = count - 2; i >= 0; i--)
+                    starts[i] = Math.Min(starts[i], starts[i + 1]);
+            }
+
+            public (int Start, int End) Find(double start, double end)
+            {
+                int low = 0;
+                int high = ends.Length;
+                while (low < high)
+                {
+                    int mid = low + (high - low) / 2;
+                    if (ends[mid] < start)
+                        low = mid + 1;
+                    else
+                        high = mid;
+                }
+
+                int first = low;
+                high = starts.Length;
+                while (low < high)
+                {
+                    int mid = low + (high - low) / 2;
+                    if (starts[mid] <= end)
+                        low = mid + 1;
+                    else
+                        high = mid;
+                }
+
+                return (first, low);
+            }
+        }
 
         private void selectObject(HitObject hitObject)
         {
@@ -720,6 +855,29 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             if (beatmap.IsNotNull())
                 beatmap.ControlPointInfo.ControlPointsChanged -= invalidate;
+
+            if (isDisposing)
+            {
+                foreach (var pooled in pointPool.Concat(bodyPointPool))
+                {
+                    foreach (var point in pooled)
+                        point.Dispose();
+                }
+
+                foreach (var pooled in flashPool)
+                {
+                    foreach (var flash in pooled)
+                        flash.Dispose();
+                }
+
+                foreach (var drawable in objectPool)
+                    drawable.Dispose();
+
+                objectPool.Clear();
+                pointPool.Clear();
+                bodyPointPool.Clear();
+                flashPool.Clear();
+            }
 
             base.Dispose(isDisposing);
         }

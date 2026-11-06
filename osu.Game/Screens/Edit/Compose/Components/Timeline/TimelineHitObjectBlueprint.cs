@@ -75,7 +75,8 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
             Anchor = Anchor.CentreLeft;
             Origin = Anchor.CentreLeft;
 
-            startTime = item.StartTimeBindable.GetBoundCopy();
+            startTime = new Bindable<double>();
+            startTime.BindTo(item.StartTimeBindable);
             startTime.BindValueChanged(time => X = (float)time.NewValue, true);
 
             RelativePositionAxes = Axes.X;
@@ -152,6 +153,47 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         {
             base.LoadComplete();
 
+            bindItem();
+        }
+
+        /// <summary>
+        /// Reuses a display-only timeline blueprint for another object.
+        /// </summary>
+        protected void RebindItem(HitObject item)
+        {
+            if (showEditControls)
+                throw new InvalidOperationException(@"Timeline blueprints with edit controls cannot be rebound.");
+
+            indexInCurrentComboBindable?.UnbindAll();
+            comboIndexBindable?.UnbindAll();
+            comboIndexWithOffsetsBindable?.UnbindAll();
+            displayColourBindable?.UnbindAll();
+            if (IsLoaded)
+                skin.SourceChanged -= updateColour;
+
+            Item = item;
+            startTime.UnbindBindings();
+            startTime.BindTo(item.StartTimeBindable);
+            Width = (float)(item.GetEndTime() - item.StartTime);
+            if (item is IHasRepeats repeats)
+                updateRepeats(repeats);
+            else if (repeatsContainer != null)
+            {
+                foreach (var tick in repeatsContainer)
+                    tick.Alpha = 0;
+            }
+
+            comboIndexText.Text = string.Empty;
+            Deselect();
+            if (IsLoaded)
+            {
+                bindItem();
+                updateColour();
+            }
+        }
+
+        private void bindItem()
+        {
             switch (Item)
             {
                 case IHasDisplayColour displayColour:
@@ -241,19 +283,22 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
 
         private void updateRepeats(IHasRepeats repeats)
         {
-            repeatsContainer?.Expire();
-
-            colouredComponents.Add(repeatsContainer = new Container
+            if (repeatsContainer == null)
             {
-                RelativeSizeAxes = Axes.Both,
-            });
-
-            for (int i = 0; i < repeats.RepeatCount; i++)
-            {
-                repeatsContainer.Add(new Tick
+                colouredComponents.Add(repeatsContainer = new Container
                 {
-                    X = (float)(i + 1) / (repeats.RepeatCount + 1)
+                    RelativeSizeAxes = Axes.Both,
                 });
+            }
+
+            for (int i = repeatsContainer.Count; i < repeats.RepeatCount; i++)
+                repeatsContainer.Add(new Tick());
+
+            for (int i = 0; i < repeatsContainer.Count; i++)
+            {
+                var tick = repeatsContainer[i];
+                tick.Alpha = i < repeats.RepeatCount ? 1 : 0;
+                tick.X = (float)(i + 1) / (repeats.RepeatCount + 1);
             }
 
             if (!showEditControls)

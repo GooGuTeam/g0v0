@@ -31,7 +31,11 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// </summary>
     public partial class HitSoundingSamplePoint : CompositeDrawable, IHasPopover, IHasCustomTooltip<LocalisableString>
     {
-        public readonly HitSoundingNode Node;
+        /// <summary>
+        /// The node displayed by this control. Reassigned through <see cref="BindNode"/> when the control is reused.
+        /// </summary>
+        public HitSoundingNode Node { get; private set; }
+
         public readonly HitSoundingLane Lane;
 
         private readonly HitSoundingEditModel model;
@@ -189,6 +193,47 @@ namespace osu.Game.Screens.Edit.HitSounding
             normalVisibility.BindValueChanged(_ => Refresh());
         }
 
+        /// <summary>
+        /// Rebinds this control to a different node, allowing a single control to be reused across nodes.
+        /// The node must share this control's lane and body kind, as the drawable structure is built once on load.
+        /// </summary>
+        internal void BindNode(HitSoundingNode node)
+        {
+            ArgumentNullException.ThrowIfNull(node);
+
+            if (node.IsBody != Node.IsBody)
+                throw new InvalidOperationException(@"A sample point can only be reused for a node with the same body kind.");
+
+            Node = node;
+
+            // load() does not run again for a reused control, so every node-dependent property has to be rebuilt here.
+            // Refresh() no-ops before load has created the visuals, in which case load() applies the new node instead.
+            Refresh();
+
+            // The body span is owned by the roll and is reapplied by it directly after this call.
+        }
+
+        /// <summary>
+        /// Clears node-dependent transient state so this control can be detached and reused for another node.
+        /// Must be called while the control is still in the hierarchy so an open popover can be dismissed.
+        /// </summary>
+        internal void ResetForReuse()
+        {
+            // HidePopover() throws without a PopoverContainer ancestor, and it would also close a popover
+            // belonging to a different control, so only dismiss the one this control actually opened.
+            var popoverContainer = this.FindClosestParent<PopoverContainer>();
+
+            if (popoverContainer != null && ReferenceEquals(popoverContainer.CurrentTarget, this))
+                this.HidePopover();
+
+            if (playbackFlash == null)
+                return;
+
+            // A fade started for the previous node must not carry over as a glow on the reused control.
+            playbackFlash.ClearTransforms();
+            playbackFlash.Alpha = 0;
+        }
+
         internal void UpdateBodyLayout(float width, float markerX)
         {
             Width = Math.Max(0, width);
@@ -290,7 +335,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             bodyFill?.Alpha = IsEnabled
                 ? Lane switch
                 {
-                    HitSoundingLane.SampleSet or HitSoundingLane.Additions => selected || IsHovered ? 0.35f : 0.25f,
+                    HitSoundingLane.SampleSet => selected || IsHovered ? 0.35f : 0.25f,
+                    HitSoundingLane.Additions => hasAdditionEndpoint() ? selected || IsHovered ? 0.35f : 0.25f : 0,
                     HitSoundingLane.Whistle => Node.HasAddition(HitSampleInfo.HIT_WHISTLE) ? 0.66f : IsHovered ? 0.2f : hasEndpointSample(HitSampleInfo.HIT_WHISTLE) ? 0.08f : 0,
                     _ => 0
                 }

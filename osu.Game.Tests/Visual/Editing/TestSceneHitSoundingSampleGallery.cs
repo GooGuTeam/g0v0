@@ -161,10 +161,10 @@ namespace osu.Game.Tests.Visual.Editing
                 InputManager.ScrollVerticalBy(-10);
             });
             AddAssert("complete tree does not scroll vertically", () => gallery.Tree.Columns[0].ScreenSpaceDrawQuad.TopLeft == initial);
-            AddAssert("hint stays at gallery bottom", () =>
+            AddAssert("set tree fills to the panel bottom", () =>
             {
-                var hint = gallery.Tree.ChildrenOfType<Drawable>().Single(d => d.Name == "Sample sets hint");
-                return Math.Abs(hint.ScreenSpaceDrawQuad.BottomLeft.Y - gallery.ScreenSpaceDrawQuad.BottomLeft.Y) < 1;
+                var viewport = gallery.Tree.ChildrenOfType<Drawable>().Single(d => d.Name == "Sample sets tree");
+                return Math.Abs(viewport.ScreenSpaceDrawQuad.BottomLeft.Y - gallery.Tree.ScreenSpaceDrawQuad.BottomLeft.Y) < 1;
             });
         }
 

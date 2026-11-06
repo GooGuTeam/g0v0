@@ -27,12 +27,36 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// Draws the volume of every <see cref="HitSoundingNode"/> over time as a step graph, and edits it by dragging,
     /// double-clicking or Ctrl-clicking a run of nodes sharing the same volume.
     /// </summary>
+    /// <remarks>
+    /// Only the runs inside the visible window (plus <see cref="attach_margin"/>) own a segment; every other run
+    /// keeps its nodes and volume for hit-testing and editing but costs nothing to display. Segments of runs leaving
+    /// the window are pooled and rebound to the runs entering it, so scrolling a long map neither creates nor disposes
+    /// controls.
+    /// </remarks>
     public partial class HitSoundingVolumeTrack : CompositeDrawable, IHasCustomTooltip<LocalisableString>
     {
+        /// <summary>
+        /// How far outside the visible window, in milliseconds, runs are materialised ahead of time. A newly attached
+        /// segment only becomes drawable on the following update, so this keeps one update of slack; it is also what
+        /// bounds how many segments exist at once on a long map.
+        /// </summary>
+        private const double attach_margin = 200;
+
         private readonly HitSoundingEditModel model;
 
         private readonly List<VolumeRun> runs = [];
+
+        /// <summary>
+        /// The segments currently holding a place in the draw tree, ordered by time. Only the runs inside the
+        /// visible window (plus the prefetch margin) own a segment, so this is not the whole map.
+        /// </summary>
         private readonly List<HitSoundingVolumeSegment> segments = [];
+
+        /// <summary>
+        /// Segments detached from the draw tree, waiting to be bound to a run which enters the visible window.
+        /// </summary>
+        private readonly Stack<HitSoundingVolumeSegment> segmentPool = [];
+
         private readonly HashSet<HitSoundingNode> selectedNodes = [];
 
         private Container<HitSoundingVolumeSegment> segmentLayer = null!;
@@ -41,8 +65,18 @@ namespace osu.Game.Screens.Edit.HitSounding
         private InputManager inputManager = null!;
 
         private bool dirty = true;
+        private bool layoutPending;
         private bool updatingSelection;
         private bool controlHeld;
+        private double laidOutStartTime;
+        private double laidOutEndTime;
+        private float laidOutWidth = -1;
+
+        /// <summary>
+        /// The half-open range of <see cref="runs"/> which currently owns a segment, in run order.
+        /// </summary>
+        private int materialisedFirst;
+        private int materialisedEnd;
         private VolumeRun? hoveredRun;
         private VolumeRun? dragRun;
         private HitSoundingNode[]? dragNodes;
@@ -61,7 +95,9 @@ namespace osu.Game.Screens.Edit.HitSounding
         public double VisibleEndTime { get; set; }
 
         /// <summary>
-        /// The currently displayed runs, ordered by time.
+        /// The segments currently materialised for the visible window, ordered by time. Runs outside of the window
+        /// and its prefetch margin keep their nodes and volume for hit-testing and editing, but own no drawable and
+        /// therefore do not appear here.
         /// </summary>
         public IReadOnlyList<HitSoundingVolumeSegment> Segments => segments;
 
@@ -190,13 +226,16 @@ namespace osu.Game.Screens.Edit.HitSounding
         private void rebuild()
         {
             dirty = false;
+            layoutPending = true;
 
             resetDrag();
-            hoveredRun = null;
+            setHovered(null);
+
+            // the runs are rebuilt from scratch, so every segment goes back to the pool; layout() binds the ones the
+            // current window needs and hands the rest to whatever enters the window next.
+            releaseRuns();
 
             runs.Clear();
-            segments.Clear();
-            segmentLayer.Clear();
 
             foreach (var node in model.Nodes)
             {
@@ -218,35 +257,182 @@ namespace osu.Game.Screens.Edit.HitSounding
                 runs[i].EndTime = runs[i + 1].StartTime;
 
             updateSelectionCache();
-
-            for (int i = 0; i < runs.Count; i++)
-            {
-                VolumeRun run = runs[i];
-
-                run.Segment = new HitSoundingVolumeSegment(run.Nodes, run.Volume, i > 0);
-                run.Segment.SetSelected(isRunSelected(run));
-
-                segments.Add(run.Segment);
-                segmentLayer.Add(run.Segment);
-            }
         }
 
         private void layout()
         {
-            if (DrawWidth <= 0 || VisibleEndTime <= VisibleStartTime)
+            float width = DrawWidth;
+
+            if (width <= 0 || VisibleEndTime <= VisibleStartTime)
                 return;
 
-            float previousY = 0;
+            // a refresh can arrive without the window changing (a control point edit, a vertical resize), so only
+            // reposition the graph when the mapping it uses actually changed or the runs were rebuilt.
+            if (!layoutPending && width == laidOutWidth && VisibleStartTime == laidOutStartTime && VisibleEndTime == laidOutEndTime)
+                return;
 
-            for (int i = 0; i < runs.Count; i++)
+            layoutPending = false;
+            laidOutWidth = width;
+            laidOutStartTime = VisibleStartTime;
+            laidOutEndTime = VisibleEndTime;
+
+            double visibleStart = VisibleStartTime;
+            double visibleEnd = VisibleEndTime;
+
+            // the mapping is affine and identical for every run, so derive its scale once instead of dividing per run.
+            double scale = width / (visibleEnd - visibleStart);
+
+            // only the runs around the window own a segment; the margin materialises them ahead of the moment they
+            // can be drawn, so they are already alive by the time they enter the window.
+            double attachStart = visibleStart - attach_margin;
+            double attachEnd = visibleEnd + attach_margin;
+
+            // run bounds are sorted, so the runs which own a segment form a contiguous slice that a binary search
+            // finds in a handful of steps instead of scanning every run of the map on each scroll.
+            int first = firstRunEndingAtOrAfter(attachStart);
+            int end = firstRunStartingAtOrAfter(attachEnd);
+
+            releaseRunsOutside(first, end);
+            materialiseRuns(first, end);
+
+            segments.Clear();
+
+            // the run before the window still anchors the first materialised run's connector, so start from its line
+            // rather than from the left edge of the graph.
+            float previousY = first > 0 ? HitSoundingVolumeSegment.VolumeToY(runs[first - 1].DisplayVolume) : 0;
+
+            for (int i = first; i < end; i++)
             {
                 VolumeRun run = runs[i];
+                HitSoundingVolumeSegment segment = run.Segment!;
                 float y = HitSoundingVolumeSegment.VolumeToY(run.DisplayVolume);
 
-                run.Segment.UpdateLayout(TimeToX(run.StartTime), TimeToX(run.EndTime), y, previousY, i > 0, DrawWidth);
+                segment.UpdateLayout((float)((run.StartTime - visibleStart) * scale), (float)((run.EndTime - visibleStart) * scale),
+                    y, previousY, i > 0, width);
 
+                segments.Add(segment);
                 previousY = y;
             }
+        }
+
+        /// <summary>
+        /// Returns the segment of every run which is no longer wanted to the pool, so entering runs can take it over.
+        /// </summary>
+        private void releaseRunsOutside(int first, int end)
+        {
+            for (int i = materialisedFirst; i < materialisedEnd; i++)
+            {
+                if (i < first || i >= end)
+                    detach(runs[i]);
+            }
+
+            materialisedFirst = first;
+            materialisedEnd = end;
+        }
+
+        /// <summary>
+        /// Returns every materialised segment to the pool, leaving nothing in the draw tree.
+        /// </summary>
+        private void releaseRuns()
+        {
+            for (int i = materialisedFirst; i < materialisedEnd; i++)
+                detach(runs[i]);
+
+            materialisedFirst = 0;
+            materialisedEnd = 0;
+            segments.Clear();
+        }
+
+        /// <summary>
+        /// Binds a pooled segment to every run inside the window which does not own one yet, so runs entering the
+        /// window take over the controls of the runs which left it instead of creating new ones.
+        /// </summary>
+        private void materialiseRuns(int first, int end)
+        {
+            for (int i = first; i < end; i++)
+            {
+                VolumeRun run = runs[i];
+
+                if (run.Segment != null)
+                    continue;
+
+                HitSoundingVolumeSegment segment = segmentPool.Count > 0
+                    ? segmentPool.Pop()
+                    : new HitSoundingVolumeSegment();
+
+                // depth may only be assigned while the segment is outside of a parent, and gives later runs priority.
+                segment.Depth = -i;
+
+                segment.Bind(run.Nodes, run.Volume, isRunSelected(run), i > 0);
+                segment.SetDisplayVolume(run.DisplayVolume);
+
+                run.Segment = segment;
+                segmentLayer.Add(segment);
+            }
+        }
+
+        /// <summary>
+        /// Removes a run's segment from the draw tree and hands it to the pool.
+        /// </summary>
+        private void detach(VolumeRun run)
+        {
+            HitSoundingVolumeSegment? segment = run.Segment;
+
+            if (segment == null)
+                return;
+
+            run.Segment = null;
+
+            if (ReferenceEquals(hoveredRun, run))
+                hoveredRun = null;
+
+            segmentLayer.Remove(segment, false);
+            segmentPool.Push(segment);
+        }
+
+        /// <summary>
+        /// Finds the first run which ends at or after <paramref name="time"/>. End times are sorted, so the runs
+        /// before it end before the time and cannot be displayed. The bound is inclusive so a zero-length run lying
+        /// exactly on it is still materialised; it stays transparent until the window reaches it.
+        /// </summary>
+        private int firstRunEndingAtOrAfter(double time)
+        {
+            int low = 0;
+            int high = runs.Count;
+
+            while (low < high)
+            {
+                int mid = low + (high - low) / 2;
+
+                if (runs[mid].EndTime < time)
+                    low = mid + 1;
+                else
+                    high = mid;
+            }
+
+            return low;
+        }
+
+        /// <summary>
+        /// Finds the first run whose start is at or after <paramref name="time"/>. Start times are sorted, so every
+        /// run from here on begins after the time and cannot be displayed.
+        /// </summary>
+        private int firstRunStartingAtOrAfter(double time)
+        {
+            int low = 0;
+            int high = runs.Count;
+
+            while (low < high)
+            {
+                int mid = low + (high - low) / 2;
+
+                if (runs[mid].StartTime >= time)
+                    high = mid;
+                else
+                    low = mid + 1;
+            }
+
+            return low;
         }
 
         private double xToTime(float x)
@@ -263,6 +449,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// Finds the run under a position. Runs which are completely overlapped in time (multiple nodes at the same
         /// time with different volumes) are told apart by the vertical distance to their step line.
         /// </summary>
+        /// <remarks>
+        /// Only the runs owning a segment are considered: the track is only hit while the cursor is inside it, and
+        /// every run which can be under the cursor there is inside the window and therefore materialised. That keeps
+        /// hovering bounded by the visible window rather than by the length of the map.
+        /// </remarks>
         private VolumeRun? findRun(Vector2 position)
         {
             if (runs.Count == 0)
@@ -273,7 +464,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             VolumeRun? best = null;
             double bestDistance = double.MaxValue;
 
-            for (int i = 0; i < runs.Count; i++)
+            for (int i = materialisedFirst; i < materialisedEnd; i++)
             {
                 VolumeRun run = runs[i];
 
@@ -367,8 +558,11 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private void updateSelectionVisuals()
         {
-            foreach (var run in runs)
-                run.Segment.SetSelected(isRunSelected(run));
+            for (int i = materialisedFirst; i < materialisedEnd; i++)
+            {
+                VolumeRun run = runs[i];
+                run.Segment?.SetSelected(isRunSelected(run));
+            }
         }
 
         private bool isRunSelected(VolumeRun run)
@@ -387,9 +581,9 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (hoveredRun == run)
                 return;
 
-            hoveredRun?.Segment.SetGripVisible(false);
+            hoveredRun?.Segment?.SetGripVisible(false);
             hoveredRun = run;
-            hoveredRun?.Segment.SetGripVisible(true);
+            hoveredRun?.Segment?.SetGripVisible(true);
         }
 
         private void resetDrag()
@@ -542,11 +736,11 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             previewVolume = volume;
             dragRun.DisplayVolume = volume;
-            dragRun.Segment.SetDisplayVolume(volume);
+            dragRun.Segment?.SetDisplayVolume(volume);
 
             // the following run's connector starts at this run's line.
             if (dragIndex + 1 < runs.Count)
-                runs[dragIndex + 1].Segment.SetPreviousLineY(HitSoundingVolumeSegment.VolumeToY(volume));
+                runs[dragIndex + 1].Segment?.SetPreviousLineY(HitSoundingVolumeSegment.VolumeToY(volume));
         }
 
         protected override void OnDragEnd(DragEndEvent e)
@@ -614,10 +808,21 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         protected override void Dispose(bool isDisposing)
         {
-            base.Dispose(isDisposing);
-
             model.Changed -= onModelChanged;
             model.SelectedNodes.CollectionChanged -= onSelectionCollectionChanged;
+
+            if (isDisposing)
+            {
+                // Attached segments are disposed by the base implementation. Pooled segments have no owner in the
+                // draw tree, so dispose only those here without mutating children during host shutdown.
+                foreach (var segment in segmentPool)
+                    segment.Dispose();
+
+                segmentPool.Clear();
+                segments.Clear();
+            }
+
+            base.Dispose(isDisposing);
         }
 
         /// <summary>
@@ -630,7 +835,11 @@ namespace osu.Game.Screens.Edit.HitSounding
             public readonly double StartTime;
             public double EndTime;
             public int DisplayVolume;
-            public HitSoundingVolumeSegment Segment = null!;
+
+            /// <summary>
+            /// The segment currently showing this run, or <c>null</c> while the run is outside of the window.
+            /// </summary>
+            public HitSoundingVolumeSegment? Segment;
 
             public VolumeRun(double startTime, int volume)
             {

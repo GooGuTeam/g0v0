@@ -10,14 +10,14 @@ using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
-using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.Effects;
+using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.UserInterface;
-using osu.Game.Graphics;
-using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Overlays;
 using osu.Game.Utils;
 using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Screens.Edit.HitSounding
 {
@@ -148,7 +148,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             DraggingFilename = filename;
             FileLibrary.RefreshDragging();
 
-            dragLayer.Add(dragProxy = new DragProxy(GetDisplayName(filename)) { Alpha = 0 });
+            dragLayer.Add(dragProxy = new DragProxy { Alpha = 0 });
             dragProxy.FadeIn(120, Easing.OutQuint);
         }
 
@@ -285,32 +285,30 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         /// <summary>
-        /// The floating visual that follows the pointer while a file tile is dragged.
+        /// The floating audio file icon that follows the pointer while a file tile is dragged.
         /// </summary>
         private partial class DragProxy : CompositeDrawable
         {
-            private readonly Box background;
-            private readonly TruncatingSpriteText label;
+            private const float icon_size = 40;
 
-            public DragProxy(string displayName)
+            private readonly Container iconContainer;
+            private readonly SpriteIcon icon;
+
+            public DragProxy()
             {
                 Name = "Sample drag preview";
+                Size = new Vector2(icon_size);
 
-                AutoSizeAxes = Axes.Both;
-                Masking = true;
-                CornerRadius = 5;
-                BorderThickness = 1;
-                Padding = new MarginPadding { Horizontal = 10, Vertical = 6 };
-
-                InternalChildren = new Drawable[]
+                InternalChild = iconContainer = new Container
                 {
-                    background = new Box { RelativeSizeAxes = Axes.Both, Depth = 1 },
-                    label = new TruncatingSpriteText
+                    RelativeSizeAxes = Axes.Both,
+                    Masking = true,
+                    Child = icon = new SpriteIcon
                     {
-                        Text = displayName,
-                        ShowTooltip = false,
-                        MaxWidth = 200,
-                        Font = OsuFont.Default.With(size: 14, weight: FontWeight.Medium),
+                        Anchor = Anchor.Centre,
+                        Origin = Anchor.Centre,
+                        Icon = FontAwesome.Regular.FileAudio,
+                        Size = new Vector2(icon_size),
                     },
                 };
             }
@@ -318,9 +316,14 @@ namespace osu.Game.Screens.Edit.HitSounding
             [BackgroundDependencyLoader]
             private void load(OverlayColourProvider colours)
             {
-                background.Colour = colours.Background4;
-                BorderColour = colours.Highlight1;
-                label.Colour = colours.Content1;
+                icon.Colour = colours.Content1;
+                iconContainer.EdgeEffect = new EdgeEffectParameters
+                {
+                    Type = EdgeEffectType.Shadow,
+                    Colour = new Color4(0, 0, 0, 0.55f),
+                    Radius = 8,
+                    Offset = new Vector2(0, 2),
+                };
             }
         }
 

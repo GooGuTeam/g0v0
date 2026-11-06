@@ -27,6 +27,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             this.selected = selected;
         }
 
+        internal void BindObject(HitObject hitObject) => RebindItem(hitObject);
+
         protected override bool ShouldBeConsideredForInput(Drawable child) => false;
 
         protected override void Update()

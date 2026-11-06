@@ -102,7 +102,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             base.LoadComplete();
 
-            refresh();
+            refreshAlias();
+            refreshPlayback();
         }
 
         protected override void Update()
@@ -112,7 +113,9 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (IsEditingAlias || !gallery.IsVisibleInHierarchy)
                 return;
 
-            refresh();
+            // The alias can only change together with a library change, which is pushed via RefreshFromLibrary(). Only the
+            // audition state is polled here, as it ends whenever the sample channel finishes.
+            refreshPlayback();
         }
 
         /// <summary>
@@ -240,16 +243,24 @@ namespace osu.Game.Screens.Edit.HitSounding
             },
         };
 
-        private void refresh()
+        /// <summary>
+        /// Re-reads the alias displayed by this tile after a library change.
+        /// </summary>
+        internal void RefreshFromLibrary() => refreshAlias();
+
+        private void refreshAlias()
         {
             string alias = samples.GetAlias(Filename);
 
-            if (alias != displayedAlias)
-            {
-                displayedAlias = alias;
-                aliasText.Text = alias;
-            }
+            if (alias == displayedAlias)
+                return;
 
+            displayedAlias = alias;
+            aliasText.Text = alias;
+        }
+
+        private void refreshPlayback()
+        {
             bool playing = samples.IsPlaying(Filename);
 
             if (displayedPlaying == playing)
