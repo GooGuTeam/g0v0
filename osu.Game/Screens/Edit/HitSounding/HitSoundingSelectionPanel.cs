@@ -70,6 +70,9 @@ namespace osu.Game.Screens.Edit.HitSounding
         [Resolved]
         private EditorBeatmap beatmap { get; set; } = null!;
 
+        [Resolved(canBeNull: true)]
+        private HitSoundingSampleLibrary? library { get; set; }
+
         public HitSoundingSelectionPanel(HitSoundingEditModel model)
         {
             this.model = model;
@@ -228,6 +231,8 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             model.Changed += scheduleRefresh;
             model.SelectedNodes.CollectionChanged += selectionChanged;
+            if (library != null)
+                library.Changed += scheduleRefresh;
 
             if (beatmap.BeatmapSkin != null)
             {
@@ -271,6 +276,8 @@ namespace osu.Game.Screens.Edit.HitSounding
                 var targets = model.SelectedNodes;
 
                 var sets = new SortedSet<int> { 0, 1 };
+                if (library != null)
+                    sets.UnionWith(library.Sets);
 
                 if (beatmap.BeatmapSkin != null)
                 {
@@ -393,6 +400,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             model.Changed -= scheduleRefresh;
             model.SelectedNodes.CollectionChanged -= selectionChanged;
+            if (library != null)
+                library.Changed -= scheduleRefresh;
 
             if (subscribedSkin != null)
                 subscribedSkin.BeatmapSkinChanged -= scheduleRefresh;

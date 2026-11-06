@@ -33,6 +33,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             var playback = new HitSoundingSamplePlayback(model);
             dependencies.CacheAs(playback);
             var preview = new HitSoundingPreviewState(model);
+            var library = new HitSoundingSampleLibrary();
+            dependencies.CacheAs(library);
             dependencies.CacheAs(preview);
             roll = new HitSoundingRoll(model);
             dependencies.CacheAs(roll);
@@ -47,6 +49,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     Children = new Drawable[]
                     {
                         playback,
+                        library,
                         new HitSoundingHotkeyHandler(model),
                         roll,
                         new Container

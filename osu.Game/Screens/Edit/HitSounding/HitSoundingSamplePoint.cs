@@ -89,6 +89,9 @@ namespace osu.Game.Screens.Edit.HitSounding
                     ? HitSoundingTooltipKind.Bank
                     : HitSoundingTooltipKind.Addition);
 
+        [Resolved(canBeNull: true)]
+        private HitSoundingSampleLibrary? library { get; set; }
+
         public HitSoundingSamplePoint(HitSoundingNode node, HitSoundingEditModel model, HitSoundingLane lane)
         {
             Node = node;
@@ -312,6 +315,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             var indices = new SortedSet<int> { 0, 1 };
             var beatmap = Dependencies.Get<EditorBeatmap>();
+            if (library != null)
+                indices.UnionWith(library.Sets);
 
             if (beatmap.BeatmapSkin != null)
             {

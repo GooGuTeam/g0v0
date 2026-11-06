@@ -9,6 +9,7 @@ using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Localisation;
@@ -31,6 +32,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         private FormCheckBox highlight = null!;
         private bool invalid = true;
         private float lastWidth;
+        private Container previewContent = null!;
+        private HitSoundingSampleGallery gallery = null!;
+
+        [Resolved]
+        private HitSoundingSampleLibrary library { get; set; } = null!;
 
         [Resolved]
         private EditorBeatmap beatmap { get; set; } = null!;
@@ -62,12 +68,12 @@ namespace osu.Game.Screens.Edit.HitSounding
                     RelativeSizeAxes = Axes.Both, Padding = new MarginPadding(20),
                     Children = new Drawable[]
                     {
-                        new PreviewTabControl
+                        new PreviewTabControl(showGallery)
                         {
                             RelativeSizeAxes = Axes.X, Height = 30,
-                            Items = new[] { HitSoundingStrings.Preview }
+                            Items = new[] { HitSoundingStrings.Preview, HitSoundingStrings.SampleGallery }
                         },
-                        new Container
+                        previewContent = new Container
                         {
                             RelativeSizeAxes = Axes.Both,
                             Padding = new MarginPadding { Top = 40 },
@@ -113,6 +119,16 @@ namespace osu.Game.Screens.Edit.HitSounding
                                     }
                                 }
                             }
+                        },
+                        new Container
+                        {
+                            RelativeSizeAxes = Axes.Both,
+                            Padding = new MarginPadding { Top = 40 },
+                            Child = new OsuScrollContainer
+                            {
+                                RelativeSizeAxes = Axes.Both,
+                                Child = gallery = new HitSoundingSampleGallery { RelativeSizeAxes = Axes.X, Height = 390, Alpha = 0 }
+                            }
                         }
                     }
                 }
@@ -125,8 +141,20 @@ namespace osu.Game.Screens.Edit.HitSounding
                 radius.Current.Value = state.Radius.Value.ToString("0.000", CultureInfo.InvariantCulture);
                 playback.StopSetPreview();
             };
+            library.Changed += invalidate;
             if (beatmap.BeatmapSkin != null)
                 beatmap.BeatmapSkin.BeatmapSkinChanged += invalidate;
+        }
+
+        private void showGallery(bool visible)
+        {
+            if (!IsLoaded)
+                return;
+
+            previewContent.Alpha = visible ? 0 : 1;
+            gallery.Alpha = visible ? 1 : 0;
+            playback.StopSetPreview();
+            library.StopPreview();
         }
 
         private void invalidate() => invalid = true;
@@ -142,6 +170,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private void rebuildCards()
         {
             var sets = new SortedSet<int> { 0, 1 };
+            sets.UnionWith(library.Sets);
 
             if (beatmap.BeatmapSkin != null)
             {
@@ -219,10 +248,19 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private partial class PreviewTabControl : OverlayTabControl<LocalisableString>
         {
+            public PreviewTabControl(Action<bool> showGallery)
+            {
+                Current.BindValueChanged(e => showGallery(e.NewValue.Equals(HitSoundingStrings.SampleGallery)));
+            }
+
             protected override TabItem<LocalisableString> CreateTabItem(LocalisableString value) => new PreviewTabItem(value);
 
-            private partial class PreviewTabItem : OverlayTabItem
+            private partial class PreviewTabItem : OverlayTabItem, IHasTooltip
             {
+                public LocalisableString TooltipText => Value.Equals(HitSoundingStrings.SampleGallery)
+                    ? HitSoundingStrings.TooltipSampleGallery
+                    : HitSoundingStrings.TooltipPreview;
+
                 public PreviewTabItem(LocalisableString value)
                     : base(value)
                 {
@@ -235,6 +273,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             model.Changed -= invalidate;
             model.SelectedNodes.CollectionChanged -= selectionChanged;
+            if (IsLoaded)
+                library.Changed -= invalidate;
             if (IsLoaded && beatmap.BeatmapSkin != null)
                 beatmap.BeatmapSkin.BeatmapSkinChanged -= invalidate;
             base.Dispose(isDisposing);

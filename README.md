@@ -92,6 +92,15 @@ selecting other points, editing, seeking or changing mode
 clears the temporary override. Set-only edits in the selection panel preserve independently assigned banks and
 remain undoable as one change.
 
+The adjacent **Sample Gallery** tab pairs an always-expanded sample-set tree with a searchable file library.
+Each set groups Normal, Soft and Drum banks with N / W / F / C slots. Add sets from the tree header,
+import audio with **Add files**, then drag a file onto a slot or click an empty slot to choose a file.
+Assigned slots and file tiles support individual auditions. Double-click a tile's alias to edit its display name;
+Enter confirms and Escape cancels, without renaming the original file. Search matches aliases and filenames.
+Aliases, empty sets and slot assignments are saved with the beatmap's gallery metadata. Assigning a slot
+creates its conventional hitsound filename; clearing an assignment preserves the imported source file.
+The gallery scrolls in short windows, while the Preview and Sample Gallery tabs remain accessible.
+
 ## Download
 
 g0v0! is available for Windows (x64 / ARM64), macOS (Intel / Apple Silicon), Linux (x64 / ARM64), Android, and iOS. Grab

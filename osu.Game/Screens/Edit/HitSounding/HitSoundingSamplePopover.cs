@@ -28,6 +28,9 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly string initialBank;
         private readonly int initialSet;
 
+        [Resolved(canBeNull: true)]
+        private HitSoundingSampleLibrary? library { get; set; }
+
         public HitSoundingSamplePopover(HitSoundingNode node, HitSoundingEditModel model, bool additionsOnly)
         {
             this.model = model;
@@ -44,6 +47,8 @@ namespace osu.Game.Screens.Edit.HitSounding
                 ? new[] { HitObjectComposer.HIT_BANK_AUTO, HitSampleInfo.BANK_NORMAL, HitSampleInfo.BANK_SOFT, HitSampleInfo.BANK_DRUM }
                 : HitSampleInfo.ALL_BANKS;
             var indices = new SortedSet<int> { 0, 1 };
+            if (library != null)
+                indices.UnionWith(library.Sets);
 
             if (beatmap.BeatmapSkin != null)
             {
