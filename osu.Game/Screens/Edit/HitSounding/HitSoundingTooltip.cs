@@ -27,7 +27,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         Addition,
         DisabledAddition,
         Volume,
-        VolumeSplit
+        VolumeSplit,
+        Alias
     }
 
     /// <summary>
@@ -140,6 +141,9 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (content.Equals(HitSoundingStrings.CtrlSplitHint))
                 return HitSoundingTooltipKind.VolumeSplit;
 
+            if (content.Equals(HitSoundingStrings.TooltipFileTileAlias))
+                return HitSoundingTooltipKind.Alias;
+
             return null;
         }
 
@@ -173,6 +177,11 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                 case HitSoundingTooltipKind.VolumeSplit:
                     rows.Add(createKeycapRow(@"CTRL+M1", HitSoundingStrings.TooltipEditVolumeFromPointOnwards));
+                    break;
+
+                case HitSoundingTooltipKind.Alias:
+                    rows.Add(createTextRow(HitSoundingStrings.TooltipFileTileAlias));
+                    rows.Add(createKeycapRow(HitSoundingStrings.AliasConfirmHotkey, HitSoundingStrings.AliasConfirm));
                     break;
             }
         }

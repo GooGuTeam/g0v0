@@ -208,10 +208,6 @@ namespace osu.Game.Screens.Edit.HitSounding
                     Name = $"Sample alias: {Filename}",
                     RelativeSizeAxes = Axes.X,
                     Height = 18,
-                    TooltipText = LocalisableString.Format("{0}\n{1}  {2}",
-                        HitSoundingStrings.TooltipFileTileAlias,
-                        HitSoundingStrings.AliasConfirmHotkey,
-                        HitSoundingStrings.AliasConfirm),
                     Child = aliasText = new TruncatingSpriteText
                     {
                         Anchor = Anchor.TopCentre,
@@ -318,9 +314,11 @@ namespace osu.Game.Screens.Edit.HitSounding
             gallery.EndAliasEdit();
         }
 
-        private partial class AliasTooltipArea : Container, IHasTooltip
+        private partial class AliasTooltipArea : Container, IHasCustomTooltip<LocalisableString>
         {
-            public LocalisableString TooltipText { get; set; }
+            public LocalisableString TooltipContent => HitSoundingStrings.TooltipFileTileAlias;
+
+            public ITooltip<LocalisableString> GetCustomTooltip() => new HitSoundingTooltip(HitSoundingTooltipKind.Alias);
         }
 
         private partial class AliasEditor : OsuTextBox
