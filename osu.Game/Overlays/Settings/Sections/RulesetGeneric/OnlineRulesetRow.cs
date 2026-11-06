@@ -464,7 +464,9 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
                 downloadRequest = null;
                 notification.Text = $"{NotificationsStrings.RulesetException(mode.ReadableName)} {e.Message}";
                 notification.State = ProgressNotificationState.Cancelled;
-                Logger.Error(e, $"Failed to download the ruleset package from {url}.");
+
+                // the failure is already communicated to the user by the notification above, so it is logged for diagnosis only.
+                Logger.GetLogger(LoggingTarget.Network).Add($"Failed to download the ruleset package from {url}.", LogLevel.Verbose, e);
 
                 try
                 {
@@ -502,7 +504,10 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
             };
 
             notification.State = ProgressNotificationState.Active;
-            request.PerformAsync();
+
+            // the outcome is handled via the `Finished` / `Failed` events above, so the returned task must not be left
+            // to fault on its own (which would surface the failure as an unobserved error).
+            request.PerformAsync().ContinueWith(t => t.Exception, TaskContinuationOptions.OnlyOnFaulted);
         }
 
         private static bool isServerSideVariant(string shortName)

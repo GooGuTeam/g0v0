@@ -30,6 +30,7 @@ using osu.Framework.Input.Events;
 using osu.Framework.Input.Handlers.Mouse;
 using osu.Framework.Input.Handlers.Pen;
 using osu.Framework.Input.Handlers.Tablet;
+using osu.Framework.IO.Network;
 using osu.Framework.Localisation;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
@@ -1593,6 +1594,9 @@ namespace osu.Game
                 return;
 
             if (entry.Exception is SentryOnlyDiagnosticsException)
+                return;
+
+            if (entry.Exception is WebRequestException)
                 return;
 
             const int short_term_display_limit = 3;

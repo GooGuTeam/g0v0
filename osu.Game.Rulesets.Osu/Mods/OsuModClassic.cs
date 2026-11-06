@@ -39,35 +39,30 @@ namespace osu.Game.Rulesets.Osu.Mods
         public Bindable<bool> ClassicHealth { get; } = new Bindable<bool>(true);
 
         [SettingSource(typeof(ModsStrings), nameof(ModsStrings.ClassicSliderJudgementLabel), nameof(ModsStrings.ClassicSliderJudgementDescription))]
-        public Bindable<bool> ClassicSliderJudgement { get; } = new BindableBool(true);
+        public Bindable<bool> ClassicSliderJudgement { get; } = new BindableBool(false);
 
         private bool usingHiddenFading;
+        private LegacyHitPolicy? legacyHitPolicy;
+        private OsuPlayfield? playfield;
+        private bool useLegacyNoteLock;
 
         public void ApplyToHitObject(HitObject hitObject)
         {
-            switch (hitObject)
-            {
-                case Slider slider:
-                    slider.ClassicSliderBehaviour = true;
-                    slider.ClassicSliderJudgement = ClassicSliderJudgement.Value;
-
-                    if (!NoSliderHeadAccuracy.Value || slider.ScoreV2SliderBehaviour)
-                    {
-                        slider.ScoreV2SliderBehaviour = true;
-                    }
-
-                    break;
-            }
+            if (hitObject is OsuHitObject osuObject)
+                OsuCompatibilityRules.ApplyClassic(osuObject, ClassicSliderJudgement.Value, !NoSliderHeadAccuracy.Value);
         }
 
         public void ApplyToDrawableRuleset(DrawableRuleset<OsuHitObject> drawableRuleset)
         {
             var osuRuleset = (DrawableOsuRuleset)drawableRuleset;
 
-            if (ClassicNoteLock.Value)
+            playfield = osuRuleset.Playfield;
+            useLegacyNoteLock = ClassicNoteLock.Value || OsuCompatibilityRules.IsStableProfile(drawableRuleset.Mods);
+            legacyHitPolicy = null;
+            if (useLegacyNoteLock)
             {
                 double hittableRange = OsuHitWindows.MISS_WINDOW - (drawableRuleset.Mods.OfType<OsuModAutopilot>().Any() ? 200 : 0);
-                osuRuleset.Playfield.HitPolicy = new LegacyHitPolicy(hittableRange);
+                osuRuleset.Playfield.HitPolicy = legacyHitPolicy = new LegacyHitPolicy(hittableRange);
             }
 
             usingHiddenFading = drawableRuleset.Mods.OfType<OsuModHidden>().SingleOrDefault()?.OnlyFadeApproachCircles.Value == false;
@@ -77,11 +72,17 @@ namespace osu.Game.Rulesets.Osu.Mods
         {
             switch (obj)
             {
+                case DrawableSpinner spinner:
+                    spinner.CanTrack = () => !spinner.HitObject.ExclusiveLegacyInput
+                                             || ReferenceEquals(playfield?.HitObjectContainer.AliveObjects.OfType<DrawableSpinner>()
+                                                 .FirstOrDefault(candidate => candidate.RotationTracker.IsSpinnableTime), spinner);
+                    break;
+
                 case DrawableSliderHead head:
                     if (FadeHitCircleEarly.Value && !usingHiddenFading)
                         applyEarlyFading(head);
 
-                    if (ClassicNoteLock.Value)
+                    if (useLegacyNoteLock)
                         blockInputToObjectsUnderSliderHead(head);
 
                     break;
@@ -99,14 +100,12 @@ namespace osu.Game.Rulesets.Osu.Mods
         }
 
         /// <summary>
-        /// On stable, slider heads that have already been hit block input from reaching objects that may be underneath them
-        /// until the sliders they're part of have been fully judged.
-        /// The purpose of this method is to restore that behaviour.
-        /// In order to avoid introducing yet another confusing config option, this behaviour is roped into the general notion of "note lock".
+        /// Keeps ordinary head blocking while allowing a hittable overlapping successor circle or slider head to receive the press.
         /// </summary>
-        private static void blockInputToObjectsUnderSliderHead(DrawableSliderHead slider)
+        private void blockInputToObjectsUnderSliderHead(DrawableSliderHead slider)
         {
-            slider.HitArea.CanBeHit = () => !slider.DrawableSlider.AllJudged;
+            slider.HitArea.CanBeHit = () => !slider.DrawableSlider.AllJudged
+                                           && legacyHitPolicy?.ShouldYieldSliderHeadInput(slider) != true;
         }
 
         private void applyEarlyFading(DrawableHitCircle circle)

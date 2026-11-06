@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.SignalR;
@@ -351,7 +352,7 @@ namespace osu.Game.Online.Chat
                     var request = new GetUserRequest(content);
                     request.Success += OpenPrivateChannel;
                     request.Failure += e => target.AddNewMessages(
-                        new ErrorMessage(e.InnerException?.Message == @"NotFound" ? $"User '{content}' was not found." : $"Could not fetch user '{content}'."));
+                        new ErrorMessage(e.HasStatusCode(HttpStatusCode.NotFound) ? $"User '{content}' was not found." : $"Could not fetch user '{content}'."));
 
                     api.Queue(request);
                     break;

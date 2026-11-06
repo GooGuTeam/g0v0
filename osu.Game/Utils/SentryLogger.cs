@@ -16,6 +16,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Configuration;
 using osu.Framework.Development;
+using osu.Framework.IO.Network;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Statistics;
@@ -23,6 +24,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Models;
+using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays;
@@ -276,6 +278,10 @@ namespace osu.Game.Utils
                 case SharpCompress.Common.InvalidFormatException:
                     return false;
 
+                // only report servers exceptions related to our backend.
+                case WebRequestException wre:
+                    return wre.IsServerError && OfficialServer.IsOfficialUrl(wre.Url);
+
                 // stuff that should really never make it to sentry
                 case APIAccess.WebRequestFlushedException:
                 case TaskCanceledException:
@@ -291,6 +297,9 @@ namespace osu.Game.Utils
             {
                 case TimeoutException te:
                     return te.Message.Contains(@"elapsed without receiving a message from the server");
+
+                case WebRequestException wre:
+                    return wre.IsConnectivityFailure;
 
                 case WebException we:
                     // more statuses may need to be blocked as we come across them.

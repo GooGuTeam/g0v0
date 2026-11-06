@@ -8,8 +8,7 @@ using osu.Framework.Graphics.Rendering;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Graphics.UserInterface;
 using osuTK;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using osu.Framework.Imaging;
 
 namespace osu.Game.Screens.Ranking.Expanded.Accuracy
 {

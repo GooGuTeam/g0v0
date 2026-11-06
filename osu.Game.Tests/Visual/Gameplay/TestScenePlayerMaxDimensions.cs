@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -16,8 +16,8 @@ using osu.Game.IO;
 using osu.Game.Rulesets;
 using osu.Game.Screens.Play;
 using osu.Game.Skinning;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using osu.Framework.Imaging;
+using System.Drawing;
 
 namespace osu.Game.Tests.Visual.Gameplay
 {

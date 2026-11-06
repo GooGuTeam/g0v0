@@ -158,6 +158,8 @@ namespace osu.Desktop
             }
 
             LoadComponentAsync(new ElevatedPrivilegesChecker(), Add);
+            LoadComponentAsync(new PowerStatusMonitor(), Add);
+            LoadComponentAsync(new ProcessorPerformanceNotice(), Add);
 
             osuSchemeLinkIPCChannel = new OsuSchemeLinkIPCChannel(Host, this);
             archiveImportIPCChannel = new ArchiveImportIPCChannel(Host, this);
