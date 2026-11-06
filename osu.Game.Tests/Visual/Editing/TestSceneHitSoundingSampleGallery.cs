@@ -141,6 +141,61 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("alias finds original file", () => gallery.FileLibrary.Tiles.Select(t => t.Filename).SequenceEqual(new[] { "impact_bell_03.wav" }));
         }
 
+        [TestCase(180)]
+        [TestCase(260)]
+        public void TestTreeScrollAxesInShortGallery(float height)
+        {
+            HitSoundingSampleGallery gallery = null!;
+            HitSoundingSampleSetColumn first = null!;
+            Vector2 initial = default;
+            Vector2 verticallyScrolled = default;
+
+            AddStep("shorten gallery and add overflowing sets", () =>
+            {
+                gallery = Editor.ChildrenOfType<HitSoundingSampleGallery>().Single();
+                gallery.RelativeSizeAxes = Axes.X;
+                gallery.Height = height;
+                for (int i = 0; i < 5; i++)
+                    library.AddSet();
+            });
+            AddUntilStep("set columns ready", () => gallery.Tree.Columns.Count >= 6);
+            AddStep("scroll down without modifier", () =>
+            {
+                var viewport = gallery.Tree.ChildrenOfType<Drawable>().Single(d => d.Name == "Sample sets tree");
+                first = gallery.Tree.Columns[0];
+                initial = first.ScreenSpaceDrawQuad.TopLeft;
+                InputManager.MoveMouseTo(viewport);
+                InputManager.ScrollVerticalBy(-10);
+            });
+            AddUntilStep("vertical wheel leaves horizontal position intact", () =>
+                first.ScreenSpaceDrawQuad.TopLeft.Y < initial.Y
+                && Math.Abs(first.ScreenSpaceDrawQuad.TopLeft.X - initial.X) < 1);
+            AddAssert("bottom Drum slot is reachable", () =>
+            {
+                var slot = first.Slots.Last();
+                return gallery.Tree.GetSlotAt(slot.ScreenSpaceDrawQuad.Centre) == slot;
+            });
+            AddStep("scroll horizontally with shift", () =>
+            {
+                verticallyScrolled = first.ScreenSpaceDrawQuad.TopLeft;
+                InputManager.PressKey(Key.ShiftLeft);
+                InputManager.ScrollVerticalBy(-3);
+                InputManager.ReleaseKey(Key.ShiftLeft);
+            });
+            AddUntilStep("shift wheel leaves vertical position intact", () =>
+                first.ScreenSpaceDrawQuad.TopLeft.X < verticallyScrolled.X
+                && Math.Abs(first.ScreenSpaceDrawQuad.TopLeft.Y - verticallyScrolled.Y) < 1);
+            AddStep("scroll back horizontally with right shift", () =>
+            {
+                InputManager.PressKey(Key.ShiftRight);
+                InputManager.ScrollVerticalBy(20);
+                InputManager.ReleaseKey(Key.ShiftRight);
+            });
+            AddUntilStep("first set returns without losing vertical scroll", () =>
+                Math.Abs(first.ScreenSpaceDrawQuad.TopLeft.X - initial.X) < 1
+                && Math.Abs(first.ScreenSpaceDrawQuad.TopLeft.Y - verticallyScrolled.Y) < 1);
+        }
+
         private void copySample(string source, string target)
         {
             using var input = TestResources.OpenResource(source);
