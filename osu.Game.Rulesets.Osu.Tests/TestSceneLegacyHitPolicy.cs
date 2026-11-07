@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -361,8 +361,9 @@ namespace osu.Game.Rulesets.Osu.Tests
                 new OsuReplayFrame { Time = time_spinner - 90, Position = positionCircle, Actions = { OsuAction.LeftButton } },
             };
 
+            // Classic simulates stable's spinner, which needs two half spins beyond the requirement for a 300.
             frames.AddRange(new SpinFramesGenerator(time_spinner + 10)
-                            .Spin(360, 500)
+                            .Spin(1440, 900)
                             .Build());
 
             performTest(hitObjects, frames);

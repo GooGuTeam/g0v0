@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Graphics;
@@ -38,6 +38,13 @@ namespace osu.Game.Rulesets.Osu.Mods
             var spinner = (DrawableSpinner)drawable;
 
             spinner.RotationTracker.Tracking = spinner.RotationTracker.IsSpinnableTime;
+
+            // Classic simulates stable, where Spun Out drives the spinner at a fixed velocity.
+            if (spinner.HitObject.ClassicSpinnerBehaviour)
+            {
+                spinner.RotationTracker.LegacySpunOut = true;
+                return;
+            }
 
             // early-return if we were paused to avoid division-by-zero in the subsequent calculations.
             if (Precision.AlmostEquals(spinner.Clock.Rate, 0))

@@ -74,6 +74,12 @@ namespace osu.Game.Rulesets.Osu.Objects
         /// </summary>
         public bool ExclusiveLegacyInput { get; internal set; }
 
+        /// <summary>
+        /// Whether Classic simulates stable's spinner rotation (<see cref="Drawables.LegacySpinnerRotation"/>) and final judgement.
+        /// Scoring ticks are unchanged and still follow the selected score version.
+        /// </summary>
+        public bool ClassicSpinnerBehaviour { get; internal set; }
+
         public int LegacyHalfSpinsRequired { get; private set; }
 
         public void ApplyLegacyScoreV1(ControlPointInfo controlPointInfo, IBeatmapDifficultyInfo difficulty)

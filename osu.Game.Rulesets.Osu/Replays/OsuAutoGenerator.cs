@@ -361,13 +361,16 @@ namespace osu.Game.Rulesets.Osu.Replays
                     // Stable accelerates towards its 0.05 rad/ms autoplay target using real elapsed time.
                     double legacyAcceleration = 0.00008 + Math.Max(0, (5000 - (int)spinner.Duration) / 1000.0 / 2000);
 
+                    // With Classic the spinner itself applies stable's acceleration, so the cursor spins at stable autoplay's constant speed.
+                    bool rampCursor = spinner.LegacySpinnerScoring && !spinner.ClassicSpinnerBehaviour;
+
                     for (double nextFrame = h.StartTime + GetFrameDelay(h.StartTime); nextFrame < spinner.EndTime; nextFrame += GetFrameDelay(nextFrame))
                     {
                         t = ApplyModsToTimeDelta(previousFrame, nextFrame) * spinnerDirection;
 
                         // stable establishes the spinner angle on its first input frame;
                         // that frame does not yet contribute a rotation delta.
-                        if (spinner.LegacySpinnerScoring)
+                        if (rampCursor)
                         {
                             if (previousFrame != h.StartTime)
                             {
@@ -386,7 +389,7 @@ namespace osu.Game.Rulesets.Osu.Replays
 
                     t = ApplyModsToTimeDelta(previousFrame, spinner.EndTime) * spinnerDirection;
 
-                    if (spinner.LegacySpinnerScoring)
+                    if (rampCursor)
                     {
                         legacyAngularVelocity = Math.Min(0.05, legacyAngularVelocity + legacyAcceleration * Math.Abs(t));
                         angle += (float)(t * legacyAngularVelocity);
