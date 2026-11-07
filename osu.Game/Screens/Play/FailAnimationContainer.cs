@@ -103,6 +103,12 @@ namespace osu.Game.Screens.Play
 
         private bool started;
         private bool filtersRemoved;
+        private bool legacyAnimation;
+        private double legacyStartTime;
+        private const double legacy_frame_duration = 1000.0 / 60;
+        // The track API exposes a relative frequency, not the stream's native sample rate.
+        // Use stable's 44.1 kHz reference for the 300 Hz-per-frame slowdown.
+        private const double legacy_duration = 147 * legacy_frame_duration;
 
         /// <summary>
         /// Start the fail animation playing.
@@ -114,6 +120,21 @@ namespace osu.Game.Screens.Play
             if (filtersRemoved) throw new InvalidOperationException("Animation cannot be started after filters have been removed.");
 
             started = true;
+            legacyAnimation = config.Get<bool>(OsuSetting.ToriiLegacyGameplayScreens);
+            legacyStartTime = Time.Current;
+
+            if (legacyAnimation)
+            {
+                this.TransformBindableTo(trackFreq, 0, legacy_duration).OnComplete(_ =>
+                {
+                    removeFilters(false);
+                    OnComplete?.Invoke();
+                });
+                track.AddAdjustment(AdjustableProperty.Frequency, trackFreq);
+                failSample.Play();
+                applyToPlayfield(drawableRuleset.Playfield);
+                return;
+            }
 
             this.TransformBindableTo(trackFreq, 0, duration).OnComplete(_ =>
             {
@@ -195,6 +216,9 @@ namespace osu.Game.Screens.Play
         {
             double failTime = playfield.Time.Current;
 
+            if (legacyAnimation)
+                playfield.HitObjectContainer.Alpha = Math.Max(0, 1 - (float)Math.Floor((Time.Current - legacyStartTime) / legacy_frame_duration) * 0.007f);
+
             foreach (var nested in playfield.NestedPlayfields)
                 applyToPlayfield(nested);
 
@@ -205,7 +229,7 @@ namespace osu.Game.Screens.Play
                 if (appliedObjects.Contains(obj))
                     continue;
 
-                float rotation = RNG.NextSingle(-90, 90);
+                float rotation = legacyAnimation ? RNG.NextSingle(-0.02f, 0.02f) : RNG.NextSingle(-90, 90);
                 Vector2 originalPosition = obj.Position;
                 Vector2 originalScale = obj.Scale;
 
@@ -220,6 +244,30 @@ namespace osu.Game.Screens.Play
 
         private void dropOffScreen(DrawableHitObject obj, double failTime, float randomRotation, Vector2 originalScale, Vector2 originalPosition)
         {
+            if (legacyAnimation)
+            {
+                // stable updates each sprite at 60 Hz, without shrinking the whole playfield.
+                // Rotation values in stable are radians; framework drawable rotations are degrees.
+                double elapsedFrames = Math.Max(0, Math.Floor((failTime - legacyStartTime) / legacy_frame_duration));
+                double remainingFrames = Math.Max(0, 147 - elapsedFrames);
+                using (obj.BeginAbsoluteSequence(failTime))
+                {
+                    for (int frame = 1; frame <= remainingFrames; frame++)
+                    {
+                        using (obj.BeginDelayedSequence((frame - 1) * legacy_frame_duration))
+                        {
+                            float y = originalPosition.Y < 0
+                                ? originalPosition.Y * MathF.Pow(0.6f, frame)
+                                : originalPosition.Y * MathF.Pow(1.01f, frame);
+                            obj.MoveToY(y, legacy_frame_duration);
+                            float radians = randomRotation + Math.Sign(randomRotation) * 0.01f * (frame - 1);
+                            obj.RotateTo(radians * 180 / MathF.PI, legacy_frame_duration);
+                        }
+                    }
+                }
+                return;
+            }
+
             using (obj.BeginAbsoluteSequence(failTime))
             {
                 obj.RotateTo(randomRotation, duration);
