@@ -257,14 +257,15 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             get
             {
-                int required = HitObject.LegacySpinnerScoring ? HitObject.LegacyHalfSpinsRequired : HitObject.SpinsRequired;
+                bool countsHalfSpins = HitObject.LegacySpinnerScoring || HitObject.ClassicSpinnerBehaviour;
+                int required = countsHalfSpins ? HitObject.LegacyHalfSpinsRequired : HitObject.SpinsRequired;
 
                 if (required == 0)
                     // some spinners are so short they can't require an integer spin count.
                     // these become implicitly hit.
                     return 1;
 
-                return HitObject.LegacySpinnerScoring
+                return countsHalfSpins
                     ? Result.TotalRotation / 180 / required
                     : Result.TotalRotation / 360 / required;
             }
@@ -290,6 +291,12 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             {
                 var spinner = (DrawableSpinner)hitObject;
 
+                if (spinner.HitObject.ClassicSpinnerBehaviour)
+                {
+                    r.Type = GetClassicResult((int)(spinner.Result.TotalRotation / 180), spinner.HitObject.LegacyHalfSpinsRequired);
+                    return;
+                }
+
                 if (spinner.HitObject.LegacySpinnerScoring)
                 {
                     int halfSpins = (int)(spinner.Result.TotalRotation / 180);
@@ -310,6 +317,22 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                 else if (spinner.Time.Current >= spinner.HitObject.EndTime)
                     r.Type = r.Judgement.MinResult;
             });
+        }
+
+        /// <summary>
+        /// The result of a Classic spinner, matching stable's <c>SpinnerOsu.ScoreIncrease</c>:
+        /// fewer half rotations than required is a miss, exactly the requirement is a 50, one more is a 100, and two or more is a 300.
+        /// A spinner that requires no rotation therefore gives a 50 when it is not spun.
+        /// </summary>
+        public static HitResult GetClassicResult(int halfSpins, int requiredHalfSpins)
+        {
+            if (halfSpins < requiredHalfSpins)
+                return HitResult.Miss;
+
+            if (halfSpins == requiredHalfSpins)
+                return HitResult.Meh;
+
+            return halfSpins == requiredHalfSpins + 1 ? HitResult.Ok : HitResult.Great;
         }
 
         protected override void Update()
