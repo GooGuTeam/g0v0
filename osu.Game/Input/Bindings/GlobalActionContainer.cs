@@ -227,6 +227,7 @@ namespace osu.Game.Input.Bindings
             new KeyBinding(InputKey.Right, GlobalAction.SeekReplayForward),
             new KeyBinding(InputKey.Comma, GlobalAction.StepReplayBackward),
             new KeyBinding(InputKey.Period, GlobalAction.StepReplayForward),
+            new KeyBinding(InputKey.H, GlobalAction.ToggleReplaySettings),
             new KeyBinding(new[] { InputKey.Control, InputKey.H }, GlobalAction.ToggleReplaySettings),
         };
 

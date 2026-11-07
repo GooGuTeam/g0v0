@@ -124,7 +124,7 @@ namespace osu.Game.Screens.Play
 
             ReplayOverlay.Settings.AddAtStart(playbackSettings);
 
-            OsuTextFlowContainer message = new OsuTextFlowContainer(cp => cp.Font = OsuFont.Style.Body) { AutoSizeAxes = Axes.Both };
+            OsuTextFlowContainer message = new OsuTextFlowContainer(cp => cp.Font = OsuFont.Inter) { AutoSizeAxes = Axes.Both };
             message.AddText("Watching ");
             message.AddText(Score.ScoreInfo.User.Username, s => s.Font = s.Font.With(weight: FontWeight.SemiBold));
             message.AddText(" play ");
@@ -132,7 +132,7 @@ namespace osu.Game.Screens.Play
             message.AddText(" on ");
             message.AddArbitraryDrawable(new PlayedOnText(Score.ScoreInfo.Date, false)
             {
-                Font = OsuFont.Style.Body.With(weight: FontWeight.SemiBold),
+                Font = OsuFont.Inter.With(weight: FontWeight.SemiBold),
             });
 
             ReplayOverlay.SetMessage(new ScrollingMessage(message)
