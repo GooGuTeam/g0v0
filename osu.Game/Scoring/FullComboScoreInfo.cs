@@ -55,8 +55,7 @@ namespace osu.Game.Scoring
             result.LegacyTotalScore = null;
             return result;
 
-            double accuracyScore(ScoreInfo info) => info.Statistics.Where(s => processor.ResultAffectsAccuracy(s.Key))
-                                            .Sum(s => (double)processor.GetBaseScoreForResult(s.Key) * s.Value);
+            double accuracyScore(ScoreInfo info) => info.Statistics.Where(s => processor.ResultAffectsAccuracy(s.Key)).Sum(s => (double)processor.GetBaseScoreForResult(s.Key) * s.Value);
         }
     }
 }

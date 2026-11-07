@@ -38,6 +38,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
             for (int i = 1; i < cutoffs.Length; i++)
             {
                 double start = i == 1 ? midpoint : cutoffs[i - 1];
+
                 if (accuracy <= cutoffs[i])
                 {
                     double t = (accuracy - start) / Math.Max(double.Epsilon, cutoffs[i] - start);

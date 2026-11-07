@@ -3,18 +3,13 @@
 g0v0! is a rhythm game client built and maintained by GooGuTeam on top of the
 open-source [ppy/osu](https://github.com/ppy/osu) (osu!lazer) codebase, ready to work
 with [g0v0-server](https://github.com/GooGuTeam/g0v0-server) out of the box.
-g0v0! keeps all gameplay, UI, and framework behaviour of osu!lazer intact and only changes the parts that talk to the
-server (for example a custom API server and Relax / Autopilot special rulesets).
+g0v0! extends osu!lazer with custom server integration, Relax / Autopilot special rulesets,
+and client features such as dedicated hitsounding tools.
 
 ## Differences from upstream
 
 The full list of changes is maintained on the
 documentation site: [Differences from osu!(lazer)](https://docs.g0v0.top/g0v0/difference.html).
-
-The server-communication changes form the **g0v0! Standard** — a set of server extension conventions defined by
-g0v0-server. Any client that implements the g0v0! Standard is fully compatible with every g0v0!-based
-server, and g0v0! is the reference implementation. g0v0! Standard changes have been flagged in the differences list
-above.
 
 ## Download
 

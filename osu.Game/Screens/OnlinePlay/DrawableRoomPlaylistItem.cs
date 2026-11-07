@@ -354,8 +354,7 @@ namespace osu.Game.Screens.OnlinePlay
                 explicitContent.Alpha = hasExplicitContent ? 1 : 0;
             }
 
-            if (winConditionBadge != null)
-                winConditionBadge.Condition = Item.WinCondition;
+            winConditionBadge?.Condition = Item.WinCondition;
 
             modDisplay?.Current.Value = requiredMods.ToArray();
 

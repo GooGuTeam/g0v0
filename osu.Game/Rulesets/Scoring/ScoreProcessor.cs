@@ -222,6 +222,7 @@ namespace osu.Game.Rulesets.Scoring
                     return;
 
                 scoreV2Active = value;
+
                 if (beatmapApplied && Beatmap.Value != null && JudgedHits == 0)
                     ApplyBeatmap(Beatmap.Value);
                 else
@@ -244,6 +245,7 @@ namespace osu.Game.Rulesets.Scoring
                     return;
 
                 scoreV1Active = value;
+
                 if (beatmapApplied && Beatmap.Value != null && JudgedHits == 0)
                     ApplyBeatmap(Beatmap.Value);
                 else
@@ -493,6 +495,7 @@ namespace osu.Game.Rulesets.Scoring
                 return;
 
             var mods = Mods.Value;
+
             if (ScoreV2Active && !mods.Any(m => m is ModScoreV2))
             {
                 var sv2Mod = Ruleset.CreateMod<ModScoreV2>();

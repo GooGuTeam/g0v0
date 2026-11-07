@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -53,8 +53,9 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         private readonly Container colouredComponents;
         private readonly Container sampleComponents;
         private readonly OsuSpriteText comboIndexText;
-        private readonly SamplePointPiece samplePointPiece;
+        private readonly SamplePointPiece? samplePointPiece;
         private readonly DifficultyPointPiece? difficultyPointPiece;
+        private readonly bool showEditControls;
 
         [Resolved]
         private ISkinSource skin { get; set; } = null!;
@@ -63,12 +64,19 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         private OverlayColourProvider colourProvider { get; set; } = null!;
 
         public TimelineHitObjectBlueprint(HitObject item)
+            : this(item, true)
+        {
+        }
+
+        protected TimelineHitObjectBlueprint(HitObject item, bool showEditControls)
             : base(item)
         {
+            this.showEditControls = showEditControls;
             Anchor = Anchor.CentreLeft;
             Origin = Anchor.CentreLeft;
 
-            startTime = item.StartTimeBindable.GetBoundCopy();
+            startTime = new Bindable<double>();
+            startTime.BindTo(item.StartTimeBindable);
             startTime.BindValueChanged(time => X = (float)time.NewValue, true);
 
             RelativePositionAxes = Axes.X;
@@ -106,20 +114,24 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                         },
                     }
                 },
-                samplePointPiece = new SamplePointPiece(Item)
-                {
-                    Anchor = Anchor.BottomLeft,
-                    Origin = Anchor.TopCentre,
-                    RelativePositionAxes = Axes.X,
-                    AlternativeColor = Item is IHasRepeats
-                },
                 sampleComponents = new Container
                 {
                     RelativeSizeAxes = Axes.Both,
                 },
             });
 
-            if (item is IHasDuration)
+            if (showEditControls)
+            {
+                AddInternal(samplePointPiece = new SamplePointPiece(Item)
+                {
+                    Anchor = Anchor.BottomLeft,
+                    Origin = Anchor.TopCentre,
+                    RelativePositionAxes = Axes.X,
+                    AlternativeColor = Item is IHasRepeats
+                });
+            }
+
+            if (showEditControls && item is IHasDuration)
             {
                 colouredComponents.Add(new DragArea(item)
                 {
@@ -127,7 +139,7 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                 });
             }
 
-            if (item is IHasSliderVelocity)
+            if (showEditControls && item is IHasSliderVelocity)
             {
                 AddInternal(difficultyPointPiece = new DifficultyPointPiece(Item)
                 {
@@ -141,6 +153,47 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         {
             base.LoadComplete();
 
+            bindItem();
+        }
+
+        /// <summary>
+        /// Reuses a display-only timeline blueprint for another object.
+        /// </summary>
+        protected void RebindItem(HitObject item)
+        {
+            if (showEditControls)
+                throw new InvalidOperationException(@"Timeline blueprints with edit controls cannot be rebound.");
+
+            indexInCurrentComboBindable?.UnbindAll();
+            comboIndexBindable?.UnbindAll();
+            comboIndexWithOffsetsBindable?.UnbindAll();
+            displayColourBindable?.UnbindAll();
+            if (IsLoaded)
+                skin.SourceChanged -= updateColour;
+
+            Item = item;
+            startTime.UnbindBindings();
+            startTime.BindTo(item.StartTimeBindable);
+            Width = (float)(item.GetEndTime() - item.StartTime);
+            if (item is IHasRepeats repeats)
+                updateRepeats(repeats);
+            else if (repeatsContainer != null)
+            {
+                foreach (var tick in repeatsContainer)
+                    tick.Alpha = 0;
+            }
+
+            comboIndexText.Text = string.Empty;
+            Deselect();
+            if (IsLoaded)
+            {
+                bindItem();
+                updateColour();
+            }
+        }
+
+        private void bindItem()
+        {
             switch (Item)
             {
                 case IHasDisplayColour displayColour:
@@ -230,20 +283,26 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
 
         private void updateRepeats(IHasRepeats repeats)
         {
-            repeatsContainer?.Expire();
-
-            colouredComponents.Add(repeatsContainer = new Container
+            if (repeatsContainer == null)
             {
-                RelativeSizeAxes = Axes.Both,
-            });
-
-            for (int i = 0; i < repeats.RepeatCount; i++)
-            {
-                repeatsContainer.Add(new Tick
+                colouredComponents.Add(repeatsContainer = new Container
                 {
-                    X = (float)(i + 1) / (repeats.RepeatCount + 1)
+                    RelativeSizeAxes = Axes.Both,
                 });
             }
+
+            for (int i = repeatsContainer.Count; i < repeats.RepeatCount; i++)
+                repeatsContainer.Add(new Tick());
+
+            for (int i = 0; i < repeatsContainer.Count; i++)
+            {
+                var tick = repeatsContainer[i];
+                tick.Alpha = i < repeats.RepeatCount ? 1 : 0;
+                tick.X = (float)(i + 1) / (repeats.RepeatCount + 1);
+            }
+
+            if (!showEditControls)
+                return;
 
             // Add node sample pieces
             sampleComponents.Clear();
@@ -259,7 +318,7 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                 });
             }
 
-            samplePointPiece.X = 1f / (repeats.RepeatCount + 1) / 2;
+            samplePointPiece!.X = 1f / (repeats.RepeatCount + 1) / 2;
         }
 
         protected override bool ShouldBeConsideredForInput(Drawable child) => true;
@@ -282,7 +341,8 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
             // If the component is considered masked away, we'll use children to create an extended quad that encapsulates all parts of this blueprint
             // to ensure it doesn't pop in and out of existence abruptly when scrolling the timeline.
             var rect = RectangleF.Union(ScreenSpaceDrawQuad.AABBFloat, circle.ScreenSpaceDrawQuad.AABBFloat);
-            rect = RectangleF.Union(rect, samplePointPiece.ScreenSpaceDrawQuad.AABBFloat);
+            if (samplePointPiece != null)
+                rect = RectangleF.Union(rect, samplePointPiece.ScreenSpaceDrawQuad.AABBFloat);
 
             if (difficultyPointPiece != null)
                 rect = RectangleF.Union(rect, difficultyPointPiece.ScreenSpaceDrawQuad.AABBFloat);
@@ -313,7 +373,7 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         {
             private readonly HitObject? hitObject;
 
-            private readonly List<HitObject> objsToAdjust = new List<HitObject>();
+            private readonly List<HitObject> objsToAdjust = [];
 
             [Resolved]
             private EditorBeatmap beatmap { get; set; } = null!;

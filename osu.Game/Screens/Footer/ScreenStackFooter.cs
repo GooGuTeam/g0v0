@@ -64,7 +64,9 @@ namespace osu.Game.Screens.Footer
         private IBindable<WorkingBeatmap> beatmap { get; set; } = null!;
 
         private readonly IBindable<Skin> currentSkin = new Bindable<Skin>();
+
         private Bindable<bool> footerUseSkin = null!;
+
         // torii: toggle independiente del footer legacy. el footer legacy se muestra si el stable esta
         // prendido (footerUseSkin) O si este toggle standalone esta prendido.
         private Bindable<bool> legacyFooterStandalone = null!;

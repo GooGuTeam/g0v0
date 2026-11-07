@@ -55,9 +55,12 @@ namespace osu.Game.Tests.Visual.Ranking
             AddStep("show details again", () => panel.ShowDetails());
             AddAssert("back closes details", () => panel.CloseDetails());
             AddAssert("second back is not consumed", () => !panel.CloseDetails());
-            AddAssert("detail controls have generous hit areas", () => panel.ChildrenOfType<V2ResultsButton>()
-                .Where(b => b.Name is "Show score details" or "Close score details")
-                .All(b => b.Width >= 48 && b.Height >= 48));
+            AddAssert("detail controls have generous hit areas", () =>
+            {
+                var detailButtons = panel.ChildrenOfType<V2ResultsButton>().Where(b => b.Name is "Show score details" or "Close score details");
+
+                return detailButtons.All(b => b.Width >= 48 && b.Height >= 48);
+            });
             AddAssert("no debug button", () => panel.ChildrenOfType<V2ResultsButton>().All(b => b.Text.ToString() != "Debug Δ"));
         }
 
@@ -105,8 +108,10 @@ namespace osu.Game.Tests.Visual.Ranking
                 panel.ChildrenOfType<AccuracyCircle>().Single().ChildrenOfType<PoolableSkinnableSample>().Any(), () => Is.EqualTo(withFlair));
 
             if (withFlair)
+            {
                 AddUntilStep("accuracy tick and rank impact played", () =>
                     panel.ChildrenOfType<AccuracyCircle>().Single().ChildrenOfType<PoolableSkinnableSample>().Count(s => s.Played) >= 3);
+            }
         }
 
         [TestCase(0, 960, 540)]
@@ -283,8 +288,12 @@ namespace osu.Game.Tests.Visual.Ranking
                     score.Rank = mod.AdjustRank(score.Rank, accuracy);
                 Child = panel = new V2ResultsPanel(score);
             });
-            AddUntilStep("accuracy counter settled", () => panel.ChildrenOfType<AccuracyStatistic>().Single()
-                                                    .ChildrenOfType<SpriteText>().Any(t => t.Text.ToString() == expectedAccuracy));
+            AddUntilStep("accuracy counter settled", () =>
+            {
+                var accuracyTexts = panel.ChildrenOfType<AccuracyStatistic>().Single().ChildrenOfType<SpriteText>();
+
+                return accuracyTexts.Any(t => t.Text.ToString() == expectedAccuracy);
+            });
             AddAssert("correct grade", () => score.Rank, () => Is.EqualTo(expectedRank));
             AddUntilStep("grade visible", () => panel.ChildrenOfType<RankText>().First().Alpha == 1);
             AddAssert("displayed grade matches score", () => panel.ChildrenOfType<V2RankEmblem>().First().ChildrenOfType<SpriteText>().Single().Text.ToString(),
@@ -333,13 +342,24 @@ namespace osu.Game.Tests.Visual.Ranking
                 Child = panel = new V2ResultsPanel(score) { ComparisonScore = { Value = previous } };
             });
             AddUntilStep("loaded", () => panel.IsLoaded);
-            AddAssert("accuracy delta", () => panel.ChildrenOfType<V2StatisticChange>().Single(d => d.Name == "Personal best accuracy change")
-                                       .ChildrenOfType<SpriteText>().Single().Text.ToString(), () => Is.EqualTo(accuracyText));
-            AddAssert("combo delta", () => panel.ChildrenOfType<V2StatisticChange>().Single(d => d.Name == "Personal best combo change")
-                                    .ChildrenOfType<SpriteText>().Single().Text.ToString(), () => Is.EqualTo(comboText));
-            AddAssert("positive green or negative red", () => panel.ChildrenOfType<V2StatisticChange>().Single(d => d.Name == "Personal best accuracy change")
-                                                       .ChildrenOfType<SpriteText>().Single().Colour.TopLeft.SRGB,
-                () => Is.EqualTo((osuTK.Graphics.Color4)(accuracy > 0.99 ? Colour4.FromHex("#B6FF86") : Colour4.FromHex("#ED1B53"))));
+            AddAssert("accuracy delta", () =>
+            {
+                var accuracyChange = panel.ChildrenOfType<V2StatisticChange>().Single(d => d.Name == "Personal best accuracy change");
+
+                return accuracyChange.ChildrenOfType<SpriteText>().Single().Text.ToString();
+            }, () => Is.EqualTo(accuracyText));
+            AddAssert("combo delta", () =>
+            {
+                var comboChange = panel.ChildrenOfType<V2StatisticChange>().Single(d => d.Name == "Personal best combo change");
+
+                return comboChange.ChildrenOfType<SpriteText>().Single().Text.ToString();
+            }, () => Is.EqualTo(comboText));
+            AddAssert("positive green or negative red", () =>
+            {
+                var accuracyChange = panel.ChildrenOfType<V2StatisticChange>().Single(d => d.Name == "Personal best accuracy change");
+
+                return accuracyChange.ChildrenOfType<SpriteText>().Single().Colour.TopLeft.SRGB;
+            }, () => Is.EqualTo((osuTK.Graphics.Color4)(accuracy > 0.99 ? Colour4.FromHex("#B6FF86") : Colour4.FromHex("#ED1B53"))));
         }
 
         [TestCase(0, 0, false)]
@@ -370,8 +390,12 @@ namespace osu.Game.Tests.Visual.Ranking
             });
             AddAssert("spinner label", () => panel.ChildrenOfType<HitResultStatistic>().Single(s => s.Result == HitResult.LargeBonus).DisplayedHeader.ToString(),
                 () => Is.EqualTo("SPINNER BONUS"));
-            AddUntilStep("bonus counter settled", () => panel.ChildrenOfType<HitResultStatistic>().Single(s => s.Result == HitResult.LargeBonus)
-                                                 .ChildrenOfType<StatisticCounter>().Single().DisplayedCount, () => Is.EqualTo(count));
+            AddUntilStep("bonus counter settled", () =>
+            {
+                var bonusStatistic = panel.ChildrenOfType<HitResultStatistic>().Single(s => s.Result == HitResult.LargeBonus);
+
+                return bonusStatistic.ChildrenOfType<StatisticCounter>().Single().DisplayedCount;
+            }, () => Is.EqualTo(count));
         }
 
         [TestCase(12.34, "+12.34pp")]
@@ -476,11 +500,10 @@ namespace osu.Game.Tests.Visual.Ranking
             PopoverContainer popoverContainer = null!;
             V2ResultsPanel panel = null!;
             V2ResultsFooter footer = null!;
-            ScoreInfo currentScore = null!;
 
             AddStep("load panel and footer with scores", () =>
             {
-                currentScore = TestResources.CreateTestScoreInfo();
+                var currentScore = TestResources.CreateTestScoreInfo();
                 currentScore.TotalScore = 950000;
 
                 var score1 = TestResources.CreateTestScoreInfo();
@@ -547,18 +570,17 @@ namespace osu.Game.Tests.Visual.Ranking
         {
             PopoverContainer popoverContainer = null!;
             V2ResultsPanel panel = null!;
-            ScoreInfo currentScore = null!;
 
             AddStep("load panel with no scores", () =>
             {
-                currentScore = TestResources.CreateTestScoreInfo();
+                var currentScore = TestResources.CreateTestScoreInfo();
 
                 Child = popoverContainer = new PopoverContainer
                 {
                     RelativeSizeAxes = Axes.Both,
                     Child = panel = new V2ResultsPanel(currentScore)
                     {
-                        ScoresOverride = () => Array.Empty<ScoreInfo>(),
+                        ScoresOverride = Array.Empty<ScoreInfo>,
                     },
                 };
             });

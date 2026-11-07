@@ -121,7 +121,6 @@ Unstable Rate: {2:0.00}", earlyAverage, lateAverage, unstableRate);
         /// </summary>
         public static LocalisableString LegacyOnlineRankingButtonText => new TranslatableString(getKey(@"legacy_online_ranking_button_text"), @"▼ Online Ranking ▼");
 
-
         /// <summary>
         /// "Combo"
         /// </summary>

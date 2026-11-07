@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 // el HP graph del results legacy: la vida REAL de la play a lo largo del mapa, calculada
 // re-jugando los hit events contra el HealthProcessor posta del ruleset (drain calibrado
@@ -107,7 +107,7 @@ namespace osu.Game.Screens.Ranking
 
                 if (data != null)
                     buildContent(data);
-            }));
+            }), token);
         }
 
         #region computo

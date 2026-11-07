@@ -192,7 +192,7 @@ namespace osu.Game.Rulesets.Osu.Scoring
                 // The classic slider's final judgement supplies the tail combo itself.
                 // stable includes that combo when awarding the slider's final score.
                 int combo = result.HitObject is Slider ? result.ComboAfterJudgement : result.ComboAtJudgement;
-                comboScore = (long)(Math.Max(0, combo - 1) * (baseScore / 25 * (difficultyMultiplier * modMultiplier)));
+                comboScore = (long)(Math.Max(0, combo - 1) * (baseScore / 25.0 * (difficultyMultiplier * modMultiplier)));
             }
 
             return (baseScore, comboScore);
