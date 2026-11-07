@@ -46,6 +46,26 @@ namespace osu.Game.Tests.Visual.Editing
             AddStep("stop playback", () => EditorClock.Stop());
         }
 
+        [Test]
+        public void TestReusedPlayerAppliesChangedVolume()
+        {
+            createPlayback();
+            AddStep("add quieter copy", () => EditorBeatmap.Add(new HitCircle
+            {
+                StartTime = 2000,
+                Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL, volume: 20)],
+            }));
+            AddUntilStep("beatmap settled", () => !EditorBeatmap.UpdateInProgress.Value);
+            AddStep("preview loud hit", () => playback.PreviewSeek(900, 1100));
+            AddUntilStep("loud sample played", () => playedAtVolume(1));
+            AddUntilStep("first hit finished", () => !playback.ChildrenOfType<PoolableSkinnableSample>().Any(s => s.Playing));
+            AddStep("preview quiet hit", () => playback.PreviewSeek(1900, 2100));
+            AddUntilStep("quiet sample played", () => playedAtVolume(0.2));
+
+            bool playedAtVolume(double volume) => playback.ChildrenOfType<PoolableSkinnableSample>()
+                .Any(s => s.Played && System.Math.Abs(s.AggregateVolume.Value - volume) < 0.001);
+        }
+
         [TestCase(-2)]
         [TestCase(-1)]
         [TestCase(0)]

@@ -621,24 +621,35 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// </summary>
         private void playSamples(ISampleInfo[] samples)
         {
-            SamplePlayer player = getHitPlayer();
-            player.Samples = samples;
+            SamplePlayer player = getHitPlayer(samples);
+            player.PrepareSamples(samples);
             player.QueuePlay();
         }
 
-        private SamplePlayer getHitPlayer()
+        private SamplePlayer getHitPlayer(ISampleInfo[] samples)
         {
+            SamplePlayer? idle = null;
+
             for (int i = 0; i < hitPlayers.Count; i++)
             {
-                if (!hitPlayers[i].Busy)
-                    return hitPlayers[i];
+                SamplePlayer player = hitPlayers[i];
+                if (player.Busy)
+                    continue;
+
+                if (player.HasSamples(samples))
+                    return player;
+
+                idle ??= player;
             }
 
+            if (idle != null)
+                return idle;
+
             // All existing players are still sounding. Grow the pool rather than cutting off a simultaneous hit.
-            var player = new SamplePlayer();
-            hitPlayers.Add(player);
-            hitContainer.Add(player);
-            return player;
+            var created = new SamplePlayer();
+            hitPlayers.Add(created);
+            hitContainer.Add(created);
+            return created;
         }
 
         private ISampleInfo[] getSamples(HitSoundingNode node)
@@ -1034,6 +1045,34 @@ namespace osu.Game.Screens.Edit.HitSounding
             public SamplePlayer(bool looping = false)
             {
                 Looping = looping;
+            }
+
+            public bool HasSamples(ISampleInfo[] samples)
+            {
+                ISampleInfo[] current = Samples;
+                if (ReferenceEquals(current, samples))
+                    return true;
+
+                if (current.Length != samples.Length)
+                    return false;
+
+                for (int i = 0; i < current.Length; i++)
+                {
+                    // Object equality preserves subclass lookup rules (file names and legacy layering).
+                    // Sample equality intentionally omits volume, so compare it separately.
+                    if (current[i].GetType() != samples[i].GetType()
+                        || current[i].Volume != samples[i].Volume
+                        || !EqualityComparer<ISampleInfo>.Default.Equals(current[i], samples[i]))
+                        return false;
+                }
+
+                return true;
+            }
+
+            public void PrepareSamples(ISampleInfo[] samples)
+            {
+                if (!HasSamples(samples))
+                    Samples = samples;
             }
 
             public void QueuePlay()
