@@ -8,6 +8,7 @@ using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Taiko.Configuration;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Rulesets.Taiko
 {
@@ -23,31 +24,29 @@ namespace osu.Game.Rulesets.Taiko
         {
             var config = (TaikoRulesetConfigManager)Config;
 
-            FormCheckBox rateAdjustedAnimations;
-            FormCheckBox hitAnimations;
+            CheckboxEntry rateAdjustedAnimations;
+            CheckboxEntry hitAnimations;
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormEnumDropdown<TaikoTouchControlScheme>
+                CreateItem(new EnumDropdownEntry<TaikoTouchControlScheme>
                 {
                     Caption = RulesetSettingsStrings.TouchControlScheme,
                     Current = config.GetBindable<TaikoTouchControlScheme>(TaikoRulesetSetting.TouchControlScheme)
                 }),
-                new SettingsItemV2(hitAnimations = new FormCheckBox
+                CreateItem(hitAnimations = new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.HitAnimations,
                     HintText = RulesetSettingsStrings.HitAnimationsTaikoTooltip,
                     Current = config.GetBindable<bool>(TaikoRulesetSetting.HitAnimations)
                 }),
-                new SettingsItemV2(rateAdjustedAnimations = new FormCheckBox
+                CreateItem(rateAdjustedAnimations = new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.RateAdjustedHitAnimation,
                     HintText = RulesetSettingsStrings.RateAdjustedHitAnimationTooltip,
-                    Current = config.GetBindable<bool>(TaikoRulesetSetting.RateAdjustedHitAnimation)
+                    Current = config.GetBindable<bool>(TaikoRulesetSetting.RateAdjustedHitAnimation),
+                    ClassicDefault = false,
                 })
-                {
-                    ApplyClassicDefault = c => ((IHasCurrentValue<bool>)c).Current.Value = false,
-                }
             };
 
             hitAnimations.Current.BindValueChanged(val =>

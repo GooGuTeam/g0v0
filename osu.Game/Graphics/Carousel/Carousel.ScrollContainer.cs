@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -60,6 +60,11 @@ namespace osu.Game.Graphics.Carousel
                     RelativeSizeAxes = Axes.X,
                 });
             }
+
+            /// <summary>
+            /// Scrolls from a drag forwarded by another input area without compensating panel layout positions.
+            /// </summary>
+            public void ScrollFromUserDrag(float delta) => OnUserScroll(Target - delta, animated: false);
 
             public override void OffsetScrollPosition(double offset)
             {
@@ -132,6 +137,11 @@ namespace osu.Game.Graphics.Carousel
             public bool AbsoluteScrolling { get; private set; }
 
             protected override bool IsDragging => base.IsDragging || AbsoluteScrolling;
+
+            /// <summary>
+            /// Whether the user is dragging or absolute scrolling the panels.
+            /// </summary>
+            public bool IsDraggingPanels => IsDragging;
 
             protected override bool OnKeyDown(KeyDownEvent e)
             {

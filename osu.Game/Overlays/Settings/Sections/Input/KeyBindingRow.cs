@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -25,6 +25,7 @@ using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Input;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Rendering;
 using osu.Game.Rulesets;
 using osuTK;
 using osuTK.Input;
@@ -74,7 +75,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
         public bool FilteringActive { get; set; }
 
-        public IEnumerable<LocalisableString> FilterTerms => KeyBindings.Select(b => (LocalisableString)keyCombinationProvider.GetReadableString(b.KeyCombination)).Prepend(caption.Caption);
+        public IEnumerable<LocalisableString> FilterTerms => KeyBindings.Select(b => (LocalisableString)keyCombinationProvider.GetReadableString(b.KeyCombination)).Prepend(Action.GetLocalisableDescription());
 
         #endregion
 
@@ -91,6 +92,14 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
         [Resolved]
         private ReadableKeyCombinationProvider keyCombinationProvider { get; set; } = null!;
+
+        [Resolved(canBeNull: true)]
+        private ISettingsRenderer? renderer { get; set; }
+
+        /// <summary>
+        /// Whether this row is drawn as an osu!stable option element (see <see cref="ISettingsRenderer.UseStableLayouts"/>).
+        /// </summary>
+        private bool stableStyle => renderer?.UseStableLayouts == true;
 
         private Container content = null!;
 
@@ -130,9 +139,11 @@ namespace osu.Game.Overlays.Settings.Sections.Input
         {
             RelativeSizeAxes = Axes.X;
             AutoSizeAxes = Axes.Y;
-            Padding = SettingsPanel.CONTENT_PADDING;
+            Padding = stableStyle ? StablePadding : SettingsPanel.CONTENT_PADDING;
 
-            InternalChildren = new Drawable[]
+            if (stableStyle)
+                InternalChild = createStableContent();
+            else InternalChildren = new Drawable[]
             {
                 revertButton = new SettingsRevertToDefaultButton
                 {
@@ -255,6 +266,13 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
             isDefault.BindValueChanged(d =>
             {
+                // stable rows show the yellow "modified" indicator instead of a revert button.
+                if (stableStyle)
+                {
+                    updateStableIndicator(d.NewValue);
+                    return;
+                }
+
                 if (d.NewValue)
                     revertButton.Hide();
                 else
@@ -291,6 +309,12 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
         private void updateState()
         {
+            if (stableStyle)
+            {
+                updateStableState();
+                return;
+            }
+
             if (IsHovered)
                 background.VisualStyle = VisualStyle.Hovered;
             else
@@ -488,7 +512,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                 buttons.RemoveRange(buttons.Skip(KeyBindings.Count).ToArray(), true);
 
             while (buttons.Count < KeyBindings.Count)
-                buttons.Add(new KeyButton());
+                buttons.Add(new KeyButton { StableStyle = stableStyle });
 
             foreach (var (button, binding) in buttons.Zip(KeyBindings))
                 button.KeyBinding.Value = binding;
@@ -538,12 +562,18 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
             updateBindTarget();
             base.OnFocus(e);
+
+            if (stableStyle)
+                updateStableState();
         }
 
         protected override void OnFocusLost(FocusLostEvent e)
         {
             finalise(false);
             base.OnFocusLost(e);
+
+            if (stableStyle)
+                updateStableState();
         }
 
         private bool isConflictingBinding(RealmKeyBinding first, RealmKeyBinding second, bool restoringDefaults)

@@ -108,6 +108,8 @@ namespace osu.Game.Screens.Ranking
 
         public bool IsV2Overview => showingV2Layout;
 
+        public bool UsesLegacyPresentation => useLegacyResults;
+
         /// <summary>
         /// Whether the user can retry the beatmap from the results screen.
         /// </summary>

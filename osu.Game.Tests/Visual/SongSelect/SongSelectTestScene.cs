@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -37,6 +37,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         protected ScoreManager ScoreManager { get; private set; } = null!;
 
         private RealmDetachedBeatmapStore beatmapStore = null!;
+        private readonly Toolbar toolbar;
 
         protected Screens.Select.SongSelect SongSelect { get; private set; } = null!;
         protected BeatmapCarousel Carousel => SongSelect.ChildrenOfType<BeatmapCarousel>().Single();
@@ -63,7 +64,7 @@ namespace osu.Game.Tests.Visual.SongSelect
                     Children = new Drawable[]
                     {
                         LeaderboardManager,
-                        new Toolbar
+                        toolbar = new Toolbar
                         {
                             State = { Value = Visibility.Visible },
                         },
@@ -75,8 +76,6 @@ namespace osu.Game.Tests.Visual.SongSelect
                     },
                 },
             };
-
-            Stack.Padding = new MarginPadding { Top = Toolbar.HEIGHT };
         }
 
         protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
@@ -100,6 +99,18 @@ namespace osu.Game.Tests.Visual.SongSelect
         private void load()
         {
             Add(beatmapStore);
+        }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            toolbar.TrackScreenVisibility(Stack, Config);
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+            Stack.Padding = new MarginPadding { Top = toolbar.Y + toolbar.DrawHeight };
         }
 
         public override void SetUpSteps()

@@ -88,7 +88,7 @@ namespace osu.Game.Screens.Select
             else
                 yield return new OsuMenuItem(SongSelectStrings.RemoveFromPlayed, MenuItemType.Standard, () => beatmaps.MarkNotPlayed(beatmap)) { Icon = FontAwesome.Solid.TimesCircle };
 
-            yield return new OsuMenuItem(SongSelectStrings.ClearAllLocalScores, MenuItemType.Destructive, () => dialogOverlay?.Push(new BeatmapClearScoresDialog(beatmap)))
+            yield return new OsuMenuItem(SongSelectStrings.ClearAllLocalScores, MenuItemType.Destructive, () => ClearLocalScores(beatmap))
             {
                 Icon = FontAwesome.Solid.Eraser
             };
@@ -147,6 +147,14 @@ namespace osu.Game.Screens.Select
                 return player;
             }
         }
+
+        internal void RemoveFromUnplayed(BeatmapInfo beatmap)
+        {
+            if (beatmap.LastPlayed == null)
+                beatmaps.MarkPlayed(beatmap);
+        }
+
+        internal void ClearLocalScores(BeatmapInfo beatmap) => dialogOverlay?.Push(new BeatmapClearScoresDialog(beatmap));
 
         public void Edit(BeatmapInfo beatmap)
         {

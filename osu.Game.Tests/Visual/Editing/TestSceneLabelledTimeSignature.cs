@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -9,8 +9,10 @@ using osu.Framework.Graphics;
 using osu.Framework.Input;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps.Timing;
+using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Screens.Edit.Timing;
+using osuTK.Input;
 
 namespace osu.Game.Tests.Visual.Editing
 {
@@ -70,6 +72,28 @@ namespace osu.Game.Tests.Visual.Editing
 
             AddStep("drop focus", () => ((IFocusManager)InputManager).ChangeFocus(null));
             AddAssert("current is 7/4", () => timeSignature.Current.Value.Equals(new TimeSignature(7)));
+        }
+
+        [Test]
+        public void TestLegacyMeterOnlyClearedOnValidCommit()
+        {
+            TimingControlPoint point = null;
+            createLabelledTimeSignature(TimeSignature.SimpleQuadruple);
+            AddStep("bind imported signed meter", () =>
+            {
+                point = new TimingControlPoint { LegacyTimeSignature = -4 };
+                timeSignature.Current = point.TimeSignatureBindable;
+                timeSignature.OnCommit = signature => point.TimeSignature = signature;
+            });
+            AddAssert("binding preserves legacy meter", () => point.LegacyTimeSignature == -4);
+            AddStep("focus text box", () => ((IFocusManager)InputManager).ChangeFocus(numeratorTextBox));
+            AddStep("enter invalid meter", () => numeratorTextBox.Current.Value = "0");
+            AddStep("drop focus", () => ((IFocusManager)InputManager).ChangeFocus(null));
+            AddAssert("invalid commit preserves legacy meter", () => point.LegacyTimeSignature == -4);
+            AddAssert("native display restored", () => numeratorTextBox.Current.Value == "4");
+            AddStep("focus text box", () => ((IFocusManager)InputManager).ChangeFocus(numeratorTextBox));
+            AddStep("commit displayed meter", () => InputManager.Key(Key.Enter));
+            AddAssert("valid same-value commit clears legacy meter", () => point.LegacyTimeSignature == null);
         }
 
         [Test]

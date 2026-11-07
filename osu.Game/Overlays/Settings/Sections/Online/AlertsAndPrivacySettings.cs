@@ -11,6 +11,7 @@ using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Resources.Localisation.Web;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Online
 {
@@ -25,23 +26,23 @@ namespace osu.Game.Overlays.Settings.Sections.Online
         {
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = OnlineSettingsStrings.NotifyOnMentioned,
                     Current = config.GetBindable<bool>(OsuSetting.NotifyOnUsernameMentioned)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = OnlineSettingsStrings.NotifyOnPrivateMessage,
                     Current = config.GetBindable<bool>(OsuSetting.NotifyOnPrivateMessage)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = OnlineSettingsStrings.NotifyOnFriendPresenceChange,
                     HintText = OnlineSettingsStrings.NotifyOnFriendPresenceChangeTooltip,
                     Current = config.GetBindable<bool>(OsuSetting.NotifyOnFriendPresenceChange),
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = AccountsStrings.PrivacyFriendsOnly.ToSentence(),
                     HintText = AccountsStrings.PrivacyFriendsOnlyInfo.ToSentence(),

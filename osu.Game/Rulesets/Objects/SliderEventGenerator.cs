@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -53,7 +53,7 @@ namespace osu.Game.Rulesets.Objects
 
                 if (tickDistance != 0)
                 {
-                    var ticks = generateTicks(span, spanStartTime, spanDuration, reversed, length, tickDistance, minDistanceFromEnd, cancellationToken);
+                    var ticks = generateTicks(span, spanStartTime, spanDuration, reversed, length, totalDistance, tickDistance, minDistanceFromEnd, cancellationToken);
 
                     if (reversed)
                     {
@@ -130,12 +130,13 @@ namespace osu.Game.Rulesets.Objects
         /// <param name="spanStartTime">The start time of the span.</param>
         /// <param name="spanDuration">The duration of the span.</param>
         /// <param name="reversed">Whether the span is reversed.</param>
-        /// <param name="length">The length of the path.</param>
+        /// <param name="length">The capped distance within which ticks are generated.</param>
+        /// <param name="totalDistance">The original length of the path, used to position retained ticks.</param>
         /// <param name="tickDistance">The distance between each tick.</param>
         /// <param name="minDistanceFromEnd">The distance from the end of the path at which ticks are not allowed to be added.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A <see cref="SliderEventDescriptor"/> for each tick. If <paramref name="reversed"/> is true, the ticks will be returned in reverse-StartTime order.</returns>
-        private static IEnumerable<SliderEventDescriptor> generateTicks(int spanIndex, double spanStartTime, double spanDuration, bool reversed, double length, double tickDistance,
+        private static IEnumerable<SliderEventDescriptor> generateTicks(int spanIndex, double spanStartTime, double spanDuration, bool reversed, double length, double totalDistance, double tickDistance,
                                                                         double minDistanceFromEnd, CancellationToken cancellationToken = default)
         {
             for (double d = tickDistance; d <= length; d += tickDistance)
@@ -146,7 +147,8 @@ namespace osu.Game.Rulesets.Objects
                     break;
 
                 // Always generate ticks from the start of the path rather than the span to ensure that ticks in repeat spans are positioned identically to those in non-repeat spans
-                double pathProgress = d / length;
+                // The generation cap must not stretch retained ticks over the full path.
+                double pathProgress = d / totalDistance;
                 double timeProgress = reversed ? 1 - pathProgress : pathProgress;
 
                 yield return new SliderEventDescriptor

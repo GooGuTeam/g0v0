@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -154,7 +154,8 @@ namespace osu.Game.Rulesets.Osu.Beatmaps
                         // truncation to integer is required to match stable
                         // compare https://github.com/peppy/osu-stable-reference/blob/08e3dafd525934cf48880b08e91c24ce4ad8b761/osu!/GameplayElements/HitObjectManager.cs#L1725
                         // - both quantities being subtracted there are integers
-                        if ((int)objectI.StartTime - (int)endTime > stackThreshold)
+                        // Keep the truncated operands wide: their difference, or a slider's derived end time, can exceed the integer range.
+                        if (Math.Truncate(objectI.StartTime) - Math.Truncate(endTime) > stackThreshold)
                             // We are no longer within stacking range of the previous object.
                             break;
 

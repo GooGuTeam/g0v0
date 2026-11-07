@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -28,6 +28,9 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         public readonly IBindable<int> StackHeightBindable = new Bindable<int>();
         public readonly IBindable<float> ScaleBindable = new BindableFloat();
         public readonly IBindable<int> IndexInCurrentComboBindable = new Bindable<int>();
+
+        internal DrawableOsuHitObject VisualParentHitObject => ParentHitObject as DrawableOsuHitObject;
+        internal bool IsVisualSourceDisposed => IsDisposed;
 
         // Must be set to update IsHovered as it's used in relax mod to detect osu hit objects.
         public override bool HandlePositionalInput => true;

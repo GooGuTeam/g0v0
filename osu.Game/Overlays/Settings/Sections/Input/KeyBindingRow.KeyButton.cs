@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -34,6 +34,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
             public Bindable<RealmKeyBinding> KeyBinding { get; } = new Bindable<RealmKeyBinding>();
 
             private readonly Box box;
+            private readonly Container minimumWidth;
             public readonly OsuSpriteText Text;
 
             [Resolved]
@@ -66,7 +67,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
                 Children = new Drawable[]
                 {
-                    new Container
+                    minimumWidth = new Container
                     {
                         AlwaysPresent = true,
                         Width = 65,
@@ -106,6 +107,9 @@ namespace osu.Game.Overlays.Settings.Sections.Input
             [BackgroundDependencyLoader]
             private void load()
             {
+                if (StableStyle)
+                    applyStableStyle();
+
                 updateHoverState();
                 FinishTransforms(true);
             }
@@ -124,6 +128,12 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
             private void updateHoverState()
             {
+                if (StableStyle)
+                {
+                    updateStableHoverState();
+                    return;
+                }
+
                 const float transition_time = 120;
 
                 if (isBinding)

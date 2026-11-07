@@ -9,6 +9,7 @@ using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Mods.Input;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.UserInterface
 {
@@ -21,36 +22,30 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
         {
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.ShowConvertedBeatmaps,
                     Current = config.GetBindable<bool>(OsuSetting.ShowConvertedBeatmaps),
-                })
-                {
                     Keywords = new[] { "converts", "converted" }
-                },
-                new SettingsItemV2(new FormEnumDropdown<RandomSelectAlgorithm>
+                }),
+                CreateItem(new EnumDropdownEntry<RandomSelectAlgorithm>
                 {
                     Caption = UserInterfaceStrings.RandomSelectionAlgorithm,
                     Current = config.GetBindable<RandomSelectAlgorithm>(OsuSetting.RandomSelectAlgorithm),
                 }),
-                new SettingsItemV2(new FormEnumDropdown<ModSelectHotkeyStyle>
+                CreateItem(new EnumDropdownEntry<ModSelectHotkeyStyle>
                 {
                     Caption = UserInterfaceStrings.ModSelectHotkeyStyle,
                     Current = config.GetBindable<ModSelectHotkeyStyle>(OsuSetting.ModSelectHotkeyStyle),
-                })
-                {
-                    ApplyClassicDefault = c => ((IHasCurrentValue<ModSelectHotkeyStyle>)c).Current.Value = ModSelectHotkeyStyle.Classic,
-                },
-                new SettingsItemV2(new FormCheckBox
+                    ClassicDefault = ModSelectHotkeyStyle.Classic,
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.ModSelectTextSearchStartsActive,
                     Current = config.GetBindable<bool>(OsuSetting.ModSelectTextSearchStartsActive),
-                })
-                {
-                    ApplyClassicDefault = c => ((IHasCurrentValue<bool>)c).Current.Value = false,
-                },
-                new SettingsItemV2(new FormCheckBox
+                    ClassicDefault = false,
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = GameplaySettingsStrings.BackgroundBlur,
                     Current = config.GetBindable<bool>(OsuSetting.SongSelectBackgroundBlur),

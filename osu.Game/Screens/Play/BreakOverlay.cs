@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Bindables;
@@ -34,6 +34,11 @@ namespace osu.Game.Screens.Play
         public override bool RemoveCompletedTransforms => false;
 
         public required BreakTracker BreakTracker { get; init; }
+
+        /// <summary>
+        /// Whether to show the countdown, arrows and score summary during breaks. The legacy gameplay screens show stable's instead.
+        /// </summary>
+        public bool ShowStandardDisplay { get; init; } = true;
 
         private readonly Container remainingTimeAdjustmentBox;
         private readonly Container remainingTimeBox;
@@ -142,7 +147,7 @@ namespace osu.Game.Screens.Play
         {
             Scheduler.CancelDelayedTasks();
 
-            if (period.NewValue == null)
+            if (period.NewValue == null || !ShowStandardDisplay)
                 return;
 
             var b = period.NewValue.Value;
