@@ -16,6 +16,7 @@ using osu.Game.Graphics;
 using osu.Game.Screens.Select;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Localisation;
 using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
@@ -27,6 +28,9 @@ using osuTK.Graphics;
 
 namespace osu.Game.Skinning.Select
 {
+    /// <summary>
+    /// stable's local user card (<c>User.DrawAt</c>), shared by song select's footer and the main menu's top-left corner.
+    /// </summary>
     public partial class LegacyFooterUser : CompositeDrawable
     {
         private Sprite background = null!;
@@ -52,6 +56,11 @@ namespace osu.Game.Skinning.Select
 
         [Resolved]
         private UserProfileOverlay? profileOverlay { get; set; }
+
+        [Resolved]
+        private LoginOverlay? loginOverlay { get; set; }
+
+        private readonly IBindable<APIUser> localUser = new Bindable<APIUser>();
 
         private APIUser? currentUser;
 
@@ -127,6 +136,8 @@ namespace osu.Game.Skinning.Select
             base.LoadComplete();
 
             userStatisticsProvider.StatisticsUpdated += onStatisticsUpdated;
+            localUser.BindTo(api.LocalUser);
+            localUser.BindValueChanged(_ => Schedule(updateDisplay));
             ruleset.BindValueChanged(_ => updateDisplay(), true);
         }
 
@@ -145,7 +156,16 @@ namespace osu.Game.Skinning.Select
             currentUser = statistics?.User ?? (api.IsLoggedIn ? api.LocalUser.Value : null);
             avatar.User = currentUser;
 
-            if (statistics == null)
+            if (!api.IsLoggedIn)
+            {
+                // stable's guest card (User.UpdateStats): "Guest", with a prompt to sign in in place of the statistics.
+                usernameText.Text = UserInterfaceStrings.LegacyGuest;
+                infoText.Text = UserInterfaceStrings.LegacySignIn;
+                rankText.Text = string.Empty;
+                rulesetIcon.Hide();
+                levelBar.Hide();
+            }
+            else if (statistics == null)
             {
                 usernameText.Text = currentUser?.Username ?? string.Empty;
                 infoText.Text = string.Empty;
@@ -217,8 +237,10 @@ namespace osu.Game.Skinning.Select
 
         protected override bool OnClick(ClickEvent e)
         {
-            // Stable opens the local user's profile when the footer user panel is clicked.
-            if (currentUser != null)
+            // Stable opens the local user's profile when the footer user panel is clicked, or the login form for a guest.
+            if (!api.IsLoggedIn)
+                loginOverlay?.ToggleVisibility();
+            else if (currentUser != null)
                 profileOverlay?.ShowUser(currentUser);
 
             return true;

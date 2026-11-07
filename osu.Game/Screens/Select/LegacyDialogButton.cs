@@ -5,6 +5,7 @@ using System;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Sample;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
@@ -51,9 +52,9 @@ namespace osu.Game.Screens.Select
         private readonly LocalisableString text;
         private readonly Color4 textColour;
 
-        private Box hoverBox = null!;
-        private Container borderContainer = null!;
         private Container? skinnedButton;
+        private Container? drawnButton;
+        private Box? drawnFlash;
 
         private Sample? hoverSample;
         private Sample? clickSample;
@@ -72,6 +73,8 @@ namespace osu.Game.Screens.Select
         private Color4 restingColour => new Color4(Math.Max(0, textColour.R - 20 / 255f), Math.Max(0, textColour.G - 20 / 255f), Math.Max(0, textColour.B - 20 / 255f), 1);
 
         private Color4 litColour => new Color4(textColour.R, textColour.G, textColour.B, 1);
+
+        private Color4 drawnLitColour => new Color4(textColour.R, textColour.G, textColour.B, 1).Lighten(0.2f);
 
         [Resolved]
         private ISkinSource skin { get; set; } = null!;
@@ -99,6 +102,8 @@ namespace osu.Game.Screens.Select
         private void rebuild()
         {
             skinnedButton = null;
+            drawnButton = null;
+            drawnFlash = null;
 
             var label = new OsuSpriteText
             {
@@ -159,35 +164,31 @@ namespace osu.Game.Screens.Select
                 return;
             }
 
+            // the drawn bar mirrors the skinned one: it rests a little darker than its colour, lights up while hovered and flashes white on click.
             InternalChildren = new Drawable[]
             {
-                borderContainer = new Container
+                drawnButton = new Container
                 {
                     RelativeSizeAxes = Axes.Both,
                     CornerRadius = 2,
                     Masking = true,
-                    BorderThickness = 0,
-                    BorderColour = new Color4(textColour.R, textColour.G, textColour.B, 0.4f),
-                    Children = new Drawable[]
+                    Colour = restingColour,
+                    Child = new Box
                     {
-                        new Box
-                        {
-                            RelativeSizeAxes = Axes.Both,
-                            Colour = textColour,
-                        },
-                        new Box
-                        {
-                            RelativeSizeAxes = Axes.Both,
-                            Height = 0.5f,
-                            Colour = ColourInfo.GradientVertical(new Color4(0f, 0f, 0f, 0.22f), Color4.Transparent),
-                        },
-                        hoverBox = new Box
-                        {
-                            RelativeSizeAxes = Axes.Both,
-                            Colour = new Color4(textColour.R, textColour.G, textColour.B, 0.18f),
-                            Alpha = 0,
-                        },
-                    }
+                        RelativeSizeAxes = Axes.Both,
+                    },
+                },
+                new Box
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Height = 0.5f,
+                    Colour = ColourInfo.GradientVertical(new Color4(0f, 0f, 0f, 0.22f), Color4.Transparent),
+                },
+                drawnFlash = new Box
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Blending = BlendingParameters.Additive,
+                    Alpha = 0,
                 },
                 label,
             };
@@ -199,13 +200,9 @@ namespace osu.Game.Screens.Select
 
         protected override bool OnHover(HoverEvent e)
         {
-            if (skinnedButton != null)
-                skinnedButton.FadeColour(litColour, 50);
-            else
-            {
-                hoverBox.FadeIn(80);
-                borderContainer.BorderColour = textColour;
-            }
+            skinnedButton?.FadeColour(litColour, 50);
+            // a flat bar has no texture shading to carry stable's subtle tint change, so it also brightens a little.
+            drawnButton?.FadeColour(drawnLitColour, 50);
 
             hoverSample?.Play();
             return true;
@@ -213,13 +210,8 @@ namespace osu.Game.Screens.Select
 
         protected override void OnHoverLost(HoverLostEvent e)
         {
-            if (skinnedButton != null)
-                skinnedButton.FadeColour(restingColour, 50);
-            else
-            {
-                hoverBox.FadeOut(150);
-                borderContainer.BorderColour = new Color4(textColour.R, textColour.G, textColour.B, 0.4f);
-            }
+            skinnedButton?.FadeColour(restingColour, 50);
+            drawnButton?.FadeColour(restingColour, 50);
 
             base.OnHoverLost(e);
         }
@@ -228,6 +220,7 @@ namespace osu.Game.Screens.Select
         {
             // stable flashes the button white on click (pButton.p_OnClick).
             skinnedButton?.FlashColour(Color4.White, 400);
+            drawnFlash?.FadeTo(0.6f).FadeOut(400);
 
             clickSample?.Play();
             Action?.Invoke();

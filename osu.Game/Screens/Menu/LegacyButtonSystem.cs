@@ -27,6 +27,7 @@ using osu.Game.Graphics.Containers;
 using osu.Game.Input.Bindings;
 using osu.Game.Online.Rooms;
 using osu.Game.Skinning;
+using osu.Game.Skinning.Select;
 using osuTK;
 using osuTK.Input;
 
@@ -92,7 +93,7 @@ namespace osu.Game.Screens.Menu
         }
 
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin, SkinManager skins, AudioManager audio, IAPIProvider api, BeatmapManager beatmaps, LoginOverlay? login)
+        private void load(ISkinSource skin, SkinManager skins, AudioManager audio, IAPIProvider api, BeatmapManager beatmaps)
         {
             Texture? getTex(string name) => skin.GetStableTexture(name) ?? skins.DefaultClassicSkin.GetStableTexture(name);
 
@@ -128,34 +129,12 @@ namespace osu.Game.Screens.Menu
                             Height = 54,
                             Colour = new Color4(0, 0, 0, 0.4f),
                         },
-                        new ClickableContainer
+                        // stable draws the same user card here as in song select (User.DrawAt(0, 0) in Menu), which is laid out
+                        // in song select's 1.6x units; the offset matches the font metrics compensation song select's footer applies.
+                        new LegacyFooterUser
                         {
-                            Size = new Vector2(205, 52),
-                            Action = () => login?.ToggleVisibility(),
-                            Children = new Drawable[]
-                            {
-                                new OsuSpriteText
-                                {
-                                    Position = new Vector2(53, 2),
-                                    Font = OsuFont.Inter.With(size: 14),
-                                    Text = api.IsLoggedIn ? api.LocalUser.Value.Username : UserInterfaceStrings.LegacyGuest,
-                                    Shadow = true,
-                                },
-                                new OsuSpriteText
-                                {
-                                    Position = new Vector2(53, 17),
-                                    Font = OsuFont.Inter.With(size: 10),
-                                    Text = api.IsLoggedIn ? string.Empty : UserInterfaceStrings.LegacySignIn,
-                                    Shadow = true,
-                                },
-                                new Sprite
-                                {
-                                    Position = new Vector2(80, 43),
-                                    Texture = getTex(@"levelbar"),
-                                    Scale = new Vector2(1 / LegacySkin.STABLE_MAGIC_SCALE_FACTOR),
-                                    Alpha = 0.5f,
-                                },
-                            },
+                            Position = new Vector2(3, 2),
+                            Scale = new Vector2(1 / 1.6f),
                         },
                         libraryStatus = new Container
                         {

@@ -27,13 +27,14 @@ namespace osu.Game.Rulesets.Osu.UI
         private readonly List<VisualEntry> entries = new List<VisualEntry>();
         private readonly Dictionary<Drawable, VisualEntry> sources = new Dictionary<Drawable, VisualEntry>();
         private readonly Dictionary<HitObject, int> declarationOrder = new Dictionary<HitObject, int>();
-        private readonly Bindable<bool> stableRendering = new Bindable<bool>();
         private readonly Bindable<bool> showHiddenSliders = new Bindable<bool>();
         private IBeatmap? beatmap;
         private bool orderDirty;
         private ConcurrentQueue<Drawable>? removals = new ConcurrentQueue<Drawable>();
 
-        public bool IsActive => stableRendering.Value;
+        // Proxy registration happens once during drawable loading and cannot be undone (CreateProxy() is single-use).
+        // Keep the mode fixed for this playfield so a live settings change cannot leave pooled objects partially proxied.
+        public bool IsActive { get; private set; }
         public bool IsStableRendering => IsActive;
 
         /// <summary>
@@ -51,7 +52,7 @@ namespace osu.Game.Rulesets.Osu.UI
         private const int max_logged_violations = 20;
 
         /// <summary>
-        /// One frame at 60 Hz, the frame-stable gameplay rate: how long visibility may trail a lifetime boundary.
+        /// Boundary margin for diagnosing unexpectedly hidden gates. Expired visible gates have no tolerance.
         /// </summary>
         private const double lifetime_tolerance = 1000 / 60.0;
 
@@ -70,7 +71,7 @@ namespace osu.Game.Rulesets.Osu.UI
         [BackgroundDependencyLoader]
         private void load(OsuRulesetConfigManager? config, IBeatmap? beatmap)
         {
-            config?.BindWith(OsuRulesetSetting.KeepOverlapCirclesVisible, stableRendering);
+            IsActive = config?.Get<bool>(OsuRulesetSetting.KeepOverlapCirclesVisible) == true;
             config?.BindWith(OsuRulesetSetting.ShowHiddenSliders, showHiddenSliders);
             this.beatmap = beatmap;
             RefreshBeatmap();
@@ -202,9 +203,13 @@ namespace osu.Game.Rulesets.Osu.UI
             bool applied = owner.Entry != null && model != null && parentModel != null;
             bool hidden = parentModel is Slider slider && slider.Path.LegacyTrimRemovesAllSegments;
 
-            // A nested object keeps its last IsAlive value once its parent leaves the hit object container, as nothing updates it any more.
-            bool parentAlive = ReferenceEquals(parent, owner) || parent.IsAlive;
+            // IsAlive is cached before the object's update. Judgement and rewind can change its lifetime later in
+            // that same update, and nested objects can retain IsAlive after their parent stops updating them.
+            // Check the current lifetime as well, without waiting for the next container lifetime pass.
+            bool ownerAlive = owner.IsAlive && withinLifetime(owner);
+            bool parentAlive = ReferenceEquals(parent, owner) || (parent.IsAlive && withinLifetime(parent));
             bool repeatFinished = false;
+
             if (owner is DrawableSliderRepeat repeat && repeat.AllJudged)
             {
                 double animDuration = Math.Min(300, repeat.HitObject.SpanDuration);
@@ -214,7 +219,7 @@ namespace osu.Game.Rulesets.Osu.UI
             bool approachFinished = entry.Kind == OsuVisualKind.Approach && (owner.Judged || (model != null && Time.Current > model.StartTime + 50));
 
             // Short duration does not make a slider invisible. Keep its normal preempt and fade transforms.
-            bool visible = applied && owner.IsAlive && parentAlive && (showHiddenSliders.Value || !hidden) && !repeatFinished && !approachFinished;
+            bool visible = applied && ownerAlive && parentAlive && (showHiddenSliders.Value || !hidden) && !repeatFinished && !approachFinished;
 
             entry.Gate.Alpha = visible ? 1f : 0;
 
@@ -230,6 +235,7 @@ namespace osu.Game.Rulesets.Osu.UI
             }
 
             int declaration = declarationOrder.GetValueOrDefault(parentModel!);
+
             if (entry.Kind == OsuVisualKind.Approach && entry.Gate.Depth != declaration)
             {
                 if (entry.Gate.Parent == null)
@@ -241,6 +247,7 @@ namespace osu.Game.Rulesets.Osu.UI
                 else
                     entry.Gate.Depth = declaration;
             }
+
             bool tail = owner is DrawableSliderTail;
             int role = owner switch
             {
@@ -272,12 +279,14 @@ namespace osu.Game.Rulesets.Osu.UI
                 entry.Model = model;
                 entry.ParentModel = parentModel;
                 entry.EventOrdinal = 0;
+
                 if (!ReferenceEquals(parent, owner))
                 {
                     foreach (var nested in parentModel!.NestedHitObjects)
                     {
                         if (ReferenceEquals(nested, model))
                             break;
+
                         entry.EventOrdinal++;
                     }
                 }
@@ -293,13 +302,14 @@ namespace osu.Game.Rulesets.Osu.UI
                 (int)entry.Kind);
 
             bool changed = !key.Equals(entry.Gate.Key);
+
             if (changed)
             {
                 entry.Gate.Key = key;
                 ordered.InvalidateOrder();
             }
 
-            bool global = entry.Kind == OsuVisualKind.Object || stableRendering.Value && entry.Kind != OsuVisualKind.Approach;
+            bool global = entry.Kind != OsuVisualKind.Approach;
             bool moved = false;
 
             if (!global && entry.AddFallback != null)
@@ -315,6 +325,7 @@ namespace osu.Game.Rulesets.Osu.UI
             else
             {
                 Container? target = global ? ordered : entry.Fallback?.Invoke();
+
                 if (!ReferenceEquals(entry.Gate.Parent, target))
                 {
                     detach(entry.Gate, entry);
@@ -327,6 +338,8 @@ namespace osu.Game.Rulesets.Osu.UI
             return moved || changed;
         }
 
+        private bool withinLifetime(Drawable drawable) => Time.Current >= drawable.LifetimeStart && Time.Current < drawable.LifetimeEnd;
+
         /// <summary>
         /// Compares a proxy's visibility with the lifetimes of its owner and parent object, which the hit object container is expected to apply,
         /// and checks that the proxied source still belongs to its owner.
@@ -336,13 +349,6 @@ namespace osu.Game.Rulesets.Osu.UI
             var owner = entry.Owner;
             double time = Time.Current;
 
-            bool withinLifetime(Drawable drawable) => time >= drawable.LifetimeStart && time < drawable.LifetimeEnd;
-
-            // In the editor, HitObjectContainer extends lifetimes across the timeline visible range (PastLifetimeExtension / FutureLifetimeExtension),
-            // keeping drawables alive well outside their normal [LifetimeStart, LifetimeEnd] window.
-            if (owner.IsAlive && !withinLifetime(owner))
-                return;
-
             bool expected = applied
                             && withinLifetime(owner)
                             && (ReferenceEquals(parent, owner) || withinLifetime(parent))
@@ -350,20 +356,25 @@ namespace osu.Game.Rulesets.Osu.UI
                             && !repeatFinished
                             && !approachFinished;
 
-            // Containers update their children's IsAlive before those children change their own lifetimes (on judgement, or when a seek
-            // reverts one), so visibility can trail a lifetime change by one frame, as it does in upstream gameplay. While seeking, the
-            // clock can also sit just past a boundary for several frames before the container updates again. Only a mismatch lasting
-            // longer than a frame and further than a frame's time from every boundary is visible to the player.
-            bool nearBoundary = Math.Abs(time - owner.LifetimeStart) < lifetime_tolerance || Math.Abs(time - owner.LifetimeEnd) < lifetime_tolerance
-                                || Math.Abs(time - parent.LifetimeStart) < lifetime_tolerance || Math.Abs(time - parent.LifetimeEnd) < lifetime_tolerance;
+            // Never suppress reports of an enabled gate outside its current lifetime, even for a single frame.
+            // Editor KeepAlive explicitly expands the entry's lifetime; IsAlive alone is not an editor exemption.
+            if (visible && !expected)
+                report(entry, @"visible outside its lifetime", parent, time);
 
-            if (visible != expected && !nearBoundary)
+            // A newly alive source may still need a container update after a rewind. Retain the grace period
+            // for hidden gates only; it must not excuse stale visible gates at lifetime boundaries.
+            bool nearBoundary = Math.Abs(time - owner.LifetimeStart) < lifetime_tolerance
+                                || Math.Abs(time - owner.LifetimeEnd) < lifetime_tolerance
+                                || Math.Abs(time - parent.LifetimeStart) < lifetime_tolerance
+                                || Math.Abs(time - parent.LifetimeEnd) < lifetime_tolerance;
+
+            if (!visible && expected && !nearBoundary)
                 entry.MismatchedFrames++;
             else
                 entry.MismatchedFrames = 0;
 
             if (entry.MismatchedFrames == 2)
-                report(entry, visible ? @"visible outside its lifetime" : @"hidden within its lifetime", parent, time);
+                report(entry, @"hidden within its lifetime", parent, time);
 
             if (!visible)
                 return;

@@ -429,6 +429,10 @@ namespace osu.Game.Screens.Select
             if (e.Repeat)
                 return false;
 
+            // stable's mod hotkeys are bare keys; leave modified combinations (e.g. Ctrl+F1) to their own bindings.
+            if (e.ControlPressed || e.AltPressed || e.SuperPressed)
+                return base.OnKeyDown(e);
+
             bool mania = string.Equals(Ruleset.Value?.ShortName, "mania", StringComparison.OrdinalIgnoreCase);
             if (mania && e.Key >= Key.Number3 && e.Key <= Key.Number9)
             {
@@ -517,7 +521,6 @@ namespace osu.Game.Screens.Select
                     return true;
 
                 case Key.Escape:
-                case Key.F1:
                     Hide();
                     return true;
             }

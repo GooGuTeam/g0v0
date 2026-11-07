@@ -2,12 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Events;
-using osu.Framework.Localisation;
 using osu.Game.Graphics.Containers;
+using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osuTK;
 using osuTK.Graphics;
@@ -16,10 +14,10 @@ using M = osu.Game.Overlays.Settings.Rendering.Stable.StableOptionsMetrics;
 namespace osu.Game.Overlays.Settings.Rendering.Stable
 {
     /// <summary>
-    /// osu!stable's options tab (<c>OptionTab</c>): an icon only, grey until hovered or active;
-    /// the active tab gets a dark background and the main colour "light" on its right edge. The section name is shown as a tooltip.
+    /// osu!stable's options tab (<c>OptionTab</c>): an icon, grey until hovered or active, with the section's title beside it that shows once
+    /// the column expands; the active tab gets a dark background and the main colour "light" on its right edge.
     /// </summary>
-    public partial class StableSidebarButton : OsuClickableContainer, ISettingsSidebarButton, IHasCustomTooltip<LocalisableString>
+    public partial class StableSidebarButton : OsuClickableContainer, ISettingsSidebarButton
     {
         private const double active_fade_duration = 300;
         private const double hover_fade_duration = 100;
@@ -50,10 +48,6 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
         // always consider as part of flow, even when not visible (for the sake of the initial animation).
         public override bool IsPresent => true;
 
-        public LocalisableString TooltipContent => Section.Header;
-
-        public ITooltip<LocalisableString> GetCustomTooltip() => new StableTooltip();
-
         public StableSidebarButton(SettingsSection section)
             : base(HoverSampleSet.ButtonSidebar)
         {
@@ -81,13 +75,23 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
                     Colour = StableSettingsColours.MAIN,
                     Alpha = 0,
                 },
+                // the icon stays centred in the 40 unit column while the tab widens.
                 icon = new ConstrainedIconContainer
                 {
-                    Anchor = Anchor.Centre,
+                    Anchor = Anchor.CentreLeft,
                     Origin = Anchor.Centre,
+                    X = M.SIDEBAR_WIDTH / 2,
                     Size = new Vector2(M.TAB_ICON_SIZE * iconScale),
                     Icon = section.CreateIcon(),
                     Colour = M.TAB_ICON_COLOUR,
+                },
+                new OsuSpriteText
+                {
+                    Anchor = Anchor.CentreLeft,
+                    Origin = Anchor.CentreLeft,
+                    X = M.TAB_LABEL_X,
+                    Text = section.Header,
+                    Font = M.Font(M.TAB_LABEL_FONT_SIZE),
                 },
             };
         }

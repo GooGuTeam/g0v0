@@ -52,7 +52,7 @@ namespace osu.Game.Rulesets.Osu
 {
     public class OsuRuleset : Ruleset, ILegacyRuleset
     {
-        public override osu.Framework.Graphics.Cursor.CursorContainer CreateMenuCursor() => new UI.Cursor.OsuCursorContainer();
+        public override osu.Framework.Graphics.Cursor.CursorContainer CreateMenuCursor() => new UI.Cursor.OsuCursorContainer { ExpandOnMouseButtons = true };
 
         public override DrawableRuleset CreateDrawableRulesetWith(IBeatmap beatmap, IReadOnlyList<Mod>? mods = null) => new DrawableOsuRuleset(this, beatmap, mods);
 

@@ -73,9 +73,26 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
         /// </summary>
         public const float SIDEBAR_WIDTH = 40 * U;
 
+        /// <summary>
+        /// Resting on a tab widens the column to 140 units (<c>Options.UpdateTabs</c>), revealing each tab's 14pt title at x = 45.
+        /// </summary>
+        public const float SIDEBAR_EXPANDED_WIDTH = 140 * U;
+
+        /// <summary>
+        /// How long the mouse has to rest on the tabs before they expand (<c>expandDelayTabs</c>).
+        /// </summary>
+        public const double SIDEBAR_EXPAND_DELAY = 300;
+
         public const float TAB_HEIGHT = 40 * U;
 
-        public static readonly float TAB_ICON_SIZE = Text(18) * 0.85f;
+        /// <summary>
+        /// The icon's 18pt FontAwesome glyph (<c>pTextAwesome</c> sizes the glyph itself, not a line of text).
+        /// </summary>
+        public const float TAB_ICON_SIZE = 18 * U;
+
+        public const float TAB_LABEL_X = 45 * U;
+
+        public static readonly float TAB_LABEL_FONT_SIZE = Text(14);
 
         public static readonly Color4 SIDEBAR_BACKGROUND = new Color4(8, 8, 8, 255);
 

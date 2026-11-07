@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -48,6 +48,14 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
         /// Whether to rotate trail parts based on the value of <see cref="PartRotation"/>.
         /// </summary>
         protected bool AllowPartRotation { get; set; }
+
+        /// <summary>
+        /// Whether to drop the trail whenever this drawable's transform to screen space changes (e.g. the UI scale being adjusted).
+        /// Parts are stored in local space, so a changing transform would otherwise smear them and streak a trail from the stale position.
+        /// </summary>
+        public bool ClearOnTransformChange { get; set; }
+
+        private Matrix3 lastDrawMatrix;
 
         private Vector2 cursorScale = Vector2.One;
 
@@ -136,11 +144,31 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
 
             Invalidate(Invalidation.DrawNode);
 
+            if (ClearOnTransformChange)
+            {
+                var drawMatrix = DrawInfo.Matrix;
+
+                if (drawMatrix != lastDrawMatrix)
+                {
+                    lastDrawMatrix = drawMatrix;
+                    clearParts();
+                }
+            }
+
             const int fade_clock_reset_threshold = 1000000;
 
             time = (float)((Time.Current - timeOffset) / FadeDuration);
             if (time > fade_clock_reset_threshold)
                 resetTime();
+        }
+
+        private void clearParts()
+        {
+            for (int i = 0; i < parts.Length; i++)
+                parts[i].InvalidationID = -1;
+
+            lastPosition = null;
+            resampler = new InputResampler();
         }
 
         private void resetTime()
@@ -166,7 +194,7 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
         protected virtual bool AvoidDrawingNearCursor => false;
 
         private Vector2? lastPosition;
-        private readonly InputResampler resampler = new InputResampler();
+        private InputResampler resampler = new InputResampler();
 
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => true;
 

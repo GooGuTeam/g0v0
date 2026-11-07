@@ -348,6 +348,37 @@ namespace osu.Game.Tests.Visual.Settings
         }
 
         [Test]
+        public void TestStableSidebarExpandsOnHover()
+        {
+            SettingsOverlay overlay = null!;
+            SettingsSidebar sidebar = null!;
+            Drawable item = null!;
+            float itemX = 0;
+
+            AddStep("enable stable options", () => config.SetValue(OsuSetting.ToriiLegacyOptions, true));
+            AddStep("create overlay", () => Child = overlay = new SettingsOverlay { State = { Value = Visibility.Visible } });
+            AddUntilStep("sidebar buttons loaded", () => overlay.ChildrenOfType<StableSidebarButton>().Any());
+            AddStep("find sidebar", () => sidebar = overlay.ChildrenOfType<StableSettingsSidebar>().Single(s => s.FindClosestParent<SettingsPanel>() == overlay));
+            AddStep("move mouse off the sidebar", () => InputManager.MoveMouseTo(overlay.ScreenSpaceDrawQuad.Centre));
+            AddUntilStep("sidebar contracted", () => !sidebar.Expanded.Value);
+            AddWaitStep("wait for contraction", 10);
+            AddStep("note an option's position", () =>
+            {
+                item = overlay.ChildrenOfType<StableSettingsItem>().First(i => i.IsPresent);
+                itemX = item.ScreenSpaceDrawQuad.TopLeft.X;
+            });
+            AddStep("hover a tab", () => InputManager.MoveMouseTo(sidebar.ChildrenOfType<StableSidebarButton>().ElementAt(2)));
+            AddUntilStep("sidebar expanded", () => sidebar.Expanded.Value);
+            AddWaitStep("wait for expansion", 10);
+            AddAssert("options not pushed aside", () => Precision.AlmostEquals(item.ScreenSpaceDrawQuad.TopLeft.X, itemX));
+            AddStep("move away", () => InputManager.MoveMouseTo(item));
+            AddUntilStep("sidebar contracted again", () => !sidebar.Expanded.Value);
+            AddStep("hover back button", () => hoverBackButton(overlay));
+            AddWaitStep("wait past expansion delay", 10);
+            AddAssert("back button does not expand sidebar", () => !sidebar.Expanded.Value);
+        }
+
+        [Test]
         public void TestStableTooltip()
         {
             SettingsOverlay overlay = null!;

@@ -8,11 +8,13 @@ using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
+using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using WebCommonStrings = osu.Game.Resources.Localisation.Web.CommonStrings;
 using osuTK;
@@ -107,8 +109,24 @@ namespace osu.Game.Screens.Select
             actions[index]();
         }
 
+        public override bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
+        {
+            // like the mod selection, the key that opened the options closes them again rather than reaching song select's own handling.
+            if (e.Action == GlobalAction.ToggleBeatmapOptions)
+            {
+                if (!e.Repeat)
+                    Hide();
+                return true;
+            }
+
+            return base.OnPressed(e);
+        }
+
         protected override bool OnKeyDown(KeyDownEvent e)
         {
+            if (e.ControlPressed || e.AltPressed || e.SuperPressed)
+                return base.OnKeyDown(e);
+
             if (!e.Repeat && e.Key >= Key.Number1 && e.Key <= Key.Number9)
             {
                 int index = e.Key - Key.Number1;

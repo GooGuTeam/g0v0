@@ -137,5 +137,37 @@ namespace osu.Game.Tests.Visual.SongSelect
             AddStep("press 2 (Close option)", () => InputManager.Key(Key.Number2));
             AddUntilStep("overlay hidden", () => overlay.State.Value == Visibility.Hidden);
         }
+
+        [Test]
+        public void TestModTooltipIsLocalisable()
+        {
+            LegacyModButton hidden = null!;
+
+            AddStep("show overlay", () => overlay.Show());
+            AddUntilStep("overlay is visible", () => overlay.State.Value == Visibility.Visible);
+            AddStep("find Hidden", () => hidden = overlay.ChildrenOfType<LegacyModButton>().First(b => b.AvailableMods.Any(m => m is OsuModHidden)));
+            AddStep("hover Hidden", () => InputManager.MoveMouseTo(hidden));
+            AddWaitStep("wait for tooltip", 5);
+        }
+
+        [Test]
+        public void TestDialogButtonHover()
+        {
+            AddStep("show overlay", () => overlay.Show());
+            AddUntilStep("overlay is visible", () => overlay.State.Value == Visibility.Visible);
+            AddStep("hover reset button", () => InputManager.MoveMouseTo(overlay.ChildrenOfType<LegacyDialogButton>().First()));
+            AddWaitStep("wait for hover", 3);
+        }
+
+        [Test]
+        public void TestModifiedF1NotConsumed()
+        {
+            AddStep("show overlay", () => overlay.Show());
+            AddUntilStep("overlay is visible", () => overlay.State.Value == Visibility.Visible);
+            AddStep("press Ctrl+F1", () => InputManager.PressKey(Key.ControlLeft));
+            AddStep("press F1", () => InputManager.Key(Key.F1));
+            AddStep("release Ctrl", () => InputManager.ReleaseKey(Key.ControlLeft));
+            AddAssert("overlay still visible", () => overlay.State.Value == Visibility.Visible);
+        }
     }
 }
