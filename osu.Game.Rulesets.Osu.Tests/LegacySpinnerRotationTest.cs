@@ -16,8 +16,9 @@ namespace osu.Game.Rulesets.Osu.Tests
         private const double start_time = 1000;
         private const double end_time = 4000;
 
-        [TestCase(0, 0, HitResult.Meh)]
-        [TestCase(1, 0, HitResult.Ok)]
+        // Later stable behaviour: zero-required spinners receive 300 even without input.
+        [TestCase(0, 0, HitResult.Great)]
+        [TestCase(1, 0, HitResult.Great)]
         [TestCase(2, 0, HitResult.Great)]
         [TestCase(9, 10, HitResult.Miss)]
         [TestCase(3, 10, HitResult.Miss)]

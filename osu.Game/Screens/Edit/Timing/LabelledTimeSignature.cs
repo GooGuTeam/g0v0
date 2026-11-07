@@ -1,6 +1,7 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -21,6 +22,15 @@ namespace osu.Game.Screens.Edit.Timing
         {
         }
 
+        /// <summary>
+        /// Invoked on a valid user commit, including committing the currently displayed signature.
+        /// </summary>
+        public Action<TimeSignature>? OnCommit
+        {
+            get => Component.OnCommit;
+            set => Component.OnCommit = value;
+        }
+
         protected override TimeSignatureBox CreateComponent() => new TimeSignatureBox();
 
         public partial class TimeSignatureBox : CompositeDrawable, IHasCurrentValue<TimeSignature>
@@ -32,6 +42,8 @@ namespace osu.Game.Screens.Edit.Timing
                 get => current.Current;
                 set => current.Current = value;
             }
+
+            public Action<TimeSignature>? OnCommit;
 
             private OsuNumberBox numeratorBox = null!;
 
@@ -85,7 +97,10 @@ namespace osu.Game.Screens.Edit.Timing
             private void updateFromNumeratorBox()
             {
                 if (int.TryParse(numeratorBox.Current.Value, out int numerator) && numerator > 0)
+                {
                     Current.Value = new TimeSignature(numerator);
+                    OnCommit?.Invoke(Current.Value);
+                }
                 else
                 {
                     // trigger `Current` change to restore the numerator box's text to a valid value.

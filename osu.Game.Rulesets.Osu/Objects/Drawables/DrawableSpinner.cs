@@ -38,6 +38,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
         private SpinnerSpmCalculator spmCalculator;
 
+        private bool hideApproachCircle;
+
         private Container<DrawableSpinnerTick> ticks;
         private PausableSkinnableSound spinningSample;
 
@@ -138,6 +140,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             base.LoadComplete();
 
+            Body.OnSkinChanged += updateApproachCircleVisibility;
+
             isSpinning = RotationTracker.IsSpinning.GetBoundCopy();
             isSpinning.BindValueChanged(updateSpinningSample);
         }
@@ -154,11 +158,46 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
         protected override void OnFree()
         {
+            hideApproachCircle = false;
             CanTrack = null;
             base.OnFree();
 
             spinningSample.ClearSamples();
             maxBonusSample.ClearSamples();
+        }
+
+        internal void HideApproachCircle()
+        {
+            hideApproachCircle = true;
+            updateApproachCircleVisibility();
+        }
+
+        private void updateApproachCircleVisibility()
+        {
+            if (!hideApproachCircle)
+                return;
+
+            var approachCircle = (Body.Drawable as IHasApproachCircle)?.ApproachCircle;
+            if (approachCircle != null)
+            {
+                using (BeginAbsoluteSequence(HitObject.StartTime - HitObject.TimePreempt))
+                    approachCircle.Hide();
+            }
+        }
+
+        protected override void UpdateInitialTransforms()
+        {
+            // Hidden reapplies this policy with the current state; never retain a mod instance across pool use.
+            hideApproachCircle = false;
+            base.UpdateInitialTransforms();
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            if (Body != null)
+                Body.OnSkinChanged -= updateApproachCircleVisibility;
+
+            base.Dispose(isDisposing);
         }
 
         protected override void LoadSamples()
@@ -322,10 +361,13 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         /// <summary>
         /// The result of a Classic spinner, matching stable's <c>SpinnerOsu.ScoreIncrease</c>:
         /// fewer half rotations than required is a miss, exactly the requirement is a 50, one more is a 100, and two or more is a 300.
-        /// A spinner that requires no rotation therefore gives a 50 when it is not spun.
+        /// Spinners requiring no rotation receive a 300, including when not spun.
         /// </summary>
         public static HitResult GetClassicResult(int halfSpins, int requiredHalfSpins)
         {
+            if (requiredHalfSpins == 0)
+                return HitResult.Great;
+
             if (halfSpins < requiredHalfSpins)
                 return HitResult.Miss;
 

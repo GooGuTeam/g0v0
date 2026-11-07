@@ -26,6 +26,9 @@ namespace osu.Game.Rulesets.Osu.Configuration
             SetDefault(OsuRulesetSetting.ShowSliderHeadJudgements, false);
             SetDefault(OsuRulesetSetting.KeepOverlapCirclesVisible, false);
             SetDefault(OsuRulesetSetting.ShowHiddenSliders, true);
+            SetDefault(OsuRulesetSetting.LegacySliderTickFading, false);
+            SetDefault(OsuRulesetSetting.LegacySliderTickVisibility, false);
+            SetDefault(OsuRulesetSetting.HiddenHitFeedback, false);
             SetDefault(OsuRulesetSetting.SliderViewportSize, 0, 0, 65536);
 
             SetDefault(OsuRulesetSetting.ReplayClickMarkersEnabled, false);
@@ -55,5 +58,8 @@ namespace osu.Game.Rulesets.Osu.Configuration
         KeepOverlapCirclesVisible,
         ShowHiddenSliders,
         SliderViewportSize,
+        LegacySliderTickFading,
+        LegacySliderTickVisibility,
+        HiddenHitFeedback,
     }
 }

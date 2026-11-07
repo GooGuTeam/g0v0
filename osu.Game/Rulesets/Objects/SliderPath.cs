@@ -42,6 +42,22 @@ namespace osu.Game.Rulesets.Objects
         /// </summary>
         public readonly BindableList<PathControlPoint> ControlPoints = new BindableList<PathControlPoint>();
 
+        /// <summary>
+        /// Whether stable's length trimming removes every approximated path segment, preventing sprite registration.
+        /// This is independent of slider duration and does not modify gameplay geometry.
+        /// </summary>
+        [JsonIgnore]
+        public bool LegacyTrimRemovesAllSegments
+        {
+            get
+            {
+                ensureValid();
+                return legacyTrimRemovesAllSegments;
+            }
+        }
+
+        private bool legacyTrimRemovesAllSegments;
+
         private readonly List<Vector2> calculatedPath = new List<Vector2>();
         private readonly List<double> cumulativeLength = new List<double>();
         private readonly Cached pathCache = new Cached();
@@ -441,6 +457,7 @@ namespace osu.Game.Rulesets.Objects
 
         private void calculateLength()
         {
+            legacyTrimRemovesAllSegments = legacyTrimRemovesPath();
             calculatedLength = optimisedLength;
             cumulativeLength.Clear();
             cumulativeLength.Add(0);
@@ -498,6 +515,42 @@ namespace osu.Game.Rulesets.Objects
                 calculatedPath[pathEndIndex] = calculatedPath[pathEndIndex - 1] + dir * (float)(expectedDistance - cumulativeLength[^1]);
                 cumulativeLength.Add(expectedDistance);
             }
+        }
+
+        private bool legacyTrimRemovesPath()
+        {
+            // SliderOsu.UpdateCalculations trims from the end before registering its sprites.
+            // Catmull draw optimisation must not influence this earlier geometry decision.
+            IReadOnlyList<Vector2> vertices = calculatedPath;
+            if (OptimiseCatmull && ControlPoints.Any(p => p.Type?.Type == SplineType.Catmull))
+            {
+                var unoptimised = new SliderPath(ControlPoints.Select(p => new PathControlPoint(p.Position, p.Type)).ToArray());
+                vertices = unoptimised.CalculatedPath;
+            }
+
+            if (vertices.Count < 2)
+                return true;
+
+            double length = 0;
+            for (int i = 1; i < vertices.Count; i++)
+                length += Vector2.Distance(vertices[i - 1], vertices[i]);
+
+            // A zero length field means use natural geometry, rather than trim to zero.
+            if (length <= 0)
+                return false;
+
+            double expected = ExpectedDistance.Value is double value && value != 0 ? value : length;
+            double excess = length - expected;
+            for (int i = vertices.Count - 1; i > 0; i--)
+            {
+                float segmentLength = Vector2.Distance(vertices[i - 1], vertices[i]);
+                if (segmentLength > excess + 0.0001)
+                    return false;
+
+                excess -= segmentLength;
+            }
+
+            return true;
         }
 
         private int indexOfDistance(double d)

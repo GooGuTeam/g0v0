@@ -335,8 +335,6 @@ namespace osu.Game
             dependencies.CacheAs(LocalConfig);
             LocalConfig.BindWith(OsuSetting.ToriiLegacyFont, legacyFontSetting);
             legacyFontSetting.BindValueChanged(e => Screens.Select.LegacyFonts.UseInterFont = e.NewValue, true);
-            LocalConfig.BindWith(OsuSetting.ToriiLegacyGameplayLeaderboard, legacyGameplayLeaderboard);
-            legacyGameplayLeaderboard.BindValueChanged(e => Screens.Play.HUD.LegacyGameplayLeaderboard.UseInLegacySkins = e.NewValue, true);
             LocalConfig.BindWith(OsuSetting.UseModSpecificCalculation, useModSpecificCalculation);
             useModSpecificCalculation.BindValueChanged(e => Rulesets.Difficulty.ModSpecificCalculation.Enabled = e.NewValue, true);
             dependencies.CacheAs<IGameplaySettings>(LocalConfig);

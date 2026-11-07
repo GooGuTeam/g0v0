@@ -1,11 +1,12 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osuTK;
 using osu.Game.Rulesets.Objects.Types;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.Audio;
 using System.Linq;
@@ -97,7 +98,9 @@ namespace osu.Game.Rulesets.Objects.Legacy
 
                 if (split.Length > 7)
                 {
-                    length = Math.Max(0, Parsing.ParseDouble(split[7], Parsing.MAX_COORDINATE_VALUE));
+                    // Stable parses total path length independently of coordinate limits.
+                    // Long folded paths can have ordinary coordinates but a much larger total length.
+                    length = Math.Max(0, double.Parse(split[7], CultureInfo.InvariantCulture));
                     if (length == 0)
                         length = null;
                 }

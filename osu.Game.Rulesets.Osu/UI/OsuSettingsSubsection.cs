@@ -71,7 +71,25 @@ namespace osu.Game.Rulesets.Osu.UI
                     HintText = RulesetSettingsStrings.ShowHiddenSlidersDescription,
                     Current = config.GetBindable<bool>(OsuRulesetSetting.ShowHiddenSliders),
                 }),
-                new SettingsItemV2(new FormSliderBar<int>
+                CreateItem(new CheckboxEntry
+                {
+                    Caption = RulesetSettingsStrings.LegacySliderTickFading,
+                    HintText = RulesetSettingsStrings.LegacySliderTickFadingDescription,
+                    Current = config.GetBindable<bool>(OsuRulesetSetting.LegacySliderTickFading),
+                }),
+                CreateItem(new CheckboxEntry
+                {
+                    Caption = RulesetSettingsStrings.LegacySliderTickVisibility,
+                    HintText = RulesetSettingsStrings.LegacySliderTickVisibilityDescription,
+                    Current = config.GetBindable<bool>(OsuRulesetSetting.LegacySliderTickVisibility),
+                }),
+                CreateItem(new CheckboxEntry
+                {
+                    Caption = RulesetSettingsStrings.HiddenHitFeedback,
+                    HintText = RulesetSettingsStrings.HiddenHitFeedbackDescription,
+                    Current = config.GetBindable<bool>(OsuRulesetSetting.HiddenHitFeedback),
+                }),
+                CreateItem(new SliderEntry<int>
                 {
                     Caption = RulesetSettingsStrings.SliderViewportSize,
                     HintText = RulesetSettingsStrings.SliderViewportSizeDescription,

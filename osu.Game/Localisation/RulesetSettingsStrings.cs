@@ -10,6 +10,36 @@ namespace osu.Game.Localisation
         private const string prefix = @"osu.Game.Resources.Localisation.RulesetSettings";
 
         /// <summary>
+        /// "Show successful-hit feedback with Hidden"
+        /// </summary>
+        public static LocalisableString HiddenHitFeedback => new TranslatableString(getKey(@"hidden_hit_feedback"), @"Show successful-hit feedback with Hidden");
+
+        /// <summary>
+        /// "Show the skin's hit animations after successful circle and slider-head hits with Hidden. Requires hit animations. Disabled preserves lazer's Hidden fading."
+        /// </summary>
+        public static LocalisableString HiddenHitFeedbackDescription => new TranslatableString(getKey(@"hidden_hit_feedback_description"), @"Show the skin's hit animations after successful circle and slider-head hits with Hidden. Requires hit animations. Disabled preserves lazer's Hidden fading.");
+
+        /// <summary>
+        /// "Use osu!stable slider tick visibility"
+        /// </summary>
+        public static LocalisableString LegacySliderTickVisibility => new TranslatableString(getKey(@"legacy_slider_tick_visibility"), @"Use osu!stable slider tick visibility");
+
+        /// <summary>
+        /// "Hide ticks inside either slider endpoint circle during gameplay. Ticks are still judged. Disabled uses lazer's visible ticks."
+        /// </summary>
+        public static LocalisableString LegacySliderTickVisibilityDescription => new TranslatableString(getKey(@"legacy_slider_tick_visibility_description"), @"Hide ticks inside either slider endpoint circle during gameplay. Ticks are still judged. Disabled uses lazer's visible ticks.");
+
+        /// <summary>
+        /// "Use osu!stable slider tick fading"
+        /// </summary>
+        public static LocalisableString LegacySliderTickFading => new TranslatableString(getKey(@"legacy_slider_tick_fading"), @"Use osu!stable slider tick fading");
+
+        /// <summary>
+        /// "Use 200ms fade-in on repeat spans, including Hidden fade-out timing. Disabled uses lazer's 150ms."
+        /// </summary>
+        public static LocalisableString LegacySliderTickFadingDescription => new TranslatableString(getKey(@"legacy_slider_tick_fading_description"), @"Use 200ms fade-in on repeat spans, including Hidden fade-out timing. Disabled uses lazer's 150ms.");
+
+        /// <summary>
         /// "Rulesets"
         /// </summary>
         public static LocalisableString Rulesets => new TranslatableString(getKey(@"rulesets"), @"Rulesets");
