@@ -69,7 +69,13 @@ Run from the previewer directory:
 ```bash
 cd .agents/skills/ui-design/tools/Previewer
 ./bin/Debug/net10.0/win-x64/Previewer.exe --scene=TestSceneSettingsPanel --crop=SettingsPanel --out=captures/settings --locale=zh
+
+# several states in one run: before each matching step, plus the end state
+./bin/Debug/net10.0/win-x64/Previewer.exe --scene=TestSceneSettingsRenderers --test=TestStableSidebarExpandsOnHover "--capture-before=hover a tab|move away" --out=captures/sidebar
 ```
+
+The previewer is muted (a zero volume adjustment on its audio), and each run uses its own temporary storage folder, so runs can follow
+each other or overlap.
 
 ### CLI argument reference
 
@@ -81,6 +87,7 @@ cd .agents/skills/ui-design/tools/Previewer
 | `--test=` | Test method name in the visual test scene | All / default |
 | `--case=` | Test case index when the method defines multiple `[TestCase]` | `0` |
 | `--stop-before=` | Substring of step text to stop execution at before capturing | None (runs to end) |
+| `--capture-before=` | `\|`-separated substrings of step text; captures before each matching step, then keeps running (files get a `-NN-<step>` suffix; the end state is still captured) | None |
 | `--out=` | Output directory for PNG captures (relative to working directory) | `captures` |
 | `--size=` | Frame resolution (`WIDTHxHEIGHT`) | `1920x1080` |
 | `--locale=` | Culture code (`zh`, `zh-Hant`, `en`); written to a clean `framework.ini` | System default / `zh` |

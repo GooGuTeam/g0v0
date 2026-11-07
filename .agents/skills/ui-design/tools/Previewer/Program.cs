@@ -12,7 +12,8 @@ namespace Previewer
     /// <summary>
     /// Renders client UI on an offscreen GPU device and saves PNG captures, without a visible window.
     /// <list type="bullet">
-    /// <item><c>--scene=TestSceneName [--test=Method] [--case=N] [--stop-before=step] [--crop=Type,Type]</c> runs one of the visual test scenes and captures where it ends.</item>
+    /// <item><c>--scene=TestSceneName [--test=Method] [--case=N] [--capture-before=step|step] [--stop-before=step] [--crop=Type,Type]</c> runs one of the visual test scenes,
+    /// capturing before each step matching <c>--capture-before</c> and where it ends.</item>
     /// <item><c>--scene=editor --scripts=compose,timing,verify [--ruleset=osu]</c> runs the scripted editor captures in <see cref="EditorPreviewScene"/>.</item>
     /// </list>
     /// Shared: <c>--out=dir --size=1920x1080 [--locale=zh] [--wait=ms]</c>.
@@ -30,6 +31,7 @@ namespace Previewer
                 Test: value(args, "--test"),
                 Case: int.Parse(value(args, "--case") ?? "0", CultureInfo.InvariantCulture),
                 StopBefore: value(args, "--stop-before"),
+                CaptureBefore: value(args, "--capture-before")?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? Array.Empty<string>(),
                 Crops: list(value(args, "--crop")),
                 Scripts: list(value(args, "--scripts") ?? "compose"),
                 Output: Path.GetFullPath(value(args, "--out") ?? "captures"),
@@ -42,8 +44,9 @@ namespace Previewer
 
             Directory.CreateDirectory(options.Output);
 
-            // Fresh storage each run, so that no state from an earlier run changes what is drawn.
-            string storage = Path.Combine(Path.GetTempPath(), "g0v0-previewer-host");
+            // Fresh storage each run, so that no state from an earlier run changes what is drawn. Each process gets its own, so a run started
+            // while another is still running (or still releasing its files) cannot delete the storage from under it.
+            string storage = Path.Combine(Path.GetTempPath(), $"g0v0-previewer-host-{Environment.ProcessId}");
 
             if (Directory.Exists(storage))
                 Directory.Delete(storage, true);
@@ -57,6 +60,18 @@ namespace Previewer
             using (var host = new OffscreenGameHost(PreviewGame.NAME, width, height, storage))
                 host.Run(new PreviewGame(options));
 
+            try
+            {
+                Directory.Delete(storage, true);
+            }
+            catch (IOException)
+            {
+                // a file still held open only leaves a temporary folder behind.
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
             Console.WriteLine(PreviewGame.Error ?? $"Captures saved to {options.Output}");
             return PreviewGame.Error == null ? 0 : 1;
         }
@@ -68,5 +83,5 @@ namespace Previewer
             => value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? Array.Empty<string>();
     }
 
-    public record PreviewOptions(string Scene, string? Test, int Case, string? StopBefore, string[] Crops, string[] Scripts, string Output, string Ruleset, int Wait);
+    public record PreviewOptions(string Scene, string? Test, int Case, string? StopBefore, string[] CaptureBefore, string[] Crops, string[] Scripts, string Output, string Ruleset, int Wait);
 }

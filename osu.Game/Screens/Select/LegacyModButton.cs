@@ -48,7 +48,8 @@ namespace osu.Game.Screens.Select
                 if (mod == null)
                     return string.Empty;
 
-                return $"{mod.Name}\n{mod.Description}";
+                // interpolate as a localisable string: a plain string interpolation bakes in the description's English fallback.
+                return LocalisableString.Interpolate($"{mod.Name}\n{mod.Description}");
             }
         }
 

@@ -235,6 +235,7 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 
 ## 9. 代理工作方式
 
+- **用户要改动或设计 UI 时（外观、布局、配色、间距、动效、对齐与 stable 一致等），必须先加载 `.agents/skills/ui-design/` 技能并按其流程做**：用离屏预览器截「改前 / 改后」图对比，不凭读布局代码下结论，也不打开可见的游戏窗口。
 - 改完先跑 `bash CheckSanity.sh <改动目录>`，涉及公共 API 或分析器规则时再加 `bash InspectCode.sh`（Windows 用 `./InspectCode.ps1`），然后跑与改动相关的测试项目，不要动辄全量。
 - 判断某处差异是不是「fork 有意为之」时，查 `git log`、同步基线标签、`.agents/skills/trademark-check/references/known-outstanding.md`，别凭感觉改回去。
 - 碰到用户可见文案，先按第 3 节「用户可见字符串」把类、base resx、`zh` 三处一起改；资源仓库没 clone 就直接问用户要路径，别跳过、也别自己往本仓库里 clone。核对时用 `.agents/skills/localisation-sync/`。

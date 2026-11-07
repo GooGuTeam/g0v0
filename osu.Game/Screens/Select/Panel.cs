@@ -474,6 +474,9 @@ namespace osu.Game.Screens.Select
 
         public abstract MenuItem[]? ContextMenuItems { get; }
 
+        // Torii: stable's carousel has no context menu; right-click there scrolls the carousel instead, and a menu would ride along with the panel.
+        MenuItem[]? IHasContextMenu.ContextMenuItems => legacySongSelect.Value ? null : ContextMenuItems;
+
         #region ICarouselPanel
 
         private CarouselItem? item;

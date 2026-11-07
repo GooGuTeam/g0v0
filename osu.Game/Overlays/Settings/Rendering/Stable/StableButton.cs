@@ -76,7 +76,6 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
 
             private readonly Color4 litUp;
             private readonly Container body;
-            private readonly Box flash;
             private readonly TruncatingSpriteText text;
 
             public LocalisableString Text
@@ -134,11 +133,6 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
                                     Height = 0.5f,
                                     Colour = new Color4(0, 0, 0, 45),
                                 },
-                                flash = new Box
-                                {
-                                    RelativeSizeAxes = Axes.Both,
-                                    Alpha = 0,
-                                },
                             },
                         },
                     },
@@ -195,7 +189,7 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
             protected override bool OnClick(ClickEvent e)
             {
                 if (Enabled.Value)
-                    flash.FadeOutFromOne(M.BUTTON_FLASH_DURATION);
+                    body.FlashColour(Color4.White, M.BUTTON_FLASH_DURATION);
 
                 return base.OnClick(e);
             }

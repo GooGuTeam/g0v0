@@ -66,8 +66,17 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
 
             proxy = CreateProxy();
 
-            drawableRepeat.HitObjectApplied += onHitObjectApplied;
-            onHitObjectApplied(drawableRepeat);
+            if (visualOrdering?.IsActive == true)
+            {
+                // This component already proxies itself out of the repeat's skinnable container.
+                // Proxying that container cannot draw the arrow, so order the existing proxy directly.
+                visualOrdering.Register(this, drawableRepeat, OsuVisualKind.Arrow, existingProxy: proxy);
+            }
+            else
+            {
+                drawableRepeat.HitObjectApplied += onHitObjectApplied;
+                onHitObjectApplied(drawableRepeat);
+            }
 
             accentColour = drawableRepeat.AccentColour.GetBoundCopy();
             accentColour.BindValueChanged(c =>
@@ -85,8 +94,6 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
 
             arrow.Alpha = 1f;
             arrow.Scale = Vector2.One;
-            if (proxy != null)
-                proxy.Alpha = visualOrdering != null && visualOrdering.IsStableRendering ? 0f : 1f;
         }
 
         protected override void Update()
@@ -117,13 +124,12 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                     arrow.Scale = new Vector2(Interpolation.ValueAt(loopCurrentTime, 1.3f, 1, 0, duration, Easing.Out));
                 }
             }
-
-            if (proxy != null)
-                proxy.Alpha = visualOrdering != null && visualOrdering.IsStableRendering ? 0f : 1f;
         }
 
         protected override void Dispose(bool isDisposing)
         {
+            visualOrdering?.Unregister(this);
+
             base.Dispose(isDisposing);
 
             if (drawableRepeat.IsNotNull())

@@ -222,7 +222,7 @@ namespace osu.Game.Overlays
         {
             base.UpdateAfterChildren();
 
-            ContentContainer.Margin = new MarginPadding { Left = Sidebar?.DrawWidth ?? 0 };
+            ContentContainer.Margin = new MarginPadding { Left = Sidebar?.ContentOffset ?? 0 };
         }
 
         private const double fade_in_duration = 500;

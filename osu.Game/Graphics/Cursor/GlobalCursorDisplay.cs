@@ -65,10 +65,23 @@ namespace osu.Game.Graphics.Cursor
                 return;
 
             gameplayCursor.Hide();
-            AddInternal(new RulesetSkinProvidingContainer(ruleset, new Beatmap(), null)
+
+            // The gameplay cursor only dims itself when hidden (so a hidden cursor stays faintly visible during gameplay).
+            // Outside gameplay a hidden menu cursor must disappear entirely, trail included, or it leaves a ghost behind the active cursor.
+            Container gameplayCursorVisibility;
+            AddInternal(gameplayCursorVisibility = new Container
             {
-                Child = gameplayCursor,
+                RelativeSizeAxes = Axes.Both,
+                Alpha = 0,
+                // keep tracking the mouse while invisible, so the cursor and its trail don't jump from a stale position when shown again.
+                AlwaysPresent = true,
+                Child = new RulesetSkinProvidingContainer(ruleset, new Beatmap(), null)
+                {
+                    Child = gameplayCursor,
+                },
             });
+
+            gameplayCursor.State.BindValueChanged(state => gameplayCursorVisibility.FadeTo(state.NewValue == Visibility.Visible ? 1 : 0, state.NewValue == Visibility.Visible ? 0 : 250, Easing.OutQuint));
         }
 
         protected override void LoadComplete()

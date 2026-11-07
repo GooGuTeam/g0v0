@@ -24,6 +24,11 @@ namespace osu.Game.Overlays.Settings
 
         public Action? BackButtonAction;
 
+        /// <summary>
+        /// How far the panel's content is offset to make room for the sidebar.
+        /// </summary>
+        public virtual float ContentOffset => DrawWidth;
+
         protected override bool ExpandOnHover => false;
 
         private readonly bool showBackButton;

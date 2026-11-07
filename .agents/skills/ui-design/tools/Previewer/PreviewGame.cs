@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 using osu.Framework.Allocation;
+using osu.Framework.Audio;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -18,6 +20,7 @@ using osu.Framework.Imaging;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Testing;
+using osu.Framework.Testing.Drawables.Steps;
 using osu.Game;
 using Logger = osu.Framework.Logging.Logger;
 
@@ -36,9 +39,14 @@ namespace Previewer
             this.options = options;
         }
 
+        // previews are silent: test scenes play music and samples, which would otherwise come out of the speakers.
+        private readonly BindableNumber<double> mute = new BindableDouble(0);
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
+
+            Audio.AddAdjustment(AdjustableProperty.Volume, mute);
             Add(new PreviewRunner(options));
         }
     }
@@ -64,6 +72,11 @@ namespace Previewer
         // Wall-clock time: offscreen, game time runs ahead of it, and background loads take real time.
         private long? captureAt;
         private Task<Image<Rgba32>>? frame;
+
+        // Set while capturing before a --capture-before step: the step to resume after, and the file name suffix.
+        private (StepButton? resumeAfter, string suffix)? intermediate;
+        private readonly HashSet<StepButton> capturedBefore = new HashSet<StepButton>();
+        private int intermediateCount;
 
         [Resolved]
         private GameHost host { get; set; } = null!;
@@ -148,23 +161,56 @@ namespace Previewer
                 return;
             }
 
+            runSteps(null);
+        }
+
+        private void runSteps(StepButton? startAfter)
+        {
             // Stopping skips the completion callback, so the stop condition starts the capture itself.
-            scene.RunAllSteps(
+            scene!.RunAllSteps(
                 () => captureAt = Environment.TickCount64 + options.Wait,
                 (step, e) => finish($"Step \"{step.Text}\" failed: {e}"),
                 step =>
                 {
-                    if (options.StopBefore == null || !step.Text.ToString().Contains(options.StopBefore, StringComparison.OrdinalIgnoreCase))
+                    string text = step.Text.ToString();
+
+                    if (!capturedBefore.Contains(step) && options.CaptureBefore.Any(c => text.Contains(c, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // capture here, then carry on from this step.
+                        capturedBefore.Add(step);
+                        int index = scene.StepsContainer.IndexOf(step);
+                        intermediate = (index > 0 ? scene.StepsContainer.Children[index - 1] as StepButton : null, $"{++intermediateCount:00}-{slug(text)}");
+                        captureAt = Environment.TickCount64 + options.Wait;
+                        return true;
+                    }
+
+                    if (options.StopBefore == null || !text.Contains(options.StopBefore, StringComparison.OrdinalIgnoreCase))
                         return false;
 
                     captureAt = Environment.TickCount64 + options.Wait;
                     return true;
-                });
+                },
+                startAfter);
+        }
+
+        private static string slug(string text)
+        {
+            string s = new string(text.Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-').ToArray());
+
+            while (s.Contains("--", StringComparison.Ordinal))
+                s = s.Replace("--", "-", StringComparison.Ordinal);
+
+            s = s.Trim('-');
+            return s.Length > 40 ? s[..40].TrimEnd('-') : s;
         }
 
         private void saveCaptures()
         {
             string name = options.Test == null ? options.Scene : $"{options.Scene}-{options.Test}";
+            var current = intermediate;
+
+            if (current != null)
+                name += "-" + current.Value.suffix;
 
             using (var image = frame!.GetAwaiter().GetResult())
             {
@@ -183,6 +229,14 @@ namespace Previewer
             }
 
             frame = null;
+
+            if (current != null)
+            {
+                intermediate = null;
+                runSteps(current.Value.resumeAfter);
+                return;
+            }
+
             finish(null);
         }
 
