@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -19,6 +19,7 @@ using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Judgements;
 using osu.Game.Rulesets.Osu.Skinning.Default;
+using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Skinning;
 using osuTK;
@@ -70,6 +71,10 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         private Container<DrawableSliderTick> tickContainer;
         private Container<DrawableSliderRepeat> repeatContainer;
         private PausableSkinnableSound slidingSample;
+        private Container ballProxies;
+
+        [Resolved(CanBeNull = true)]
+        private OsuVisualOrdering visualOrdering { get; set; }
 
         private readonly LayoutValue relativeAnchorPositionLayout;
 
@@ -120,6 +125,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                 headContainer = new Container<DrawableSliderHead> { RelativeSizeAxes = Axes.Both },
                 OverlayElementContainer = new Container { RelativeSizeAxes = Axes.Both, },
                 Ball,
+                ballProxies = new Container { RelativeSizeAxes = Axes.Both },
                 slidingSample = new PausableSkinnableSound
                 {
                     Looping = true,
@@ -139,6 +145,16 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         }
 
         protected override JudgementResult CreateResult(Judgement judgement) => new OsuSliderJudgementResult(HitObject, judgement);
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            if (visualOrdering?.IsActive == true)
+            {
+                visualOrdering.Register(Body, this, OsuVisualKind.Body, () => shakeContainer, localDepth: 1);
+                visualOrdering.Register(Ball, this, OsuVisualKind.Ball, () => ballProxies);
+            }
+        }
 
         protected override void OnApply()
         {

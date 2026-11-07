@@ -1,10 +1,8 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.UserInterface;
-using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Osu.Configuration;
@@ -58,6 +56,25 @@ namespace osu.Game.Rulesets.Osu.UI
                 {
                     Caption = RulesetSettingsStrings.PlayfieldBorderStyle,
                     Current = config.GetBindable<PlayfieldBorderStyle>(OsuRulesetSetting.PlayfieldBorderStyle),
+                }),
+                CreateItem(new CheckboxEntry
+                {
+                    Caption = RulesetSettingsStrings.KeepOverlapCirclesVisible,
+                    HintText = RulesetSettingsStrings.KeepOverlapCirclesVisibleDescription,
+                    Current = config.GetBindable<bool>(OsuRulesetSetting.KeepOverlapCirclesVisible),
+                }),
+                CreateItem(new CheckboxEntry
+                {
+                    Caption = RulesetSettingsStrings.ShowHiddenSliders,
+                    HintText = RulesetSettingsStrings.ShowHiddenSlidersDescription,
+                    Current = config.GetBindable<bool>(OsuRulesetSetting.ShowHiddenSliders),
+                }),
+                CreateItem(new SliderEntry<int>
+                {
+                    Caption = RulesetSettingsStrings.SliderViewportSize,
+                    HintText = RulesetSettingsStrings.SliderViewportSizeDescription,
+                    Current = config.GetBindable<int>(OsuRulesetSetting.SliderViewportSize),
+                    KeyboardStep = 1024,
                 }),
                 CreateItem(new CheckboxEntry
                 {

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -13,6 +13,7 @@ using osu.Framework.Utils;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
+using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
@@ -32,6 +33,9 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         private Drawable arrow = null!;
 
         private bool shouldRotate;
+
+        [Resolved(CanBeNull = true)]
+        private OsuVisualOrdering? visualOrdering { get; set; }
 
         [BackgroundDependencyLoader]
         private void load(DrawableHitObject drawableObject, ISkinSource skinSource)
@@ -78,6 +82,11 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
 
             // see logic in LegacySliderHeadHitCircle.
             drawableRepeat.DrawableSlider.OverlayElementContainer.Add(proxy);
+
+            arrow.Alpha = 1f;
+            arrow.Scale = Vector2.One;
+            if (proxy != null)
+                proxy.Alpha = visualOrdering != null && visualOrdering.IsStableRendering ? 0f : 1f;
         }
 
         protected override void Update()
@@ -87,7 +96,8 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             if (Time.Current >= drawableRepeat.HitStateUpdateTime && drawableRepeat.State.Value == ArmedState.Hit)
             {
                 double animDuration = Math.Min(300, drawableRepeat.HitObject.SpanDuration);
-                arrow.Scale = new Vector2(Interpolation.ValueAt(Time.Current, 1, 1.4f, drawableRepeat.HitStateUpdateTime, drawableRepeat.HitStateUpdateTime + animDuration, Easing.Out));
+                float progress = Math.Clamp((float)((Time.Current - drawableRepeat.HitStateUpdateTime) / animDuration), 0f, 1f);
+                arrow.Scale = new Vector2(Interpolation.ValueAt(progress, 1f, 1.4f, 0f, 1f, Easing.Out));
             }
             else
             {
@@ -107,6 +117,9 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                     arrow.Scale = new Vector2(Interpolation.ValueAt(loopCurrentTime, 1.3f, 1, 0, duration, Easing.Out));
                 }
             }
+
+            if (proxy != null)
+                proxy.Alpha = visualOrdering != null && visualOrdering.IsStableRendering ? 0f : 1f;
         }
 
         protected override void Dispose(bool isDisposing)

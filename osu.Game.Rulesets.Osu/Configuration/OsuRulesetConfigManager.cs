@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Game.Configuration;
 using osu.Game.Rulesets.Configuration;
@@ -24,6 +24,9 @@ namespace osu.Game.Rulesets.Osu.Configuration
             SetDefault(OsuRulesetSetting.ShowCursorRipples, false);
             SetDefault(OsuRulesetSetting.PlayfieldBorderStyle, PlayfieldBorderStyle.None);
             SetDefault(OsuRulesetSetting.ShowSliderHeadJudgements, false);
+            SetDefault(OsuRulesetSetting.KeepOverlapCirclesVisible, false);
+            SetDefault(OsuRulesetSetting.ShowHiddenSliders, true);
+            SetDefault(OsuRulesetSetting.SliderViewportSize, 0, 0, 65536);
 
             SetDefault(OsuRulesetSetting.ReplayClickMarkersEnabled, false);
             SetDefault(OsuRulesetSetting.ReplayFrameMarkersEnabled, false);
@@ -49,5 +52,8 @@ namespace osu.Game.Rulesets.Osu.Configuration
         ReplayCursorPathEnabled,
         ReplayCursorHideEnabled,
         ReplayAnalysisDisplayLength,
+        KeepOverlapCirclesVisible,
+        ShowHiddenSliders,
+        SliderViewportSize,
     }
 }

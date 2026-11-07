@@ -308,6 +308,36 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString ShowSliderHeadJudgementsDescription => new TranslatableString(getKey(@"show_slider_head_judgements_description"), @"Display accuracy judgements on slider heads when hit.");
 
+        /// <summary>
+        /// "Use stable-style 2B rendering"
+        /// </summary>
+        public static LocalisableString KeepOverlapCirclesVisible => new TranslatableString(getKey(@"keep_overlap_circles_visible"), @"Use stable-style 2B rendering");
+
+        /// <summary>
+        /// "Order slider bodies, circles and markers separately using stable-style visual priorities. Does not change hit judgement."
+        /// </summary>
+        public static LocalisableString KeepOverlapCirclesVisibleDescription => new TranslatableString(getKey(@"keep_overlap_circles_visible_description"), @"Order slider bodies, circles and markers separately using stable-style visual priorities. Does not change hit judgement.");
+
+        /// <summary>
+        /// "Show hidden sliders"
+        /// </summary>
+        public static LocalisableString ShowHiddenSliders => new TranslatableString(getKey(@"show_hidden_sliders"), @"Show hidden sliders");
+
+        /// <summary>
+        /// "Display sliders shorter than 1 ms, including their circles and markers. Does not change hit judgement."
+        /// </summary>
+        public static LocalisableString ShowHiddenSlidersDescription => new TranslatableString(getKey(@"show_hidden_sliders_description"), @"Display sliders shorter than 1 ms, including their circles and markers. Does not change hit judgement.");
+
+        /// <summary>
+        /// "Slider viewport size"
+        /// </summary>
+        public static LocalisableString SliderViewportSize => new TranslatableString(getKey(@"slider_viewport_size"), @"Slider viewport size");
+
+        /// <summary>
+        /// "Simulated viewport limit in pixels for large slider bodies. 0 uses the active renderer's automatic limit."
+        /// </summary>
+        public static LocalisableString SliderViewportSizeDescription => new TranslatableString(getKey(@"slider_viewport_size_description"), @"Simulated viewport limit in pixels for large slider bodies. 0 uses the active renderer's automatic limit.");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }
