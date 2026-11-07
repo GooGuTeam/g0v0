@@ -44,7 +44,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
             ];
 
             foreach (string spriteName in spriteNames)
-                buttonSprite.Texture ??= skin.GetTexture(spriteName);
+                buttonSprite.Texture ??= skin.GetStableTexture(spriteName);
         }
 
         protected override void LoadComplete()

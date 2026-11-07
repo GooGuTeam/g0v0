@@ -8,6 +8,7 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.UserInterface
 {
@@ -20,39 +21,35 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
         {
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.CursorRotation,
-                    Current = config.GetBindable<bool>(OsuSetting.CursorRotation)
-                })
-                {
+                    Current = config.GetBindable<bool>(OsuSetting.CursorRotation),
                     Keywords = [@"spin"],
-                },
-                new SettingsItemV2(new FormSliderBar<float>
+                }),
+                CreateItem(new SliderEntry<float>
                 {
                     Caption = UserInterfaceStrings.MenuCursorSize,
                     Current = config.GetBindable<float>(OsuSetting.MenuCursorSize),
                     KeyboardStep = 0.01f,
                     LabelFormat = v => $"{v:0.##}x"
                 }),
-                new SettingsItemV2(new FormSliderBar<float>
+                CreateItem(new SliderEntry<float>
                 {
                     Caption = UserInterfaceStrings.Parallax,
                     Current = config.GetBindable<float>(OsuSetting.MenuParallaxScale),
                     DisplayAsPercentage = true,
                     LabelFormat = v => v == 0 ? CommonStrings.Disabled : FormSliderBar<float>.DefaultLabelFormat(v, true),
                 }),
-                new SettingsItemV2(new FormSliderBar<double>
+                CreateItem(new SliderEntry<double>
                 {
                     Caption = UserInterfaceStrings.HoldToConfirmActivationTime,
                     Current = config.GetBindable<double>(OsuSetting.UIHoldActivationDelay),
                     KeyboardStep = 50,
                     LabelFormat = v => $"{v:N0} ms",
-                })
-                {
                     Keywords = [@"delay"],
-                    ApplyClassicDefault = c => ((IHasCurrentValue<double>)c).Current.Value = 0,
-                },
+                    ClassicDefault = 0,
+                }),
             };
         }
     }

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -17,8 +17,8 @@ using osu.Framework.Platform;
 using osu.Framework.Platform.Windows;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Containers;
-using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 using osuTK;
 using osuTK.Graphics;
 
@@ -28,7 +28,9 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
     {
         protected override LocalisableString Header => GraphicsSettingsStrings.LayoutHeader;
 
-        private FillFlowContainer<SettingsItemV2> scalingSettings = null!;
+        private FillFlowContainer scalingSettings = null!;
+
+        private SliderEntry<float>[] scalingEntries = null!;
 
         private readonly Bindable<Display> currentDisplay = new Bindable<Display>();
 
@@ -55,11 +57,11 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
         private readonly BindableBool minimiseOnFocusLossCanBeShown = new BindableBool(true);
         private readonly BindableBool safeAreaConsiderationsCanBeShown = new BindableBool(true);
 
-        private FormDropdown<Size> resolutionWindowedDropdown = null!;
-        private FormDropdown<Display> displayDropdown = null!;
-        private FormDropdown<WindowMode> windowModeDropdown = null!;
+        private DropdownEntry<Size> resolutionWindowedDropdown = null!;
+        private DropdownEntry<Display> displayDropdown = null!;
+        private DropdownEntry<WindowMode> windowModeDropdown = null!;
 
-        private FormSliderBar<float> dimSlider = null!;
+        private SliderEntry<float> dimSlider = null!;
 
         private readonly Bindable<SettingsNote.Data?> windowModeDropdownNote = new Bindable<SettingsNote.Data?>();
 
@@ -103,142 +105,115 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(windowModeDropdown = new FormDropdown<WindowMode>
+                CreateItem(windowModeDropdown = new DropdownEntry<WindowMode>
                 {
                     Caption = GraphicsSettingsStrings.ScreenMode,
                     Items = window?.SupportedWindowModes,
                     Current = config.GetBindable<WindowMode>(FrameworkSetting.WindowMode),
-                })
-                {
                     CanBeShown = { Value = window?.SupportedWindowModes.Count() > 1 },
                     Note = { BindTarget = windowModeDropdownNote },
-                },
-                new SettingsItemV2(displayDropdown = new DisplayDropdown
+                }),
+                CreateItem(displayDropdown = new DropdownEntry<Display>
                 {
                     Caption = GraphicsSettingsStrings.Display,
                     Items = window?.Displays,
                     Current = currentDisplay,
-                })
-                {
-                    CanBeShown = { BindTarget = displayDropdownCanBeShown }
-                },
-                new SettingsItemV2(new ResolutionDropdown
+                    ItemLabel = getDisplayLabel,
+                    CanBeShown = { BindTarget = displayDropdownCanBeShown },
+                }),
+                CreateItem(new DropdownEntry<Size>
                 {
                     Caption = GraphicsSettingsStrings.Resolution,
-                    ItemSource = resolutionsFullscreen,
-                    Current = sizeFullscreen
-                })
-                {
+                    ItemSource = { BindTarget = resolutionsFullscreen },
+                    Current = sizeFullscreen,
+                    ItemLabel = getResolutionLabel,
                     CanBeShown = { BindTarget = resolutionFullscreenCanBeShown },
                     ShowRevertToDefaultButton = false,
-                },
-                new SettingsItemV2(resolutionWindowedDropdown = new ResolutionDropdown
+                }),
+                CreateItem(resolutionWindowedDropdown = new DropdownEntry<Size>
                 {
                     Caption = GraphicsSettingsStrings.Resolution,
-                    ItemSource = resolutionsWindowed,
-                    Current = windowedResolution
-                })
-                {
+                    ItemSource = { BindTarget = resolutionsWindowed },
+                    Current = windowedResolution,
+                    ItemLabel = getResolutionLabel,
                     CanBeShown = { BindTarget = resolutionWindowedCanBeShown },
                     ShowRevertToDefaultButton = false,
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = GraphicsSettingsStrings.MinimiseOnFocusLoss,
                     Current = config.GetBindable<bool>(FrameworkSetting.MinimiseOnFocusLossInFullscreen),
-                })
-                {
                     CanBeShown = { BindTarget = minimiseOnFocusLossCanBeShown },
                     Keywords = new[] { "alt-tab", "minimize", "focus", "hide" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = GraphicsSettingsStrings.ShrinkGameToSafeArea,
                     Current = osuConfig.GetBindable<bool>(OsuSetting.SafeAreaConsiderations),
-                })
-                {
                     CanBeShown = { BindTarget = safeAreaConsiderationsCanBeShown },
-                },
-                new SettingsItemV2(new FormSliderBar<float>
+                }),
+                CreateItem(new SliderEntry<float>
                 {
                     Caption = GraphicsSettingsStrings.UIScaling,
                     TransferValueOnCommit = true,
                     Current = osuConfig.GetBindable<float>(OsuSetting.UIScale),
                     KeyboardStep = 0.01f,
                     LabelFormat = v => $@"{v:0.##}x",
-                })
-                {
                     Keywords = new[] { "scale", "letterbox" },
-                },
-                new SettingsItemV2(new FormEnumDropdown<ScalingMode>
+                }),
+                CreateItem(new EnumDropdownEntry<ScalingMode>
                 {
                     Caption = GraphicsSettingsStrings.ScreenScaling,
                     Current = osuConfig.GetBindable<ScalingMode>(OsuSetting.Scaling),
-                })
-                {
                     Keywords = new[] { "scale", "letterbox" },
-                },
-                scalingSettings = new FillFlowContainer<SettingsItemV2>
+                }),
+                scalingSettings = new FillFlowContainer
                 {
                     Direction = FillDirection.Vertical,
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
                     Masking = true,
                     Spacing = new Vector2(0, SettingsSection.ITEM_SPACING_V2),
-                    Children = new[]
-                    {
-                        new SettingsItemV2(new FormSliderBar<float>
-                        {
-                            Caption = GraphicsSettingsStrings.HorizontalPosition,
-                            Current = scalingPositionX,
-                            KeyboardStep = 0.01f,
-                            DisplayAsPercentage = true,
-                        }.With(bindPreviewEvent))
-                        {
-                            Keywords = new[] { "screen", "scaling" },
-                        },
-                        new SettingsItemV2(new FormSliderBar<float>
-                        {
-                            Caption = GraphicsSettingsStrings.VerticalPosition,
-                            Current = scalingPositionY,
-                            KeyboardStep = 0.01f,
-                            DisplayAsPercentage = true,
-                        }.With(bindPreviewEvent))
-                        {
-                            Keywords = new[] { "screen", "scaling" },
-                        },
-                        new SettingsItemV2(new FormSliderBar<float>
-                        {
-                            Caption = GraphicsSettingsStrings.HorizontalScale,
-                            Current = scalingSizeX,
-                            KeyboardStep = 0.01f,
-                            DisplayAsPercentage = true,
-                        }.With(bindPreviewEvent))
-                        {
-                            Keywords = new[] { "screen", "scaling" },
-                        },
-                        new SettingsItemV2(new FormSliderBar<float>
-                        {
-                            Caption = GraphicsSettingsStrings.VerticalScale,
-                            Current = scalingSizeY,
-                            KeyboardStep = 0.01f,
-                            DisplayAsPercentage = true,
-                        }.With(bindPreviewEvent))
-                        {
-                            Keywords = new[] { "screen", "scaling" },
-                        },
-                        new SettingsItemV2(dimSlider = new FormSliderBar<float>
-                        {
-                            Caption = GameplaySettingsStrings.BackgroundDim,
-                            Current = scalingBackgroundDim,
-                            KeyboardStep = 0.01f,
-                            DisplayAsPercentage = true,
-                        }.With(bindPreviewEvent)),
-                    }
                 },
             };
 
+            scalingEntries = new[]
+            {
+                createScalingSlider(GraphicsSettingsStrings.HorizontalPosition, scalingPositionX),
+                createScalingSlider(GraphicsSettingsStrings.VerticalPosition, scalingPositionY),
+                createScalingSlider(GraphicsSettingsStrings.HorizontalScale, scalingSizeX),
+                createScalingSlider(GraphicsSettingsStrings.VerticalScale, scalingSizeY),
+                dimSlider = createScalingSlider(GameplaySettingsStrings.BackgroundDim, scalingBackgroundDim, false),
+            };
+
+            foreach (var entry in scalingEntries)
+                scalingSettings.Add(CreateItem(entry));
+
             fullscreenCapability.BindValueChanged(_ => Schedule(updateScreenModeWarning), true);
+        }
+
+        private SliderEntry<float> createScalingSlider(LocalisableString caption, Bindable<float> current, bool screenKeywords = true)
+        {
+            var entry = new SliderEntry<float>
+            {
+                Caption = caption,
+                Current = current,
+                KeyboardStep = 0.01f,
+                DisplayAsPercentage = true,
+                Keywords = screenKeywords ? new[] { "screen", "scaling" } : Array.Empty<string>(),
+            };
+
+            entry.Current.ValueChanged += _ =>
+            {
+                switch (scalingMode.Value)
+                {
+                    case ScalingMode.Gameplay:
+                        showPreview();
+                        break;
+                }
+            };
+
+            return entry;
         }
 
         protected override void LoadComplete()
@@ -334,16 +309,14 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
 
                 scalingSettings.AutoSizeAxes = scalingMode.Value != ScalingMode.Off ? Axes.Y : Axes.None;
 
-                foreach (SettingsItemV2 item in scalingSettings)
+                foreach (var slider in scalingEntries)
                 {
-                    FormSliderBar<float> slider = (FormSliderBar<float>)item.Control;
-
                     if (slider == dimSlider)
-                        item.CanBeShown.Value = scalingMode.Value == ScalingMode.Everything || scalingMode.Value == ScalingMode.ExcludeOverlays;
+                        slider.CanBeShown.Value = scalingMode.Value == ScalingMode.Everything || scalingMode.Value == ScalingMode.ExcludeOverlays;
                     else
                     {
                         slider.TransferValueOnCommit = scalingMode.Value == ScalingMode.Everything;
-                        item.CanBeShown.Value = scalingMode.Value != ScalingMode.Off;
+                        slider.CanBeShown.Value = scalingMode.Value != ScalingMode.Off;
                     }
                 }
             }
@@ -412,19 +385,6 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
             }
         }
 
-        private void bindPreviewEvent(FormSliderBar<float> slider)
-        {
-            slider.Current.ValueChanged += _ =>
-            {
-                switch (scalingMode.Value)
-                {
-                    case ScalingMode.Gameplay:
-                        showPreview();
-                        break;
-                }
-            };
-        }
-
         private Drawable? preview;
 
         private void showPreview()
@@ -457,23 +417,14 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
             }
         }
 
-        private partial class DisplayDropdown : FormDropdown<Display>
-        {
-            protected override LocalisableString GenerateItemText(Display item)
-            {
-                return $"{item.Index}: {item.Name} ({item.Bounds.Width}x{item.Bounds.Height})";
-            }
-        }
+        private static LocalisableString getDisplayLabel(Display item) => $"{item.Index}: {item.Name} ({item.Bounds.Width}x{item.Bounds.Height})";
 
-        private partial class ResolutionDropdown : FormDropdown<Size>
+        private static LocalisableString getResolutionLabel(Size item)
         {
-            protected override LocalisableString GenerateItemText(Size item)
-            {
-                if (item == new Size(9999, 9999))
-                    return CommonStrings.Default;
+            if (item == new Size(9999, 9999))
+                return CommonStrings.Default;
 
-                return $"{item.Width}x{item.Height}";
-            }
+            return $"{item.Width}x{item.Height}";
         }
 
         /// <summary>

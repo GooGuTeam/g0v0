@@ -7,6 +7,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Maintenance
 {
@@ -14,18 +15,18 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
     {
         protected override LocalisableString Header => CommonStrings.Beatmaps;
 
-        private SettingsButtonV2 deleteBeatmapsButton = null!;
-        private SettingsButtonV2 deleteBeatmapVideosButton = null!;
-        private SettingsButtonV2 resetOffsetsButton = null!;
-        private SettingsButtonV2 restoreButton = null!;
-        private SettingsButtonV2 undeleteButton = null!;
+        private ButtonEntry deleteBeatmapsButton = null!;
+        private ButtonEntry deleteBeatmapVideosButton = null!;
+        private ButtonEntry resetOffsetsButton = null!;
+        private ButtonEntry restoreButton = null!;
+        private ButtonEntry undeleteButton = null!;
 
         [BackgroundDependencyLoader]
         private void load(BeatmapManager beatmaps, IDialogOverlay? dialogOverlay)
         {
-            Add(deleteBeatmapsButton = new DangerousSettingsButtonV2
+            Add(CreateItem(deleteBeatmapsButton = new ButtonEntry
             {
-                Text = MaintenanceSettingsStrings.DeleteAllBeatmaps,
+                Caption = MaintenanceSettingsStrings.DeleteAllBeatmaps,
                 Action = () =>
                 {
                     dialogOverlay?.Push(new MassDeleteConfirmationDialog(() =>
@@ -33,12 +34,13 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
                         deleteBeatmapsButton.Enabled.Value = false;
                         Task.Run(() => beatmaps.Delete()).ContinueWith(_ => Schedule(() => deleteBeatmapsButton.Enabled.Value = true));
                     }, DeleteConfirmationContentStrings.Beatmaps));
-                }
-            });
+                },
+                Dangerous = true,
+            }));
 
-            Add(deleteBeatmapVideosButton = new DangerousSettingsButtonV2
+            Add(CreateItem(deleteBeatmapVideosButton = new ButtonEntry
             {
-                Text = MaintenanceSettingsStrings.DeleteAllBeatmapVideos,
+                Caption = MaintenanceSettingsStrings.DeleteAllBeatmapVideos,
                 Action = () =>
                 {
                     dialogOverlay?.Push(new MassDeleteConfirmationDialog(() =>
@@ -46,12 +48,13 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
                         deleteBeatmapVideosButton.Enabled.Value = false;
                         Task.Run(beatmaps.DeleteAllVideos).ContinueWith(_ => Schedule(() => deleteBeatmapVideosButton.Enabled.Value = true));
                     }, DeleteConfirmationContentStrings.BeatmapVideos));
-                }
-            });
+                },
+                Dangerous = true,
+            }));
 
-            Add(resetOffsetsButton = new DangerousSettingsButtonV2
+            Add(CreateItem(resetOffsetsButton = new ButtonEntry
             {
-                Text = MaintenanceSettingsStrings.ResetAllOffsets,
+                Caption = MaintenanceSettingsStrings.ResetAllOffsets,
                 Action = () =>
                 {
                     dialogOverlay?.Push(new MassDeleteConfirmationDialog(() =>
@@ -59,29 +62,30 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
                         resetOffsetsButton.Enabled.Value = false;
                         Task.Run(beatmaps.ResetAllOffsets).ContinueWith(_ => Schedule(() => resetOffsetsButton.Enabled.Value = true));
                     }, DeleteConfirmationContentStrings.Offsets));
-                }
-            });
+                },
+                Dangerous = true,
+            }));
 
             AddRange(new Drawable[]
             {
-                restoreButton = new SettingsButtonV2
+                CreateItem(restoreButton = new ButtonEntry
                 {
-                    Text = MaintenanceSettingsStrings.RestoreAllHiddenDifficulties,
+                    Caption = MaintenanceSettingsStrings.RestoreAllHiddenDifficulties,
                     Action = () =>
                     {
                         restoreButton.Enabled.Value = false;
                         Task.Run(beatmaps.RestoreAll).ContinueWith(_ => Schedule(() => restoreButton.Enabled.Value = true));
                     }
-                },
-                undeleteButton = new SettingsButtonV2
+                }),
+                CreateItem(undeleteButton = new ButtonEntry
                 {
-                    Text = MaintenanceSettingsStrings.RestoreAllRecentlyDeletedBeatmaps,
+                    Caption = MaintenanceSettingsStrings.RestoreAllRecentlyDeletedBeatmaps,
                     Action = () =>
                     {
                         undeleteButton.Enabled.Value = false;
                         Task.Run(beatmaps.UndeleteAll).ContinueWith(_ => Schedule(() => undeleteButton.Enabled.Value = true));
                     }
-                }
+                })
             });
         }
     }

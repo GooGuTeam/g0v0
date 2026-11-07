@@ -13,6 +13,7 @@ using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
 
 namespace osu.Game.Screens.Menu
 {
@@ -22,6 +23,11 @@ namespace osu.Game.Screens.Menu
 
         [Resolved]
         private Bindable<WorkingBeatmap> beatmap { get; set; } = null!;
+
+        [Resolved(canBeNull: true)]
+        private OsuConfigManager? config { get; set; }
+
+        private Bindable<bool>? legacyMenuEnabled;
 
         private readonly OsuSpriteText title, artist;
 
@@ -91,11 +97,24 @@ namespace osu.Game.Screens.Menu
         {
             base.LoadComplete();
 
+            legacyMenuEnabled = config?.GetBindable<bool>(OsuSetting.ToriiLegacyMainMenu);
+            legacyMenuEnabled?.BindValueChanged(e =>
+            {
+                if (e.NewValue)
+                {
+                    this.ClearTransforms();
+                    this.FadeOut();
+                }
+            });
+
             beatmap.BindValueChanged(_ => Scheduler.AddOnce(show), true);
         }
 
         private void show()
         {
+            if (legacyMenuEnabled?.Value == true)
+                return;
+
             var metadata = beatmap.Value.Metadata;
 
             title.Text = new RomanisableString(metadata.TitleUnicode, metadata.Title);

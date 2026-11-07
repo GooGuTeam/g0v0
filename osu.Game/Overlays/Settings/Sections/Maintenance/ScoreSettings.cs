@@ -6,6 +6,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Localisation;
 using osu.Game.Localisation;
 using osu.Game.Scoring;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Maintenance
 {
@@ -13,14 +14,14 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
     {
         protected override LocalisableString Header => CommonStrings.Scores;
 
-        private SettingsButtonV2 deleteScoresButton = null!;
+        private ButtonEntry deleteScoresButton = null!;
 
         [BackgroundDependencyLoader]
         private void load(ScoreManager scores, IDialogOverlay? dialogOverlay)
         {
-            Add(deleteScoresButton = new DangerousSettingsButtonV2
+            Add(CreateItem(deleteScoresButton = new ButtonEntry
             {
-                Text = MaintenanceSettingsStrings.DeleteAllScores,
+                Caption = MaintenanceSettingsStrings.DeleteAllScores,
                 Action = () =>
                 {
                     dialogOverlay?.Push(new MassDeleteConfirmationDialog(() =>
@@ -28,8 +29,9 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
                         deleteScoresButton.Enabled.Value = false;
                         Task.Run(() => scores.Delete()).ContinueWith(_ => Schedule(() => deleteScoresButton.Enabled.Value = true));
                     }, DeleteConfirmationContentStrings.Scores));
-                }
-            });
+                },
+                Dangerous = true,
+            }));
         }
     }
 }

@@ -84,7 +84,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
             [
                 new Sprite
                 {
-                    Texture = skin.GetTexture(@"ranking-panel"),
+                    Texture = skin.GetStableTexture(@"ranking-panel"),
                 },
                 scoreText = new LegacySpriteText(LegacyFont.Score)
                 {

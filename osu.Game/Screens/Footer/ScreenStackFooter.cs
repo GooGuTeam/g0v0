@@ -74,7 +74,6 @@ namespace osu.Game.Screens.Footer
         private LegacyFooter? legacyFooter;
         private bool legacyFooterLoading;
         private int legacyFooterGeneration;
-        private bool allowLegacyFooterSkinning;
 
         public ScreenStackFooter(ScreenStack screenStack, ScreenFooter.BackReceptor? backReceptor = null)
         {
@@ -120,6 +119,9 @@ namespace osu.Game.Screens.Footer
             // When an overlay (mod select etc.) takes/leaves the footer, the legacy
             // chrome must step aside / return.
             Footer.OverlayStateChanged += updateLegacyFooter;
+
+            // Torii: the legacy footer hides with the footer (song select's press-and-hold background reveal).
+            Footer.State.BindValueChanged(_ => updateLegacyFooter());
         }
 
         private void onSkinChanged()
@@ -144,9 +146,9 @@ namespace osu.Game.Screens.Footer
             // torii: el footer legacy se muestra cuando la pantalla lo permite Y (el stable song select
             // esta prendido O el toggle standalone del footer esta prendido) Y no hay overlay activo.
             // antes el gate era "hay un skin legacy activo", lo que mostraba el footer ignorando el toggle.
-            bool active = allowLegacyFooterSkinning
-                          && (footerUseSkin.Value || legacyFooterStandalone.Value)
-                          && !Footer.HasActiveOverlay;
+            bool ownsChrome = screenTracker.LeadingScreen is OsuScreen { AllowLegacyFooterSkinning: true }
+                              && (footerUseSkin.Value || legacyFooterStandalone.Value);
+            bool active = ownsChrome && !Footer.HasActiveOverlay && Footer.State.Value == Visibility.Visible;
 
             if (active)
                 ensureLegacyFooterLoaded();
@@ -154,7 +156,7 @@ namespace osu.Game.Screens.Footer
             legacyFooterContainer?.FadeTo(active ? 1 : 0, 120, Easing.OutQuint);
 
             // Hand the default lazer footer chrome off to the legacy footer (or take it back).
-            Footer.SetDefaultChromeVisible(!active);
+            Footer.SetDefaultChromeVisible(!ownsChrome);
         }
 
         private void ensureLegacyFooterLoaded()
@@ -170,24 +172,38 @@ namespace osu.Game.Screens.Footer
                 Anchor = Anchor.BottomLeft,
                 Origin = Anchor.BottomLeft,
                 RelativeSizeAxes = Axes.X,
-                // Torii: nudge the whole footer down a few logical px so its content sits flush
-                // on the screen bottom (closes the small gap the bottom-anchored elements leave).
-                Y = 4,
                 // The legacy footer drives the real song-select actions via the default footer.
                 BackAction = () => BackButtonPressed?.Invoke(),
-                ModsAction = () => Footer.TriggerFooterButton(0),
+                ModsAction = () =>
+                {
+                    if (screenTracker.LeadingScreen is Select.SongSelect songSelect)
+                        songSelect.ToggleModSelection();
+                    else
+                        Footer.TriggerFooterButton(0);
+                },
+                ModsRightClickAction = () =>
+                {
+                    if (screenTracker.LeadingScreen is Select.SongSelect songSelect)
+                        songSelect.ResetAllMods();
+                    else
+                        Footer.TriggerFooterButton(0);
+                },
                 RandomAction = () => Footer.TriggerFooterButton(1),
                 // el boton options abre el popup estilo stable del propio footer (las mismas
                 // acciones forward del song select que el menu contextual del carousel).
                 OptionsMenuItems = getStableOptionsMenuItems,
+                OptionsAction = () =>
+                {
+                    if (screenTracker.LeadingScreen is Select.SongSelect songSelect)
+                        songSelect.ToggleLegacyBeatmapOptions();
+                },
             };
 
-            // Render at the same 1366x768 logical space the upstream PR calibrates against,
-            // so the stable-derived pixel coordinates land correctly at any resolution.
+            // Scale by height on viewports at least 4:3, matching the legacy song select header.
             var container = new DrawSizePreservingFillContainer
             {
                 RelativeSizeAxes = Axes.Both,
-                TargetDrawSize = new Vector2(1366, 768),
+                TargetDrawSize = new Vector2(1024, 768),
                 Alpha = 0,
                 Child = footer,
             };
@@ -254,16 +270,24 @@ namespace osu.Game.Screens.Footer
             switch (footerContent.Value.Mode)
             {
                 case ScreenFooterContent.FooterMode.None:
-                    allowLegacyFooterSkinning = false;
                     updateLegacyFooter();
 
                     Footer.SetButtons([], [], Direction.Vertical);
                     Footer.Hide();
                     BackButton.Hide();
+
+                    // A stable loading screen owns the whole viewport; do not animate outgoing chrome over it.
+                    if (screenTracker.LeadingScreen is Play.PlayerLoader { UsesLegacyPresentation: true })
+                    {
+                        Footer.FinishTransforms(true);
+                        Footer.Alpha = 0;
+                        BackButton.FinishTransforms(true);
+                        BackButton.Alpha = 0;
+                        legacyFooterContainer?.FadeOut();
+                    }
                     break;
 
                 case ScreenFooterContent.FooterMode.Legacy:
-                    allowLegacyFooterSkinning = false;
                     updateLegacyFooter();
 
                     Footer.SetButtons([], [], Direction.Vertical);
@@ -280,7 +304,7 @@ namespace osu.Game.Screens.Footer
 
                     // torii: the global footer only hosts the legacy (stable-style) presentation on screens
                     // which opt in to it.
-                    allowLegacyFooterSkinning = osuScreen.AllowLegacyFooterSkinning;
+                    // Ownership is read directly from the leading screen in updateLegacyFooter().
 
                     bool anyOldButtons = Footer.HasButtons;
                     // the condition below is slightly indirect.
@@ -310,6 +334,11 @@ namespace osu.Game.Screens.Footer
 
             void updateFooterButtons(OsuScreen osuScreen, Direction direction)
             {
+                // A queued load completion may belong to a screen which has already been left.
+                if (!ReferenceEquals(screenTracker.LeadingScreen, osuScreen)
+                    || footerContent.Value.Mode != ScreenFooterContent.FooterMode.Argon)
+                    return;
+
                 var leftButtons = footerContent.Value.LeftButtons?.Invoke().ToArray() ?? [];
                 var rightButtons = footerContent.Value.RightButtons?.Invoke().ToArray() ?? [];
 

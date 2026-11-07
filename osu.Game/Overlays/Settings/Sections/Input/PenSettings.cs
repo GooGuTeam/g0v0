@@ -8,6 +8,7 @@ using osu.Framework.Input.Handlers.Pen;
 using osu.Framework.Localisation;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Input
 {
@@ -32,7 +33,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
             AddRange(new Drawable[]
             {
-                new SettingsItemV2(new FormSliderBar<double>
+                CreateItem(new SliderEntry<double>
                 {
                     Caption = PenSettingsStrings.PenSensitivity,
                     Current = handlerSensitivity,
@@ -40,10 +41,8 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                     TransferValueOnCommit = true,
                     LabelFormat = v => $@"{v:0.##}x",
                     TooltipFormat = v => $@"{v:0.##}x",
-                })
-                {
                     Keywords = new[] { "speed", "velocity" },
-                }
+                })
             });
         }
     }

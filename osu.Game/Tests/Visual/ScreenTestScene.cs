@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -37,7 +37,8 @@ namespace osu.Game.Tests.Visual
         [Cached]
         protected ScreenFooter ScreenFooter { get; private set; }
 
-        protected ScalingContainer ScalingContainer { get; private set; }
+        [Cached]
+        protected ScreenFrontLayer ScreenFrontLayer { get; private set; }
 
         protected ScreenTestScene()
         {
@@ -69,7 +70,9 @@ namespace osu.Game.Tests.Visual
                             screenStackFooter = new ScreenStackFooter(Stack, backReceptor)
                             {
                                 BackButtonPressed = BackButtonPressed,
-                            }
+                            },
+                            // as in OsuGame: screen content drawn above the footer.
+                            ScreenFrontLayer = new ScreenFrontLayer(),
                         }
                     }
                 }

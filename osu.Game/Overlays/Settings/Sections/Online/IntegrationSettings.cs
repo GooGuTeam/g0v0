@@ -7,6 +7,7 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Online
 {
@@ -19,7 +20,7 @@ namespace osu.Game.Overlays.Settings.Sections.Online
         {
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormEnumDropdown<DiscordRichPresenceMode>
+                CreateItem(new EnumDropdownEntry<DiscordRichPresenceMode>
                 {
                     Caption = OnlineSettingsStrings.DiscordRichPresence,
                     Current = config.GetBindable<DiscordRichPresenceMode>(OsuSetting.DiscordRichPresence)

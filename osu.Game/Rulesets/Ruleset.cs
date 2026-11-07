@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Concurrent;
@@ -39,6 +39,9 @@ namespace osu.Game.Rulesets
 {
     public abstract class Ruleset
     {
+        /// <summary>Creates a gameplay cursor for use by legacy menus, when supported.</summary>
+        public virtual osu.Framework.Graphics.Cursor.CursorContainer? CreateMenuCursor() => null;
+
         public RulesetInfo RulesetInfo { get; }
 
         private static readonly ConcurrentDictionary<string, IMod[]> mod_reference_cache = new ConcurrentDictionary<string, IMod[]>();

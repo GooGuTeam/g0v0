@@ -51,7 +51,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
             [
                 new Sprite
                 {
-                    Texture = skin.GetTexture(@"ranking-graph"),
+                    Texture = skin.GetStableTexture(@"ranking-graph"),
                 },
                 graphContainer = new Container
                 {

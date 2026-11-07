@@ -1,19 +1,19 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
-using osu.Game.Graphics;
-using osu.Game.Graphics.Sprites;
+using osu.Game.Overlays.Settings.Entries;
+using osu.Game.Overlays.Settings.Rendering;
 using osuTK;
 
 namespace osu.Game.Overlays.Settings
@@ -25,9 +25,7 @@ namespace osu.Game.Overlays.Settings
 
         private IBindable<SettingsSection> selectedSection;
 
-        private Box dim;
-
-        private const float inactive_alpha = 0.8f;
+        private ISettingsSectionFrame frame;
 
         public abstract Drawable CreateIcon();
         public abstract LocalisableString Header { get; }
@@ -39,8 +37,6 @@ namespace osu.Game.Overlays.Settings
         public const int ITEM_SPACING = 14;
         public const int ITEM_SPACING_V2 = 4;
 
-        private const int header_size = 30;
-        private const int border_size = 2;
 
         private bool matchingFilter = true;
 
@@ -65,6 +61,39 @@ namespace osu.Game.Overlays.Settings
         [Resolved(canBeNull: true)]
         private SettingsPanel settingsPanel { get; set; }
 
+        [Resolved(canBeNull: true)]
+        private ISettingsRenderer renderer { get; set; }
+
+        /// <summary>
+        /// The renderer used for entries added directly to this section, as chosen by the containing <see cref="SettingsPanel"/>.
+        /// </summary>
+        protected ISettingsRenderer Renderer => renderer ?? LazerSettingsRenderer.DEFAULT;
+
+        private readonly List<SettingsEntry> entries = new List<SettingsEntry>();
+
+        /// <summary>
+        /// Creates the drawable for <paramref name="entry"/> using <see cref="Renderer"/>.
+        /// The entry's bindings are released when this section is disposed.
+        /// </summary>
+        protected Drawable CreateItem(SettingsEntry entry)
+        {
+            if (LoadState < LoadState.Loading)
+                throw new InvalidOperationException($"{nameof(CreateItem)} must be called during or after load, so that the panel's renderer is used.");
+
+            entries.Add(entry);
+            return entry.CreateDrawable(Renderer);
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            foreach (var entry in entries)
+                entry.Unbind();
+
+            entries.Clear();
+        }
+
         protected SettingsSection()
         {
             AutoSizeAxes = Axes.Y;
@@ -72,10 +101,6 @@ namespace osu.Game.Overlays.Settings
 
             FlowContent = new FillFlowContainer
             {
-                Margin = new MarginPadding
-                {
-                    Top = header_size + 6,
-                },
                 Spacing = new Vector2(0, ITEM_SPACING_V2),
                 Direction = FillDirection.Vertical,
                 AutoSizeAxes = Axes.Y,
@@ -84,53 +109,9 @@ namespace osu.Game.Overlays.Settings
         }
 
         [BackgroundDependencyLoader]
-        private void load(OverlayColourProvider colourProvider)
+        private void load()
         {
-            AddRangeInternal(new Drawable[]
-            {
-                new Box
-                {
-                    Name = "separator",
-                    Colour = colourProvider.Background6,
-                    RelativeSizeAxes = Axes.X,
-                    Height = border_size,
-                },
-                new Container
-                {
-                    Padding = new MarginPadding { Top = border_size },
-                    RelativeSizeAxes = Axes.X,
-                    AutoSizeAxes = Axes.Y,
-                    Children = new Drawable[]
-                    {
-                        new Container
-                        {
-                            RelativeSizeAxes = Axes.X,
-                            AutoSizeAxes = Axes.Y,
-                            Padding = new MarginPadding
-                            {
-                                Top = 24,
-                                Bottom = 40,
-                            },
-                            Children = new Drawable[]
-                            {
-                                new OsuSpriteText
-                                {
-                                    Font = OsuFont.MapleMono.With(size: header_size),
-                                    Text = Header,
-                                    Margin = SettingsPanel.CONTENT_PADDING,
-                                },
-                                FlowContent
-                            }
-                        },
-                        dim = new Box
-                        {
-                            RelativeSizeAxes = Axes.Both,
-                            Colour = colourProvider.Background5,
-                            Alpha = inactive_alpha,
-                        },
-                    }
-                },
-            });
+            AddInternal((Drawable)(frame = Renderer.CreateSectionFrame(Header, FlowContent)));
 
             selectedSection = settingsPanel?.CurrentSection.GetBoundCopy() ?? new Bindable<SettingsSection>(this);
             selectedSection.BindValueChanged(_ => updateContentFade(), true);
@@ -152,7 +133,7 @@ namespace osu.Game.Overlays.Settings
 
         protected override bool OnClick(ClickEvent e)
         {
-            if (!isCurrentSection)
+            if (!isCurrentSection && frame.RequiresSelectionForInput)
             {
                 Debug.Assert(settingsPanel != null);
                 settingsPanel.SectionsContainer.ScrollTo(this);
@@ -162,20 +143,10 @@ namespace osu.Game.Overlays.Settings
         }
 
         protected override bool ShouldBeConsideredForInput(Drawable child) =>
-            // only the current section should accept input.
+            // only the current section should accept input (when the frame asks for it).
             // this provides the behaviour of the first click scrolling the target section to the centre of the screen.
-            isCurrentSection;
+            isCurrentSection || !frame.RequiresSelectionForInput;
 
-        private void updateContentFade()
-        {
-            float dimFade = 0;
-
-            if (!isCurrentSection)
-            {
-                dimFade = IsHovered ? 0.5f : inactive_alpha;
-            }
-
-            dim.FadeTo(dimFade, 300, Easing.OutQuint);
-        }
+        private void updateContentFade() => frame.UpdateState(isCurrentSection, IsHovered);
     }
 }

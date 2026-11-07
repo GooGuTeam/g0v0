@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -14,6 +14,7 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
 using osuTK.Graphics;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Rendering.Stable;
 
 namespace osu.Game.Overlays.Settings.Sections
 {
@@ -30,17 +31,28 @@ namespace osu.Game.Overlays.Settings.Sections
 
         private readonly BindableBool handlerEnabled = new BindableBool();
 
-        private ToggleableHeader header = null!;
+        private Drawable header = null!;
 
         public InputSubsection(InputHandler handler)
         {
             this.handler = handler;
         }
 
-        protected override Drawable CreateHeader() => header = new ToggleableHeader(Header, IsToggleable)
+        protected override Drawable CreateHeader()
         {
-            Current = { BindTarget = handlerEnabled },
-        };
+            if (Renderer.UseStableLayouts)
+            {
+                return header = new StableToggleableSubsectionHeader(InputSettingsStrings.Device(Header), IsToggleable)
+                {
+                    Current = { BindTarget = handlerEnabled },
+                };
+            }
+
+            return header = new ToggleableHeader(Header, IsToggleable)
+            {
+                Current = { BindTarget = handlerEnabled },
+            };
+        }
 
         protected override void LoadComplete()
         {
@@ -57,7 +69,7 @@ namespace osu.Game.Overlays.Settings.Sections
         {
             // set negative bottom margin to not have too much vertical gap between disabled input subsections.
             bool negativeBottomMargin = !handlerEnabled.Value || FlowContent.Count == 0;
-            header.TransformTo(nameof(Margin), new MarginPadding { Bottom = negativeBottomMargin ? -VERTICAL_PADDING : 0 }, 300, Easing.OutQuint);
+            header.TransformTo(nameof(Margin), new MarginPadding { Top = header.Margin.Top, Bottom = negativeBottomMargin ? -VERTICAL_PADDING : 0 }, 300, Easing.OutQuint);
 
             // Avoid crashes from toggling `AutoSizeAxes` while active `AutoSizeDuration` transforms are still running.
             // This is probably a framework bug.

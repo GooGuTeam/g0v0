@@ -12,6 +12,7 @@ using osu.Game.Database;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Maintenance
 {
@@ -25,17 +26,17 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
         [Resolved]
         private INotificationOverlay? notificationOverlay { get; set; }
 
-        private SettingsButtonV2 undeleteButton = null!;
-        private SettingsButtonV2 deleteAllButton = null!;
+        private ButtonEntry undeleteButton = null!;
+        private ButtonEntry deleteAllButton = null!;
 
         [BackgroundDependencyLoader]
         private void load(IDialogOverlay? dialogOverlay)
         {
             AddRange(new Drawable[]
             {
-                deleteAllButton = new DangerousSettingsButtonV2
+                CreateItem(deleteAllButton = new ButtonEntry
                 {
-                    Text = MaintenanceSettingsStrings.DeleteAllModPresets,
+                    Caption = MaintenanceSettingsStrings.DeleteAllModPresets,
                     Action = () =>
                     {
                         dialogOverlay?.Push(new MassDeleteConfirmationDialog(() =>
@@ -43,13 +44,14 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
                             deleteAllButton.Enabled.Value = false;
                             Task.Run(deleteAllModPresets).ContinueWith(t => Schedule(onAllModPresetsDeleted, t));
                         }, DeleteConfirmationContentStrings.ModPresets));
-                    }
-                },
-                undeleteButton = new SettingsButtonV2
+                    },
+                    Dangerous = true,
+                }),
+                CreateItem(undeleteButton = new ButtonEntry
                 {
-                    Text = MaintenanceSettingsStrings.RestoreAllRecentlyDeletedModPresets,
+                    Caption = MaintenanceSettingsStrings.RestoreAllRecentlyDeletedModPresets,
                     Action = () => Task.Run(undeleteModPresets).ContinueWith(t => Schedule(onModPresetsUndeleted, t))
-                }
+                })
             });
         }
 

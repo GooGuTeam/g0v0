@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -11,6 +11,7 @@ using osu.Framework.Localisation;
 using osu.Game.Database;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 using osuTK;
 using Realms;
 
@@ -18,7 +19,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 {
     public abstract partial class KeyBindingsSubsection : SettingsSubsection
     {
-        private ResetButton resetButton = null!;
+        private ButtonEntry resetEntry = null!;
 
         /// <summary>
         /// After a successful binding, automatically select the next binding row to make quickly
@@ -41,6 +42,17 @@ namespace osu.Game.Overlays.Settings.Sections.Input
         {
             var bindings = getAllBindings();
 
+            resetEntry = new ButtonEntry
+            {
+                Caption = InputSettingsStrings.ResetSectionButton,
+                Dangerous = true,
+                Action = resetAllBindings,
+            };
+
+            // stable rows are ordinary option elements, spaced like every other subsection.
+            if (Renderer.UseStableLayouts)
+                FlowContent.Spacing = new Vector2(0, SettingsSection.ITEM_SPACING_V2);
+
             foreach (var defaultGroup in Defaults.GroupBy(d => d.Action))
             {
                 int intKey = (int)defaultGroup.Key;
@@ -59,29 +71,28 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                 row.IsDefault.BindValueChanged(_ => updateDefaultButtonState());
             }
 
-            Add(resetButton = new ResetButton
-            {
-                Action = () =>
-                {
-                    realm.Write(r =>
-                    {
-                        // can't use `RestoreDefaults()` for each key binding row here as it might trigger binding conflicts along the way.
-                        foreach (var row in Children.OfType<KeyBindingRow>())
-                        {
-                            foreach (var (currentBinding, defaultBinding) in row.KeyBindings.Zip(row.Defaults))
-                                r.Find<RealmKeyBinding>(currentBinding.ID)!.KeyCombinationString = defaultBinding.ToString();
-                        }
-                    });
-                    reloadAllBindings();
-                }
-            });
+            Add(Renderer.CreateKeyBindingResetButton(resetEntry));
 
             updateDefaultButtonState();
         }
 
+        private void resetAllBindings()
+        {
+            realm.Write(r =>
+            {
+                // can't use `RestoreDefaults()` for each key binding row here as it might trigger binding conflicts along the way.
+                foreach (var row in Children.OfType<KeyBindingRow>())
+                {
+                    foreach (var (currentBinding, defaultBinding) in row.KeyBindings.Zip(row.Defaults))
+                        r.Find<RealmKeyBinding>(currentBinding.ID)!.KeyCombinationString = defaultBinding.ToString();
+                }
+            });
+            reloadAllBindings();
+        }
+
         private void updateDefaultButtonState()
         {
-            resetButton.Enabled.Value = !Children.OfType<KeyBindingRow>().All(r => r.IsDefault.Value);
+            resetEntry.Enabled.Value = !Children.OfType<KeyBindingRow>().All(r => r.IsDefault.Value);
         }
 
         protected abstract IEnumerable<RealmKeyBinding> GetKeyBindings(Realm realm);

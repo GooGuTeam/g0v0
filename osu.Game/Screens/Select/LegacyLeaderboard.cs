@@ -92,6 +92,13 @@ namespace osu.Game.Screens.Select
         private OsuScrollContainer scoreScroll = null!;
         private Container scoreContainer = null!;
         private Container personalBest = null!;
+        private LegacyStableDropdown<BeatmapLeaderboardScope> scopeDropdown = null!;
+
+        // Torii: osu!stable draws the ranking dropdown at depth 1, above the skin's selection-mode decoration.
+        private ScreenFrontLayer.ProxySet? frontProxies;
+
+        [Resolved(CanBeNull = true)]
+        private ScreenFrontLayer? frontLayer { get; set; }
         private Sprite noRecords = null!;
         private LoadingSpinner loadingSpinner = null!;
 
@@ -105,6 +112,9 @@ namespace osu.Game.Screens.Select
         // la lista muestra max_rows a la vez (como stable); si hay mas, scrollean.
         private const float list_top = 150;
 
+        // SongSelection.ShowStatusIcon: selection-norecords centred at (118, 170) stable units in play mode (x1.6), sliding 30 units down as it fades in.
+        private static readonly Vector2 no_records_position = new Vector2(118, 170) * 1.6f;
+        private const float no_records_slide = 30 * 1.6f;
         private const float scroll_height = max_rows * row_step;
 
         // el Personal Best va pegado abajo del scroll (no forma parte), con un huequito.
@@ -145,8 +155,8 @@ namespace osu.Game.Screens.Select
                 {
                     Anchor = Anchor.TopLeft,
                     Origin = Anchor.Centre,
-                    Position = new Vector2(2 + list_width / 2, list_top + 150),
-                    Texture = skin.GetTexture(@"selection-norecords"),
+                    Position = no_records_position,
+                    Texture = skin.GetStableTexture(@"selection-norecords"),
                     Alpha = 0,
                 },
                 // seccion Personal Best, pegada abajo del scroll (no scrollea con la lista).
@@ -191,6 +201,9 @@ namespace osu.Game.Screens.Select
         {
             base.Update();
 
+            frontProxies ??= new ScreenFrontLayer.ProxySet((scopeDropdown, ScreenFrontLayer.Depths.TOP_CONTROLS));
+            frontProxies.Update(frontLayer);
+
             // torii: cuando el mouse entra a la region real de la leaderboard (la misma que captura
             // input) disparamos el scroll-a-la-seleccion una sola vez. la zona vacia de al lado no
             // entra aca (RPIAt da false ahi), asi sigue siendo solo para drag-scroll.
@@ -201,6 +214,12 @@ namespace osu.Game.Screens.Select
                 HoverScrollRequested?.Invoke();
 
             wasLeaderboardHovered = over;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            frontProxies?.Release(frontLayer);
+            base.Dispose(isDisposing);
         }
 
         protected override void LoadComplete()
@@ -334,8 +353,8 @@ namespace osu.Game.Screens.Select
             if (top.Count == 0)
             {
                 noRecords.ClearTransforms();
-                noRecords.ScaleTo(0.9f).Then().ScaleTo(1f, 600, Easing.OutQuint);
-                noRecords.FadeInFromZero(300, Easing.OutQuint);
+                noRecords.MoveTo(no_records_position).MoveToOffset(new Vector2(0, no_records_slide), 400, Easing.Out);
+                noRecords.FadeInFromZero(400);
                 return;
             }
 
@@ -529,7 +548,7 @@ namespace osu.Game.Screens.Select
                             Origin = Anchor.Centre,
                             RelativeSizeAxes = Axes.Both,
                             FillMode = FillMode.Fit,
-                            Texture = skin.GetTexture($@"ranking-{score.Rank}-small"),
+                            Texture = skin.GetStableTexture($@"ranking-{score.Rank}-small"),
                         },
                     },
                     new FillFlowContainer

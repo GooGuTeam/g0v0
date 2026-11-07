@@ -257,7 +257,7 @@ namespace osu.Game.Screens.Footer
 
                 if (newButton.Overlay != null)
                 {
-                    newButton.Action = () => showOverlay(newButton.Overlay);
+                    newButton.Action = () => showOverlay(newButton.Overlay, newButton.ToggleOverlay);
                     overlays.Add(newButton.Overlay);
                 }
 
@@ -366,7 +366,13 @@ namespace osu.Game.Screens.Footer
             else
                 content?.Show();
 
-            return new InvokeOnDisposal(clearActiveOverlayContainer);
+            return new InvokeOnDisposal(() =>
+            {
+                // A screen change can clear this registration before its owner finishes hiding.
+                // Its late disposal must not clear a newer screen's overlay registration.
+                if (ReferenceEquals(activeOverlayContent, content) && ReferenceEquals(ActiveOverlay, overlay))
+                    clearActiveOverlayContainer();
+            });
         }
 
         private void clearActiveOverlayContainer()
@@ -440,14 +446,17 @@ namespace osu.Game.Screens.Footer
         private void makeButtonDisappearToBottom(IScreenFooterButton button, int index, int count, bool expire)
             => button.DisappearToBottom((count - index) * delay_per_button, expire);
 
-        private void showOverlay(OverlayContainer overlay)
+        private void showOverlay(OverlayContainer overlay, Action? toggle = null)
         {
             this.HidePopover();
 
             foreach (var o in overlays.Where(o => o != overlay))
                 o.Hide();
 
-            overlay.ToggleVisibility();
+            if (toggle != null)
+                toggle();
+            else
+                overlay.ToggleVisibility();
         }
 
         private void onBackPressed()

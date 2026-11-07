@@ -12,6 +12,7 @@ using osu.Game.Localisation;
 using osu.Game.Screens;
 using osu.Game.Screens.Import;
 using osu.Game.Screens.Utility;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Maintenance
 {
@@ -29,9 +30,9 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
 
             AddRange(new Drawable[]
             {
-                new SettingsButtonV2
+                CreateItem(new ButtonEntry
                 {
-                    Text = DebugSettingsStrings.ImportFiles,
+                    Caption = DebugSettingsStrings.ImportFiles,
                     Action = () =>
                     {
                         if (selector != null)
@@ -39,12 +40,12 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
                         else
                             performer?.PerformFromScreen(menu => menu.Push(new FileImportScreen()));
                     },
-                },
-                new SettingsButtonV2
+                }),
+                CreateItem(new ButtonEntry
                 {
-                    Text = DebugSettingsStrings.RunLatencyCertifier,
+                    Caption = DebugSettingsStrings.RunLatencyCertifier,
                     Action = () => performer?.PerformFromScreen(menu => menu.Push(new LatencyCertifierScreen()))
-                }
+                })
             });
         }
 

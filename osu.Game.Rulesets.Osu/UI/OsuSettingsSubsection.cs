@@ -9,6 +9,7 @@ using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Osu.Configuration;
 using osu.Game.Rulesets.UI;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Rulesets.Osu.UI
 {
@@ -26,41 +27,39 @@ namespace osu.Game.Rulesets.Osu.UI
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.SnakingInSliders,
                     Current = config.GetBindable<bool>(OsuRulesetSetting.SnakingInSliders)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.SnakingOutSliders,
-                    Current = config.GetBindable<bool>(OsuRulesetSetting.SnakingOutSliders)
-                })
-                {
-                    ApplyClassicDefault = c => ((IHasCurrentValue<bool>)c).Current.Value = false,
-                },
-                new SettingsItemV2(new FormCheckBox
+                    Current = config.GetBindable<bool>(OsuRulesetSetting.SnakingOutSliders),
+                    ClassicDefault = false,
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.HitAnimations,
                     HintText = RulesetSettingsStrings.HitAnimationsOsuTooltip,
                     Current = config.GetBindable<bool>(OsuRulesetSetting.HitAnimations)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.CursorTrail,
                     Current = config.GetBindable<bool>(OsuRulesetSetting.ShowCursorTrail)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.CursorRipples,
                     Current = config.GetBindable<bool>(OsuRulesetSetting.ShowCursorRipples)
                 }),
-                new SettingsItemV2(new FormEnumDropdown<PlayfieldBorderStyle>
+                CreateItem(new EnumDropdownEntry<PlayfieldBorderStyle>
                 {
                     Caption = RulesetSettingsStrings.PlayfieldBorderStyle,
                     Current = config.GetBindable<PlayfieldBorderStyle>(OsuRulesetSetting.PlayfieldBorderStyle),
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.ShowSliderHeadJudgements,
                     HintText = RulesetSettingsStrings.ShowSliderHeadJudgementsDescription,

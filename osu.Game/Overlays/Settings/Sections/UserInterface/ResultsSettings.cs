@@ -8,6 +8,7 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.UserInterface
 {
@@ -29,15 +30,13 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormEnumDropdown<ResultsScreenStyle>
+                CreateItem(new EnumDropdownEntry<ResultsScreenStyle>
                 {
                     Caption = UserInterfaceStrings.ResultsScreenStyle,
                     HintText = UserInterfaceStrings.ResultsScreenStyleDescription,
                     Current = style,
-                })
-                {
                     Keywords = new[] { @"results", @"ranking", @"score", @"modern", @"legacy", @"stable", @"layout", @"skin" },
-                },
+                }),
             };
 
             legacyResults.BindValueChanged(_ => syncStyle(), true);

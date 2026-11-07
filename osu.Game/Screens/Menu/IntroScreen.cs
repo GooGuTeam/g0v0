@@ -53,6 +53,8 @@ namespace osu.Game.Screens.Menu
         private SkinnableSound skinnableSeeya;
         private ISample seeya;
 
+        private Bindable<bool> legacyMainMenu;
+
         protected virtual string SeeyaSampleName => "Intro/seeya";
 
         protected override bool PlayExitSound => false;
@@ -95,6 +97,7 @@ namespace osu.Game.Screens.Menu
             beatmap = Beatmap.BeginLease(false);
 
             MenuVoice = config.GetBindable<bool>(OsuSetting.MenuVoice);
+            legacyMainMenu = config.GetBindable<bool>(OsuSetting.ToriiLegacyMainMenu);
             MenuMusic = config.GetBindable<bool>(OsuSetting.MenuMusic);
 
             if (api.LocalUser.Value.IsSupporter)
@@ -308,6 +311,12 @@ namespace osu.Game.Screens.Menu
 
                 logo.MoveTo(new Vector2(0.5f));
                 logo.ScaleTo(Vector2.One);
+                logo.Hide();
+            }
+            else if (legacyMainMenu.Value)
+            {
+                // the legacy main menu fades out with its own cookie, as stable does; the lazer logo stays hidden.
+                logo.ClearTransforms();
                 logo.Hide();
             }
             else

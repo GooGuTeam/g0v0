@@ -12,6 +12,7 @@ using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Input;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Input
 {
@@ -25,10 +26,10 @@ namespace osu.Game.Overlays.Settings.Sections.Input
         private Bindable<double> localSensitivity = null!;
         private Bindable<WindowMode> windowMode = null!;
         private Bindable<bool> minimiseOnFocusLoss = null!;
-        private FormEnumDropdown<OsuConfineMouseMode> confineMouseModeSetting = null!;
+        private EnumDropdownEntry<OsuConfineMouseMode> confineMouseModeSetting = null!;
         private Bindable<bool> relativeMode = null!;
 
-        private FormCheckBox highPrecisionMouse = null!;
+        private CheckboxEntry highPrecisionMouse = null!;
 
         private readonly Bindable<SettingsNote.Data?> highPrecisionMouseNote = new Bindable<SettingsNote.Data?>();
 
@@ -53,17 +54,15 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
             AddRange(new Drawable[]
             {
-                new SettingsItemV2(highPrecisionMouse = new FormCheckBox
+                CreateItem(highPrecisionMouse = new CheckboxEntry
                 {
                     Caption = MouseSettingsStrings.HighPrecisionMouse,
                     HintText = MouseSettingsStrings.HighPrecisionMouseTooltip,
                     Current = relativeMode,
-                })
-                {
                     Keywords = new[] { @"raw", @"input", @"relative", @"cursor", "sensitivity", "speed", "velocity" },
                     Note = { BindTarget = highPrecisionMouseNote },
-                },
-                new SettingsItemV2(new FormSliderBar<double>
+                }),
+                CreateItem(new SliderEntry<double>
                 {
                     Caption = MouseSettingsStrings.CursorSensitivity,
                     Current = localSensitivity,
@@ -71,23 +70,21 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                     TransferValueOnCommit = true,
                     LabelFormat = v => $@"{v:0.##}x",
                     TooltipFormat = v => localSensitivity.Disabled ? MouseSettingsStrings.EnableHighPrecisionForSensitivityAdjust : $@"{v:0.##}x",
-                })
-                {
                     Keywords = new[] { "speed", "velocity" },
                     Note = { Value = FrameworkEnvironment.UseSDL3 ? new SettingsNote.Data(MouseSettingsStrings.CursorSensitivityForTabletsElsewhere, SettingsNote.Type.Informational) : null }
-                },
-                new SettingsItemV2(confineMouseModeSetting = new FormEnumDropdown<OsuConfineMouseMode>
+                }),
+                CreateItem(confineMouseModeSetting = new EnumDropdownEntry<OsuConfineMouseMode>
                 {
                     Caption = MouseSettingsStrings.ConfineMouseMode,
                     Current = osuConfig.GetBindable<OsuConfineMouseMode>(OsuSetting.ConfineMouseMode)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = MouseSettingsStrings.DisableMouseWheelVolumeAdjust,
                     HintText = MouseSettingsStrings.DisableMouseWheelVolumeAdjustTooltip,
                     Current = osuConfig.GetBindable<bool>(OsuSetting.MouseDisableWheel)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = MouseSettingsStrings.DisableClicksDuringGameplay,
                     Current = osuConfig.GetBindable<bool>(OsuSetting.MouseDisableButtons)

@@ -10,6 +10,7 @@ using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.UserInterface
 {
@@ -28,36 +29,30 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.ShowMenuTips,
                     Current = config.GetBindable<bool>(OsuSetting.MenuTips)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.InterfaceVoices,
-                    Current = config.GetBindable<bool>(OsuSetting.MenuVoice)
-                })
-                {
+                    Current = config.GetBindable<bool>(OsuSetting.MenuVoice),
                     Keywords = new[] { "intro", "welcome" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.OsuMusicTheme,
-                    Current = config.GetBindable<bool>(OsuSetting.MenuMusic)
-                })
-                {
+                    Current = config.GetBindable<bool>(OsuSetting.MenuMusic),
                     Keywords = new[] { "intro", "welcome" },
-                },
-                new SettingsItemV2(new FormEnumDropdown<BackgroundSource>
+                }),
+                CreateItem(new EnumDropdownEntry<BackgroundSource>
                 {
                     Caption = UserInterfaceStrings.BackgroundSource,
                     Current = config.GetBindable<BackgroundSource>(OsuSetting.MenuBackgroundSource),
-                })
-                {
                     Note = { BindTarget = backgroundSourceNote },
-                },
-                new SettingsItemV2(new FormEnumDropdown<SeasonalBackgroundMode>
+                }),
+                CreateItem(new EnumDropdownEntry<SeasonalBackgroundMode>
                 {
                     Caption = UserInterfaceStrings.SeasonalBackgrounds,
                     Current = config.GetBindable<SeasonalBackgroundMode>(OsuSetting.SeasonalBackgroundMode),

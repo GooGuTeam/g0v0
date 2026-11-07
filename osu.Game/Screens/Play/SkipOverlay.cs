@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -86,8 +86,11 @@ namespace osu.Game.Screens.Play
             InternalChild = buttonContainer = new ButtonContainer
             {
                 RelativeSizeAxes = Axes.Both,
+                FadeInDuration = ButtonFadeInDuration,
+                FadeOutDuration = ButtonFadeOutDuration,
                 Child = FadingContent = new FadeContainer
                 {
+                    HideWhenIdle = HideWhenIdle,
                     RelativeSizeAxes = Axes.Both,
                     Children = new Drawable[]
                     {
@@ -117,6 +120,21 @@ namespace osu.Game.Screens.Play
         };
 
         private const double fade_time = 300;
+
+        /// <summary>
+        /// How long the button takes to appear when skipping becomes possible.
+        /// </summary>
+        protected virtual double ButtonFadeInDuration => fade_time;
+
+        /// <summary>
+        /// How long the button takes to go once skipping is no longer possible.
+        /// </summary>
+        protected virtual double ButtonFadeOutDuration => fade_time;
+
+        /// <summary>
+        /// Whether the button fades away while the mouse is idle, coming back when it moves.
+        /// </summary>
+        protected virtual bool HideWhenIdle => true;
 
         private double fadeOutBeginTime => startTime - MasterGameplayClockContainer.MINIMUM_SKIP_TIME;
 
@@ -233,13 +251,18 @@ namespace osu.Game.Screens.Play
             private Visibility state;
             private double? nextHideTime;
 
+            /// <summary>
+            /// Whether the content hides a second after the mouse stops moving.
+            /// </summary>
+            public bool HideWhenIdle { get; init; } = true;
+
             public override bool IsPresent => true;
 
             public void TriggerShow()
             {
                 Show();
 
-                if (!IsHovered && !IsDragged)
+                if (HideWhenIdle && !IsHovered && !IsDragged)
                     nextHideTime = Time.Current + 1000;
                 else
                     nextHideTime = null;
@@ -306,9 +329,13 @@ namespace osu.Game.Screens.Play
 
         private partial class ButtonContainer : VisibilityContainer
         {
-            protected override void PopIn() => this.FadeIn(fade_time);
+            public double FadeInDuration { get; init; } = fade_time;
 
-            protected override void PopOut() => this.FadeOut(fade_time);
+            public double FadeOutDuration { get; init; } = fade_time;
+
+            protected override void PopIn() => this.FadeIn(FadeInDuration);
+
+            protected override void PopOut() => this.FadeOut(FadeOutDuration);
         }
 
         private partial class Button : OsuClickableContainer

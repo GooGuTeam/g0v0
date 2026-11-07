@@ -6,6 +6,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Localisation;
 using osu.Game.Localisation;
 using osu.Game.Skinning;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Maintenance
 {
@@ -13,14 +14,14 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
     {
         protected override LocalisableString Header => CommonStrings.Skins;
 
-        private SettingsButtonV2 deleteSkinsButton = null!;
+        private ButtonEntry deleteSkinsButton = null!;
 
         [BackgroundDependencyLoader]
         private void load(SkinManager skins, IDialogOverlay? dialogOverlay)
         {
-            Add(deleteSkinsButton = new DangerousSettingsButtonV2
+            Add(CreateItem(deleteSkinsButton = new ButtonEntry
             {
-                Text = MaintenanceSettingsStrings.DeleteAllSkins,
+                Caption = MaintenanceSettingsStrings.DeleteAllSkins,
                 Action = () =>
                 {
                     dialogOverlay?.Push(new MassDeleteConfirmationDialog(() =>
@@ -28,8 +29,9 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
                         deleteSkinsButton.Enabled.Value = false;
                         Task.Run(() => skins.Delete()).ContinueWith(_ => Schedule(() => deleteSkinsButton.Enabled.Value = true));
                     }, DeleteConfirmationContentStrings.Skins));
-                }
-            });
+                },
+                Dangerous = true,
+            }));
         }
     }
 }

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Specialized;
@@ -14,7 +14,10 @@ using osu.Framework.Graphics.Shapes;
 using osu.Game.Configuration;
 using osu.Game.Extensions;
 using osu.Game.Graphics.UserInterfaceV2;
+using osu.Framework.Localisation;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
+using osu.Game.Overlays.Settings.Rendering;
 using osu.Game.Screens.Play.PlayerSettings;
 using osuTK;
 
@@ -40,6 +43,13 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         private SettingsNote hintNote = null!;
         private RoundedButton applySuggestion = null!;
 
+        // the stable layout (see ISettingsRenderer.UseStableLayouts): a stable slider, the hint as stable text, and a stable button.
+        private NoteEntry? stableHint;
+        private ButtonEntry? stableApply;
+
+        [Resolved(canBeNull: true)]
+        private ISettingsRenderer? renderer { get; set; }
+
         [Resolved]
         private OverlayColourProvider colourProvider { get; set; } = null!;
 
@@ -50,6 +60,16 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
 
             RelativeSizeAxes = Axes.X;
             AutoSizeAxes = Axes.Y;
+
+            // the notches have no stable counterpart; they are kept (unshown) so the history bookkeeping stays the same.
+            notchContainer = new Container<Circle>();
+
+            if (renderer?.UseStableLayouts == true)
+            {
+                loadStable(renderer, hitErrorTracker);
+                return;
+            }
+
             InternalChild = new FillFlowContainer
             {
                 RelativeSizeAxes = Axes.X,
@@ -103,6 +123,59 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                     }
                 }
             };
+        }
+
+        private void loadStable(ISettingsRenderer stable, SessionAverageHitErrorTracker hitErrorTracker)
+        {
+            stableHint = new NoteEntry { AttachedToPrevious = true };
+            stableApply = new ButtonEntry
+            {
+                Caption = AudioSettingsStrings.ApplySuggestedOffset,
+                Action = () =>
+                {
+                    if (SuggestedOffset.Value.HasValue)
+                        current.Value = SuggestedOffset.Value.Value;
+                    hitErrorTracker.ClearHistory();
+                },
+            };
+
+            InternalChild = new FillFlowContainer
+            {
+                RelativeSizeAxes = Axes.X,
+                AutoSizeAxes = Axes.Y,
+                Direction = FillDirection.Vertical,
+                Spacing = new Vector2(SettingsSection.ITEM_SPACING_V2),
+                Children = new[]
+                {
+                    stable.CreateSlider(new SliderEntry<double>
+                    {
+                        Caption = AudioSettingsStrings.AudioOffset,
+                        Current = current,
+                        KeyboardStep = 1,
+                        LabelFormat = v => $"{v:N0} ms",
+                        TooltipFormat = BeatmapOffsetControl.GetOffsetExplanatoryText,
+                    }),
+                    stable.CreateNote(stableHint),
+                    stable.CreateButton(stableApply),
+                },
+            };
+        }
+
+        private void setHint(LocalisableString text, bool canApply, bool showNotches)
+        {
+            var note = new SettingsNote.Data(text, SettingsNote.Type.Informational);
+
+            if (stableHint != null)
+            {
+                stableHint.Note.Value = note;
+                stableApply!.Enabled.Value = canApply;
+                return;
+            }
+
+            applySuggestion.Enabled.Value = canApply;
+            notchContainer.FadeTo(showNotches ? 1 : 0);
+            hintNote.Current.Value = note;
+            hintNote.MoveToY(showNotches ? notch_container_height : -SettingsSection.ITEM_SPACING_V2, 200, Easing.OutQuint);
         }
 
         protected override void LoadComplete()
@@ -159,27 +232,13 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         private void updateHintText()
         {
             if (SuggestedOffset.Value == null)
-            {
-                applySuggestion.Enabled.Value = false;
-                notchContainer.Hide();
-                hintNote.Current.Value = new SettingsNote.Data(AudioSettingsStrings.SuggestedOffsetNote, SettingsNote.Type.Informational);
-                hintNote.MoveToY(-SettingsSection.ITEM_SPACING_V2, 200, Easing.OutQuint);
-            }
+                setHint(AudioSettingsStrings.SuggestedOffsetNote, false, false);
             else if (Math.Abs(SuggestedOffset.Value.Value - current.Value) < 1)
-            {
-                applySuggestion.Enabled.Value = false;
-                notchContainer.Show();
-                hintNote.Current.Value = new SettingsNote.Data(AudioSettingsStrings.SuggestedOffsetCorrect(averageHitErrorHistory.Count), SettingsNote.Type.Informational);
-                hintNote.MoveToY(notch_container_height, 200, Easing.OutQuint);
-            }
+                setHint(AudioSettingsStrings.SuggestedOffsetCorrect(averageHitErrorHistory.Count), false, true);
             else
             {
-                applySuggestion.Enabled.Value = true;
-                notchContainer.Show();
-                hintNote.Current.Value =
-                    new SettingsNote.Data(AudioSettingsStrings.SuggestedOffsetValueReceived(averageHitErrorHistory.Count, SuggestedOffset.Value.Value.ToStandardFormattedString(0)),
-                        SettingsNote.Type.Informational);
-                hintNote.MoveToY(notch_container_height, 200, Easing.OutQuint);
+                setHint(AudioSettingsStrings.SuggestedOffsetValueReceived(averageHitErrorHistory.Count, SuggestedOffset.Value.Value.ToStandardFormattedString(0)),
+                    true, true);
             }
         }
     }

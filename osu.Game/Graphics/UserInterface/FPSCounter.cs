@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -58,6 +58,8 @@ namespace osu.Game.Graphics.UserInterface
 
         [Resolved]
         private OsuColour colours { get; set; } = null!;
+
+        private GameHost host = null!;
 
         public FPSCounter()
         {
@@ -123,6 +125,8 @@ namespace osu.Game.Graphics.UserInterface
             };
 
             config.BindWith(OsuSetting.ShowFpsDisplay, showFpsDisplay);
+
+            host = gameHost;
 
             drawClock = gameHost.DrawThread.Clock;
             updateClock = gameHost.UpdateThread.Clock;
@@ -206,8 +210,8 @@ namespace osu.Game.Graphics.UserInterface
             bool hasSignificantChanges = aimRatesChanged
                                          || hasDrawSpike
                                          || hasUpdateSpike
-                                         || displayedFpsCount < aimDrawFPS * 0.8
-                                         || 1000 / displayedFrameTime < aimUpdateFPS * 0.8;
+                                         || displayedFpsCount < effectiveAimDrawFPS * 0.8
+                                         || 1000 / displayedFrameTime < effectiveAimUpdateFPS * 0.8;
 
             if (hasSignificantChanges)
                 requestDisplay();
@@ -231,7 +235,7 @@ namespace osu.Game.Graphics.UserInterface
 
         private void updateFpsDisplay()
         {
-            counterDrawFPS.Colour = getColour(displayedFpsCount / aimDrawFPS);
+            counterDrawFPS.Colour = getColour(displayedFpsCount / effectiveAimDrawFPS);
             counterDrawFPS.Text = $"{displayedFpsCount:#,0} fps";
         }
 
@@ -241,8 +245,14 @@ namespace osu.Game.Graphics.UserInterface
                 ? $"{displayedFrameTime:N1} ms"
                 : $"{displayedFrameTime:N0} ms";
 
-            counterUpdateFrameTime.Colour = getColour((1000 / displayedFrameTime) / aimUpdateFPS);
+            counterUpdateFrameTime.Colour = getColour((1000 / displayedFrameTime) / effectiveAimUpdateFPS);
         }
+
+        // GooGuTeam: an effectively unlimited limiter (VSync, Unlimited, or 8x on a fast display) is judged against the refresh rate, as stable
+        // does; against the limiter itself, any frame rate was a tiny fraction of it and showed red.
+        private double effectiveAimDrawFPS => FrameRateTarget.Effective(aimDrawFPS, host);
+
+        private double effectiveAimUpdateFPS => FrameRateTarget.Effective(aimUpdateFPS, host);
 
         private bool updateAimFPS()
         {

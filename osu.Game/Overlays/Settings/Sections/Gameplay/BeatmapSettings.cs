@@ -8,6 +8,7 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Gameplay
 {
@@ -24,41 +25,35 @@ namespace osu.Game.Overlays.Settings.Sections.Gameplay
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = SkinSettingsStrings.BeatmapSkins,
                     Current = config.GetBindable<bool>(OsuSetting.BeatmapSkins)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = SkinSettingsStrings.BeatmapColours,
-                    Current = config.GetBindable<bool>(OsuSetting.BeatmapColours)
-                })
-                {
+                    Current = config.GetBindable<bool>(OsuSetting.BeatmapColours),
                     Keywords = new[] { "combo", "override", "color" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = SkinSettingsStrings.BeatmapHitsounds,
-                    Current = config.GetBindable<bool>(OsuSetting.BeatmapHitsounds)
-                })
-                {
+                    Current = config.GetBindable<bool>(OsuSetting.BeatmapHitsounds),
                     Keywords = new[] { "samples", "override" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = GraphicsSettingsStrings.StoryboardVideo,
                     Current = config.GetBindable<bool>(OsuSetting.ShowStoryboard)
                 }),
-                new SettingsItemV2(new FormSliderBar<float>
+                CreateItem(new SliderEntry<float>
                 {
                     Caption = GraphicsSettingsStrings.ComboColourNormalisation,
                     Current = comboColourNormalisation,
                     DisplayAsPercentage = true,
-                })
-                {
                     Keywords = new[] { "color" },
-                },
+                }),
             };
         }
     }

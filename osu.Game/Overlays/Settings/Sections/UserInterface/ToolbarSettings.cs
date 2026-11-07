@@ -5,6 +5,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Localisation;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Toolbar;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.UserInterface
 {
@@ -18,13 +19,13 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
         [BackgroundDependencyLoader]
         private void load()
         {
-            Add(new SettingsButtonV2
+            Add(CreateItem(new ButtonEntry
             {
-                Text = ToolbarStrings.ManageToolbarIcons,
-                TooltipText = ToolbarStrings.ManageToolbarIconsDescription,
+                Caption = ToolbarStrings.ManageToolbarIcons,
+                HintText = ToolbarStrings.ManageToolbarIconsDescription,
                 Keywords = [@"toolbar", @"icons", @"hide", @"order", @"reorder"],
                 Action = () => dialog?.Show(),
-            });
+            }));
         }
     }
 }

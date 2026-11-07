@@ -1,7 +1,8 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 
+using System;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -53,12 +54,10 @@ namespace osu.Game.Graphics.Containers
         private RectangleF? customRect;
         private bool customRectIsRelativePosition;
 
-        private float? forcedAspectRatio;
+        private float? fixedAspectRatio;
 
         private ITabletHandler? tabletHandler;
 
-        // torii: recalcula el letterbox forzado cuando cambia el tamanio (el rect depende del aspecto
-        // del area, asi que hay que rehacerlo en cada resize / toggle de la nav-bar).
         private readonly LayoutValue aspectLayout = new LayoutValue(Invalidation.DrawSize);
 
         /// <summary>
@@ -75,17 +74,14 @@ namespace osu.Game.Graphics.Containers
         }
 
         /// <summary>
-        /// torii: fuerza un letterbox a un aspect ratio fijo, centrado, tapando lo que sobra con el
-        /// fondo dimmeado (igual que el screen scaling). lo usa el song select legacy: cuando la nav-bar
-        /// arriba achica la altura y el area queda mas ancha que 16:9, en vez de estirarse el chrome
-        /// deja barras iguales a los dos costados. <c>null</c> limpia y vuelve al scaling normal.
+        /// Fits a centred viewport of the requested aspect ratio. A null ratio restores normal screen scaling.
         /// </summary>
-        public void SetForcedAspectRatio(float? aspectRatio)
+        internal void SetFixedAspectRatio(float? aspectRatio)
         {
-            if (forcedAspectRatio == aspectRatio)
+            if (fixedAspectRatio == aspectRatio)
                 return;
 
-            forcedAspectRatio = aspectRatio;
+            fixedAspectRatio = aspectRatio;
             if (IsLoaded) Scheduler.AddOnce(updateSize);
         }
 
@@ -115,11 +111,9 @@ namespace osu.Game.Graphics.Containers
         {
             base.Update();
 
-            // torii: el rect del letterbox forzado depende del aspecto del area, asi que lo rehacemos
-            // cuando cambia el tamanio (resize de ventana, toggle de la nav-bar, etc).
             if (!aspectLayout.IsValid)
             {
-                if (forcedAspectRatio != null)
+                if (fixedAspectRatio != null)
                     updateSize();
 
                 aspectLayout.Validate();
@@ -235,17 +229,12 @@ namespace osu.Game.Graphics.Containers
 
             RectangleF targetRect = new RectangleF(Vector2.Zero, Vector2.One);
 
-            if (forcedAspectRatio is float aspect && aspect > 0 && DrawWidth > 0 && DrawHeight > 0)
+            if (fixedAspectRatio is float aspect && aspect > 0 && DrawWidth > 0 && DrawHeight > 0)
             {
-                // torii: letterbox a un aspect fijo, centrado. el rect mas grande de ese aspecto que
-                // entra en el area, centrado, y lo que sobra queda de barras (mismo bg dimmeado atras).
                 sizableContainer.RelativePositionAxes = Axes.Both;
 
                 float areaAspect = DrawWidth / DrawHeight;
-                Vector2 size = areaAspect > aspect
-                    ? new Vector2(aspect / areaAspect, 1) // area mas ancha: barras a los costados
-                    : new Vector2(1, areaAspect / aspect); // area mas alta: barras arriba/abajo
-
+                var size = new Vector2(Math.Min(aspect / areaAspect, 1), Math.Min(areaAspect / aspect, 1));
                 targetRect = new RectangleF((Vector2.One - size) / 2, size);
             }
             else if (customRect != null)

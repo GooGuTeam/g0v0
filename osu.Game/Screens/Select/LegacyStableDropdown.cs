@@ -101,7 +101,7 @@ namespace osu.Game.Screens.Select
                         Anchor = Anchor.CentreLeft,
                         Origin = Anchor.CentreLeft,
                         RelativeSizeAxes = Axes.X,
-                        Padding = new MarginPadding { Right = 16 },
+                        Padding = new MarginPadding { Right = 21 },
                         Font = LegacyFonts.Get(19, FontWeight.Regular),
                     },
                     new SpriteIcon
@@ -109,7 +109,7 @@ namespace osu.Game.Screens.Select
                         Anchor = Anchor.CentreRight,
                         Origin = Anchor.CentreRight,
                         Icon = FontAwesome.Solid.ChevronDown,
-                        Size = new Vector2(9),
+                        Size = new Vector2(15),
                     },
                 };
             }

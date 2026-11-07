@@ -9,6 +9,7 @@ using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Rulesets.Scoring;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Gameplay
 {
@@ -21,34 +22,30 @@ namespace osu.Game.Overlays.Settings.Sections.Gameplay
         {
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormEnumDropdown<ScoringMode>
+                CreateItem(new EnumDropdownEntry<ScoringMode>
                 {
                     Caption = GameplaySettingsStrings.ScoreDisplayMode,
                     Current = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode),
-                })
-                {
                     Keywords = new[] { "scoring" },
-                    ApplyClassicDefault = c => ((IHasCurrentValue<ScoringMode>)c).Current.Value = ScoringMode.Classic,
-                },
-                new SettingsItemV2(new FormCheckBox
+                    ClassicDefault = ScoringMode.Classic,
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = GraphicsSettingsStrings.HitLighting,
                     Current = config.GetBindable<bool>(OsuSetting.HitLighting)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = GameplaySettingsStrings.StarFountains,
                     Current = config.GetBindable<bool>(OsuSetting.StarFountains)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = GameplaySettingsStrings.UseModSpecificCalculation,
                     Current = config.GetBindable<bool>(OsuSetting.UseModSpecificCalculation),
                     HintText = GameplaySettingsStrings.UseModSpecificCalculationDescription,
-                })
-                {
                     Keywords = new[] { "mod", "pp", "performance", "difficulty", "star", "relax", "algorithm" },
-                },
+                }),
             };
         }
     }

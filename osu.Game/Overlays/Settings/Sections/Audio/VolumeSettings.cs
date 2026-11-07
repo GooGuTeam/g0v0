@@ -8,6 +8,7 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Audio
 {
@@ -20,7 +21,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         {
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormSliderBar<double>
+                CreateItem(new SliderEntry<double>
                 {
                     Caption = AudioSettingsStrings.MasterVolume,
                     Current = audio.Volume,
@@ -28,14 +29,14 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                     DisplayAsPercentage = true,
                     PlaySamplesOnAdjust = false,
                 }),
-                new SettingsItemV2(new FormSliderBar<double>
+                CreateItem(new SliderEntry<double>
                 {
                     Caption = AudioSettingsStrings.MasterVolumeInactive,
                     Current = config.GetBindable<double>(OsuSetting.VolumeInactive),
                     KeyboardStep = 0.01f,
                     DisplayAsPercentage = true
                 }),
-                new SettingsItemV2(new FormSliderBar<double>
+                CreateItem(new SliderEntry<double>
                 {
                     Caption = AudioSettingsStrings.MusicVolume,
                     Current = audio.VolumeTrack,
@@ -43,7 +44,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                     DisplayAsPercentage = true,
                     PlaySamplesOnAdjust = false,
                 }),
-                new SettingsItemV2(new FormSliderBar<double>
+                CreateItem(new SliderEntry<double>
                 {
                     Caption = AudioSettingsStrings.EffectVolume,
                     Current = audio.VolumeSample,
@@ -51,7 +52,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                     DisplayAsPercentage = true,
                     PlaySamplesOnAdjust = false,
                 }),
-                new SettingsItemV2(new FormSliderBar<double>
+                CreateItem(new SliderEntry<double>
                 {
                     Caption = AudioSettingsStrings.HitsoundVolume,
                     Current = config.GetBindable<double>(OsuSetting.HitsoundVolume),

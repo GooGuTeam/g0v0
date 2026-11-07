@@ -23,6 +23,7 @@ using osu.Game.Graphics.UserInterfaceV2;
 using osuTK;
 using osu.Game.Localisation;
 using osu.Game.Online.Chat;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Input
 {
@@ -109,9 +110,9 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                             RelativeSizeAxes = Axes.X,
                             Height = 300,
                         },
-                        new DangerousSettingsButtonV2
+                        CreateItem(new ButtonEntry
                         {
-                            Text = TabletSettingsStrings.ResetToFullArea,
+                            Caption = TabletSettingsStrings.ResetToFullArea,
                             Action = () =>
                             {
                                 aspectLock.Value = false;
@@ -119,10 +120,11 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                                 areaOffset.SetDefault();
                                 areaSize.SetDefault();
                             },
-                        },
-                        new SettingsButtonV2
+                            Dangerous = true,
+                        }),
+                        CreateItem(new ButtonEntry
                         {
-                            Text = TabletSettingsStrings.ConformToCurrentGameAspectRatio,
+                            Caption = TabletSettingsStrings.ConformToCurrentGameAspectRatio,
                             Action = () =>
                             {
                                 float gameplayWidth = host.Window.ClientSize.Width;
@@ -136,22 +138,22 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
                                 forceAspectRatio(gameplayWidth / gameplayHeight);
                             },
-                        },
-                        new SettingsItemV2(new FormSliderBar<float>
+                        }),
+                        CreateItem(new SliderEntry<float>
                         {
                             TransferValueOnCommit = true,
                             Caption = TabletSettingsStrings.XOffset,
                             KeyboardStep = 1,
                             Current = offsetX,
                         }),
-                        new SettingsItemV2(new FormSliderBar<float>
+                        CreateItem(new SliderEntry<float>
                         {
                             TransferValueOnCommit = true,
                             Caption = TabletSettingsStrings.YOffset,
                             KeyboardStep = 1,
                             Current = offsetY,
                         }),
-                        new SettingsItemV2(new FormSliderBar<float>
+                        CreateItem(new SliderEntry<float>
                         {
                             TransferValueOnCommit = true,
                             Caption = TabletSettingsStrings.Rotation,
@@ -162,32 +164,32 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                         {
                             Padding = SettingsPanel.CONTENT_PADDING,
                         },
-                        new SettingsItemV2(new FormSliderBar<float>
+                        CreateItem(new SliderEntry<float>
                         {
                             TransferValueOnCommit = true,
                             Caption = TabletSettingsStrings.AspectRatio,
                             Current = aspectRatio,
                         }),
-                        new SettingsItemV2(new FormCheckBox
+                        CreateItem(new CheckboxEntry
                         {
                             Caption = TabletSettingsStrings.LockAspectRatio,
                             Current = aspectLock,
                         }),
-                        new SettingsItemV2(new FormSliderBar<float>
+                        CreateItem(new SliderEntry<float>
                         {
                             TransferValueOnCommit = true,
                             Caption = CommonStrings.Width,
                             KeyboardStep = 1,
                             Current = sizeX,
                         }),
-                        new SettingsItemV2(new FormSliderBar<float>
+                        CreateItem(new SliderEntry<float>
                         {
                             TransferValueOnCommit = true,
                             Caption = CommonStrings.Height,
                             KeyboardStep = 1,
                             Current = sizeY,
                         }),
-                        new SettingsItemV2(new FormSliderBar<float>
+                        CreateItem(new SliderEntry<float>
                         {
                             TransferValueOnCommit = true,
                             Caption = TabletSettingsStrings.TipPressureForClick,
