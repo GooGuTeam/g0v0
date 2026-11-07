@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -54,9 +54,12 @@ namespace osu.Game.Screens.Play
 
         protected const double CONTENT_OUT_DURATION = 300;
 
-        protected virtual double PlayerPushDelay => 1800 + disclaimers.Count * 500;
+        // stable starts as soon as the beatmap has loaded.
+        protected virtual double PlayerPushDelay => (legacyOverlay != null ? 500 : 1800) + disclaimers.Count * 500;
 
-        public override bool HideOverlaysOnEnter => hideOverlays;
+        public override bool HideOverlaysOnEnter => hideOverlays || UsesLegacyPresentation;
+
+        public bool UsesLegacyPresentation => legacyOverlay != null;
 
         public override bool DisallowExternalBeatmapRulesetChanges => true;
 
@@ -96,6 +99,11 @@ namespace osu.Game.Screens.Play
 
         private FillFlowContainer disclaimers = null!;
         private GridContainer sideContent = null!;
+
+        /// <summary>
+        /// osu!stable's loading screen, shown instead of the metadata display, logo and player settings when the legacy gameplay screens are enabled.
+        /// </summary>
+        private LegacyPlayerLoaderOverlay? legacyOverlay;
 
         private Bindable<bool> showStoryboards = null!;
 
@@ -142,7 +150,9 @@ namespace osu.Game.Screens.Play
             // not ready if a focused overlay is visible, like settings.
             && inputManager.FocusedDrawable is not OsuFocusedOverlayContainer
             // or if a child of a focused overlay is focused, like settings' search textbox.
-            && inputManager.FocusedDrawable?.FindClosestParent<OsuFocusedOverlayContainer>() == null;
+            && inputManager.FocusedDrawable?.FindClosestParent<OsuFocusedOverlayContainer>() == null
+            // stable holds the beatmap back while its visual settings are extended.
+            && legacyOverlay?.Extended != true;
 
         private bool holdForMenuExitButton => !AllowUserExit;
 
@@ -207,6 +217,8 @@ namespace osu.Game.Screens.Play
 
             const float padding = 25;
 
+            bool legacy = config.Get<bool>(OsuSetting.ToriiLegacyGameplayScreens);
+
             InternalChildren = new Drawable[]
             {
                 new ScrollAdjustsVolume(),
@@ -258,6 +270,8 @@ namespace osu.Game.Screens.Play
                             new OsuScrollContainer
                             {
                                 RelativeSizeAxes = Axes.Both,
+                                // stable's visual settings take the place of the player settings.
+                                Alpha = legacy ? 0 : 1,
                                 Child = PlayerSettings = new FillFlowContainer<PlayerSettingsGroup>
                                 {
                                     AutoSizeAxes = Axes.Both,
@@ -306,6 +320,14 @@ namespace osu.Game.Screens.Play
                 idleTracker = new IdleTracker(1500),
                 sampleRestart = new SkinnableSound(new SampleInfo(@"Gameplay/restart", @"pause-retry-click"))
             };
+
+            if (legacy)
+            {
+                AddInternal(legacyOverlay = new LegacyPlayerLoaderOverlay());
+
+                // stable has no back button here, leaving the bottom of the screen to its visual settings. Escape still exits.
+                FooterContent.Value = ScreenFooterContent.None;
+            }
 
             if (Beatmap.Value.Beatmap.EpilepsyWarning)
             {
@@ -379,7 +401,8 @@ namespace osu.Game.Screens.Play
 
             const double metadata_delay = 500;
 
-            MetadataInfo.Delay(metadata_delay).FadeIn(500, Easing.OutQuint);
+            if (legacyOverlay == null)
+                MetadataInfo.Delay(metadata_delay).FadeIn(500, Easing.OutQuint);
             contentIn(metadata_delay + 250);
 
             // after an initial delay, start the debounced load check.
@@ -455,6 +478,13 @@ namespace osu.Game.Screens.Play
 
             osuLogo = logo;
 
+            // stable has no logo while loading.
+            if (legacyOverlay != null)
+            {
+                logo.FadeOut(100);
+                return;
+            }
+
             const double duration = 300;
 
             if (!resuming) logo.MoveTo(new Vector2(0.5f), duration, Easing.OutQuint);
@@ -513,7 +543,8 @@ namespace osu.Game.Screens.Play
 
             // We need to perform this check here rather than in OnHover as any number of children of VisualSettings
             // may also be handling the hover events.
-            if (inputManager.HoveredDrawables.Contains(VisualSettings) || QuickRestart)
+            // stable shows the background as it will be in gameplay, at the user's dim and without blur.
+            if (inputManager.HoveredDrawables.Contains(VisualSettings) || QuickRestart || legacyOverlay != null)
             {
                 // Preview user-defined background dim and blur when hovered on the visual settings panel.
                 ApplyToBackground(b =>
@@ -559,6 +590,7 @@ namespace osu.Game.Screens.Play
             LoadTask = LoadComponentAsync(CurrentPlayer, _ =>
             {
                 MetadataInfo.Loading = false;
+                legacyOverlay?.FinishLoading();
                 OnPlayerLoaded();
             });
         }
@@ -582,6 +614,7 @@ namespace osu.Game.Screens.Play
         private void contentIn(double delayBeforeSideDisplays = 0)
         {
             MetadataInfo.Loading = true;
+            legacyOverlay?.BeginLoading();
 
             if (QuickRestart)
             {
@@ -630,20 +663,26 @@ namespace osu.Game.Screens.Play
                 }
             }
 
-            AddRangeInternal(new[]
+            // stable leaves the preview playing as it is.
+            if (legacyOverlay == null)
             {
-                lowPassFilter = new AudioFilter(audioManager.TrackMixer),
-                highPassFilter = new AudioFilter(audioManager.TrackMixer, BQFType.HighPass),
-            });
+                AddRangeInternal(new[]
+                {
+                    lowPassFilter = new AudioFilter(audioManager.TrackMixer),
+                    highPassFilter = new AudioFilter(audioManager.TrackMixer, BQFType.HighPass),
+                });
 
-            lowPassFilter.CutoffTo(1000, 650, Easing.OutQuint);
-            highPassFilter.CutoffTo(300).Then().CutoffTo(0, 1250); // 1250 is to line up with the appearance of MetadataInfo (750 delay + 500 fade-in)
+                lowPassFilter.CutoffTo(1000, 650, Easing.OutQuint);
+                highPassFilter.CutoffTo(300).Then().CutoffTo(0, 1250); // 1250 is to line up with the appearance of MetadataInfo (750 delay + 500 fade-in)
+            }
 
             ApplyToBackground(b => b.FadeColour(Color4.White, 800, Easing.OutQuint));
         }
 
         protected virtual void ContentOut()
         {
+            legacyOverlay?.Leave();
+
             // Ensure the logo is no longer tracking before we scale the content
             logoTracking?.Dispose();
             logoTracking = null;

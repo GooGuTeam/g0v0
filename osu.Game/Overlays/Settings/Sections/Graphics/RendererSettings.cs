@@ -13,6 +13,7 @@ using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Dialog;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Graphics
 {
@@ -39,39 +40,36 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(new RendererDropdown
+                CreateItem(new DropdownEntry<RendererType>
                 {
                     Caption = GraphicsSettingsStrings.Renderer,
                     Current = renderer,
                     Items = availableRenderers,
-                })
-                {
+                    ItemLabel = item => item == RendererType.Automatic && automaticRendererInUse
+                        ? LocalisableString.Interpolate($"{item.GetLocalisableDescription()} ({host.ResolvedRenderer.GetDescription()})")
+                        : item.GetLocalisableDescription(),
                     Keywords = new[] { @"compatibility", @"directx" },
-                },
+                }),
                 new Direct3DPresentationNote(),
                 new VulkanPresentationNote(),
                 // TODO: this needs to be a custom dropdown at some point
-                new SettingsItemV2(new FormEnumDropdown<FrameSync>
+                CreateItem(new EnumDropdownEntry<FrameSync>
                 {
                     Caption = GraphicsSettingsStrings.FrameLimiter,
                     Current = config.GetBindable<FrameSync>(FrameworkSetting.FrameSync),
-                })
-                {
                     Keywords = new[] { @"fps", @"framerate" },
-                },
-                new SettingsItemV2(new FormEnumDropdown<ExecutionMode>
+                }),
+                CreateItem(new EnumDropdownEntry<ExecutionMode>
                 {
                     Caption = GraphicsSettingsStrings.ThreadingMode,
                     Current = config.GetBindable<ExecutionMode>(FrameworkSetting.ExecutionMode)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = GraphicsSettingsStrings.ShowFPS,
                     Current = osuConfig.GetBindable<bool>(OsuSetting.ShowFpsDisplay),
-                })
-                {
                     Keywords = new[] { @"framerate", @"counter" },
-                },
+                }),
             };
 
             renderer.BindValueChanged(r =>
@@ -95,28 +93,6 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
                     }));
                 }
             });
-        }
-
-        private partial class RendererDropdown : FormEnumDropdown<RendererType>
-        {
-            private RendererType hostResolvedRenderer;
-            private bool automaticRendererInUse;
-
-            [BackgroundDependencyLoader]
-            private void load(FrameworkConfigManager config, GameHost host)
-            {
-                var renderer = config.GetBindable<RendererType>(FrameworkSetting.Renderer);
-                automaticRendererInUse = renderer.Value == RendererType.Automatic;
-                hostResolvedRenderer = host.ResolvedRenderer;
-            }
-
-            protected override LocalisableString GenerateItemText(RendererType item)
-            {
-                if (item == RendererType.Automatic && automaticRendererInUse)
-                    return LocalisableString.Interpolate($"{base.GenerateItemText(item)} ({hostResolvedRenderer.GetDescription()})");
-
-                return base.GenerateItemText(item);
-            }
         }
     }
 }

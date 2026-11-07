@@ -33,6 +33,16 @@ namespace osu.Game.Configuration
         public OsuConfigManager(Storage storage)
             : base(storage)
         {
+            // Merge the short-lived gameplay-only preference into the shared skin ratio.
+            // Preserve an explicit selection ratio when both were configured, and consume the old value once.
+            var previousGameplayRatio = Get<LegacySongSelectAspectRatio>(OsuSetting.ToriiGameplayAspectRatio);
+            if (previousGameplayRatio != LegacySongSelectAspectRatio.FollowWindow)
+            {
+                if (Get<LegacySongSelectAspectRatio>(OsuSetting.ToriiLegacySongSelectAspectRatio) == LegacySongSelectAspectRatio.FollowWindow)
+                    SetValue(OsuSetting.ToriiLegacySongSelectAspectRatio, previousGameplayRatio);
+
+                SetValue(OsuSetting.ToriiGameplayAspectRatio, LegacySongSelectAspectRatio.FollowWindow);
+            }
         }
 
         protected override void InitialiseDefaults()
@@ -72,10 +82,20 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.SongSelectBackgroundBlur, false);
             SetDefault(OsuSetting.UseV2ResultsScreen, false);
+            SetDefault(OsuSetting.ToriiLegacyMainMenu, false);
+
+            SetDefault(OsuSetting.ToriiLegacyModSelect, false);
+
+            SetDefault(OsuSetting.ToriiLegacyOptions, false);
+            SetDefault(OsuSetting.ToriiLegacyFpsCounter, false);
+            SetDefault(OsuSetting.ToriiLegacyGameplayScreens, false);
+            SetDefault(OsuSetting.ToriiGameplayAspectRatio, LegacySongSelectAspectRatio.FollowWindow);
+            SetDefault(OsuSetting.ToriiLegacyGameplayLeaderboard, false);
             SetDefault(OsuSetting.ToriiLegacyFooterUseSkin, false);
+            SetDefault(OsuSetting.ToriiLegacySongSelectAspectRatio, LegacySongSelectAspectRatio.FollowWindow);
             SetDefault(OsuSetting.ToriiLegacySongSelectFooter, false);
             SetDefault(OsuSetting.ToriiStableResults, false);
-            SetDefault(OsuSetting.ToriiLegacyFont, false);
+            SetDefault(OsuSetting.ToriiLegacyFont, true);
             SetDefault(OsuSetting.UnslantedSongSelectUI, false);
 
             // Online settings
@@ -525,7 +545,16 @@ namespace osu.Game.Configuration
         /// Uses the full-width results layout for solo scores.
         /// </summary>
         UseV2ResultsScreen,
+        ToriiLegacyMainMenu,
+        ToriiLegacyModSelect,
+
+        ToriiLegacyOptions,
+        ToriiLegacyFpsCounter,
+        ToriiLegacyGameplayScreens,
+        ToriiGameplayAspectRatio,
+        ToriiLegacyGameplayLeaderboard,
         ToriiLegacyFooterUseSkin,
+        ToriiLegacySongSelectAspectRatio,
         ToriiLegacySongSelectFooter,
         ToriiStableResults,
         ToriiLegacyFont,

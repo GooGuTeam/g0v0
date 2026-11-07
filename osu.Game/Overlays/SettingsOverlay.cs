@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -33,7 +33,7 @@ namespace osu.Game.Overlays
 
         private SettingsSubPanel? lastOpenedSubPanel;
 
-        protected override Drawable CreateHeader() => new SettingsHeader(Title, Description);
+        protected override Drawable CreateHeader() => Renderer.CreatePanelHeader(Title, Description);
 
         protected override Drawable CreateFooter() => new OsuContextMenuContainer
         {
@@ -115,6 +115,16 @@ namespace osu.Game.Overlays
 
             foreach (var s in subPanels)
                 ContentContainer.Add(s);
+        }
+
+        protected override void GoBack()
+        {
+            var openSubPanel = subPanels.FirstOrDefault(p => p.State.Value == Visibility.Visible);
+
+            if (openSubPanel != null)
+                openSubPanel.Hide();
+            else
+                base.GoBack();
         }
 
         private T createSubPanel<T>(T subPanel)

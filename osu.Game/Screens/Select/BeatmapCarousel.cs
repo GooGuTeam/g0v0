@@ -31,6 +31,7 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.API;
 using osu.Game.Rulesets;
 using osu.Game.Scoring;
+using osuTK;
 using Realms;
 
 namespace osu.Game.Screens.Select
@@ -65,6 +66,7 @@ namespace osu.Game.Screens.Select
         private readonly LoadingLayer loading;
 
         private readonly BeatmapCarouselFilterGrouping grouping;
+        private IBindable<bool> legacySongSelect = null!;
 
         /// <summary>
         /// Total number of beatmap difficulties displayed with the filter.
@@ -73,6 +75,13 @@ namespace osu.Game.Screens.Select
 
         protected override float GetSpacingBetweenPanels(CarouselItem top, CarouselItem bottom)
         {
+            if (legacySongSelect.Value && top.Model is GroupedBeatmap && bottom.Model is GroupedBeatmap)
+            {
+                // stable (BeatmapTreeManager.ComputeItemYDestinations) spaces items 48 units apart, and 10 more next to an expanded item.
+                bool nextToExpanded = top.IsExpanded || bottom.IsExpanded || top == CurrentSelectionItem || bottom == CurrentSelectionItem;
+                return (nextToExpanded ? 58 : 48) * legacy_unit - PanelBeatmapStandalone.LEGACY_HEIGHT;
+            }
+
             // Group panels do not overlap with any other panel but should overlap with themselves.
             if ((top.Model is GroupDefinition) ^ (bottom.Model is GroupDefinition))
                 return SPACING * 2;
@@ -118,6 +127,7 @@ namespace osu.Game.Screens.Select
                     GetCollections = GetAllCollections,
                     GetLocalUserTopRanks = GetBeatmapInfoGuidToTopRankMapping,
                     GetFavouriteBeatmapSets = GetFavouriteBeatmapSets,
+                    IsLegacySongSelect = () => legacySongSelect?.Value == true,
                 }
             };
 
@@ -132,6 +142,13 @@ namespace osu.Game.Screens.Select
             loadSamples(audio);
 
             config.BindWith(OsuSetting.RandomSelectAlgorithm, randomAlgorithm);
+
+            legacySongSelect = config.GetBindable<bool>(OsuSetting.ToriiLegacyFooterUseSkin);
+            legacySongSelect.BindValueChanged(_ =>
+            {
+                if (Criteria != null)
+                    FilterAsync(clearExistingPanels: true);
+            });
         }
 
         protected override void LoadComplete()
@@ -319,8 +336,10 @@ namespace osu.Game.Screens.Select
 
         protected GroupedBeatmapSet? ExpandedBeatmapSet { get; private set; }
 
+        // Torii: legacy song select follows stable's BeatmapTreeManager.ChangeSelectionWithoutOpen: moving onto a difficulty of the expanded
+        // (selected) set selects it straight away; moving onto another set only key-hovers it, until it is activated.
         protected override bool ShouldActivateOnKeyboardSelection(CarouselItem item) =>
-            grouping.BeatmapSetsGroupedTogether && item.Model is GroupedBeatmap;
+            item.Model is GroupedBeatmap && (grouping.BeatmapSetsGroupedTogether || (grouping.LegacySetsCollapsed && item.IsExpanded));
 
         /// <summary>
         /// The currently selected <see cref="GroupedBeatmap"/>.
@@ -397,6 +416,14 @@ namespace osu.Game.Screens.Select
                         if (CurrentSelection != null && CheckModelEquality(CurrentSelection, groupedBeatmap))
                         {
                             RequestPresentBeatmap?.Invoke(groupedBeatmap.Beatmap);
+                            return;
+                        }
+
+                        // Torii: a collapsed set's panel stands for the whole set; stable opens it on its recommended difficulty, whether it is
+                        // clicked or key-hovered and activated (BeatmapTreeManager.SelectRecommendedDifficulty).
+                        if (grouping.LegacySetsCollapsed && !item.IsExpanded && groupedBeatmap.Beatmap.BeatmapSet != null)
+                        {
+                            selectRecommendedDifficultyForBeatmapSet(new GroupedBeatmapSet(groupedBeatmap.Group, groupedBeatmap.Beatmap.BeatmapSet));
                             return;
                         }
 
@@ -664,8 +691,9 @@ namespace osu.Game.Screens.Select
 
                             default:
                                 // Case where there are no set headers, all items should be visible.
+                                // Torii: unless legacy song select collapses sets, where only each set's leader and the expanded set's difficulties show.
                                 if (!grouping.BeatmapSetsGroupedTogether)
-                                    i.IsVisible = true;
+                                    i.IsVisible = !grouping.LegacySetsCollapsed || i.IsExpanded || grouping.LegacySetLeaders.Contains(i);
                                 break;
                         }
                     }
@@ -701,12 +729,45 @@ namespace osu.Game.Screens.Select
             // for an important case).
             ExpandedBeatmapSet = set;
 
+            if (grouping.LegacySetsCollapsed)
+            {
+                setLegacyExpansionStateOfSetItems(lastExpandedSet, false);
+                setLegacyExpansionStateOfSetItems(ExpandedBeatmapSet, true);
+                return;
+            }
+
             if (!grouping.BeatmapSetsGroupedTogether)
                 return;
 
             setExpansionStateOfSetItems(lastExpandedSet, false);
             setExpansionStateOfSetItems(ExpandedBeatmapSet, true);
         }
+
+        /// <summary>
+        /// Torii: osu!stable's set expansion (<c>BeatmapTreeItem.Expanded</c>). A collapsed set shows only its leader, standing for the set;
+        /// an expanded set shows every difficulty, the leader included, with no separate set panel.
+        /// </summary>
+        private void setLegacyExpansionStateOfSetItems(GroupedBeatmapSet? set, bool expanded)
+        {
+            if (set == null || !grouping.SetItems.TryGetValue(set, out var items))
+                return;
+
+            bool canMakeVisible = !grouping.GroupItems.Any() || ExpandedGroup == set.Group;
+
+            foreach (var i in items)
+            {
+                if (i.Model is not GroupedBeatmap)
+                    continue;
+
+                i.IsExpanded = expanded;
+                i.IsVisible = canMakeVisible && (expanded || grouping.LegacySetLeaders.Contains(i));
+            }
+        }
+
+        /// <summary>
+        /// Torii: whether legacy song select shows each beatmap set as one panel until it is expanded.
+        /// </summary>
+        public bool LegacySetsCollapsed => grouping.LegacySetsCollapsed;
 
         private void setExpansionStateOfSetItems(GroupedBeatmapSet? set, bool expanded)
         {
@@ -746,7 +807,8 @@ namespace osu.Game.Screens.Select
                 target = targetItem?.CarouselYPosition;
             }
 
-            return target;
+            // Stable centres the selected difficulty slightly above the midpoint of the screen.
+            return legacySongSelect.Value ? target + 16 : target;
         }
 
         #endregion
@@ -805,6 +867,8 @@ namespace osu.Game.Screens.Select
 
         protected override void Update()
         {
+            legacyHoveredItem = legacySongSelect.Value ? findLegacyHoveredItem() : null;
+
             base.Update();
 
             selectionFocusOffset = (float)Interpolation.DampContinuously(selectionFocusOffset, VisuallyFocusSelected ? 300 : 0, 100, Time.Elapsed);
@@ -812,8 +876,98 @@ namespace osu.Game.Screens.Select
 
         protected override float GetPanelXOffset(Drawable panel)
         {
-            return base.GetPanelXOffset(panel) + (((ICarouselPanel)panel).Selected.Value ? 0 : selectionFocusOffset);
+            float focusOffset = ((ICarouselPanel)panel).Selected.Value ? 0 : selectionFocusOffset;
+
+            if (legacySongSelect.Value && panel is Panel legacyPanel)
+            {
+                // stable draws the panel texture at its own width from the item's position, past the right edge of the screen. Panels are
+                // anchored to the right of the list, so a wider panel moves right by the extra width to keep its left edge in place.
+                panel.Width = PanelBeatmapStandalone.LEGACY_WIDTH / DrawWidth;
+                return getLegacyPanelX(legacyPanel) + focusOffset + PanelBeatmapStandalone.LEGACY_WIDTH - DrawWidth;
+            }
+
+            panel.Width = 1;
+            return base.GetPanelXOffset(panel) + focusOffset;
         }
+
+        #region Legacy tree layout
+
+        // stable's song select works in 640x480 units, 1.6 pixels each at the 768 pixel height the screen is laid out in.
+        private const float legacy_unit = 1.6f;
+
+        // stable eases each item towards its destination by 0.95 (x) and 0.875 (y) of the remaining distance per 60Hz frame.
+        private static readonly double legacy_x_half_time = 1000 / 60.0 * Math.Log(0.5) / Math.Log(0.95);
+        private static readonly double legacy_y_half_time = 1000 / 60.0 * Math.Log(0.5) / Math.Log(0.875);
+
+        private CarouselItem? legacyHoveredItem;
+
+        protected override double PanelYDampHalfTime => legacySongSelect.Value ? legacy_y_half_time : base.PanelYDampHalfTime;
+
+        // stable draws later items in front, so each panel's top edge covers the one above.
+        protected override float GetPanelDepth(CarouselItem item, double selectedYPos)
+            => legacySongSelect.Value ? -(float)(item.CarouselYPosition / DrawHeight) : base.GetPanelDepth(item, selectedYPos);
+
+        // stable moves the items above a hovered item up by 10 units and the items below it down by 10 (BeatmapTreeManager.ItemYDestination).
+        protected override double GetPanelYTarget(CarouselItem item)
+        {
+            double target = base.GetPanelYTarget(item);
+
+            if (legacyHoveredItem == null || item == legacyHoveredItem)
+                return target;
+
+            return target + (item.CarouselYPosition > legacyHoveredItem.CarouselYPosition ? 10 : -10) * legacy_unit;
+        }
+
+        private CarouselItem? findLegacyHoveredItem()
+        {
+            if (Scroll.IsDraggingPanels)
+                return null;
+
+            foreach (var panel in Scroll.Panels)
+            {
+                if (panel.IsHovered && panel.Alpha == 1 && ((ICarouselPanel)panel).Item is CarouselItem item && item.Model is GroupedBeatmap)
+                    return item;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The x position of a panel in stable's tree (BeatmapTreeManager.ItemXDestination), eased towards as stable does.
+        /// </summary>
+        private float getLegacyPanelX(Panel panel)
+        {
+            var item = ((ICarouselPanel)panel).Item!;
+
+            // the list is laid out in a column 384 units wide at the right edge; stable places items 340 units from the right edge.
+            float target = 44;
+
+            if (item.Model is GroupDefinition || item.IsExpanded || ((ICarouselPanel)panel).Selected.Value)
+                target -= 50;
+
+            if (item == legacyHoveredItem)
+                target -= 45;
+
+            // items further from the middle of the screen move right.
+            Vector2 posInScroll = Scroll.ToLocalSpace(panel.ScreenSpaceDrawQuad.Centre);
+            float screenHeight = DrawHeight + BleedTop + BleedBottom;
+            target += Math.Min(200, Math.Abs((posInScroll.Y + BleedTop) / screenHeight - 0.5f) * 75);
+
+            target *= legacy_unit;
+
+            // a panel taken from the pool for another item starts where it belongs.
+            if (panel.LegacyTreeItem != item)
+            {
+                panel.LegacyTreeItem = item;
+                panel.LegacyTreeX = target;
+            }
+            else
+                panel.LegacyTreeX = (float)Interpolation.DampContinuously(panel.LegacyTreeX, target, legacy_x_half_time, Time.Elapsed);
+
+            return panel.LegacyTreeX;
+        }
+
+        #endregion
 
         #endregion
 

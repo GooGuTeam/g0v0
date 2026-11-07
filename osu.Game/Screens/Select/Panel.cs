@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Audio.Track;
@@ -15,6 +15,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Events;
 using osu.Game.Beatmaps.ControlPoints;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Carousel;
 using osu.Game.Graphics.Containers;
@@ -49,6 +50,9 @@ namespace osu.Game.Screens.Select
 
         private Container contentPaddingContainer = null!;
         protected Container Content { get; private set; } = null!;
+        private IBindable<bool> legacySongSelect = null!;
+
+        protected bool IsLegacySongSelectAppearance => legacySongSelect.Value && (this is PanelBeatmap || this is PanelBeatmapStandalone);
 
         public Drawable Background
         {
@@ -95,8 +99,13 @@ namespace osu.Game.Screens.Select
         [Resolved]
         private BeatmapCarousel? carousel { get; set; }
 
+        /// <summary>
+        /// Torii: whether the legacy song select shows each beatmap set as one panel until it is expanded.
+        /// </summary>
+        protected bool LegacySetsCollapsed => carousel?.LegacySetsCollapsed == true;
+
         [BackgroundDependencyLoader]
-        private void load(OverlayColourProvider colourProvider, OsuColour colours)
+        private void load(OverlayColourProvider colourProvider, OsuColour colours, OsuConfigManager config)
         {
             Anchor = Anchor.TopRight;
             Origin = Anchor.TopRight;
@@ -165,6 +174,8 @@ namespace osu.Game.Screens.Select
                     new HoverSounds(),
                 }
             };
+
+            legacySongSelect = config.GetBindable<bool>(OsuSetting.ToriiLegacyFooterUseSkin);
         }
 
         public partial class PulsatingBox : BeatSyncedContainer
@@ -269,7 +280,13 @@ namespace osu.Game.Screens.Select
 
             KeyboardSelected.BindValueChanged(selected =>
             {
-                if (selected.NewValue)
+                // Torii: stable lightens a keyboard-selected item's background instead (see OnLegacyKeyboardSelectedChanged).
+                if (IsLegacySongSelectAppearance)
+                {
+                    keyboardSelectionLayer.FadeOut();
+                    OnLegacyKeyboardSelectedChanged();
+                }
+                else if (selected.NewValue)
                 {
                     keyboardSelectionLayer.FadeIn(80, Easing.Out)
                                           .Then()
@@ -280,11 +297,15 @@ namespace osu.Game.Screens.Select
 
                 updateXOffset();
             }, true);
+
+            legacySongSelect.BindValueChanged(_ => updateLegacyAppearance(), true);
         }
 
         protected override void PrepareForUse()
         {
             base.PrepareForUse();
+
+            Height = item?.DrawHeight ?? Height;
 
             // Slightly offset the flash animation based on the panel depth.
             // This assumes a minimum depth of -2 (groups).
@@ -294,6 +315,8 @@ namespace osu.Game.Screens.Select
 
             updateXOffset(animated: false);
             updateSelectedState(animated: false);
+
+            updateLegacyAppearance();
 
             this.FadeIn(DURATION, Easing.OutQuint);
         }
@@ -332,6 +355,14 @@ namespace osu.Game.Screens.Select
         {
             bool selectedOrExpanded = Expanded.Value || Selected.Value;
 
+            if (IsLegacySongSelectAppearance)
+            {
+                TopLevelContent.EdgeEffect = default;
+                TopLevelContent.FadeEdgeEffectTo(Color4.Transparent, animated ? DURATION : 0, Easing.OutQuint);
+                selectionLayer.FadeOut(animated ? 200 : 0, Easing.OutQuint);
+                return;
+            }
+
             var edgeEffectColour = accentColour ?? Color4Extensions.FromHex(@"4EBFFF");
 
             if (selectedOrExpanded)
@@ -364,6 +395,13 @@ namespace osu.Game.Screens.Select
 
         private void updateXOffset(bool animated = true)
         {
+            // Torii: the legacy song select carousel places its panels itself, as stable's tree does.
+            if (IsLegacySongSelectAppearance)
+            {
+                TopLevelContent.MoveToX(0, animated ? DURATION : 0, Easing.OutQuint);
+                return;
+            }
+
             float x = PanelXOffset + CORNER_RADIUS;
 
             if (!Expanded.Value && !Selected.Value)
@@ -382,9 +420,24 @@ namespace osu.Game.Screens.Select
 
         protected override bool OnHover(HoverEvent e)
         {
-            hoverLayer.FadeIn(100, Easing.OutQuint);
+            // Torii: stable flashes a hovered item's background instead.
+            if (IsLegacySongSelectAppearance)
+                OnLegacyHovered();
+            else
+                hoverLayer.FadeIn(100, Easing.OutQuint);
+
             return true;
         }
+
+        /// <summary>
+        /// Torii: called when the legacy song select appearance is active and this panel is hovered.
+        /// </summary>
+        protected virtual void OnLegacyHovered() { }
+
+        /// <summary>
+        /// Torii: called when the legacy song select appearance is active and <see cref="KeyboardSelected"/> changes.
+        /// </summary>
+        protected virtual void OnLegacyKeyboardSelectedChanged() { }
 
         protected override void OnHoverLost(HoverLostEvent e)
         {
@@ -395,7 +448,28 @@ namespace osu.Game.Screens.Select
         protected override void Update()
         {
             base.Update();
-            contentPaddingContainer.Padding = contentPaddingContainer.Padding with { Left = iconContainer.DrawWidth };
+            contentPaddingContainer.Padding = contentPaddingContainer.Padding with { Left = IsLegacySongSelectAppearance ? 0 : iconContainer.DrawWidth };
+        }
+
+        protected virtual void OnLegacyAppearanceChanged(bool legacy) { }
+
+        private void updateLegacyAppearance()
+        {
+            bool legacy = IsLegacySongSelectAppearance;
+
+            TopLevelContent.CornerRadius = legacy ? 0 : CORNER_RADIUS;
+            Content.CornerRadius = legacy ? 0 : CORNER_RADIUS;
+            iconContainer.FadeTo(legacy ? 0 : 1, 100, Easing.OutQuint);
+            contentPaddingContainer.Padding = contentPaddingContainer.Padding with { Left = legacy ? 0 : iconContainer.DrawWidth };
+
+            if (legacy)
+                keyboardSelectionLayer.FadeOut();
+            else if (KeyboardSelected.Value)
+                keyboardSelectionLayer.FadeTo(0.5f);
+
+            updateSelectedState(animated: false);
+            updateXOffset(animated: false);
+            OnLegacyAppearanceChanged(legacy);
         }
 
         public abstract MenuItem[]? ContextMenuItems { get; }
@@ -433,8 +507,22 @@ namespace osu.Game.Screens.Select
 
         public double DrawYPosition { get; set; }
 
+        /// <summary>
+        /// Torii: the item <see cref="LegacyTreeX"/> was computed for, set by the legacy song select carousel.
+        /// </summary>
+        internal CarouselItem? LegacyTreeItem { get; set; }
+
+        /// <summary>
+        /// Torii: the x position the legacy song select carousel eases this panel along.
+        /// </summary>
+        internal float LegacyTreeX { get; set; }
+
         public virtual void Activated()
         {
+            // Torii: stable's tree only selects or starts the clicked item (BeatmapTreeManager.onClickUp); nothing flashes over it.
+            if (IsLegacySongSelectAppearance)
+                return;
+
             activationFlash.FadeOutFromOne(1000, Easing.OutQuint);
         }
 

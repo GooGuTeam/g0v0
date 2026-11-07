@@ -1,4 +1,4 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
@@ -174,6 +174,7 @@ namespace osu.Game
         protected OsuConfigManager LocalConfig { get; private set; }
 
         private readonly Bindable<bool> legacyFontSetting = new Bindable<bool>();
+        private readonly Bindable<bool> legacyGameplayLeaderboard = new Bindable<bool>();
         private readonly Bindable<bool> unslantedSongSelectUI = new Bindable<bool>();
         private readonly Bindable<bool> useModSpecificCalculation = new Bindable<bool>();
 
@@ -337,6 +338,8 @@ namespace osu.Game
             unslantedSongSelectUI.BindValueChanged(e => OsuGame.SetUnslantedUI(e.NewValue), true);
             LocalConfig.BindWith(OsuSetting.ToriiLegacyFont, legacyFontSetting);
             legacyFontSetting.BindValueChanged(e => Screens.Select.LegacyFonts.UseInterFont = e.NewValue, true);
+            LocalConfig.BindWith(OsuSetting.ToriiLegacyGameplayLeaderboard, legacyGameplayLeaderboard);
+            legacyGameplayLeaderboard.BindValueChanged(e => Screens.Play.HUD.LegacyGameplayLeaderboard.UseInLegacySkins = e.NewValue, true);
             LocalConfig.BindWith(OsuSetting.UseModSpecificCalculation, useModSpecificCalculation);
             useModSpecificCalculation.BindValueChanged(e => Rulesets.Difficulty.ModSpecificCalculation.Enabled = e.NewValue, true);
             dependencies.CacheAs<IGameplaySettings>(LocalConfig);

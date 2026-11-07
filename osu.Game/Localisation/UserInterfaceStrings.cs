@@ -1,4 +1,4 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
@@ -240,6 +240,21 @@ namespace osu.Game.Localisation
         public static LocalisableString LegacySongSelectDescription => new TranslatableString(getKey(@"legacy_song_select_description"), @"Use a stable-style song select with a skinnable footer and rank panel, without the modern filter bar or information wedges. Includes the legacy footer. Reopen song select to apply.");
 
         /// <summary>
+        /// "Skin aspect ratio"
+        /// </summary>
+        public static LocalisableString LegacySongSelectAspectRatio => new TranslatableString(getKey(@"legacy_song_select_aspect_ratio"), @"Skin aspect ratio");
+
+        /// <summary>
+        /// "Use the same aspect ratio for legacy song select, loading, gameplay and legacy results to match your skin."
+        /// </summary>
+        public static LocalisableString LegacySongSelectAspectRatioDescription => new TranslatableString(getKey(@"legacy_song_select_aspect_ratio_description"), @"Use the same aspect ratio for legacy song select, loading, gameplay and legacy results to match your skin.");
+
+        /// <summary>
+        /// "Follow window (stable)"
+        /// </summary>
+        public static LocalisableString LegacySongSelectFollowWindow => new TranslatableString(getKey(@"legacy_song_select_follow_window"), @"Follow window (stable)");
+
+        /// <summary>
         /// "Use Inter font in legacy song select"
         /// </summary>
         public static LocalisableString UseInterFont => new TranslatableString(getKey(@"use_inter_font"), @"Use Inter font in legacy song select");
@@ -288,6 +303,198 @@ namespace osu.Game.Localisation
         /// "Torii (Legacy)"
         /// </summary>
         public static LocalisableString LegacyResultsStyle => new TranslatableString(getKey(@"legacy_results_style"), @"Torii (Legacy)");
+
+        /// <summary>
+        /// "What do you want to do with this beatmap?"
+        /// </summary>
+        public static LocalisableString LegacyBeatmapOptionsPrompt => new TranslatableString(getKey(@"legacy_beatmap_options_prompt"), @"What do you want to do with this beatmap?");
+
+        /// <summary>
+        /// "Remove from Unplayed"
+        /// </summary>
+        public static LocalisableString LegacyBeatmapOptionsRemoveFromUnplayed => new TranslatableString(getKey(@"legacy_beatmap_options_remove_from_unplayed"), @"Remove from Unplayed");
+
+        /// <summary>
+        /// "Clear local scores"
+        /// </summary>
+        public static LocalisableString LegacyBeatmapOptionsClearLocalScores => new TranslatableString(getKey(@"legacy_beatmap_options_clear_local_scores"), @"Clear local scores");
+
+        /// <summary>
+        /// "Legacy main menu"
+        /// </summary>
+        public static LocalisableString LegacyMainMenu => new TranslatableString(getKey(@"legacy_main_menu"), @"Legacy main menu");
+
+        /// <summary>
+        /// "Use the osu!stable classic main menu with circular logo button, two-tier submenu, and top-right music controls."
+        /// </summary>
+        public static LocalisableString LegacyMainMenuDescription => new TranslatableString(getKey(@"legacy_main_menu_description"), @"Use the osu!stable classic main menu with circular logo button, two-tier submenu, and top-right music controls.");
+
+        /// <summary>
+        /// "Legacy mod select"
+        /// </summary>
+        public static LocalisableString LegacyModSelect => new TranslatableString(getKey(@"legacy_mod_select"), @"Legacy mod select");
+
+        /// <summary>
+        /// "Use the osu!stable classic 3-category mod selection dialog with score multiplier display and hotkeys."
+        /// </summary>
+        public static LocalisableString LegacyModSelectDescription => new TranslatableString(getKey(@"legacy_mod_select_description"), @"Use the osu!stable classic 3-category mod selection dialog with score multiplier display and hotkeys.");
+
+        /// <summary>
+        /// "Mod Customization"
+        /// </summary>
+        public static LocalisableString ModCustomizationTitle => new TranslatableString(getKey(@"mod_customization_title"), @"Mod Customization");
+
+        /// <summary>
+        /// "Difficulty Reduction"
+        /// </summary>
+        public static LocalisableString DifficultyReduction => new TranslatableString(getKey(@"difficulty_reduction"), @"Difficulty Reduction");
+
+        /// <summary>
+        /// "Difficulty Increase"
+        /// </summary>
+        public static LocalisableString DifficultyIncrease => new TranslatableString(getKey(@"difficulty_increase"), @"Difficulty Increase");
+
+        /// <summary>
+        /// "Special"
+        /// </summary>
+        public static LocalisableString SpecialMods => new TranslatableString(getKey(@"special_mods"), @"Special");
+
+        /// <summary>
+        /// "1. Reset all mods"
+        /// </summary>
+        public static LocalisableString ResetAllMods => new TranslatableString(getKey(@"reset_all_mods"), @"1. Reset all mods");
+
+        /// <summary>
+        /// "2. Close"
+        /// </summary>
+        public static LocalisableString CloseDialog => new TranslatableString(getKey(@"close_dialog"), @"2. Close");
+
+        /// <summary>
+        /// "Legacy options menu"
+        /// </summary>
+        public static LocalisableString LegacyOptions => new TranslatableString(getKey(@"legacy_options"), @"Legacy options menu");
+
+        /// <summary>
+        /// "Restore osu!stable's classic sliding options sidebar appearance and styling."
+        /// </summary>
+        public static LocalisableString LegacyOptionsDescription => new TranslatableString(getKey(@"legacy_options_description"), @"Restore osu!stable's classic sliding options sidebar appearance and styling.");
+
+        /// <summary>
+        /// "Restart the game to apply this change."
+        /// </summary>
+        public static LocalisableString LegacyOptionsRestartRequired => new TranslatableString(getKey(@"legacy_options_restart_required"), @"Restart the game to apply this change.");
+
+        /// <summary>
+        /// "Legacy FPS counter"
+        /// </summary>
+        public static LocalisableString LegacyFpsCounter => new TranslatableString(getKey(@"legacy_fps_counter"), @"Legacy FPS counter");
+
+        /// <summary>
+        /// "Show the frame rate counter as osu!stable draws it."
+        /// </summary>
+        public static LocalisableString LegacyFpsCounterDescription => new TranslatableString(getKey(@"legacy_fps_counter_description"), @"Show the frame rate counter as osu!stable draws it.");
+
+        /// <summary>
+        /// "Legacy gameplay screens"
+        /// </summary>
+        public static LocalisableString LegacyGameplayScreens => new TranslatableString(getKey(@"legacy_gameplay_screens"), @"Legacy gameplay screens");
+
+        /// <summary>
+        /// "Show the loading, pause and fail screens as osu!stable draws them, using the skin's pause and fail textures. Applies from the next play."
+        /// </summary>
+        public static LocalisableString LegacyGameplayScreensDescription => new TranslatableString(getKey(@"legacy_gameplay_screens_description"),
+            @"Show the loading, pause and fail screens as osu!stable draws them, using the skin's pause and fail textures. Applies from the next play.");
+
+        /// <summary>
+        /// "Background dim:"
+        /// </summary>
+        public static LocalisableString LegacyVisualSettingsBackgroundDim => new TranslatableString(getKey(@"legacy_visual_settings_background_dim"), @"Background dim:");
+
+        /// <summary>
+        /// "{0}% dimmed"
+        /// </summary>
+        public static LocalisableString LegacyVisualSettingsDimTooltip(int percent) => new TranslatableString(getKey(@"legacy_visual_settings_dim_tooltip"), @"{0}% dimmed", percent);
+
+        /// <summary>
+        /// "Toggles"
+        /// </summary>
+        public static LocalisableString LegacyVisualSettingsToggles => new TranslatableString(getKey(@"legacy_visual_settings_toggles"), @"Toggles");
+
+        /// <summary>
+        /// "Disable storyboard"
+        /// </summary>
+        public static LocalisableString LegacyVisualSettingsDisableStoryboard => new TranslatableString(getKey(@"legacy_visual_settings_disable_storyboard"), @"Disable storyboard");
+
+        /// <summary>
+        /// "Ignore beatmap skin"
+        /// </summary>
+        public static LocalisableString LegacyVisualSettingsIgnoreBeatmapSkin => new TranslatableString(getKey(@"legacy_visual_settings_ignore_beatmap_skin"), @"Ignore beatmap skin");
+
+        /// <summary>
+        /// "Ignore beatmap hitsounds"
+        /// </summary>
+        public static LocalisableString LegacyVisualSettingsIgnoreBeatmapHitsounds => new TranslatableString(getKey(@"legacy_visual_settings_ignore_beatmap_hitsounds"), @"Ignore beatmap hitsounds");
+
+        /// <summary>
+        /// "Legacy gameplay leaderboard"
+        /// </summary>
+        public static LocalisableString LegacyGameplayLeaderboard => new TranslatableString(getKey(@"legacy_gameplay_leaderboard"), @"Legacy gameplay leaderboard");
+
+        /// <summary>
+        /// "Use osu!stable's scoreboard in legacy skins' default HUD. It shows during breaks, or throughout while the leaderboard is toggled on. Applies from the next play."
+        /// </summary>
+        public static LocalisableString LegacyGameplayLeaderboardDescription => new TranslatableString(getKey(@"legacy_gameplay_leaderboard_description"),
+            @"Use osu!stable's scoreboard in legacy skins' default HUD. It shows during breaks, or throughout while the leaderboard is toggled on. Applies from the next play.");
+
+        /// <summary>
+        /// "Press F1 to view replay"
+        /// </summary>
+        public static LocalisableString LegacyFailViewReplay => new TranslatableString(getKey(@"legacy_fail_view_replay"), @"Press F1 to view replay");
+
+        /// <summary>
+        /// "Gameplay aspect ratio"
+        /// </summary>
+        public static LocalisableString GameplayAspectRatio => new TranslatableString(getKey(@"gameplay_aspect_ratio"), @"Gameplay aspect ratio");
+
+        /// <summary>
+        /// "Letterbox the loading screen and gameplay to a fixed aspect ratio, for skins designed for that size."
+        /// </summary>
+        public static LocalisableString GameplayAspectRatioDescription => new TranslatableString(getKey(@"gameplay_aspect_ratio_description"), @"Letterbox the loading screen and gameplay to a fixed aspect ratio, for skins designed for that size.");
+
+        /// <summary>
+        /// "Skip"
+        /// </summary>
+        public static LocalisableString LegacySkip => new TranslatableString(getKey(@"legacy_skip"), @"Skip");
+
+        /// <summary>
+        /// "Mods provide different ways to enjoy gameplay. Some have an effect on the score you can achieve during ranked play. Others are just for fun."
+        /// </summary>
+        public static LocalisableString LegacyModsDescription => new TranslatableString(getKey(@"legacy_mods_description"), @"Mods provide different ways to enjoy gameplay. Some have an effect on the score you can achieve during ranked play. Others are just for fun.");
+
+        /// <summary>
+        /// "Guest"
+        /// </summary>
+        public static LocalisableString LegacyGuest => new TranslatableString(getKey(@"legacy_guest"), @"Guest");
+
+        /// <summary>
+        /// "Click to sign in!"
+        /// </summary>
+        public static LocalisableString LegacySignIn => new TranslatableString(getKey(@"legacy_sign_in"), @"Click to sign in!");
+
+        /// <summary>
+        /// "Please sign in to enable online facilities."
+        /// </summary>
+        public static LocalisableString LegacyOnlinePrompt => new TranslatableString(getKey(@"legacy_online_prompt"), @"Please sign in to enable online facilities.");
+
+        /// <summary>
+        /// "You have {0} beatmaps available!"
+        /// </summary>
+        public static LocalisableString LegacyBeatmapCount(int count) => new TranslatableString(getKey(@"legacy_beatmap_count"), @"You have {0} beatmaps available!", count);
+
+        /// <summary>
+        /// "Score Multiplier: {0}"
+        /// </summary>
+        public static LocalisableString LegacyScoreMultiplier(string multiplier) => new TranslatableString(getKey(@"legacy_score_multiplier"), @"Score Multiplier: {0}", multiplier);
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

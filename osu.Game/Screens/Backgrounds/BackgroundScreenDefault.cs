@@ -30,6 +30,9 @@ namespace osu.Game.Screens.Backgrounds
         private IBindable<APIUser> user;
         private Bindable<Skin> skin;
         private Bindable<BackgroundSource> source;
+        private Bindable<bool> legacyMainMenu;
+
+        public bool UseLegacyMainMenuBackground { get; init; }
         private readonly SeasonalBackgroundLoader seasonalBackgroundLoader = new SeasonalBackgroundLoader();
 
         [Resolved]
@@ -48,6 +51,7 @@ namespace osu.Game.Screens.Backgrounds
             user = api.LocalUser.GetBoundCopy();
             skin = skinManager.CurrentSkin.GetBoundCopy();
             source = config.GetBindable<BackgroundSource>(OsuSetting.MenuBackgroundSource);
+            legacyMainMenu = config.GetBindable<bool>(OsuSetting.ToriiLegacyMainMenu);
 
             AddInternal(seasonalBackgroundLoader);
         }
@@ -59,6 +63,7 @@ namespace osu.Game.Screens.Backgrounds
             user.ValueChanged += _ => Scheduler.AddOnce(next);
             skin.ValueChanged += _ => Scheduler.AddOnce(next);
             source.ValueChanged += _ => Scheduler.AddOnce(next);
+            legacyMainMenu.ValueChanged += _ => Scheduler.AddOnce(next);
             beatmap.ValueChanged += _ => Scheduler.AddOnce(next);
             seasonalBackgroundLoader.SeasonalBackgroundChanged += () => Scheduler.AddOnce(next);
 
@@ -135,8 +140,12 @@ namespace osu.Game.Screens.Backgrounds
 
         private Background createBackground()
         {
-            // seasonal background loading gets highest priority.
-            Background newBackground = seasonalBackgroundLoader.LoadNextBackground();
+            // Keep the legacy menu backdrop in the background stack, not in the sliding button foreground.
+            Background newBackground = null;
+            if (UseLegacyMainMenuBackground && legacyMainMenu.Value && skin.Value is LegacySkin and not DefaultLegacySkin)
+                newBackground = new SkinBackground(skin.Value, getBackgroundTextureName(), SkinBackgroundLookupName);
+
+            newBackground ??= seasonalBackgroundLoader.LoadNextBackground();
 
             if (newBackground == null && user.Value?.IsSupporter == true)
             {

@@ -11,6 +11,7 @@ using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Mania.Configuration;
 using osu.Game.Rulesets.Mania.UI;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Rulesets.Mania
 {
@@ -28,29 +29,27 @@ namespace osu.Game.Rulesets.Mania
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormEnumDropdown<ManiaScrollingDirection>
+                CreateItem(new EnumDropdownEntry<ManiaScrollingDirection>
                 {
                     Caption = RulesetSettingsStrings.ScrollingDirection,
                     Current = config.GetBindable<ManiaScrollingDirection>(ManiaRulesetSetting.ScrollDirection)
                 }),
-                new SettingsItemV2(new FormSliderBar<double>
+                CreateItem(new SliderEntry<double>
                 {
                     Caption = RulesetSettingsStrings.ScrollSpeed,
                     Current = config.GetBindable<double>(ManiaRulesetSetting.ScrollSpeed),
                     KeyboardStep = 1,
                     LabelFormat = v => RulesetSettingsStrings.ScrollSpeedTooltip((int)DrawableManiaRuleset.ComputeScrollTime(v), v),
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.TimingBasedColouring,
                     Current = config.GetBindable<bool>(ManiaRulesetSetting.TimingBasedNoteColouring),
-                })
-                {
                     Keywords = new[] { "color" },
-                },
+                }),
             };
 
-            Add(new SettingsItemV2(new FormCheckBox
+            Add(CreateItem(new CheckboxEntry
             {
                 Caption = RulesetSettingsStrings.TouchOverlay,
                 Current = config.GetBindable<bool>(ManiaRulesetSetting.TouchOverlay)
@@ -58,7 +57,7 @@ namespace osu.Game.Rulesets.Mania
 
             if (RuntimeInfo.IsMobile)
             {
-                Add(new SettingsItemV2(new FormEnumDropdown<ManiaMobileLayout>
+                Add(CreateItem(new EnumDropdownEntry<ManiaMobileLayout>
                 {
                     Caption = RulesetSettingsStrings.MobileLayout,
                     Current = config.GetBindable<ManiaMobileLayout>(ManiaRulesetSetting.MobileLayout),

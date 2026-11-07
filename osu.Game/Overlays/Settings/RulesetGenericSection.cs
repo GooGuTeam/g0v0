@@ -10,6 +10,7 @@ using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Settings.Sections.RulesetGeneric;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings
 {
@@ -48,16 +49,24 @@ namespace osu.Game.Overlays.Settings
 
         public override IEnumerable<LocalisableString> FilterTerms => base.FilterTerms.Concat(new LocalisableString[] { @"rulesets", @"manage" });
 
+        private readonly RulesetManagementPanel panel;
+
         public RulesetManagementSettings(RulesetManagementPanel panel)
+        {
+            this.panel = panel;
+        }
+
+        [BackgroundDependencyLoader]
+        private void load()
         {
             Children = new Drawable[]
             {
-                new SettingsButtonV2
+                CreateItem(new ButtonEntry
                 {
-                    Text = BindingSettingsStrings.Configure,
+                    Caption = BindingSettingsStrings.Configure,
                     Action = panel.ToggleVisibility,
-                    Height = 60
-                },
+                    Large = true,
+                }),
             };
         }
     }

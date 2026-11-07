@@ -14,6 +14,7 @@ using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Game.Database;
 using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.DebugSettings
 {
@@ -24,12 +25,12 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
         [BackgroundDependencyLoader]
         private void load(GameHost host, RealmAccess realm)
         {
-            SettingsButtonV2 blockAction;
-            SettingsButtonV2 unblockAction;
+            ButtonEntry blockAction;
+            ButtonEntry unblockAction;
 
-            Add(new SettingsButtonV2
+            Add(CreateItem(new ButtonEntry
             {
-                Text = @"Clear all caches",
+                Caption = @"Clear all caches",
                 Action = () =>
                 {
                     host.Collect();
@@ -37,10 +38,10 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
                     // host.Collect() uses GCCollectionMode.Optimized, but we should be as aggressive as possible here.
                     GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
                 }
-            });
+            }));
 
-            FormEnumDropdown<GCLatencyMode> latencyModeDropdown;
-            Add(new SettingsItemV2(latencyModeDropdown = new FormEnumDropdown<GCLatencyMode>
+            EnumDropdownEntry<GCLatencyMode> latencyModeDropdown;
+            Add(CreateItem(latencyModeDropdown = new EnumDropdownEntry<GCLatencyMode>
             {
                 Caption = "GC mode",
             }));
@@ -66,9 +67,9 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
             {
                 AddRange(new Drawable[]
                 {
-                    new SettingsButtonV2
+                    CreateItem(new ButtonEntry
                     {
-                        Text = @"Compact realm",
+                        Caption = @"Compact realm",
                         Action = () =>
                         {
                             try
@@ -83,15 +84,15 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
                                 Logger.Error(e, @"Compacting realm failed");
                             }
                         }
-                    },
-                    blockAction = new SettingsButtonV2
+                    }),
+                    CreateItem(blockAction = new ButtonEntry
                     {
-                        Text = @"Block realm",
-                    },
-                    unblockAction = new SettingsButtonV2
+                        Caption = @"Block realm",
+                    }),
+                    CreateItem(unblockAction = new ButtonEntry
                     {
-                        Text = @"Unblock realm",
-                    }
+                        Caption = @"Unblock realm",
+                    })
                 });
 
                 blockAction.Action = () =>

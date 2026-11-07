@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -50,6 +50,17 @@ namespace osu.Game.Screens.Play
         }
 
         public readonly ModDisplay ModDisplay;
+
+        // holds the mod display, so that it can be taken away without disturbing its own fades.
+        private readonly Container standardModDisplayContainer;
+
+        /// <summary>
+        /// Whether the standard mod display is hidden, for when the skin's HUD shows stable's mod icons in its place.
+        /// </summary>
+        public bool HideStandardModDisplay
+        {
+            set => standardModDisplayContainer.Alpha = value ? 0 : 1;
+        }
         public readonly HoldForMenuButton HoldToQuit;
 
         [Cached]
@@ -148,7 +159,13 @@ namespace osu.Game.Screens.Play
                         // This display is potentially a duplicate of users with a local ModDisplay in their skins.
                         // It would be very nice to remove this, but the version here has special logic with regards to replays
                         // and initial states, so needs a bit of thought before doing so.
-                        ModDisplay = CreateModsContainer(),
+                        standardModDisplayContainer = new Container
+                        {
+                            Anchor = Anchor.TopRight,
+                            Origin = Anchor.TopRight,
+                            AutoSizeAxes = Axes.Both,
+                            Child = ModDisplay = CreateModsContainer(),
+                        },
                     }
                 },
                 BottomRightElements = new FillFlowContainer

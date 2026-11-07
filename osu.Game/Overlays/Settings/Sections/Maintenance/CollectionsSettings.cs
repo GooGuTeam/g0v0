@@ -8,6 +8,7 @@ using osu.Game.Collections;
 using osu.Game.Database;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Notifications;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Maintenance
 {
@@ -24,14 +25,15 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
         [BackgroundDependencyLoader]
         private void load(IDialogOverlay? dialogOverlay)
         {
-            Add(new DangerousSettingsButtonV2
+            Add(CreateItem(new ButtonEntry
             {
-                Text = MaintenanceSettingsStrings.DeleteAllCollections,
+                Caption = MaintenanceSettingsStrings.DeleteAllCollections,
                 Action = () =>
                 {
                     dialogOverlay?.Push(new MassDeleteConfirmationDialog(deleteAllCollections, DeleteConfirmationContentStrings.Collections));
-                }
-            });
+                },
+                Dangerous = true,
+            }));
         }
 
         private void deleteAllCollections()

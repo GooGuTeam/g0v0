@@ -13,6 +13,7 @@ using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Rulesets;
 using osuTK;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 {
@@ -28,14 +29,14 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         [Resolved]
         private RulesetStore rulesets { get; set; } = null!;
 
-        private FormCheckBox trustedModeCheckbox = null!;
+        private CheckboxEntry trustedModeCheckbox = null!;
 
         [BackgroundDependencyLoader]
         private void load()
         {
             AddRange(new Drawable[]
             {
-                new SettingsItemV2(trustedModeCheckbox = new FormCheckBox
+                CreateItem(trustedModeCheckbox = new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.TrustedMode,
                     HintText = RulesetSettingsStrings.TrustedModeTooltip,

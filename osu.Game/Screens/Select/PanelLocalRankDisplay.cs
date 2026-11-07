@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -51,6 +51,11 @@ namespace osu.Game.Screens.Select
         private readonly UpdateableRank updateable;
 
         public bool HasRank => updateable.Rank != null;
+
+        /// <summary>
+        /// Torii: the local user's best rank on the beatmap, if any.
+        /// </summary>
+        public ScoreRank? Rank => updateable.Rank;
 
         public PanelLocalRankDisplay(BeatmapInfo? beatmap = null)
         {

@@ -37,10 +37,10 @@ namespace osu.Game.Skinning.Components
         [BackgroundDependencyLoader]
         private void load(ISkinSource skin)
         {
-            var leftSprite = skin.GetTexture(@"button-left");
+            var leftSprite = skin.GetStableTexture(@"button-left");
             float leftInset = leftSprite != null ? leftSprite.Width / leftSprite.ScaleAdjust : 0;
 
-            var rightSprite = skin.GetTexture(@"button-right");
+            var rightSprite = skin.GetStableTexture(@"button-right");
             float rightInset = rightSprite != null ? rightSprite.Width / rightSprite.ScaleAdjust : 0;
 
             InternalChildren =
@@ -48,7 +48,7 @@ namespace osu.Game.Skinning.Components
                 backgroundSprite = new NineSliceSprite
                 {
                     RelativeSizeAxes = Axes.Both,
-                    Texture = skin.GetTexture(@"button"),
+                    Texture = skin.GetStableTexture(@"button"),
                     TextureInset = new MarginPadding
                     {
                         Left = leftInset,
