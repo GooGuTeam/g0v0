@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Threading;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
-using osu.Framework.Development;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Logging;
@@ -201,7 +200,7 @@ namespace osu.Game.Rulesets.Osu.UI
             var model = owner.HitObject;
             var parentModel = parent.HitObject;
             bool applied = owner.Entry != null && model != null && parentModel != null;
-            bool hidden = parentModel is Slider slider && slider.Duration < 1;
+            bool hidden = parentModel is Slider slider && slider.Path.LegacyTrimRemovesAllSegments;
 
             // A nested object keeps its last IsAlive value once its parent leaves the hit object container, as nothing updates it any more.
             bool parentAlive = ReferenceEquals(parent, owner) || parent.IsAlive;
@@ -214,6 +213,7 @@ namespace osu.Game.Rulesets.Osu.UI
 
             bool approachFinished = entry.Kind == OsuVisualKind.Approach && (owner.Judged || (model != null && Time.Current > model.StartTime + 50));
 
+            // Short duration does not make a slider invisible. Keep its normal preempt and fade transforms.
             bool visible = applied && owner.IsAlive && parentAlive && (showHiddenSliders.Value || !hidden) && !repeatFinished && !approachFinished;
 
             entry.Gate.Alpha = visible ? 1f : 0;

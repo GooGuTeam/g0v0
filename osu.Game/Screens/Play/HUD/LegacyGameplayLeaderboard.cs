@@ -27,12 +27,6 @@ namespace osu.Game.Screens.Play.HUD
     /// </summary>
     public partial class LegacyGameplayLeaderboard : CompositeDrawable, ISerialisableDrawable
     {
-        /// <summary>
-        /// Whether legacy skins' default HUD uses this leaderboard instead of the standard one.
-        /// Updated by <see cref="OsuGameBase"/> from <see cref="OsuSetting.ToriiLegacyGameplayLeaderboard"/>, applying from the next play.
-        /// </summary>
-        public static bool UseInLegacySkins { get; set; }
-
         // stable lays its HUD out in 640x480 units, which g0v0 draws at 1.6x.
         private const float scale = 1.6f;
 

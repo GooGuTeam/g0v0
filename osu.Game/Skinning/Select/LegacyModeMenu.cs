@@ -1,7 +1,6 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -31,11 +30,11 @@ namespace osu.Game.Skinning.Select
         [BackgroundDependencyLoader]
         private void load(RulesetStore rulesets, Bindable<RulesetInfo> ruleset, ISkinSource skin, SkinManager skins)
         {
-            var available = rulesets.AvailableRulesets.OrderBy(r => r.OnlineID is < 0 or > 3)
-                                    .ThenByDescending(r => r.OnlineID)
+            var available = rulesets.AvailableRulesets.Where(r => r.OnlineID is >= 0 and <= 3)
+                                    .OrderByDescending(r => r.OnlineID)
                                     .ToArray();
 
-            Size = new Vector2(menu_width, row_height * Math.Min(available.Length, 4));
+            Size = new Vector2(menu_width, row_height * available.Length);
 
             list = new FillFlowContainer<ModeRow>
             {
@@ -56,14 +55,8 @@ namespace osu.Game.Skinning.Select
                 Children = new Drawable[] { list, icons, labels },
             };
 
-            // stable's menu has its four modes and nothing clips the artwork, which can reach well past the rows. only extra rulesets need scrolling.
-            InternalChild = available.Length > 4
-                ? new BasicScrollContainer
-                {
-                    RelativeSizeAxes = Axes.Both,
-                    Child = content,
-                }
-                : content;
+            // Only the four standard modes belong here. Skin artwork may extend beyond the rows.
+            InternalChild = content;
 
             foreach (var info in available)
             {

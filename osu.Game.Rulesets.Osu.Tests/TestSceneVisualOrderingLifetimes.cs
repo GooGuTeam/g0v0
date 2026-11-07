@@ -56,6 +56,9 @@ namespace osu.Game.Rulesets.Osu.Tests
             BeatmapInfo = { Ruleset = ruleset },
             HitObjects =
             {
+                // Sub-millisecond duration must not suppress preempt visibility.
+                slider(900, new Vector2(200, 150), 0.1f, repeats: 0),
+
                 // A circle inside a long slider, hit while the slider is still running.
                 slider(1000, new Vector2(100, 192), 300, repeats: 0),
                 new HitCircle { StartTime = 1300, Position = new Vector2(250, 192) },
@@ -82,6 +85,17 @@ namespace osu.Game.Rulesets.Osu.Tests
             RepeatCount = repeats,
             Path = new SliderPath(PathType.LINEAR, new[] { Vector2.Zero, new Vector2(length, 0) }),
         };
+
+        [Test]
+        public void TestShortSliderWithHiddenSlidersSettingDisabled()
+        {
+            AddStep("disable hidden slider override", () => ((OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(Ruleset.Value.CreateInstance()).AsNonNull()).SetValue(OsuRulesetSetting.ShowHiddenSliders, false));
+            AddAssert("fixture has sub-millisecond slider", () => Player.GameplayState.Beatmap.HitObjects.OfType<Slider>().Any(s => s.Duration > 0 && s.Duration < 1));
+            AddStep("seek before short slider", () => Player.Seek(500));
+            AddWaitStep("update visibility", 5);
+            assertNoViolations();
+            AddStep("restore hidden slider override", () => ((OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(Ruleset.Value.CreateInstance()).AsNonNull()).SetValue(OsuRulesetSetting.ShowHiddenSliders, true));
+        }
 
         [Test]
         public void TestPlayThrough()

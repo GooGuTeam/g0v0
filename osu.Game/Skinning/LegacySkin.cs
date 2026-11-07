@@ -440,8 +440,7 @@ namespace osu.Game.Skinning
                                 {
                                     new LegacyDefaultComboCounter(),
                                     new SpectatorList(),
-                                    // stable's scoreboard, when enabled; the default layout is rebuilt for every play.
-                                    LegacyGameplayLeaderboard.UseInLegacySkins ? new LegacyGameplayLeaderboard() : new DrawableGameplayLeaderboard(),
+                                    new LegacyGameplayLeaderboard(),
                                     new LegacyBarHitErrorMeter(),
                                 };
                             }

@@ -61,6 +61,11 @@ namespace osu.Game.Graphics.Carousel
                 });
             }
 
+            /// <summary>
+            /// Scrolls from a drag forwarded by another input area without compensating panel layout positions.
+            /// </summary>
+            public void ScrollFromUserDrag(float delta) => OnUserScroll(Target - delta, animated: false);
+
             public override void OffsetScrollPosition(double offset)
             {
                 base.OffsetScrollPosition(offset);

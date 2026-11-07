@@ -59,7 +59,7 @@ namespace osu.Game.Screens.Select
         /// (where the hidden song-info wedges would be) into the carousel, like dragging the carousel
         /// itself. Sign matches the carousel's own drag (drag down -> see earlier items).
         /// </summary>
-        public void ScrollFromDelta(float delta) => Scroll.OffsetScrollPosition(-delta);
+        public void ScrollFromDelta(float delta) => Scroll.ScrollFromUserDrag(delta);
 
         private IBindableList<BeatmapSetInfo> detachedBeatmaps = null!;
 

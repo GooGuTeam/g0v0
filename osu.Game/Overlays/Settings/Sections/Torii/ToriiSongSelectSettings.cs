@@ -104,13 +104,6 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
                 }),
                 CreateItem(new CheckboxEntry
                 {
-                    Caption = UserInterfaceStrings.LegacyGameplayLeaderboard,
-                    Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyGameplayLeaderboard),
-                    HintText = UserInterfaceStrings.LegacyGameplayLeaderboardDescription,
-                    Keywords = new[] { @"leaderboard", @"scoreboard", @"hud", @"gameplay", @"legacy", @"stable", @"torii" },
-                }),
-                CreateItem(new CheckboxEntry
-                {
                     Caption = UserInterfaceStrings.UseInterFont,
                     Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyFont),
                     HintText = UserInterfaceStrings.UseInterFontDescription,

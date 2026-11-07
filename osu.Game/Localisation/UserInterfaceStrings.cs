@@ -250,9 +250,9 @@ namespace osu.Game.Localisation
         public static LocalisableString LegacySongSelectAspectRatioDescription => new TranslatableString(getKey(@"legacy_song_select_aspect_ratio_description"), @"Use the same aspect ratio for legacy song select, loading, gameplay and legacy results to match your skin.");
 
         /// <summary>
-        /// "Follow window (stable)"
+        /// "Follow window"
         /// </summary>
-        public static LocalisableString LegacySongSelectFollowWindow => new TranslatableString(getKey(@"legacy_song_select_follow_window"), @"Follow window (stable)");
+        public static LocalisableString LegacySongSelectFollowWindow => new TranslatableString(getKey(@"legacy_song_select_follow_window"), @"Follow window");
 
         /// <summary>
         /// "Use Inter font in legacy song select"
@@ -300,9 +300,9 @@ namespace osu.Game.Localisation
         public static LocalisableString V2ResultsStyle => new TranslatableString(getKey(@"v2_results_style"), @"g0v0 V2");
 
         /// <summary>
-        /// "Torii (Legacy)"
+        /// "Legacy"
         /// </summary>
-        public static LocalisableString LegacyResultsStyle => new TranslatableString(getKey(@"legacy_results_style"), @"Torii (Legacy)");
+        public static LocalisableString LegacyResultsStyle => new TranslatableString(getKey(@"legacy_results_style"), @"Legacy");
 
         /// <summary>
         /// "What do you want to do with this beatmap?"

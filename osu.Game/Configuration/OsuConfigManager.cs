@@ -90,7 +90,6 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ToriiLegacyFpsCounter, false);
             SetDefault(OsuSetting.ToriiLegacyGameplayScreens, false);
             SetDefault(OsuSetting.ToriiGameplayAspectRatio, LegacySongSelectAspectRatio.FollowWindow);
-            SetDefault(OsuSetting.ToriiLegacyGameplayLeaderboard, false);
             SetDefault(OsuSetting.ToriiLegacyFooterUseSkin, false);
             SetDefault(OsuSetting.ToriiLegacySongSelectAspectRatio, LegacySongSelectAspectRatio.FollowWindow);
             SetDefault(OsuSetting.ToriiLegacySongSelectFooter, false);
@@ -552,7 +551,6 @@ namespace osu.Game.Configuration
         ToriiLegacyFpsCounter,
         ToriiLegacyGameplayScreens,
         ToriiGameplayAspectRatio,
-        ToriiLegacyGameplayLeaderboard,
         ToriiLegacyFooterUseSkin,
         ToriiLegacySongSelectAspectRatio,
         ToriiLegacySongSelectFooter,
