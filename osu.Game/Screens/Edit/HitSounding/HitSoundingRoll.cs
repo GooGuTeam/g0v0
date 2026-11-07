@@ -130,7 +130,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                     if (!point.ReceivePositionalInputAt(mouse))
                         continue;
 
-                    point.CycleSet(action == GlobalAction.EditorCycleNextBeatSnapDivisor ? 1 : -1);
+                    float direction = action == GlobalAction.EditorCycleNextBeatSnapDivisor ? 1 : -1;
+
+                    if (GetContainingInputManager()!.CurrentState.Keyboard.ShiftPressed)
+                        point.CycleBank(direction);
+                    else
+                        point.CycleSet(direction);
+
                     return true;
                 }
             }

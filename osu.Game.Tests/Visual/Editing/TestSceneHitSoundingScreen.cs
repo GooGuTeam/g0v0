@@ -13,6 +13,7 @@ using osu.Game.Configuration;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Objects;
@@ -961,6 +962,66 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("hovered set restored", () => model.Nodes[0].SetIndex == 0);
             AddStep("toggle hovered point with keyboard", () => InputManager.Key(Key.W));
             AddUntilStep("only hovered point gains whistle", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_WHISTLE) && model.Nodes.Skip(1).All(n => !n.HasAddition(HitSampleInfo.HIT_WHISTLE)));
+        }
+
+        [TestCase(HitSoundingLane.SampleSet, Key.ShiftLeft)]
+        [TestCase(HitSoundingLane.Additions, Key.ShiftRight)]
+        public void TestHoveredBankCyclePreservesSetsAndUndo(HitSoundingLane lane, Key shiftKey)
+        {
+            bool additionsOnly = lane == HitSoundingLane.Additions;
+            string firstBank = additionsOnly ? HitObjectComposer.HIT_BANK_AUTO : HitSampleInfo.BANK_NORMAL;
+            string selectedBank = additionsOnly ? HitSampleInfo.BANK_SOFT : HitSampleInfo.BANK_DRUM;
+            double originalTime = 0;
+
+            AddStep("prepare independent banks and sets", () =>
+            {
+                model.SelectedNodes.Clear();
+                model.SetBank(model.Nodes, HitSampleInfo.BANK_DRUM, 0, false);
+                model.SetBank(model.Nodes, HitSampleInfo.BANK_DRUM, -1, true);
+                model.SetBank(new[] { model.Nodes[1] }, HitSampleInfo.BANK_DRUM, 2, false);
+                originalTime = EditorClock.CurrentTime;
+            });
+            AddStep("cycle hovered bank forward", () => cycle(1));
+            AddUntilStep("bank wraps without selecting", () => model.Nodes[0].GetBank(additionsOnly) == firstBank && model.SelectedNodes.Count == 0);
+            AddAssert("other bank and other nodes unchanged", () =>
+            {
+                return model.Nodes[0].GetBank(!additionsOnly) == HitSampleInfo.BANK_DRUM
+                       && model.Nodes.Skip(1).All(n => n.GetBank(additionsOnly) == HitSampleInfo.BANK_DRUM);
+            });
+            AddAssert("sets and playback position unchanged", () =>
+            {
+                return model.Nodes[0].SetIndex == 0 && model.Nodes[1].SetIndex == 2
+                       && System.Math.Abs(EditorClock.CurrentTime - originalTime) < 0.5;
+            });
+            AddStep("cycle backward", () => cycle(-1));
+            AddUntilStep("reverse wraps to drum", () => model.Nodes[0].GetBank(additionsOnly) == HitSampleInfo.BANK_DRUM);
+            AddStep("undo backward cycle", () => Editor.Undo());
+            AddUntilStep("undo restores first bank", () => model.Nodes[0].GetBank(additionsOnly) == firstBank);
+            AddStep("select first two points", () =>
+            {
+                model.SelectedNodes.Add(model.Nodes[0]);
+                model.SelectedNodes.Add(model.Nodes[1]);
+            });
+            AddStep("cycle selection two steps", () => cycle(2));
+            AddUntilStep("both selected banks follow hovered bank", () =>
+            {
+                return model.Nodes.Take(2).All(n => n.GetBank(additionsOnly) == selectedBank)
+                       && model.SelectedNodes.Count == 2;
+            });
+            AddAssert("heterogeneous sets preserved", () => model.Nodes[0].SetIndex == 0 && model.Nodes[1].SetIndex == 2);
+            AddStep("undo selection cycle", () => Editor.Undo());
+            AddUntilStep("single undo restores independent banks", () => model.Nodes[0].GetBank(additionsOnly) == firstBank
+                                                                         && model.Nodes[1].GetBank(additionsOnly) == HitSampleInfo.BANK_DRUM);
+
+            void cycle(int notches)
+            {
+                InputManager.MoveMouseTo(cell(lane));
+                InputManager.PressKey(Key.ControlLeft);
+                InputManager.PressKey(shiftKey);
+                InputManager.ScrollVerticalBy(notches);
+                InputManager.ReleaseKey(shiftKey);
+                InputManager.ReleaseKey(Key.ControlLeft);
+            }
         }
 
         private HitSoundingSamplePoint cell(HitSoundingLane lane)

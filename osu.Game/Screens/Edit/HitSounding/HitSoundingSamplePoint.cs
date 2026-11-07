@@ -38,6 +38,8 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         public readonly HitSoundingLane Lane;
 
+        private static readonly string[] addition_banks = [HitObjectComposer.HIT_BANK_AUTO, HitSampleInfo.BANK_NORMAL, HitSampleInfo.BANK_SOFT, HitSampleInfo.BANK_DRUM];
+
         private readonly HitSoundingEditModel model;
         private Container? badge;
         private readonly Container? glow;
@@ -411,11 +413,29 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             if (!e.ControlPressed || e.AltPressed || Lane is not (HitSoundingLane.SampleSet or HitSoundingLane.Additions))
                 return false;
-            if (!IsEnabled || e.ScrollDelta.Y == 0)
+
+            // Non-precise Shift+wheel is remapped to the horizontal axis by the input manager.
+            float direction = e.ShiftPressed && e.ScrollDelta.Y == 0 ? e.ScrollDelta.X : e.ScrollDelta.Y;
+
+            if (!IsEnabled || direction == 0)
                 return true;
 
-            CycleSet(e.ScrollDelta.Y);
+            if (e.ShiftPressed)
+                CycleBank(direction);
+            else
+                CycleSet(direction);
+
             return true;
+        }
+
+        internal void CycleBank(float direction)
+        {
+            bool additionsOnly = Lane == HitSoundingLane.Additions;
+            string[] banks = additionsOnly ? addition_banks : HitSampleInfo.ALL_BANKS;
+            int index = Array.IndexOf(banks, Node.GetBank(additionsOnly));
+            int steps = (int)Math.CopySign(Math.Max(1, Math.Round(Math.Abs(direction))), direction);
+            int next = ((index + steps) % banks.Length + banks.Length) % banks.Length;
+            model.SetBank(model.SelectedNodes.Contains(Node) ? model.SelectedNodes : new[] { Node }, banks[next], -1, additionsOnly);
         }
 
         internal void CycleSet(float direction)

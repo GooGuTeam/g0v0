@@ -125,6 +125,11 @@ namespace osu.Game.Localisation
         public static LocalisableString TooltipCycleSampleSets => new TranslatableString(getKey(@"tooltip_cycle_sample_sets"), @"Cycle sample sets on hover; no selection needed");
 
         /// <summary>
+        /// "Cycle sample banks on hover; keep the current set"
+        /// </summary>
+        public static LocalisableString TooltipCycleSampleBanks => new TranslatableString(getKey(@"tooltip_cycle_sample_banks"), @"Cycle sample banks on hover; keep the current set");
+
+        /// <summary>
         /// "Click to toggle this addition"
         /// </summary>
         public static LocalisableString TooltipToggleAddition => new TranslatableString(getKey(@"tooltip_toggle_addition"), @"Click to toggle this addition");
