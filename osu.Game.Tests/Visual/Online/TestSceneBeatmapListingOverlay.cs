@@ -6,14 +6,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Sprites;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps.Drawables.Cards;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -37,6 +41,35 @@ namespace osu.Game.Tests.Visual.Online
 
         private bool returnCursorOnResponse;
 
+        /// <summary>
+        /// The second line of the displayed error placeholder, i.e. the description below the title.
+        /// </summary>
+        private string errorPlaceholderDescription
+        {
+            get
+            {
+                var flow = overlay.ChildrenOfType<OnlineErrorPlaceholder>()
+                                  .SingleOrDefault()?
+                                  .ChildrenOfType<OsuTextFlowContainer>()
+                                  .SingleOrDefault();
+
+                if (flow == null)
+                    return string.Empty;
+
+                return string.Concat(flow.ChildrenOfType<SpriteText>().Select(sprite => sprite.Text));
+            }
+        }
+
+        /// <summary>
+        /// When set, the dummy API reports failed search requests instead of returning <see cref="setsForResponse"/>.
+        /// </summary>
+        private bool failSearchRequests;
+
+        /// <summary>
+        /// When set, failed search requests report this as the message returned by the server.
+        /// </summary>
+        private string serverErrorMessage;
+
         [BackgroundDependencyLoader]
         private void load()
         {
@@ -50,6 +83,8 @@ namespace osu.Game.Tests.Visual.Online
             {
                 Child = overlay = new BeatmapListingOverlay { State = { Value = Visibility.Visible } };
                 setsForResponse.Clear();
+                failSearchRequests = false;
+                serverErrorMessage = null;
             });
 
             AddStep("initialize dummy", () =>
@@ -59,6 +94,15 @@ namespace osu.Game.Tests.Visual.Online
                 api.HandleRequest = req =>
                 {
                     if (!(req is SearchBeatmapSetsRequest searchBeatmapSetsRequest)) return false;
+
+                    if (failSearchRequests)
+                    {
+                        searchBeatmapSetsRequest.TriggerFailure(serverErrorMessage == null
+                            ? new WebException("The remote server could not be reached.")
+                            : new APIException(serverErrorMessage, new WebException(), HttpStatusCode.BadRequest));
+
+                        return true;
+                    }
 
                     searchBeatmapSetsRequest.TriggerSuccess(new SearchBeatmapSetsResponse
                     {
@@ -181,6 +225,46 @@ namespace osu.Game.Tests.Visual.Online
                     var notFoundDrawable = overlay.ChildrenOfType<BeatmapListingOverlay.NotFoundDrawable>().SingleOrDefault();
                     return notFoundDrawable != null && notFoundDrawable.IsPresent && notFoundDrawable.Parent!.DrawHeight > 0;
                 });
+        }
+
+        [Test]
+        public void TestSearchFailure()
+        {
+            AddStep("make search requests fail", () => failSearchRequests = true);
+            AddStep("search", () => searchControl.Query.Value = "failing search");
+
+            AddUntilStep("error placeholder shown", () => overlay.ChildrenOfType<OnlineErrorPlaceholder>().SingleOrDefault()?.IsPresent == true);
+            AddAssert("loading indicator hidden", () => !overlay.ChildrenOfType<LoadingLayer>().Single().IsPresent);
+
+            AddStep("make search requests succeed", () =>
+            {
+                failSearchRequests = false;
+                setSearchResponse(getManyBeatmaps(3), false);
+            });
+
+            AddStep("press retry", () => overlay.ChildrenOfType<OnlineErrorPlaceholder>()
+                                             .Single()
+                                             .ChildrenOfType<RoundedButton>()
+                                             .Single(button => button.Text.ToString() == OnlineErrorStrings.Retry.ToString())
+                                             .TriggerClick());
+
+            AddUntilStep("results shown", () => this.ChildrenOfType<BeatmapCard>().Count(card => card.IsLoaded) == 3);
+            AddUntilStep("error placeholder hidden", () => !overlay.ChildrenOfType<OnlineErrorPlaceholder>().Any(d => d.IsPresent));
+        }
+
+        [Test]
+        public void TestSearchFailureShowsServerMessage()
+        {
+            AddStep("make search requests fail with a server message", () =>
+            {
+                serverErrorMessage = "You have reached the maximum attempts for this room";
+                failSearchRequests = true;
+            });
+
+            AddStep("search", () => searchControl.Query.Value = "failing search");
+
+            AddUntilStep("error placeholder shown", () => overlay.ChildrenOfType<OnlineErrorPlaceholder>().SingleOrDefault()?.IsPresent == true);
+            AddUntilStep("server message shown", () => errorPlaceholderDescription == "You have reached the maximum attempts for this room");
         }
 
         /// <summary>

@@ -1,11 +1,13 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
+using osu.Framework.Logging;
 using osu.Game.Overlays.Rankings;
 using osu.Game.Users;
 using osu.Game.Rulesets;
@@ -118,7 +120,15 @@ namespace osu.Game.Overlays
             }
 
             request.Success += () => Schedule(() => LoadDisplay(createTableFromResponse(request)));
-            request.Failure += _ => Schedule(() => LoadDisplay(Empty()));
+            request.Failure += e =>
+            {
+                if (e is OperationCanceledException)
+                    return;
+
+                Logger.Log($@"Failed to fetch rankings for {Header.Current.Value}: {e}", level: LogLevel.Important);
+
+                Schedule(() => LoadDisplay(new OnlineErrorPlaceholder(e, triggerTabChanged)));
+            };
 
             api.Queue(request);
         }

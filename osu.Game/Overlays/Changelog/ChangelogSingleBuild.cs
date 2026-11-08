@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Threading;
@@ -59,7 +59,16 @@ namespace osu.Game.Overlays.Changelog
                 Thread.Sleep(10);
             }
 
-            if (onlineBuildDetails == null) return;
+            if (onlineBuildDetails == null)
+            {
+                // the build details are the whole content of this view, so there is nothing left to show without them.
+                Children = new Drawable[]
+                {
+                    new OnlineErrorPlaceholder(),
+                };
+
+                return;
+            }
 
             CommentsContainer comments;
 

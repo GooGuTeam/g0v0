@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -8,6 +8,7 @@ using System.Threading;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Logging;
 using osu.Game.Online.API.Requests;
 using osu.Game.Overlays.News;
 using osu.Game.Overlays.News.Displays;
@@ -148,8 +149,8 @@ namespace osu.Game.Overlays
 
             beginLoading(true);
 
-            request = new GetNewsRequest(displayedYear);
-            request.Success += response => Schedule(() =>
+            var listingRequest = request = new GetNewsRequest(displayedYear);
+            listingRequest.Success += response => Schedule(() =>
             {
                 lastCursor = response.Cursor;
                 sidebar.Metadata.Value = response.SidebarMetadata;
@@ -158,23 +159,41 @@ namespace osu.Game.Overlays
                 listing.AddPosts(response.NewsPosts, response.Cursor != null);
                 LoadDisplay(listing);
             });
+            listingRequest.Failure += e =>
+            {
+                if (e is OperationCanceledException || request != listingRequest)
+                    return;
 
-            API.PerformAsync(request);
+                Logger.Log($@"Failed to fetch the news listing: {e}", level: LogLevel.Important);
+
+                // the listing is the whole content of this view, so an error state is all that can be shown without it.
+                Schedule(() => LoadDisplay(new OnlineErrorPlaceholder(e, () => loadListing(displayedYear))));
+            };
+
+            API.PerformAsync(listingRequest);
         }
 
         private void getMorePosts()
         {
             beginLoading(false);
 
-            request = new GetNewsRequest(displayedYear, lastCursor);
-            request.Success += response => Schedule(() =>
+            var postsRequest = request = new GetNewsRequest(displayedYear, lastCursor);
+            postsRequest.Success += response => Schedule(() =>
             {
                 lastCursor = response.Cursor;
                 if (content.Child is ArticleListing listing)
                     listing.AddPosts(response.NewsPosts, response.Cursor != null);
             });
+            postsRequest.Failure += e =>
+            {
+                if (e is OperationCanceledException || request != postsRequest)
+                    return;
 
-            API.PerformAsync(request);
+                // the already displayed posts remain usable, so only the failure to extend them is recorded.
+                Logger.Log($@"Failed to fetch more news posts: {e}", level: LogLevel.Important);
+            };
+
+            API.PerformAsync(postsRequest);
         }
 
         private void loadArticle(string article)

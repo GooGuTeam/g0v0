@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -123,7 +123,7 @@ namespace osu.Game.Overlays
             request.Failure += ex =>
             {
                 if (ex is not OperationCanceledException)
-                    Schedule(onFail, request.Path);
+                    Schedule(() => onFail(ex, request.Path));
             };
 
             api.PerformAsync(request);
@@ -174,13 +174,19 @@ namespace osu.Game.Overlays
             }
         }
 
-        private void onFail(string originalPath)
+        private void onFail(Exception exception, string originalPath)
         {
             wikiData.Value = null;
             path.Value = "error";
 
-            LoadDisplay(articlePage = new WikiArticlePage($@"{api.Endpoints.WebsiteUrl}/wiki/",
-                $"Something went wrong when trying to fetch page \"{originalPath}\".\n\n[Return to the main page]({INDEX_PATH})."));
+            articlePage = null;
+
+            // when the page is missing, show a button to navigate back.
+            LoadDisplay(new OnlineErrorPlaceholder(
+                exception,
+                OnlineErrorStrings.PageUnavailableDescription,
+                () => loadPage(originalPath, Header.CurrentLanguage.Value),
+                new OnlineErrorAction(OnlineErrorStrings.BackToHome, () => ShowPage())));
         }
 
         private void showParentPage()

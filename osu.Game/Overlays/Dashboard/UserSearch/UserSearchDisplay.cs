@@ -1,11 +1,13 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Logging;
 using osu.Framework.Threading;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.API;
@@ -163,6 +165,17 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
             loading.Value = true;
             var getUsersRequest = new SearchUsersRequest(searchTextBox.Current.Value);
             getUsersRequest.Success += showResults;
+            getUsersRequest.Failure += e =>
+            {
+                if (e is OperationCanceledException)
+                    return;
+
+                Logger.Log($@"Failed to search for users: {e}", level: LogLevel.Important);
+
+                loading.Value = false;
+                showError(new OnlineErrorPlaceholder(e, performSearch));
+            };
+
             api.Queue(getUsersRequest);
         }
 
@@ -173,6 +186,17 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
             listContainer.Add(friendsList);
 
             friendsList.FadeInFromZero(500, Easing.OutQuint);
+        }
+
+        /// <summary>
+        /// Replaces the current results with the given error state.
+        /// </summary>
+        private void showError(Drawable content)
+        {
+            clearPreviousResults();
+
+            listContainer.Add(content);
+            content.FadeInFromZero(300, Easing.OutQuint);
         }
 
         private void clearPreviousResults()

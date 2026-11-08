@@ -6,9 +6,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using Humanizer;
 using NUnit.Framework;
 using osu.Framework.Testing;
+using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -27,6 +30,11 @@ namespace osu.Game.Tests.Visual.Online
 
         private APIChangelogBuild requestedBuild;
         private TestChangelogOverlay changelog;
+
+        /// <summary>
+        /// When set, the dummy API reports failed changelog listing requests.
+        /// </summary>
+        private bool failListingRequest;
 
         public TestSceneChangelogOverlay()
         {
@@ -54,12 +62,19 @@ namespace osu.Game.Tests.Visual.Online
         public void SetUp() => Schedule(() =>
         {
             requestedBuild = null;
+            failListingRequest = false;
 
             dummyAPI.HandleRequest = request =>
             {
                 switch (request)
                 {
                     case GetChangelogRequest changelogRequest:
+                        if (failListingRequest)
+                        {
+                            changelogRequest.TriggerFailure(new WebException("The remote server could not be reached."));
+                            return true;
+                        }
+
                         var changelogResponse = new APIChangelogIndex
                         {
                             Streams = streams.Values.ToList(),
@@ -233,6 +248,25 @@ Paragraph above only contains html video and should not be rendered."
                     }
                 }
             });
+        }
+
+        [Test]
+        public void TestListingFailure()
+        {
+            AddStep("make listing request fail", () => failListingRequest = true);
+            AddStep("show listing", () => changelog.ShowListing());
+
+            AddUntilStep("error placeholder shown", () => changelog.ChildrenOfType<OnlineErrorPlaceholder>().SingleOrDefault()?.IsPresent == true);
+
+            AddStep("make listing request succeed", () => failListingRequest = false);
+            AddStep("press retry", () => changelog.ChildrenOfType<OnlineErrorPlaceholder>()
+                                                 .Single()
+                                                 .ChildrenOfType<RoundedButton>()
+                                                 .Single(button => button.Text.ToString() == OnlineErrorStrings.Retry.ToString())
+                                                 .TriggerClick());
+
+            AddUntilStep("listing loaded", () => changelog.Streams?.Count > 0);
+            AddUntilStep("error placeholder hidden", () => !changelog.ChildrenOfType<OnlineErrorPlaceholder>().Any(d => d.IsPresent));
         }
 
         private void showBuild(Func<APIChangelogBuild> build)
