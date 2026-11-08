@@ -15,11 +15,11 @@
     <NoWarn>$(NoWarn);XA1040</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="ppy.osu.Framework.Android" Version="2026.1019.0" />
+    <PackageReference Include="g0v0.Framework.Android" Version="2026.1029.2" />
   </ItemGroup>
   <ItemGroup>
     <!-- ppy.osu.Framework.NativeLibs and ppy.SDL2-CS only carry desktop (linux/win/osx) native
-         libraries; the Android ones are shipped as an aar by ppy.osu.Framework.Android, which is
+         libraries; the Android ones are shipped as an aar by g0v0.Framework.Android, which is
          referenced above.
 
          ppy.osu.Framework.NativeLibs contains an empty "runtimes/android/native/_._" placeholder so

@@ -7,6 +7,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Localisation;
+using osu.Game.Online;
 
 namespace osu.Game.Overlays.Notifications
 {
@@ -58,11 +59,9 @@ namespace osu.Game.Overlays.Notifications
                 if (pathIndex > 0)
                     cleanUrl = cleanUrl[..pathIndex];
 
-                return cleanUrl.ToLowerInvariant() switch
-                {
-                    @"lazer-api.g0v0.top" => OnlineSettingsStrings.OfficialServer,
-                    _ => cleanUrl
-                };
+                cleanUrl = cleanUrl.ToLowerInvariant();
+
+                return OfficialServer.IsOfficialHost(cleanUrl) ? OnlineSettingsStrings.OfficialServer : cleanUrl;
             }
             catch
             {
