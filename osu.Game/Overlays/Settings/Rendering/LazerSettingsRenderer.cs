@@ -84,14 +84,22 @@ namespace osu.Game.Overlays.Settings.Rendering
             where T : struct, Enum
             => CreateDropdown(entry);
 
-        public Drawable CreateTextBox(TextBoxEntry entry) => createItem(entry, new FormTextBox
+        public Drawable CreateTextBox(TextBoxEntry entry)
         {
-            Caption = entry.Caption,
-            HintText = entry.HintText,
-            PlaceholderText = entry.PlaceholderText,
-            LengthLimit = entry.LengthLimit,
-            Current = entry.Current,
-        });
+            var textBox = new FormTextBox
+            {
+                Caption = entry.Caption,
+                HintText = entry.HintText,
+                PlaceholderText = entry.PlaceholderText,
+                LengthLimit = entry.LengthLimit,
+                Current = entry.Current,
+            };
+            if (entry.Commit != null)
+            {
+                textBox.OnCommit += (_, _) => entry.Commit();
+            }
+            return createItem(entry, textBox);
+        }
 
         public bool UseStableLayouts => false;
 

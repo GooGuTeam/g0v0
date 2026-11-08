@@ -30,6 +30,8 @@ namespace osu.Game.Rulesets.Osu.Configuration
             SetDefault(OsuRulesetSetting.LegacySliderTickVisibility, false);
             SetDefault(OsuRulesetSetting.HiddenHitFeedback, false);
             SetDefault(OsuRulesetSetting.SliderViewportSize, 0, 0, 65536);
+            SetDefault(OsuRulesetSetting.SliderViewportMode, SliderViewportMode.Default);
+            SetDefault(OsuRulesetSetting.SliderViewportCustomSize, "1920x1080");
 
             SetDefault(OsuRulesetSetting.ReplayClickMarkersEnabled, false);
             SetDefault(OsuRulesetSetting.ReplayFrameMarkersEnabled, false);
@@ -61,5 +63,7 @@ namespace osu.Game.Rulesets.Osu.Configuration
         LegacySliderTickFading,
         LegacySliderTickVisibility,
         HiddenHitFeedback,
+        SliderViewportMode,
+        SliderViewportCustomSize,
     }
 }

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -35,6 +35,8 @@ namespace osu.Game.Beatmaps
     /// </summary>
     public partial class BeatmapDifficultyCache : MemoryCachingComponent<BeatmapDifficultyCache.DifficultyCacheLookup, StarDifficulty?>
     {
+        private const long maximum_difficulty_file_size = 5 * 1024 * 1024;
+
         // Too many simultaneous updates can lead to stutters. One thread seems to work fine for song select display purposes.
         private readonly ThreadedTaskScheduler updateScheduler = new ThreadedTaskScheduler(1, nameof(BeatmapDifficultyCache));
 
@@ -306,7 +308,17 @@ namespace osu.Game.Beatmaps
                 var ruleset = rulesetInfo.CreateInstance();
                 Debug.Assert(ruleset != null);
 
-                PlayableCachedWorkingBeatmap workingBeatmap = new PlayableCachedWorkingBeatmap(beatmapManager.GetWorkingBeatmap(key.BeatmapInfo));
+                var sourceBeatmap = beatmapManager.GetWorkingBeatmap(key.BeatmapInfo);
+
+                // Check the stored .osu file before decoding or converting it, as large maps can stall difficulty calculation.
+                if (beatmapInfo.Path != null)
+                {
+                    using var stream = sourceBeatmap.GetStream(beatmapInfo.BeatmapSet!.GetPathForFile(beatmapInfo.Path));
+                    if (stream != null && stream.Length > maximum_difficulty_file_size)
+                        return new StarDifficulty(0, 0);
+                }
+
+                PlayableCachedWorkingBeatmap workingBeatmap = new PlayableCachedWorkingBeatmap(sourceBeatmap);
                 IBeatmap playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, key.OrderedMods, cancellationToken);
 
                 var difficulty = ModSpecificCalculation.CreateDifficultyCalculator(ruleset, workingBeatmap, key.UseModSpecific).Calculate(key.OrderedMods, cancellationToken);

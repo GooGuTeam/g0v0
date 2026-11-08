@@ -7,6 +7,7 @@ using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Osu.Configuration;
 using osu.Game.Rulesets.UI;
+using osu.Game.Rulesets.Osu.Skinning.Default;
 using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Rulesets.Osu.UI
@@ -22,6 +23,26 @@ namespace osu.Game.Rulesets.Osu.UI
         private void load()
         {
             var config = (OsuRulesetConfigManager)Config;
+
+            var viewportMode = config.GetBindable<SliderViewportMode>(OsuRulesetSetting.SliderViewportMode);
+            var customSize = config.GetBindable<string>(OsuRulesetSetting.SliderViewportCustomSize);
+            var customEntry = new TextBoxEntry
+            {
+                Caption = RulesetSettingsStrings.SliderViewportCustomSize,
+                HintText = RulesetSettingsStrings.SliderViewportCustomSizeDescription,
+                PlaceholderText = "1920x1080",
+                Current = customSize,
+                LengthLimit = 32,
+                Commit = () =>
+                {
+                    if (LegacySliderViewport.TryParseSize(customSize.Value, out var size))
+                        customSize.Value = $"{(int)size.X}x{(int)size.Y}";
+                },
+            };
+            viewportMode.BindValueChanged(v => customEntry.CanBeShown.Value = v.NewValue == SliderViewportMode.Custom, true);
+            customSize.BindValueChanged(v => customEntry.Note.Value = LegacySliderViewport.TryParseSize(v.NewValue, out _)
+                ? null
+                : new SettingsNote.Data(RulesetSettingsStrings.SliderViewportCustomSizeDescription, SettingsNote.Type.Warning), true);
 
             Children = new Drawable[]
             {
@@ -87,13 +108,19 @@ namespace osu.Game.Rulesets.Osu.UI
                     HintText = RulesetSettingsStrings.HiddenHitFeedbackDescription,
                     Current = config.GetBindable<bool>(OsuRulesetSetting.HiddenHitFeedback),
                 }),
-                CreateItem(new SliderEntry<int>
+                CreateItem(new DropdownEntry<SliderViewportMode>
                 {
                     Caption = RulesetSettingsStrings.SliderViewportSize,
                     HintText = RulesetSettingsStrings.SliderViewportSizeDescription,
-                    Current = config.GetBindable<int>(OsuRulesetSetting.SliderViewportSize),
-                    KeyboardStep = 1024,
+                    Current = viewportMode,
+                    Items = new[] { SliderViewportMode.Default, SliderViewportMode.Custom },
+                    ItemLabel = mode => mode switch
+                    {
+                        SliderViewportMode.Custom => RulesetSettingsStrings.SliderViewportCustom,
+                        _ => RulesetSettingsStrings.SliderViewportDefault,
+                    },
                 }),
+                CreateItem(customEntry),
                 CreateItem(new CheckboxEntry
                 {
                     Caption = RulesetSettingsStrings.ShowSliderHeadJudgements,

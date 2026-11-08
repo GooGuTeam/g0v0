@@ -364,9 +364,18 @@ namespace osu.Game.Localisation
         public static LocalisableString SliderViewportSize => new TranslatableString(getKey(@"slider_viewport_size"), @"Slider viewport size");
 
         /// <summary>
-        /// "Simulated viewport limit in pixels for large slider bodies. 0 uses the active renderer's automatic limit."
+        /// "Viewport limit for large slider bodies. Default uses 32768x32768. Custom uses the specified width and height."
         /// </summary>
-        public static LocalisableString SliderViewportSizeDescription => new TranslatableString(getKey(@"slider_viewport_size_description"), @"Simulated viewport limit in pixels for large slider bodies. 0 uses the active renderer's automatic limit.");
+        public static LocalisableString SliderViewportSizeDescription => new TranslatableString(getKey(@"slider_viewport_size_description"), @"Viewport limit for large slider bodies. Default uses 32768x32768. Custom uses the specified width and height.");
+
+        public static LocalisableString SliderViewportDefault => new TranslatableString(getKey(@"slider_viewport_default"), @"Default");
+
+        public static LocalisableString SliderViewportCustom => new TranslatableString(getKey(@"slider_viewport_custom"), @"Custom");
+
+
+        public static LocalisableString SliderViewportCustomSize => new TranslatableString(getKey(@"slider_viewport_custom_size"), @"Custom viewport size");
+
+        public static LocalisableString SliderViewportCustomSizeDescription => new TranslatableString(getKey(@"slider_viewport_custom_size_description"), @"Enter a number for a square viewport, or width x height (1–65536 pixels per dimension). Input is normalised on commit. Invalid input keeps the last valid size.");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

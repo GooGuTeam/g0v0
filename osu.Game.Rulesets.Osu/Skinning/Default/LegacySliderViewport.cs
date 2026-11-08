@@ -2,6 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Globalization;
+using osu.Game.Rulesets.Osu.Configuration;
 using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Skinning.Default
@@ -12,6 +14,32 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
     /// </summary>
     internal readonly record struct LegacySliderViewport(Vector2 Origin, Vector2 Size)
     {
+        public static bool TryParseSize(string text, out Vector2 size)
+        {
+            size = default;
+            string[] parts = text.Trim().ToLowerInvariant().Split('x', '×', '*');
+            if (parts.Length == 1)
+                parts = new[] { parts[0], parts[0] };
+            if (parts.Length != 2
+                || !int.TryParse(parts[0].Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int width)
+                || !int.TryParse(parts[1].Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int height)
+                || width < 1 || height < 1 || width > 65536 || height > 65536)
+                return false;
+
+            size = new Vector2(width, height);
+            return true;
+        }
+
+        public static Vector2 GetLimit(SliderViewportMode mode, Vector2 customSize)
+        {
+            Vector2 requestedSize = mode switch
+            {
+                SliderViewportMode.Custom => customSize,
+                _ => new Vector2(32768),
+            };
+            return Vector2.ComponentMax(requestedSize, Vector2.One);
+        }
+
         public static LegacySliderViewport FromBounds(Vector2 minimum, Vector2 maximum, float radius)
         {
             // Keep the double intermediates and truncation used by stable. In particular, clipping

@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
-using osu.Framework.Graphics.Rendering;
 using osu.Framework.Graphics.Lines;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Configuration;
@@ -34,10 +33,9 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
         private OsuRulesetConfigManager? config { get; set; }
 
         private readonly Bindable<bool> configSnakingOut = new Bindable<bool>();
-        private readonly Bindable<int> viewportSize = new Bindable<int>();
-
-        [Resolved]
-        private IRenderer renderer { get; set; } = null!;
+        private readonly Bindable<SliderViewportMode> viewportMode = new Bindable<SliderViewportMode>();
+        private readonly Bindable<string> customViewportSize = new Bindable<string>("1920x1080");
+        private Vector2 customViewport = new Vector2(1920, 1080);
 
         [BackgroundDependencyLoader]
         private void load(ISkinSource skin, DrawableHitObject drawableObject)
@@ -55,7 +53,13 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
 
             config?.BindWith(OsuRulesetSetting.SnakingInSliders, SnakingIn);
             config?.BindWith(OsuRulesetSetting.SnakingOutSliders, configSnakingOut);
-            config?.BindWith(OsuRulesetSetting.SliderViewportSize, viewportSize);
+            config?.BindWith(OsuRulesetSetting.SliderViewportMode, viewportMode);
+            config?.BindWith(OsuRulesetSetting.SliderViewportCustomSize, customViewportSize);
+            customViewportSize.BindValueChanged(v =>
+            {
+                if (LegacySliderViewport.TryParseSize(v.NewValue, out var size))
+                    customViewport = size;
+            }, true);
 
             SnakingOut.BindTo(configSnakingOut);
 
@@ -68,7 +72,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
         {
             base.UpdateAfterChildren();
 
-            float limit = viewportSize.Value > 0 ? viewportSize.Value : renderer.MaxTextureSize;
+            Vector2 limit = LegacySliderViewport.GetLimit(viewportMode.Value, customViewport);
             var start = ToScreenSpace(Vector2.Zero);
             if (Path.DrawRange is not { } range || !float.IsFinite(start.X) || !float.IsFinite(start.Y))
             {
@@ -83,7 +87,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
 
             // Ordinary sliders cannot exceed the viewport at any snaking progress. Avoid building
             // a range index for them at all; retain extra padding for stable's 1.15-radius bounds.
-            if (fullWidth + radius * 2.3 < limit && fullHeight + radius * 2.3 < limit)
+            if (fullWidth + radius * 2.3 < limit.X && fullHeight + radius * 2.3 < limit.Y)
             {
                 Path.Scale = Vector2.One;
                 Path.Position = Vector2.Zero;
@@ -107,7 +111,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
             Vector2 minimum = Vector2.ComponentMin(Vector2.ComponentMin(firstCorner, secondCorner), Vector2.ComponentMin(thirdCorner, fourthCorner));
             Vector2 maximum = Vector2.ComponentMax(Vector2.ComponentMax(firstCorner, secondCorner), Vector2.ComponentMax(thirdCorner, fourthCorner));
             var viewport = LegacySliderViewport.FromBounds(minimum, maximum, radius);
-            var scale = viewport.ScaleFor(new Vector2(limit));
+            var scale = viewport.ScaleFor(limit);
 
             if (!float.IsFinite(scale.X) || !float.IsFinite(scale.Y))
                 scale = Vector2.One;
