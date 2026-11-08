@@ -1,6 +1,7 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Graphics;
 using osu.Framework.Localisation;
 using osu.Game.Overlays.Settings.Rendering;
@@ -21,6 +22,11 @@ namespace osu.Game.Overlays.Settings.Entries
         /// The maximum number of characters, if any.
         /// </summary>
         public int? LengthLimit { get; init; }
+
+        /// <summary>
+        /// Invoked when the user commits the text or leaves the text box.
+        /// </summary>
+        public Action? Commit { get; init; }
 
         public override Drawable CreateDrawable(ISettingsRenderer renderer) => renderer.CreateTextBox(this);
     }

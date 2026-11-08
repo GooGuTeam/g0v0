@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using NUnit.Framework;
+using osu.Game.Rulesets.Osu.Configuration;
 using osu.Game.Rulesets.Osu.Skinning.Default;
 using osuTK;
 
@@ -10,6 +11,43 @@ namespace osu.Game.Rulesets.Osu.Tests
     [TestFixture]
     public class LegacySliderViewportTest
     {
+        [Test]
+        public void TestDefaultUsesFixedViewportLimit()
+        {
+            var limit = LegacySliderViewport.GetLimit(SliderViewportMode.Default, new Vector2(1920, 1080));
+            Assert.That(limit, Is.EqualTo(new Vector2(32768)));
+            var ordinarySlider = new LegacySliderViewport(Vector2.Zero, new Vector2(2000, 1200));
+            Assert.That(ordinarySlider.ScaleFor(limit), Is.EqualTo(Vector2.One));
+        }
+
+        [Test]
+        public void TestCustomDimensionsAreIndependent()
+        {
+            Assert.That(LegacySliderViewport.GetLimit(SliderViewportMode.Custom, new Vector2(2560, 1440)),
+                Is.EqualTo(new Vector2(2560, 1440)));
+        }
+
+        [TestCase("1920x1080", true)]
+        [TestCase("2560*1440", true)]
+        [TestCase("1280×720", true)]
+        [TestCase("1920 X 1080", true)]
+        [TestCase("0x1080", false)]
+        [TestCase("65537x1080", false)]
+        [TestCase("1920", true)]
+        [TestCase("1920x", false)]
+        [TestCase("-1x1080", false)]
+        public void TestCustomSizeValidation(string text, bool valid)
+        {
+            Assert.That(LegacySliderViewport.TryParseSize(text, out _), Is.EqualTo(valid));
+        }
+
+        [Test]
+        public void TestSingleNumberIsSquare()
+        {
+            Assert.That(LegacySliderViewport.TryParseSize("2048", out var size), Is.True);
+            Assert.That(size, Is.EqualTo(new Vector2(2048)));
+        }
+
         [Test]
         public void TestPaddingAndTruncation()
         {

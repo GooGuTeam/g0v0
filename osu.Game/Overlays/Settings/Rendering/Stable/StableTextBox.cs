@@ -50,7 +50,14 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
                     PlaceholderText = entry.PlaceholderText,
                     LengthLimit = entry.LengthLimit,
                     Current = entry.Current,
-                },
+                }.With(textBox =>
+                {
+                    if (entry.Commit != null)
+                    {
+                        textBox.CommitOnFocusLost = true;
+                        textBox.OnCommit += (_, _) => entry.Commit();
+                    }
+                }),
             },
         };
 

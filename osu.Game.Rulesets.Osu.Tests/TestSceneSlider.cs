@@ -91,7 +91,8 @@ namespace osu.Game.Rulesets.Osu.Tests
                 snakingIn.Value = snake;
                 snakingOut.Value = false;
                 var config = (OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(Ruleset.Value.CreateInstance()).AsNonNull();
-                config.SetValue(OsuRulesetSetting.SliderViewportSize, viewportLimit);
+                config.SetValue(OsuRulesetSetting.SliderViewportMode, viewportLimit > 0 ? SliderViewportMode.Custom : SliderViewportMode.Default);
+                config.SetValue(OsuRulesetSetting.SliderViewportCustomSize, $"{viewportLimit}x{viewportLimit}");
                 var points = new List<Vector2> { Vector2.Zero };
                 for (int i = 0; i < folds; i++)
                 {
@@ -112,7 +113,8 @@ namespace osu.Game.Rulesets.Osu.Tests
             AddStep("reset viewport limit", () =>
             {
                 var config = (OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(Ruleset.Value.CreateInstance()).AsNonNull();
-                config.SetValue(OsuRulesetSetting.SliderViewportSize, 0);
+                config.SetValue(OsuRulesetSetting.SliderViewportMode, SliderViewportMode.Default);
+                config.SetValue(OsuRulesetSetting.SliderViewportCustomSize, "1920x1080");
             });
         }
 
