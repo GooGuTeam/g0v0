@@ -83,6 +83,9 @@ namespace osu.Game.Rulesets.Objects
         /// </summary>
         public SliderPath()
         {
+            // A path can contain hundreds of thousands of points. Share one handler rather than
+            // allocating a delegate for every point added to the collection.
+            Action invalidateHandler = invalidate;
             ExpectedDistance.ValueChanged += _ => invalidate();
 
             ControlPoints.CollectionChanged += (_, args) =>
@@ -93,7 +96,7 @@ namespace osu.Game.Rulesets.Objects
                         Debug.Assert(args.NewItems != null);
 
                         foreach (object? newItem in args.NewItems)
-                            ((PathControlPoint)newItem).Changed += invalidate;
+                            ((PathControlPoint)newItem).Changed += invalidateHandler;
 
                         break;
 
@@ -102,7 +105,7 @@ namespace osu.Game.Rulesets.Objects
                         Debug.Assert(args.OldItems != null);
 
                         foreach (object? oldItem in args.OldItems)
-                            ((PathControlPoint)oldItem).Changed -= invalidate;
+                            ((PathControlPoint)oldItem).Changed -= invalidateHandler;
                         break;
                 }
 
