@@ -175,8 +175,6 @@ namespace osu.Game
 
         protected ScalingContainer ScreenContainer { get; private set; }
 
-        public void SetLegacyScreenAspectLock(float? aspectRatio) => ScreenContainer.SetForcedAspectRatio(aspectRatio);
-
         protected Container ScreenOffsetContainer { get; private set; }
 
         private Container overlayOffsetContainer;
@@ -239,6 +237,22 @@ namespace osu.Game
 
         private OsuLogo osuLogo;
 
+        private Container logoContainer;
+        private ScreenFrontLayer screenFrontLayer;
+        private bool logoInFront;
+
+        /// <summary>
+        /// The footer holds the logo in front of everything while it tracks it. Torii: a screen may keep it just below the
+        /// <see cref="ScreenFrontLayer"/> instead (above the footer, under the layer's content).
+        /// </summary>
+        private void updateLogoDepth()
+        {
+            float depth = !logoInFront ? 0 : screenFrontLayer.HoldLogoBelow.Value ? -1.5f : float.MinValue;
+
+            if (logoContainer.Depth != depth)
+                ScreenContainer.ChangeChildDepth(logoContainer, depth);
+        }
+
         private MainMenu menuScreen;
 
         [CanBeNull]
@@ -254,6 +268,11 @@ namespace osu.Game
         private Bindable<float> uiScale;
 
         private Bindable<UserActivity> configUserActivity;
+        private readonly BindableBool legacySongSelectEnabled = new BindableBool();
+        private readonly BindableBool legacyResultsEnabled = new BindableBool();
+
+        private readonly BindableBool legacyFpsCounter = new BindableBool();
+        private readonly Bindable<LegacySongSelectAspectRatio> legacySongSelectAspectRatio = new Bindable<LegacySongSelectAspectRatio>();
 
         private Bindable<string> configSkin;
 
@@ -1180,7 +1199,7 @@ namespace osu.Game
 
             Add(sessionIdleTracker);
 
-            Container logoContainer;
+            logoContainer = new Container { RelativeSizeAxes = Axes.Both };
 
             AddRange(new Drawable[]
             {
@@ -1198,7 +1217,7 @@ namespace osu.Game
                             {
                                 backReceptor = new ScreenFooter.BackReceptor(),
                                 ScreenStack = new OsuScreenStack { RelativeSizeAxes = Axes.Both },
-                                logoContainer = new Container { RelativeSizeAxes = Axes.Both },
+                                logoContainer,
                                 // TODO: what is this? why is this?
                                 // TODO: this is being screen scaled even though it's probably AN OVERLAY.
                                 footerBasedOverlayContent = new Container
@@ -1214,10 +1233,16 @@ namespace osu.Game
                                     Child = screenStackFooter = new ScreenStackFooter(ScreenStack, backReceptor)
                                     {
                                         // TODO: this is really really weird and should not exist.
-                                        RequestLogoInFront = inFront => ScreenContainer.ChangeChildDepth(logoContainer, inFront ? float.MinValue : 0),
+                                        RequestLogoInFront = inFront =>
+                                        {
+                                            logoInFront = inFront;
+                                            updateLogoDepth();
+                                        },
                                         BackButtonPressed = handleBackButton
                                     },
                                 },
+                                // Torii: screen content drawn above the footer (legacy song select's HUD).
+                                screenFrontLayer = new ScreenFrontLayer { Depth = -2 },
                             }
                         },
                     }
@@ -1242,16 +1267,35 @@ namespace osu.Game
             Add(new ScrollAdjustsVolume(requireAltPressed: true));
 
             Dependencies.Cache(ScreenFooter);
+            Dependencies.Cache(screenFrontLayer);
+            screenFrontLayer.HoldLogoBelow.BindValueChanged(_ => updateLogoDepth());
+
+            LocalConfig.BindWith(OsuSetting.ToriiStableResults, legacyResultsEnabled);
+            legacyResultsEnabled.BindValueChanged(_ => updateLegacySongSelectAspectRatio());
+            LocalConfig.BindWith(OsuSetting.ToriiLegacyFooterUseSkin, legacySongSelectEnabled);
+            LocalConfig.BindWith(OsuSetting.ToriiLegacySongSelectAspectRatio, legacySongSelectAspectRatio);
+            legacySongSelectEnabled.BindValueChanged(_ => updateLegacySongSelectAspectRatio());
+            legacySongSelectAspectRatio.BindValueChanged(_ => updateLegacySongSelectAspectRatio());
 
             ScreenStack.ScreenPushed += screenPushed;
             ScreenStack.ScreenExited += screenExited;
+
+            // GooGuTeam: lazer's counter steps aside while stable's is chosen; both follow the same show/hide setting.
+            var modernFpsCounterHolder = new Container { RelativeSizeAxes = Axes.Both };
+            topMostOverlayContent.Add(modernFpsCounterHolder);
 
             loadComponentSingleFile(fpsCounter = new FPSCounter
             {
                 Anchor = Anchor.BottomRight,
                 Origin = Anchor.BottomRight,
                 Margin = new MarginPadding(5),
-            }, topMostOverlayContent.Add);
+            }, modernFpsCounterHolder.Add);
+
+            loadComponentSingleFile(new LegacyFpsDisplay(), topMostOverlayContent.Add);
+
+            // kept in a field: config bindings are weak, and a bound copy nothing holds stops reacting once it is collected.
+            LocalConfig.BindWith(OsuSetting.ToriiLegacyFpsCounter, legacyFpsCounter);
+            legacyFpsCounter.BindValueChanged(legacy => modernFpsCounterHolder.Alpha = legacy.NewValue ? 0 : 1, true);
 
             if (!IsDeployedBuild)
                 loadComponentSingleFile(devBuildBanner = new DevBuildBanner(), ScreenContainer.Add);
@@ -1280,6 +1324,8 @@ namespace osu.Game
                 },
             }, toolbar =>
             {
+                Toolbar.TrackScreenVisibility(ScreenStack, LocalConfig);
+
                 // the toolbar's icon buttons need both a full-screen context menu container and a full-screen popover
                 // container to be present as ancestors, as both need to know the available space around their target.
                 topMostOverlayContent.Add(new PopoverContainer
@@ -1929,6 +1975,13 @@ namespace osu.Game
             adjustGlobalScreenOffset();
 
             GlobalCursorDisplay.ShowCursor = (ScreenStack.CurrentScreen as IOsuScreen)?.CursorVisible ?? false;
+            GlobalCursorDisplay.UseGameplayCursor = ScreenStack.CurrentScreen switch
+            {
+                MainMenu => LocalConfig.Get<bool>(OsuSetting.ToriiLegacyMainMenu),
+                SongSelect => legacySongSelectEnabled.Value,
+                ResultsScreen => LocalConfig.Get<bool>(OsuSetting.ToriiStableResults),
+                _ => false,
+            };
         }
 
         private float horizontalOffsetAdjust;
@@ -1956,6 +2009,8 @@ namespace osu.Game
 
         protected virtual void ScreenChanged([CanBeNull] IOsuScreen current, [CanBeNull] IOsuScreen newScreen)
         {
+            updateLegacySongSelectAspectRatio();
+
             SentrySdk.ConfigureScope(scope =>
             {
                 scope.Contexts[@"screen stack"] = new
@@ -2014,12 +2069,28 @@ namespace osu.Game
                 GlobalCursorDisplay.MenuCursor.HideCursorOnNonMouseInput = newScreen.HideMenuCursorOnNonMouseInput;
 
                 if (newScreen.HideOverlaysOnEnter)
-                    CloseAllOverlays();
-                else
-                    Toolbar.Show();
+                    CloseAllOverlays(hideToolbar: false);
 
                 skinEditor.SetTarget(newOsuScreen);
             }
+        }
+
+        private void updateLegacySongSelectAspectRatio()
+        {
+            LegacySongSelectAspectRatio setting = LegacySongSelectAspectRatio.FollowWindow;
+
+            // One skin canvas across selection, loading, gameplay and legacy results.
+            if ((ScreenStack.CurrentScreen is SongSelect && legacySongSelectEnabled.Value)
+                || (ScreenStack.CurrentScreen is ResultsScreen && LocalConfig.Get<bool>(OsuSetting.ToriiStableResults))
+                || ScreenStack.CurrentScreen is PlayerLoader or Player)
+                setting = legacySongSelectAspectRatio.Value;
+
+            ScreenContainer.SetFixedAspectRatio(setting switch
+            {
+                LegacySongSelectAspectRatio.Widescreen => 16f / 9,
+                LegacySongSelectAspectRatio.WidescreenTall => 16f / 10,
+                _ => null,
+            });
         }
 
         private void screenPushed(IScreen lastScreen, IScreen newScreen) => ScreenChanged((OsuScreen)lastScreen, (OsuScreen)newScreen);

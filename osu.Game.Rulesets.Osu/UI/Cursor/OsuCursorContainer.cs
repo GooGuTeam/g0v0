@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -15,6 +15,7 @@ using osu.Game.Rulesets.Osu.Configuration;
 using osu.Game.Rulesets.UI;
 using osu.Game.Skinning;
 using osuTK;
+using osuTK.Input;
 
 namespace osu.Game.Rulesets.Osu.UI.Cursor
 {
@@ -71,7 +72,12 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
 
         private void updateTrailScale()
         {
-            if (cursorTrail.Drawable is CursorTrail trail) trail.CursorScale = new Vector2(ActiveCursor.CursorScale.Value);
+            if (cursorTrail.Drawable is CursorTrail trail)
+            {
+                trail.CursorScale = new Vector2(ActiveCursor.CursorScale.Value);
+                // as a menu cursor, the trail sits under the UI scaling container, which animates whenever the UI scale is changed.
+                trail.ClearOnTransformChange = ExpandOnMouseButtons;
+            }
         }
 
         private int downCount;
@@ -122,6 +128,36 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
                         updateExpandedState();
                     break;
             }
+        }
+
+        /// <summary>
+        /// Whether mouse buttons expand the cursor directly. Used when this cursor stands in for the menu cursor, where no
+        /// <see cref="OsuAction"/>s are bound and stable still expands the cursor on every click.
+        /// </summary>
+        public bool ExpandOnMouseButtons { get; init; }
+
+        protected override bool OnMouseDown(MouseDownEvent e)
+        {
+            if (ExpandOnMouseButtons && (e.Button == MouseButton.Left || e.Button == MouseButton.Right))
+            {
+                downCount++;
+                updateExpandedState();
+            }
+
+            return base.OnMouseDown(e);
+        }
+
+        protected override void OnMouseUp(MouseUpEvent e)
+        {
+            if (ExpandOnMouseButtons && (e.Button == MouseButton.Left || e.Button == MouseButton.Right))
+            {
+                downCount = Math.Max(0, downCount - 1);
+
+                if (downCount == 0)
+                    updateExpandedState();
+            }
+
+            base.OnMouseUp(e);
         }
 
         public override bool HandlePositionalInput => true; // OverlayContainer will set this false when we go hidden, but we always want to receive input.

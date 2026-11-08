@@ -42,6 +42,7 @@ using osu.Game.Rulesets.Mania.UI;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Scoring;
+using osu.Game.Screens;
 using osu.Game.Screens.Menu;
 using osu.Game.Screens.OnlinePlay.Lounge;
 using osu.Game.Screens.OnlinePlay.Match.Components;
@@ -52,6 +53,8 @@ using osu.Game.Screens.Play.Leaderboards;
 using osu.Game.Screens.Play.PlayerSettings;
 using osu.Game.Screens.Ranking;
 using osu.Game.Screens.Select;
+using osu.Game.Skinning;
+using osu.Game.Skinning.Components;
 using osu.Game.Tests.Beatmaps.IO;
 using osu.Game.Tests.Resources;
 using osu.Game.Utils;
@@ -1291,6 +1294,36 @@ namespace osu.Game.Tests.Visual.Navigation
 
             AddStep("exit player", () => player.Exit());
             AddUntilStep("touch device mod still active", () => Game.SelectedMods.Value, () => Has.One.InstanceOf<ModTouchDevice>());
+        }
+
+        [Test]
+        public void TestHoveredLegacyLogoRisesAboveUserHud()
+        {
+            SoloSongSelect songSelect = null;
+            SkinnableContainer hud = null;
+            OsuLogo logo = null;
+            ScreenFrontLayer frontLayer = null;
+
+            AddStep("enable legacy song select", () => Game.LocalConfig.SetValue(OsuSetting.ToriiLegacyFooterUseSkin, true));
+            PushAndConfirm(() => songSelect = new SoloSongSelect());
+            AddUntilStep("HUD loaded", () => (hud = songSelect.ChildrenOfType<SkinnableContainer>().Single()).ComponentsLoaded);
+            AddStep("place a HUD component over the logo", () =>
+            {
+                logo = Game.ChildrenOfType<OsuLogo>().Single();
+                frontLayer = Game.ChildrenOfType<ScreenFrontLayer>().Single();
+                hud.Add(new BoxElement
+                {
+                    Anchor = Anchor.BottomRight,
+                    Origin = Anchor.BottomRight,
+                    Size = new Vector2(160, 96),
+                });
+                InputManager.MoveMouseTo(Game.ScreenSpaceDrawQuad.Centre);
+            });
+            AddUntilStep("logo below the HUD at rest", () => frontLayer.HoldLogoBelow.Value && logo.Parent.Depth > frontLayer.Depth);
+            AddStep("hover the logo", () => InputManager.MoveMouseTo(logo));
+            AddUntilStep("logo above the HUD while hovered", () => logo.IsHovered && logo.Parent.Depth < frontLayer.Depth);
+            AddStep("move away", () => InputManager.MoveMouseTo(Game.ScreenSpaceDrawQuad.Centre));
+            AddUntilStep("logo back below the HUD", () => !logo.IsHovered && logo.Parent.Depth > frontLayer.Depth);
         }
 
         [Test]

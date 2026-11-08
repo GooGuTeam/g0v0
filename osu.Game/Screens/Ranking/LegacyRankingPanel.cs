@@ -3,13 +3,14 @@
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 // el panel de ranking (results) de osu!stable, layouteado desde el Ranking.cs de stable
 // (LoadScore / InitializeRankingPanel / LoadRanking / LoadMods / InitializeSpecifics) con
-// las coords del espacio 480 de stable x1.6 al espacio legacy de 1366x768. incluye la
+// las coords del espacio 480 de stable x1.6 al espacio legacy de 768 de alto (ver LegacyRankingLayout). incluye la
 // animacion de entrada de stable (elementos staggereados 300ms, grade 2x->1x + ghost
 // aditivo, white flash), los rayos rotativos de fondo, el graph de la play adentro del
 // marco ranking-graph, y los botones retry / watch replay pegados al borde derecho.
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -19,6 +20,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
+using osu.Framework.Utils;
 using osu.Game.Graphics.Containers;
 using osu.Game.Input.Bindings;
 using osu.Game.Online;
@@ -36,16 +38,6 @@ namespace osu.Game.Screens.Ranking
         private readonly ScoreInfo score;
         private readonly bool animate;
 
-        // constantes de layout de stable (espacio 480, "new layout" de skin v2+).
-        private const int textx1 = 80;
-        private const int imgx1 = 40;
-        private const int textx2 = 280;
-        private const int imgx2 = 240;
-        private const int row1 = 160;
-        private const int row2 = 220;
-        private const int row3 = 280;
-        private const int row4 = 320;
-
         [Resolved]
         private SkinManager skins { get; set; } = null!;
 
@@ -55,13 +47,20 @@ namespace osu.Game.Screens.Ranking
         [Resolved]
         private ResultsScreen? resultsScreen { get; set; }
 
-        // la cadena de entrada de stable: cada elemento (imagen + su texto) entra staggereado.
-        private readonly List<(Drawable image, bool shrink, Drawable? text, double time, float targetScale)> entranceElements = new List<(Drawable, bool, Drawable?, double, float)>();
+        // stable's entrance (RankingElement): each image fades in and scales over 300ms, its text slides in 200ms later.
+        private readonly List<EntranceElement> entranceElements = new List<EntranceElement>();
         private Sprite? grade;
         private Sprite? gradeGhost;
         private readonly List<Sprite> modSprites = new List<Sprite>();
         private Box? whiteFlash;
         private double gradeTime;
+        private LegacySpriteText? scoreText;
+        private string totalScoreString = string.Empty;
+        private double scoreRevealStartTime;
+        private bool animationFinished;
+        private double animationEndTime;
+
+        public bool IsAnimating => animate && !animationFinished;
 
         /// <param name="score">el score a mostrar.</param>
         /// <param name="animate">si corre la animacion de entrada de stable (solo el primer
@@ -77,12 +76,22 @@ namespace osu.Game.Screens.Ranking
         {
             RelativeSizeAxes = Axes.Both;
 
-            Texture? tex(string name) => skin.GetTexture(name)
-                                         ?? skin.GetTexture($"{name}-0")
-                                         ?? skins.DefaultClassicSkin.GetTexture(name)
-                                         ?? skins.DefaultClassicSkin.GetTexture($"{name}-0");
+            // stable's TextureManager.LoadFirst: the plain name, then the first animation frame.
+            Texture? tex(string name) => skin.GetStableTexture(name)
+                                         ?? skin.GetStableTexture($"{name}-0")
+                                         ?? skins.DefaultClassicSkin.GetStableTexture(name)
+                                         ?? skins.DefaultClassicSkin.GetStableTexture($"{name}-0");
 
-            var children = new List<Drawable>();
+            // SkinManager.UseNewLayout: skins of version 1 keep stable's original layout.
+            bool newLayout = (skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value ?? SkinConfiguration.LATEST_VERSION) > 1;
+
+            // stable draws by depth; these layers follow its depths from back to front.
+            var back = new List<Drawable>(); // ranking-panel (0.2)
+            var texts = new List<Drawable>(); // ranking-graph, the HP graph, score and counts (0.8)
+            var labels = new List<Drawable>(); // ranking-maxcombo and ranking-accuracy (0.81)
+            var images = new List<Drawable>(); // hit counts and the grade (0.9)
+            var overlays = new List<Drawable>(); // catch overlays and the grade's ghost (0.91)
+            var front = new List<Drawable>(); // mods (0.92), buttons (0.94) and ranking-perfect (0.99)
 
             // rayos rotativos de fondo (stable: ranking-background-overlay, aditivo, girando
             // una vuelta cada 20s, centrado cerca del grade). detras de todo.
@@ -94,137 +103,143 @@ namespace osu.Game.Screens.Ranking
                 {
                     Anchor = Anchor.TopRight,
                     Origin = Anchor.Centre,
-                    Position = new Vector2(-180, 200) * 1.6f,
+                    Position = new Vector2(-180, newLayout ? 200 : 170) * 1.6f,
                     Texture = raysTex,
                     Blending = BlendingParameters.Additive,
                 };
-                children.Add(rays);
+                back.Add(rays);
                 rays.OnLoadComplete += d => d.Spin(20000, RotationDirection.Clockwise);
             }
 
-            // el backing grande del panel (stable: (0, 64) con el layout nuevo).
-            children.Add(new Sprite
+            // InitializeRankingPanel.
+            back.Add(new Sprite
             {
-                Position = new Vector2(0, 64 * 1.6f),
+                Position = new Vector2(0, newLayout ? 64 : 46) * 1.6f,
                 Texture = tex(@"ranking-panel"),
             });
 
-            // marco del ranking-graph (stable: (160, 380)) + el HP graph adentro (stable
-            // dibuja score.HpGraph en graphPos+(5,5), region 186x86; lazer no persiste la
-            // vida, asi que la simulamos desde los hit events: sube con los aciertos y se
-            // desploma con los miss — la misma forma que el graph clasico).
-            var graphTex = tex(@"ranking-graph");
+            var graphPosition = new Vector2(160, newLayout ? 380 : 360);
 
-            children.Add(new Sprite
+            texts.Add(new Sprite
             {
-                Position = new Vector2(160, 380) * 1.6f,
-                Texture = graphTex,
+                Position = graphPosition * 1.6f,
+                Texture = tex(@"ranking-graph"),
             });
 
+            // stable draws score.HpGraph in a 186 x 86 region inside the frame. lazer no persiste la vida, asi que la simulamos
+            // desde los hit events: sube con los aciertos y se desploma con los miss — la misma forma que el graph clasico.
             if (score.HitEvents.Count > 0)
             {
-                children.Add(new LegacyHealthGraph(score, animate)
+                texts.Add(new LegacyHealthGraph(score, animate)
                 {
-                    Position = new Vector2(165, 385) * 1.6f,
+                    Position = (graphPosition + new Vector2(newLayout ? 5 : 10)) * 1.6f,
                 });
             }
 
-            // score total en el score font del skin (stable: (220, 94), origen centro, 1.3x).
-            var scoreText = new LegacySpriteText(LegacyFont.Score)
+            // LoadScore: the total score rolls its digits from the start, centred at (220, 94).
+            totalScoreString = score.TotalScore <= 9999999 ? $"{score.TotalScore:0000000}" : $"{score.TotalScore:00000000}";
+
+            scoreText = new LegacySpriteText(LegacyFont.Score)
             {
                 Origin = Anchor.Centre,
                 Position = new Vector2(220, 94) * 1.6f,
-                Scale = new Vector2(1.3f),
-                Alpha = animate ? 0 : 1,
-                Text = score.TotalScore <= 9999999 ? $"{score.TotalScore:0000000}" : $"{score.TotalScore:00000000}",
+                Scale = new Vector2(newLayout ? 1.3f : 1.05f),
+                Text = animate ? randomDigits(0) : totalScoreString,
+                FixedWidth = true,
             };
-            children.Add(scoreText);
+            texts.Add(scoreText);
 
-            double t = 300;
-            entranceElements.Add((scoreText, false, null, t, 1));
+            // AddRankingSprites: elements start 300ms apart, 300ms after the screen (startTime) and 300ms after that (their own start).
+            double t = 600;
+            float textYOffset = newLayout ? -16 : -25;
 
-            // los seis slots de hit counts, staggereados como AddRankingSprites de stable.
-            foreach (var (image, position, count) in hitRows())
+            foreach (var row in hitRows())
             {
-                t += 300;
-
-                var img = new Sprite
+                var image = new Sprite
                 {
                     Origin = Anchor.Centre,
-                    Position = position * 1.6f,
-                    Texture = tex(image),
-                    Alpha = animate ? 0 : 1,
-                    Scale = animate ? new Vector2(2) : Vector2.One,
+                    Position = row.Position * 1.6f,
+                    Texture = tex(row.Image),
+                    Rotation = MathHelper.RadiansToDegrees(row.Rotation),
+                    Colour = row.Colour ?? Color4.White,
                 };
-                var txt = new LegacySpriteText(LegacyFont.Score)
+
+                LegacySpriteText? text = null;
+
+                if (row.Text != null)
                 {
-                    Position = new Vector2(position.X + 40, position.Y - 16) * 1.6f,
-                    Scale = new Vector2(1.12f),
-                    Alpha = animate ? 0 : 1,
-                    Text = $"{count}x",
-                };
-                children.Add(img);
-                children.Add(txt);
-                entranceElements.Add((img, true, txt, t, 1));
+                    text = new LegacySpriteText(LegacyFont.Score)
+                    {
+                        Position = new Vector2(row.Position.X + 40, row.Position.Y + textYOffset) * 1.6f,
+                        Scale = new Vector2(1.12f),
+                        Text = row.Text,
+                    };
+                    texts.Add(text);
+                }
+
+                (row.IsOverlay ? overlays : images).Add(image);
+                addEntrance(image, row.StartScale, row.EndScale, text, t);
+
+                if (!row.IsOverlay)
+                    t += 300;
             }
 
-            // labels + valores de max combo / accuracy (filas de stable alrededor de row4;
-            // las imagenes NO hacen el shrink 2x->1x, solo fadean — asi lo hace stable).
-            t += 300;
+            float labelY = 320 - (newLayout ? 20 : 8);
 
-            var comboImg = new Sprite
-            {
-                Position = new Vector2(imgx1 - 35, row4 - 20) * 1.6f,
-                Texture = tex(@"ranking-maxcombo"),
-                Alpha = animate ? 0 : 1,
-            };
-            var comboTxt = new LegacySpriteText(LegacyFont.Score)
-            {
-                Position = new Vector2(textx1 - 65, row4 + 10) * 1.6f,
-                Scale = new Vector2(1.12f),
-                Alpha = animate ? 0 : 1,
-                Text = $"{score.MaxCombo}x",
-            };
-            children.Add(comboImg);
-            children.Add(comboTxt);
-            entranceElements.Add((comboImg, false, comboTxt, t, 1));
+            t = addLabel(@"ranking-maxcombo", new Vector2(5, labelY), $"{score.MaxCombo}x", new Vector2(15, 330), t);
+            t = addLabel(@"ranking-accuracy", new Vector2(182, labelY), $"{score.Accuracy * 100:0.00}%", new Vector2(194, 330), t);
 
-            t += 300;
-
-            var accImg = new Sprite
+            double addLabel(string name, Vector2 position, string value, Vector2 valuePosition, double time)
             {
-                Position = new Vector2(imgx2 - 58, row4 - 20) * 1.6f,
-                Texture = tex(@"ranking-accuracy"),
-                Alpha = animate ? 0 : 1,
-            };
-            var accTxt = new LegacySpriteText(LegacyFont.Score)
-            {
-                Position = new Vector2(textx2 - 86, row4 + 10) * 1.6f,
-                Scale = new Vector2(1.12f),
-                Alpha = animate ? 0 : 1,
-                Text = $"{score.Accuracy * 100:0.00}%",
-            };
-            children.Add(accImg);
-            children.Add(accTxt);
-            entranceElements.Add((accImg, false, accTxt, t, 1));
+                var image = new Sprite
+                {
+                    Position = position * 1.6f,
+                    Texture = tex(name),
+                };
+                var text = new LegacySpriteText(LegacyFont.Score)
+                {
+                    Position = valuePosition * 1.6f,
+                    Scale = new Vector2(1.12f),
+                    Text = value,
+                };
 
-            // el grade (stable LoadRanking: field TopRight, origen centro, (120, 200); entra
-            // 2x->1x con fade DESPUES de todos los elementos, con un ghost aditivo que se
-            // agranda y desvanece para los rangos B+).
-            gradeTime = t + 300;
+                labels.Add(image);
+                texts.Add(text);
+                addEntrance(image, 1, 1, text, time);
+                return time + 300;
+            }
+
+            if (isPerfect)
+            {
+                // starts 300ms after its slot, as the grade does.
+                var perfect = new Sprite
+                {
+                    Origin = Anchor.Centre,
+                    Position = new Vector2(newLayout ? 260 : 200, 430) * 1.6f,
+                    Texture = tex(@"ranking-perfect"),
+                };
+                front.Add(perfect);
+                addEntrance(perfect, 1.1f, 1, null, t + 300);
+                t += 300;
+            }
+
+            // LoadRanking: the grade scales 2 -> 1 and fades in over 1000ms once every element has started; a B or better also
+            // gets an additive ghost that grows and fades out once it lands.
+            gradeTime = t;
 
             var gradeTex = tex($@"ranking-{score.Rank}") ?? tex(@"ranking-D");
+            var gradePosition = new Vector2(-120, newLayout ? 200 : 170) * 1.6f;
 
             grade = new Sprite
             {
                 Anchor = Anchor.TopRight,
                 Origin = Anchor.Centre,
-                Position = new Vector2(-120, 200) * 1.6f,
+                Position = gradePosition,
                 Texture = gradeTex,
                 Alpha = animate ? 0 : 1,
                 Scale = animate ? new Vector2(2) : Vector2.One,
             };
-            children.Add(grade);
+            images.Add(grade);
 
             if (animate && score.Rank >= ScoreRank.B)
             {
@@ -232,18 +247,16 @@ namespace osu.Game.Screens.Ranking
                 {
                     Anchor = Anchor.TopRight,
                     Origin = Anchor.Centre,
-                    Position = new Vector2(-120, 200) * 1.6f,
+                    Position = gradePosition,
                     Texture = gradeTex,
                     Blending = BlendingParameters.Additive,
                     Alpha = 0,
                 };
-                children.Add(gradeGhost);
+                overlays.Add(gradeGhost);
             }
 
-            // iconos de mods (stable LoadMods: field TopRight origen centro, y=260, el primero
-            // a 40 del borde derecho, +20 por icono hacia la izquierda — overlap pesado, el
-            // primero queda mas a la derecha y los siguientes se dibujan ENCIMA). entran 2x->1x
-            // staggereados 500ms.
+            // LoadMods: field TopRight, y = 260, the first 40 units from the right edge and each next one 20 further left, drawn
+            // over the previous ones.
             int modIndex = 0;
 
             foreach (var mod in score.Mods)
@@ -266,77 +279,73 @@ namespace osu.Game.Screens.Ranking
                     Alpha = animate ? 0 : 1,
                     Scale = animate ? new Vector2(2) : Vector2.One,
                 };
-                children.Add(modSprite);
+                front.Add(modSprite);
                 modSprites.Add(modSprite);
                 modIndex++;
             }
 
-            // banner de full combo (stable: para plays perfectos, en (260, 430), al frente).
-            // se escala para que fittee el marco del ranking-graph (la textura default es mas
-            // ancha que el marco y quedaba gigante tapando todo).
-            if (isPerfect)
-            {
-                gradeTime += 300;
-
-                var perfectTex = tex(@"ranking-perfect");
-                float perfectScale = 1;
-
-                if (perfectTex != null && graphTex != null)
-                    perfectScale = Math.Min(1, graphTex.DisplayWidth * 0.95f / perfectTex.DisplayWidth);
-
-                var perfect = new Sprite
-                {
-                    Origin = Anchor.Centre,
-                    Position = new Vector2(260, 430) * 1.6f,
-                    Texture = perfectTex,
-                    Alpha = animate ? 0 : 1,
-                    Scale = new Vector2(animate ? perfectScale * 2 : perfectScale),
-                };
-                children.Add(perfect);
-                entranceElements.Add((perfect, true, null, gradeTime, perfectScale));
-
-                gradeTime += 300;
-            }
-
-            // botones retry / watch replay de stable: pegados al borde derecho (origen
-            // centre-right), retry en y=360 y replay en y=420 (o 360 si no hay retry).
-            // idle al 70% de alpha, hover al 100% — igual que stable.
+            // InitializeSpecifics: retry and replay on the right edge from y = 360, 60 units apart, at 70% until hovered. skins of
+            // version 1 use their ranking-retry and ranking-replay first.
+            float buttonY = 360;
             bool showRetry = player != null && resultsScreen?.AllowRetry == true;
 
             if (showRetry)
             {
-                children.Add(new LegacyPanelButton(tex(@"pause-retry"), () => player?.Restart())
+                front.Add(new LegacyPanelButton((newLayout ? null : tex(@"ranking-retry")) ?? tex(@"pause-retry"), () => player?.Restart())
                 {
                     Anchor = Anchor.TopRight,
                     Origin = Anchor.CentreRight,
-                    Y = 360 * 1.6f,
+                    Y = buttonY * 1.6f,
                 });
+                buttonY += 60;
             }
 
             if (resultsScreen?.AllowWatchingReplay != false)
             {
-                children.Add(new LegacyWatchReplayButton(score, tex(@"pause-replay"))
+                front.Add(new LegacyWatchReplayButton(score, (newLayout ? null : tex(@"ranking-replay")) ?? tex(@"pause-replay"))
                 {
                     Anchor = Anchor.TopRight,
                     Origin = Anchor.CentreRight,
-                    Y = (showRetry ? 420 : 360) * 1.6f,
+                    Y = buttonY * 1.6f,
                 });
             }
 
-            // white flash de stable: pantallazo aditivo que acompaña la llegada del grade.
+            // white flash de stable: pantallazo aditivo que acompaña la llegada del grade. it covers the whole window, even when the
+            // panel is narrower than it.
             if (animate)
             {
                 whiteFlash = new Box
                 {
-                    RelativeSizeAxes = Axes.Both,
+                    Anchor = Anchor.TopCentre,
+                    Origin = Anchor.TopCentre,
+                    RelativeSizeAxes = Axes.Y,
+                    Width = 10000,
                     Colour = Color4.White,
                     Blending = BlendingParameters.Additive,
                     Alpha = 0,
                 };
-                children.Add(whiteFlash);
+                front.Add(whiteFlash);
             }
 
+            var children = new List<Drawable>();
+            children.AddRange(back);
+            children.AddRange(texts);
+            children.AddRange(labels);
+            children.AddRange(images);
+            children.AddRange(overlays);
+            children.AddRange(front);
             InternalChildren = children.ToArray();
+        }
+
+        private void addEntrance(Drawable image, float startScale, float endScale, Drawable? text, double time)
+        {
+            image.Alpha = animate ? 0 : 1;
+            image.Scale = new Vector2(animate ? startScale : endScale);
+
+            if (text != null)
+                text.Alpha = animate ? 0 : 1;
+
+            entranceElements.Add(new EntranceElement(image, endScale, text, time));
         }
 
         protected override void LoadComplete()
@@ -346,26 +355,28 @@ namespace osu.Game.Screens.Ranking
             if (!animate)
                 return;
 
-            // la cadena de entrada de stable (RankingElement.cs): imagen fade + shrink 2x->1x
-            // en 300ms In; su texto entra 200ms despues deslizandose 40 unidades desde la
-            // izquierda con fade, 300ms Out.
-            foreach (var (image, shrink, text, time, targetScale) in entranceElements)
+            scoreRevealStartTime = Time.Current + 300;
+            animationEndTime = Math.Max(scoreRevealStartTime + totalScoreString.Length * 500,
+                Time.Current + Math.Max(gradeTime + 3400, Math.Max(0, modSprites.Count - 1) * 500 + 400));
+            foreach (var element in entranceElements)
+                animationEndTime = Math.Max(animationEndTime, Time.Current + element.Time + 500);
+
+            // RankingElement: the image fades in and scales over 300ms (In); its text slides 40 units in from the left and fades
+            // in 200ms later, over 300ms (Out).
+            foreach (var element in entranceElements)
             {
-                image.Delay(time).FadeIn(300, Easing.In);
+                element.Image.Delay(element.Time).FadeIn(300, Easing.In);
+                element.Image.Delay(element.Time).ScaleTo(element.EndScale, 300, Easing.In);
 
-                if (shrink)
-                    image.Delay(time).ScaleTo(targetScale, 300, Easing.In);
-
-                if (text != null)
+                if (element.Text != null)
                 {
-                    float finalX = text.X;
-                    text.X = finalX - 40 * 1.6f;
-                    text.Delay(time + 200).MoveToX(finalX, 300, Easing.Out);
-                    text.Delay(time + 200).FadeIn(300, Easing.Out);
+                    float finalX = element.Text.X;
+                    element.Text.X = finalX - 40 * 1.6f;
+                    element.Text.Delay(element.Time + 200).MoveToX(finalX, 300, Easing.Out);
+                    element.Text.Delay(element.Time + 200).FadeIn(300, Easing.Out);
                 }
             }
 
-            // grade: 1000ms In despues de todos los elementos; ghost aditivo 1s despues.
             grade?.Delay(gradeTime).FadeIn(1000, Easing.In);
             grade?.Delay(gradeTime).ScaleTo(1, 1000, Easing.In);
 
@@ -375,16 +386,101 @@ namespace osu.Game.Screens.Ranking
                 gradeGhost.Delay(gradeTime + 1000).ScaleTo(1.05f, 2400, Easing.Out);
             }
 
-            // white flash: 0.5 -> 0 pegado a la llegada del grade.
-            if (whiteFlash != null)
-                whiteFlash.Delay(gradeTime + 1000).FadeTo(0.5f).Then().FadeOut(1400);
+            // s_white: 0.5 -> 0 over 1400ms once the grade lands.
+            whiteFlash?.Delay(gradeTime + 1000).FadeTo(0.5f).Then().FadeOut(1400);
 
-            // mods: staggereados 500ms, shrink 2x->1x + fade en 400ms Out.
+            // LoadMods: from the screen's start, 500ms apart, 2 -> 1 and fading in over 400ms (Out).
             for (int i = 0; i < modSprites.Count; i++)
             {
-                modSprites[i].Delay(300 + i * 500).FadeIn(400, Easing.Out);
-                modSprites[i].Delay(300 + i * 500).ScaleTo(1, 400, Easing.Out);
+                modSprites[i].Delay(i * 500).FadeIn(400, Easing.Out);
+                modSprites[i].Delay(i * 500).ScaleTo(1, 400, Easing.Out);
             }
+        }
+
+        public void FinishAnimation()
+        {
+            if (!animate || animationFinished)
+                return;
+
+            animationFinished = true;
+
+            foreach (var element in entranceElements)
+            {
+                element.Image.FinishTransforms(true);
+                element.Image.Alpha = 1;
+                element.Image.Scale = new Vector2(element.EndScale);
+
+                if (element.Text != null)
+                {
+                    element.Text.FinishTransforms(true);
+                    element.Text.Alpha = 1;
+                }
+            }
+
+            if (grade != null)
+            {
+                grade.FinishTransforms(true);
+                grade.Alpha = 1;
+                grade.Scale = Vector2.One;
+            }
+
+            if (gradeGhost != null)
+            {
+                gradeGhost.FinishTransforms(true);
+                gradeGhost.Alpha = 0;
+            }
+
+            if (whiteFlash != null)
+            {
+                whiteFlash.FinishTransforms(true);
+                whiteFlash.Alpha = 0;
+            }
+
+            foreach (var mod in modSprites)
+            {
+                mod.FinishTransforms(true);
+                mod.Alpha = 1;
+                mod.Scale = Vector2.One;
+            }
+
+            if (scoreText != null)
+                scoreText.Text = totalScoreString;
+        }
+
+        protected override bool OnClick(ClickEvent e)
+        {
+            if (IsAnimating)
+            {
+                FinishAnimation();
+                return true;
+            }
+
+            return base.OnClick(e);
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+
+            if (IsAnimating && Time.Current >= animationEndTime)
+                FinishAnimation();
+
+            // Ranking.Update: one more digit settles every 500ms from the screen's start; the rest roll.
+            if (IsAnimating && scoreText != null)
+            {
+                int settled = (int)((Time.Current - scoreRevealStartTime) / 500);
+                scoreText.Text = settled >= totalScoreString.Length ? totalScoreString : randomDigits(settled);
+            }
+        }
+
+        private string randomDigits(int settled)
+        {
+            var sb = new StringBuilder(totalScoreString.Length);
+
+            for (int i = 0; i < totalScoreString.Length; ++i)
+                sb.Append(i < settled ? totalScoreString[i] : (char)('0' + RNG.Next(0, 9)));
+
+            return sb.ToString();
         }
 
         /// <summary>
@@ -404,50 +500,72 @@ namespace osu.Game.Screens.Ranking
 
         private int maxStat(HitResult result) => score.MaximumStatistics.GetValueOrDefault(result);
 
+        private readonly record struct EntranceElement(Drawable Image, float EndScale, Drawable? Text, double Time);
+
+        /// <param name="Image">the texture, or its first animation frame.</param>
+        /// <param name="Position">its centre, in stable's 640 x 480 units.</param>
+        /// <param name="Text">the count beside it, or <c>null</c> for none.</param>
+        /// <param name="StartScale">the scale it enters at.</param>
+        /// <param name="EndScale">the scale it settles at.</param>
+        /// <param name="Rotation">its rotation, in radians.</param>
+        /// <param name="Colour">its tint.</param>
+        /// <param name="IsOverlay">drawn over the other images, starting with the next one instead of taking a slot of its own.</param>
+        private readonly record struct HitRow(string Image, Vector2 Position, string? Text, float StartScale = 1, float EndScale = 0.5f, float Rotation = 0, Color4? Colour = null, bool IsOverlay = false);
+
         /// <summary>
         /// los seis slots de hit-counts, mapeados por ruleset como el switch de LoadScore de stable.
         /// para osu!, los slots de geki/katu muestran los slider tick hits / slider tail misses de
         /// lazer (stable no tiene equivalente para scores de lazer), reusando las texturas geki/katu.
         /// </summary>
-        private IEnumerable<(string image, Vector2 position, int count)> hitRows()
+        private IEnumerable<HitRow> hitRows()
         {
+            var left1 = new Vector2(40, 160);
+            var left2 = new Vector2(40, 220);
+            var left3 = new Vector2(40, 280);
+            var right1 = new Vector2(240, 160);
+            var right2 = new Vector2(240, 220);
+            var right3 = new Vector2(240, 280);
+
             switch (score.Ruleset.ShortName)
             {
                 default:
-                    yield return (@"hit300", new Vector2(imgx1, row1), stat(HitResult.Great));
-                    yield return (@"hit100", new Vector2(imgx1, row2), stat(HitResult.Ok));
-                    yield return (@"hit50", new Vector2(imgx1, row3), stat(HitResult.Meh));
-                    yield return (@"hit300g", new Vector2(imgx2, row1), stat(HitResult.LargeTickHit));
-                    yield return (@"hit100k", new Vector2(imgx2, row2), Math.Max(0, maxStat(HitResult.SliderTailHit) - stat(HitResult.SliderTailHit)));
-                    yield return (@"hit0", new Vector2(imgx2, row3), stat(HitResult.Miss));
+                    yield return new HitRow(@"hit300", left1, $"{stat(HitResult.Great)}x");
+                    yield return new HitRow(@"hit100", left2, $"{stat(HitResult.Ok)}x");
+                    yield return new HitRow(@"hit50", left3, $"{stat(HitResult.Meh)}x");
+                    yield return new HitRow(@"hit300g", right1, $"{stat(HitResult.LargeTickHit)}x");
+                    yield return new HitRow(@"hit100k", right2, $"{Math.Max(0, maxStat(HitResult.SliderTailHit) - stat(HitResult.SliderTailHit))}x");
+                    yield return new HitRow(@"hit0", right3, $"{stat(HitResult.Miss)}x");
                     break;
 
                 case @"taiko":
-                    yield return (@"taiko-hit300", new Vector2(imgx1, row1), stat(HitResult.Great));
-                    yield return (@"taiko-hit100", new Vector2(imgx1, row2), stat(HitResult.Ok));
-                    yield return (@"taiko-hit0", new Vector2(imgx1, row3), stat(HitResult.Miss));
-                    yield return (@"taiko-hit300g", new Vector2(imgx2, row1), stat(HitResult.LargeBonus));
-                    yield return (@"taiko-hit100k", new Vector2(imgx2, row2), stat(HitResult.SmallBonus));
+                    yield return new HitRow(@"taiko-hit300", left1, $"{stat(HitResult.Great)}x");
+                    yield return new HitRow(@"taiko-hit100", left2, $"{stat(HitResult.Ok)}x");
+                    yield return new HitRow(@"taiko-hit0", left3, $"{stat(HitResult.Miss)}x");
+                    yield return new HitRow(@"taiko-hit300g", right1, $"{stat(HitResult.LargeBonus)}x");
+                    yield return new HitRow(@"taiko-hit100k", right2, $"{stat(HitResult.SmallBonus)}x");
                     break;
 
                 case @"fruits":
-                    yield return (@"fruit-orange", new Vector2(imgx1, row1), stat(HitResult.Great));
-                    yield return (@"fruit-drop", new Vector2(imgx1, row2), stat(HitResult.LargeTickHit));
-                    yield return (@"fruit-drop", new Vector2(imgx1, row3), stat(HitResult.SmallTickHit));
-                    yield return (@"hit0", new Vector2(imgx2, row1), stat(HitResult.Miss));
+                    // fruits tinted as stable tints them, the misses as a grey fruit under a small miss mark.
+                    yield return new HitRow(@"fruit-orange-overlay", left1, null, IsOverlay: true);
+                    yield return new HitRow(@"fruit-orange", left1, $"{stat(HitResult.Great)}x", Colour: Color4.Orange);
+                    yield return new HitRow(@"fruit-drop", left2, $"{stat(HitResult.LargeTickHit)}x", EndScale: 0.6f, Colour: Color4.YellowGreen);
+                    yield return new HitRow(@"fruit-drop", left3, $"{stat(HitResult.SmallTickHit)}x", EndScale: 0.4f, Rotation: 4, Colour: Color4.LightBlue);
+                    yield return new HitRow(@"fruit-orange-overlay", right1, null, EndScale: 0.4f, Rotation: 0.8f, IsOverlay: true);
+                    yield return new HitRow(@"hit0", right1 - new Vector2(20), null, StartScale: 0.7f, EndScale: 0.2f, IsOverlay: true);
+                    yield return new HitRow(@"fruit-orange", right1, $"{stat(HitResult.Miss)}x", EndScale: 0.4f, Rotation: 0.8f, Colour: Color4.LightGray);
                     break;
 
                 case @"mania":
-                    yield return (@"mania-hit300", new Vector2(imgx1, row1), stat(HitResult.Great));
-                    yield return (@"mania-hit200", new Vector2(imgx1, row2), stat(HitResult.Good));
-                    yield return (@"mania-hit50", new Vector2(imgx1, row3), stat(HitResult.Meh));
-                    yield return (@"mania-hit300g", new Vector2(imgx2, row1), stat(HitResult.Perfect));
-                    yield return (@"mania-hit100", new Vector2(imgx2, row2), stat(HitResult.Ok));
-                    yield return (@"mania-hit0", new Vector2(imgx2, row3), stat(HitResult.Miss));
+                    yield return new HitRow(@"mania-hit300", left1, $"{stat(HitResult.Great)}x");
+                    yield return new HitRow(@"mania-hit200", left2, $"{stat(HitResult.Good)}x");
+                    yield return new HitRow(@"mania-hit50", left3, $"{stat(HitResult.Meh)}x");
+                    yield return new HitRow(@"mania-hit300g", right1, $"{stat(HitResult.Perfect)}x");
+                    yield return new HitRow(@"mania-hit100", right2, $"{stat(HitResult.Ok)}x");
+                    yield return new HitRow(@"mania-hit0", right3, $"{stat(HitResult.Miss)}x");
                     break;
             }
         }
-
 
         /// <summary>
         /// boton de sprite estilo stable: idle al 70% de alpha, hover al 100% en 200ms.

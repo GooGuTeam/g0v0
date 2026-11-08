@@ -27,7 +27,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
                 Origin = Anchor.Centre,
                 // This texture is not skinnable on stable.
                 // See `SkinSource.Osu` specification in https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L663.
-                Texture = skinManager.DefaultClassicSkin.GetTexture(@"ranking-background-overlay"),
+                Texture = skinManager.DefaultClassicSkin.GetStableTexture(@"ranking-background-overlay"),
                 Blending = BlendingParameters.Additive,
             };
 

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 
 using System;
@@ -10,6 +10,7 @@ using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
@@ -42,7 +43,7 @@ namespace osu.Game.Screens.Select
         private const float panel_height = 155;
 
         // ancho logico del espacio de la UI legacy (el TargetDrawSize.X del DrawSizePreservingFillContainer).
-        private const float logical_width = 1366;
+        private const float top_extension_x = 1365;
 
         /// <summary>
         /// el filter control del song select que manejan estos controles legacy (el search query).
@@ -60,6 +61,21 @@ namespace osu.Game.Screens.Select
         private Drawable sortDropdown = null!;
         private Drawable groupTabs = null!;
         private Drawable searchBox = null!;
+        private Sprite searchBackground = null!;
+
+        // Torii: osu!stable draws the skin's selection-mode (0.95) above the song select cookie (0.9) and the beatmap title (0.79), and the
+        // dropdowns (0.98) and small stat lines (1) above that, so these are drawn through proxies in the game's front layer.
+        private LegacyTopDecoration decoration = null!;
+        private LegacyBeatmapInfoPanel infoPanel = null!;
+        private ScreenFrontLayer.ProxySet frontProxies = null!;
+
+        [Resolved(CanBeNull = true)]
+        private ScreenFrontLayer? frontLayer { get; set; }
+
+        private const float search_background_idle_y = 46 * 1.6f;
+        private const float search_background_active_y = 54 * 1.6f;
+        private const float search_background_idle_alpha = 0.4f;
+        private const float search_background_active_alpha = 0.95f;
 
         private ISkinSource skin = null!;
         private SkinManager skins = null!;
@@ -70,6 +86,7 @@ namespace osu.Game.Screens.Select
         // Current local pero nunca llega a la config, asi que no reagrupa nada). un strong ref lo mantiene vivo.
         private Bindable<GroupMode> groupBindable = null!;
         private Bindable<SortMode> sortBindable = null!;
+        private IBindable<string> searchQuery = null!;
 
         // las capas de la textura songselect-top (el default + la propia del skin). se rearman al
         // cambiar de skin asi el panel se actualiza al toque en vez de mostrar el top del skin viejo hasta que salis.
@@ -91,8 +108,8 @@ namespace osu.Game.Screens.Select
                 // la decoracion "mode button" skinneable del skin (selection-mode + mode-*-small), va
                 // ENTRE el songselect-top (atras, lo agrega rebuildTopLayers) y la info del beatmap /
                 // Group / Sort / Rankings (adelante). el orden de stable: labels > skinnable top > default.
-                new LegacyTopDecoration { Depth = 2 },
-                new LegacyBeatmapInfoPanel
+                decoration = new LegacyTopDecoration { Depth = 2 },
+                infoPanel = new LegacyBeatmapInfoPanel
                 {
                     Anchor = Anchor.TopLeft,
                     Origin = Anchor.TopLeft,
@@ -136,20 +153,40 @@ namespace osu.Game.Screens.Select
                     Anchor = Anchor.TopRight,
                     Origin = Anchor.TopRight,
                     Depth = 2.5f,
-                    Margin = new MarginPadding { Top = 54, Right = 28 },
+                    Margin = new MarginPadding { Top = 56, Right = 16 },
                     Current = { BindTarget = groupBindable },
                 },
+                // stable's searchBackground: a black menu-button-background (depth 0.69) behind the songselect-top layers (0.7), so only its lower
+                // edge shows below the bar; it drops 8 units and darkens while a search is active. The search text itself (0.81) stays in front.
+                searchBackground = new Sprite
+                {
+                    Anchor = Anchor.TopRight,
+                    Origin = Anchor.Centre,
+                    Position = new Vector2(-14 * 1.6f, search_background_idle_y),
+                    Colour = Color4.Black,
+                    Alpha = search_background_idle_alpha,
+                    Depth = 5,
+                },
                 // campo de search (arriba a la derecha, justo abajo del contorno del panel).
+                // SongSelection's searchText: field TopRight at (220, 54).
                 searchBox = new LegacySearchBox
                 {
                     Anchor = Anchor.TopRight,
-                    Origin = Anchor.TopRight,
-                    Margin = new MarginPadding { Top = 82, Right = 14 },
+                    Origin = Anchor.TopLeft,
+                    Position = new Vector2(-220, 54) * 1.6f,
                     Current = { BindTarget = FilterControl.SearchQuery },
                 },
             };
 
             rebuildTopLayers();
+
+            frontProxies = new ScreenFrontLayer.ProxySet(
+                (decoration, ScreenFrontLayer.Depths.SELECTION_MODE),
+                (groupDropdown, ScreenFrontLayer.Depths.TOP_CONTROLS),
+                (sortDropdown, ScreenFrontLayer.Depths.TOP_CONTROLS),
+                (infoPanel.StatsLine, ScreenFrontLayer.Depths.TOP_CONTROLS));
+
+            searchBackground.Texture = skins.DefaultClassicSkin.GetStableTexture(@"menu-button-background");
         }
 
         protected override void LoadComplete()
@@ -159,6 +196,17 @@ namespace osu.Game.Screens.Select
             // rearmar las capas songselect-top cuando cambia el skin asi un cambio en vivo actualiza el
             // panel al toque (la decoracion se refresca sola con su propio handler de SourceChanged).
             skin.SourceChanged += rebuildTopLayers;
+
+            // SongSelection.ShowSearch / the search reset: 300ms (fade) and 200ms (move) while searching, 200ms back.
+            searchQuery = FilterControl.SearchQuery.GetBoundCopy();
+            searchQuery.BindValueChanged(q =>
+            {
+                bool searching = !string.IsNullOrEmpty(q.NewValue);
+
+                searchBackground.FadeTo(searching ? search_background_active_alpha : search_background_idle_alpha, searching ? 300 : 200);
+                searchBackground.MoveToY(searching ? search_background_active_y : search_background_idle_y, 200, Easing.Out);
+            }, true);
+            searchBackground.FinishTransforms();
         }
 
         /// <summary>
@@ -178,8 +226,8 @@ namespace osu.Game.Screens.Select
                 topLayers.Clear();
             }
 
-            var bundledTop = skins.DefaultClassicSkin.GetTexture(@"songselect-top");
-            var skinTop = skins.CurrentSkin.Value.GetTexture(@"songselect-top");
+            var bundledTop = skins.DefaultClassicSkin.GetStableTexture(@"songselect-top");
+            var skinTop = skins.CurrentSkin.Value.GetStableTexture(@"songselect-top");
 
             topLayers.Add(topLayer(bundledTop, depth: 4));
 
@@ -189,8 +237,16 @@ namespace osu.Game.Screens.Select
             AddRangeInternal(topLayers);
         }
 
+        protected override void Update()
+        {
+            base.Update();
+            frontProxies.Update(frontLayer);
+        }
+
         protected override void Dispose(bool isDisposing)
         {
+            frontProxies?.Release(frontLayer);
+
             if (skin.IsNotNull())
                 skin.SourceChanged -= rebuildTopLayers;
 
@@ -198,7 +254,7 @@ namespace osu.Game.Screens.Select
         }
 
         /// <summary>
-        /// una capa de textura songselect-top: full-width a su aspecto natural (pegada arriba), recortada
+        /// una capa de textura songselect-top a su tamaño natural (pegada arriba), recortada
         /// a la franja de 155px de stable asi una textura de skin alta/opaca no tapa la banda de controles.
         /// mas <paramref name="depth"/> = mas atras, asi el backing default queda detras del propio del skin.
         /// </summary>
@@ -214,6 +270,7 @@ namespace osu.Game.Screens.Select
                     Width = 1,
                     Height = panel_height,
                     Masking = true,
+                    MaskingSmoothness = 0,
                     Depth = depth,
                     Anchor = Anchor.TopLeft,
                     Origin = Anchor.TopLeft,
@@ -225,9 +282,22 @@ namespace osu.Game.Screens.Select
                 };
             }
 
-            float h = tex.DisplayWidth > 0
-                ? logical_width * (tex.DisplayHeight / tex.DisplayWidth)
-                : panel_height;
+            var artwork = new Sprite { Texture = tex };
+            Drawable[] sprites = tex.DisplayWidth < top_extension_x + 1
+                ? new Drawable[] { artwork }
+                : new Drawable[]
+                {
+                    artwork,
+                    // Stable extends column 1365 to the right edge on wider windows.
+                    new Sprite
+                    {
+                        Texture = tex.Crop(new RectangleF(top_extension_x, 0, 1, tex.DisplayHeight)),
+                        RelativeSizeAxes = Axes.X,
+                        Width = 1,
+                        X = top_extension_x,
+                        Height = tex.DisplayHeight,
+                    },
+                };
 
             return new Container
             {
@@ -235,18 +305,11 @@ namespace osu.Game.Screens.Select
                 Width = 1,
                 Height = panel_height,
                 Masking = true,
+                MaskingSmoothness = 0,
                 Depth = depth,
                 Anchor = Anchor.TopLeft,
                 Origin = Anchor.TopLeft,
-                Child = new Sprite
-                {
-                    Texture = tex,
-                    RelativeSizeAxes = Axes.X,
-                    Width = 1,
-                    Height = h,
-                    Anchor = Anchor.TopLeft,
-                    Origin = Anchor.TopLeft,
-                },
+                Children = sprites,
             };
         }
 

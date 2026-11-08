@@ -158,6 +158,11 @@ namespace osu.Game.Screens.Play
         protected SkipOverlay SkipIntroOverlay { get; private set; }
         private SkipOverlay skipOutroOverlay;
 
+        /// <summary>
+        /// Whether to show osu!stable's skip button and break display, as chosen when gameplay loads.
+        /// </summary>
+        private bool legacyGameplayScreens;
+
         protected ScoreProcessor ScoreProcessor { get; private set; }
 
         protected HealthProcessor HealthProcessor { get; private set; }
@@ -229,6 +234,8 @@ namespace osu.Game.Screens.Play
         [BackgroundDependencyLoader(true)]
         private void load(OsuConfigManager config, OsuGameBase game, CancellationToken cancellationToken)
         {
+            legacyGameplayScreens = config.Get<bool>(OsuSetting.ToriiLegacyGameplayScreens);
+
             var gameplayMods = Mods.Value.Select(m => m.DeepClone()).ToArray();
 
             if (gameplayMods.Any(m => m is UnknownMod))
@@ -513,18 +520,23 @@ namespace osu.Game.Screens.Play
                         Clock = DrawableRuleset.FrameStableClock,
                         ProcessCustomClock = false,
                         BreakTracker = breakTracker,
-                    },
+                        ShowStandardDisplay = !legacyGameplayScreens,
+                    }.With(o =>
+                    {
+                        if (legacyGameplayScreens)
+                            o.Add(new LegacyBreakOverlay(breakTracker));
+                    }),
                     // display the cursor above some HUD elements.
                     DrawableRuleset.Cursor?.CreateProxy() ?? new Container(),
                     SkipIntroOverlay = CreateSkipOverlay(DrawableRuleset.GameplayStartTime).With(o =>
                     {
                         o.RequestSkip = RequestIntroSkip;
                     }),
-                    skipOutroOverlay = new SkipOverlay(GameplayState.Storyboard.LatestEventTime ?? 0)
+                    skipOutroOverlay = createStandardSkipOverlay(GameplayState.Storyboard.LatestEventTime ?? 0).With(o =>
                     {
-                        RequestSkip = () => progressToResults(false),
-                        Alpha = 0
-                    },
+                        o.RequestSkip = () => progressToResults(false);
+                        o.Alpha = 0;
+                    }),
                     DrawableRuleset.ResumeOverlay?.CreateProxy() ?? new Container(),
                     PauseOverlay = new PauseOverlay
                     {
@@ -545,7 +557,9 @@ namespace osu.Game.Screens.Play
             return container;
         }
 
-        protected virtual SkipOverlay CreateSkipOverlay(double startTime) => new SkipOverlay(startTime);
+        protected virtual SkipOverlay CreateSkipOverlay(double startTime) => createStandardSkipOverlay(startTime);
+
+        private SkipOverlay createStandardSkipOverlay(double startTime) => legacyGameplayScreens ? new LegacySkipOverlay(startTime) : new SkipOverlay(startTime);
 
         private void onBreakTimeChanged(ValueChangedEvent<bool> isBreakTime)
         {

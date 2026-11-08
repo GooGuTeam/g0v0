@@ -21,6 +21,8 @@ namespace osu.Game.Rulesets.Osu.Mods
         public static void ApplyClassic(OsuHitObject hitObject, bool checkpoints, bool headAccuracy)
         {
             hitObject.ClassicCompatibilityRequested = true;
+            if (hitObject is Spinner spinner)
+                spinner.ClassicSpinnerBehaviour = true;
             if (hitObject is Slider slider)
             {
                 slider.ClassicSliderBehaviour = true;

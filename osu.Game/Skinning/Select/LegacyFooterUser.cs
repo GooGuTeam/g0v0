@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 
 using osu.Framework.Allocation;
@@ -13,8 +13,10 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
 using osu.Game.Audio;
 using osu.Game.Graphics;
+using osu.Game.Screens.Select;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Localisation;
 using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
@@ -26,6 +28,9 @@ using osuTK.Graphics;
 
 namespace osu.Game.Skinning.Select
 {
+    /// <summary>
+    /// stable's local user card (<c>User.DrawAt</c>), shared by song select's footer and the main menu's top-left corner.
+    /// </summary>
     public partial class LegacyFooterUser : CompositeDrawable
     {
         private Sprite background = null!;
@@ -52,6 +57,11 @@ namespace osu.Game.Skinning.Select
         [Resolved]
         private UserProfileOverlay? profileOverlay { get; set; }
 
+        [Resolved]
+        private LoginOverlay? loginOverlay { get; set; }
+
+        private readonly IBindable<APIUser> localUser = new Bindable<APIUser>();
+
         private APIUser? currentUser;
 
         [BackgroundDependencyLoader]
@@ -60,48 +70,52 @@ namespace osu.Game.Skinning.Select
             AutoSizeAxes = Axes.Both;
 
             // reference: https://github.com/peppy/osu-stable-reference/blob/c34a74fb61c17c5667486a12548485d1f03baa2e/osu!/Online/Drawable/User.cs#L622
-            // with minor adjustments to position/size specifications to better match visually (besides multiplying by 1.6)
+            // the offsets differ slightly from stable's to make up for our fonts' metrics against its Aller: skins (e.g. ones with label strips over
+            // "Performance:" and "Accuracy:") are drawn to where stable's text actually lands, not to its nominal positions.
             InternalChildren = new Drawable[]
             {
                 usernameText = new OsuSpriteText
                 {
                     Position = new Vector2(50.5f, -2f) * 1.6f,
-                    Font = OsuFont.Default.With(size: 14 * 1.6f),
+                    Font = LegacyFonts.Get(14 * 1.6f, FontWeight.Medium),
                 },
-                infoText = new OsuTextFlowContainer(t => t.Font = OsuFont.Default.With(size: 10 * 1.6f))
+                infoText = new OsuTextFlowContainer(t => t.Font = LegacyFonts.Get(10 * 1.6f, FontWeight.Medium))
                 {
-                    Position = new Vector2(50f, 11.5f) * 1.6f,
+                    Position = new Vector2(50f, 12.5f) * 1.6f,
                 },
                 rulesetIcon = new Sprite
                 {
                     Position = new Vector2(176, 0) * 1.6f,
-                    Colour = Color4.White.Opacity(70),
+                    Alpha = 70 / 255f,
                 },
                 rankText = new OsuSpriteText
                 {
                     Position = new Vector2(200, 9) * 1.6f,
-                    Font = OsuFont.Default.With(size: 36 * 1.6f * 0.9f),
+                    Font = LegacyFonts.Get(36 * 1.6f * 0.9f, FontWeight.Medium),
                     Origin = Anchor.TopRight,
                 },
                 levelBar = new Sprite
                 {
-                    Texture = skins.DefaultClassicSkin.GetTexture("levelbar"),
+                    Texture = skins.DefaultClassicSkin.GetStableTexture("levelbar"),
                     // fixing the texture rectangle allows us to crop the texture by the drawable width.
                     TextureRelativeSizeAxes = Axes.Y,
                     TextureRectangle = new RectangleF(0, 0, 200, 1),
                     OriginPosition = new Vector2(-120, -62),
                     Colour = new Color4(252, 184, 6, 255),
                     Alpha = 0.7f,
+                    // stable draws the level bar and its background additively.
+                    Blending = BlendingParameters.Additive,
                 },
                 new Sprite
                 {
-                    Texture = skins.DefaultClassicSkin.GetTexture("levelbar-bg"),
+                    Texture = skins.DefaultClassicSkin.GetStableTexture("levelbar-bg"),
                     OriginPosition = new Vector2(-120, -62),
                     Alpha = 0.4f,
+                    Blending = BlendingParameters.Additive,
                 },
                 background = new Sprite
                 {
-                    Texture = skins.DefaultClassicSkin.GetTexture("user-bg"),
+                    Texture = skins.DefaultClassicSkin.GetStableTexture("user-bg"),
                     // https://github.com/peppy/osu-stable-reference/blob/c34a74fb61c17c5667486a12548485d1f03baa2e/osu!/Online/Drawable/User.cs#L520-L521
                     Colour = new Color4(1, 1, 1, 255),
                     Blending = BlendingParameters.Additive,
@@ -122,6 +136,8 @@ namespace osu.Game.Skinning.Select
             base.LoadComplete();
 
             userStatisticsProvider.StatisticsUpdated += onStatisticsUpdated;
+            localUser.BindTo(api.LocalUser);
+            localUser.BindValueChanged(_ => Schedule(updateDisplay));
             ruleset.BindValueChanged(_ => updateDisplay(), true);
         }
 
@@ -140,12 +156,22 @@ namespace osu.Game.Skinning.Select
             currentUser = statistics?.User ?? (api.IsLoggedIn ? api.LocalUser.Value : null);
             avatar.User = currentUser;
 
-            if (statistics == null)
+            if (!api.IsLoggedIn)
+            {
+                // stable's guest card (User.UpdateStats): "Guest", with a prompt to sign in in place of the statistics.
+                usernameText.Text = UserInterfaceStrings.LegacyGuest;
+                infoText.Text = UserInterfaceStrings.LegacySignIn;
+                rankText.Text = string.Empty;
+                rulesetIcon.Hide();
+                levelBar.Hide();
+            }
+            else if (statistics == null)
             {
                 usernameText.Text = currentUser?.Username ?? string.Empty;
                 infoText.Text = string.Empty;
                 rankText.Text = string.Empty;
                 rulesetIcon.Hide();
+                levelBar.Hide();
             }
             else
             {
@@ -164,6 +190,7 @@ namespace osu.Game.Skinning.Select
                     int rank = statistics.GlobalRank.Value;
 
                     rankText.Text = $"#{rank}";
+                    rankText.Show();
 
                     if (rank > 100000)
                         rankText.Colour = new Color4(255, 255, 255, 40);
@@ -179,14 +206,16 @@ namespace osu.Game.Skinning.Select
                         rankText.Colour = new Color4(88, 171, 248, 120);
                 }
 
+                rulesetIcon.Show();
                 rulesetIcon.Alpha = 70 / 255f;
-                rulesetIcon.Texture = skins.DefaultClassicSkin.GetTexture($"mode-{ruleset.Value.ShortName}-small");
+                rulesetIcon.Texture = skins.DefaultClassicSkin.GetStableTexture($"mode-{ruleset.Value.ShortName}-small");
 
                 if (statistics.Level.Progress == 0)
                     levelBar.Hide();
                 else
                 {
-                    levelBar.Width = 198 * statistics.Level.Progress / 100f;
+                    // stable crops the bar to whole pixels (User.updateLevelBar).
+                    levelBar.Width = (int)(198 * statistics.Level.Progress / 100f);
                     levelBar.Show();
                 }
 
@@ -208,8 +237,10 @@ namespace osu.Game.Skinning.Select
 
         protected override bool OnClick(ClickEvent e)
         {
-            // Stable opens the local user's profile when the footer user panel is clicked.
-            if (currentUser != null)
+            // Stable opens the local user's profile when the footer user panel is clicked, or the login form for a guest.
+            if (!api.IsLoggedIn)
+                loginOverlay?.ToggleVisibility();
+            else if (currentUser != null)
                 profileOverlay?.ShowUser(currentUser);
 
             return true;

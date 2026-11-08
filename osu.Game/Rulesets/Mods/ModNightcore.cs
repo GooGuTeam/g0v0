@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
@@ -79,7 +79,7 @@ namespace osu.Game.Rulesets.Mods
             private PausableSkinnableSound? kickSample;
             private PausableSkinnableSound? finishSample;
 
-            private int? firstBeat;
+            private long? firstBeat;
             private int lastBeat = -1;
 
             private readonly bool playHats;
@@ -108,8 +108,9 @@ namespace osu.Game.Rulesets.Mods
             {
                 base.OnNewBeat(beatIndex, timingPoint, effectPoint, amplitudes);
 
-                int beatsPerBar = timingPoint.TimeSignature.Numerator;
-                int segmentLength = beatsPerBar * Divisor * bars_per_segment;
+                int beatsPerBar = timingPoint.LegacyTimeSignature ?? timingPoint.TimeSignature.Numerator;
+                // Widen before multiplication: signed legacy meters can exceed the 32-bit segment range.
+                long segmentLength = (long)beatsPerBar * Divisor * bars_per_segment;
 
                 if (!IsBeatSyncedWithTrack)
                 {
@@ -125,7 +126,24 @@ namespace osu.Game.Rulesets.Mods
                     playBeatFor(beatIndex, segmentLength, timingPoint);
             }
 
-            private void playBeatFor(int beatIndex, int segmentLength, TimingControlPoint timingPoint)
+            // The historical NightcoreBeat.Update uses signed remainder rather than switching on a
+            // positive native signature. Keep that sample selection for otherwise unrepresentable meters.
+            // Beat event scheduling still uses BeatSyncedContainer's native bounded timing.
+            internal static (bool Kick, bool Finish, bool Clap, bool Hat) GetLegacyBeatSamples(int beatIndex, int meter, bool omitFirstBarLine, bool playHats)
+            {
+                if (beatIndex % (8L * meter) == 0)
+                    return (true, beatIndex > 0 || !omitFirstBarLine, false, false);
+
+                int beatInBar = beatIndex % meter;
+                if (beatInBar % 4 == 0)
+                    return (true, false, false, false);
+                if (beatInBar % 4 == 2)
+                    return (false, false, true, false);
+
+                return (false, false, false, playHats);
+            }
+
+            private void playBeatFor(int beatIndex, long segmentLength, TimingControlPoint timingPoint)
             {
                 // https://github.com/peppy/osu-stable-reference/blob/6ab0cf1f9f7b3449f5c0d8defcd458aae72cdb88/osu!/Audio/NightcoreBeat.cs#L41
                 if (lastBeat == beatIndex)
@@ -133,7 +151,17 @@ namespace osu.Game.Rulesets.Mods
 
                 lastBeat = beatIndex;
 
-                int beatInSegment = beatIndex % segmentLength;
+                if (timingPoint.LegacyTimeSignature is int legacyMeter)
+                {
+                    var samples = GetLegacyBeatSamples(beatIndex, legacyMeter, timingPoint.OmitFirstBarLine, playHats);
+                    if (samples.Kick) kickSample?.Play();
+                    if (samples.Finish) finishSample?.Play();
+                    if (samples.Clap) clapSample?.Play();
+                    if (samples.Hat) hatSample?.Play();
+                    return;
+                }
+
+                long beatInSegment = beatIndex % segmentLength;
 
                 if (beatInSegment == 0)
                 {

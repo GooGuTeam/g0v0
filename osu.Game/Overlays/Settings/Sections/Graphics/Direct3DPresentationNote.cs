@@ -10,6 +10,8 @@ using osu.Framework.Graphics.Rendering;
 using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
+using osu.Game.Overlays.Settings.Rendering;
 
 namespace osu.Game.Overlays.Settings.Sections.Graphics
 {
@@ -21,7 +23,10 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
         [Resolved]
         private GameHost host { get; set; } = null!;
 
-        private readonly SettingsNote note;
+        private readonly NoteEntry note = new NoteEntry();
+
+        [Resolved(canBeNull: true)]
+        private ISettingsRenderer? renderer { get; set; }
         private Direct3DPresentationStatus? lastStatus;
 
         public IEnumerable<LocalisableString> FilterTerms => new[]
@@ -57,17 +62,12 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
             RelativeSizeAxes = Axes.X;
             AutoSizeAxes = Axes.Y;
             Alpha = 0;
+        }
 
-            InternalChild = new Container
-            {
-                RelativeSizeAxes = Axes.X,
-                AutoSizeAxes = Axes.Y,
-                Padding = SettingsPanel.CONTENT_PADDING,
-                Child = note = new SettingsNote
-                {
-                    RelativeSizeAxes = Axes.X,
-                },
-            };
+        [BackgroundDependencyLoader]
+        private void load()
+        {
+            InternalChild = note.CreateDrawable(renderer ?? LazerSettingsRenderer.DEFAULT);
         }
 
         protected override void LoadComplete()
@@ -93,7 +93,7 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
                 return;
 
             lastStatus = status;
-            note.Current.Value = CreateNote(status);
+            note.Note.Value = CreateNote(status);
             Alpha = status == null ? 0 : 1;
             canBeShown.Value = status != null;
         }

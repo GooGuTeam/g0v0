@@ -10,6 +10,7 @@ using osu.Framework.Input.Handlers.Joystick;
 using osu.Framework.Localisation;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Input
 {
@@ -38,7 +39,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
             AddRange(new Drawable[]
             {
-                new SettingsItemV2(new FormSliderBar<float>
+                CreateItem(new SliderEntry<float>
                 {
                     Caption = JoystickSettingsStrings.DeadzoneThreshold,
                     KeyboardStep = 0.01f,

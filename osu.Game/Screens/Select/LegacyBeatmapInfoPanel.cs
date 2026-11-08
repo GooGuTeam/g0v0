@@ -59,6 +59,11 @@ namespace osu.Game.Screens.Select
         private OsuSpriteText countsText = null!;
         private FillFlowContainer statsLine = null!;
 
+        /// <summary>
+        /// The small stat line (CS/AR/OD/HP and star rating), which osu!stable draws in front of the skin's selection-mode decoration (depth 1).
+        /// </summary>
+        public Drawable StatsLine => statsLine;
+
         private ISkinSource skin = null!;
 
         private CancellationTokenSource? countsCancellation;
@@ -125,7 +130,6 @@ namespace osu.Game.Screens.Select
                     Anchor = Anchor.TopLeft,
                     Origin = Anchor.Centre,
                     Position = new Vector2(19, 19),
-                    Size = new Vector2(28),
                 },
                 // glyph de fallback cuando ni el skin ni el classic bundleado traen el icono de
                 // status (selection-ranked / selection-loved / etc).
@@ -272,15 +276,12 @@ namespace osu.Game.Screens.Select
 
             var status = info.BeatmapSet?.Status ?? info.Status;
 
-            var tex = skin.GetTexture(statusTextureName(status)) ?? skins.DefaultClassicSkin.GetTexture(statusTextureName(status));
+            var tex = skin.GetStableTexture(statusTextureName(status)) ?? skins.DefaultClassicSkin.GetStableTexture(statusTextureName(status));
             statusIcon.Texture = tex;
 
             if (tex != null)
             {
-                // encajar en el slot de 28px manteniendo el aspecto; forzar cuadrado estiraba a lo
-                // ancho los iconos no cuadrados (ej. selection-question es 15x26).
-                float fit = Math.Min(28f / tex.DisplayWidth, 28f / tex.DisplayHeight);
-                statusIcon.Size = new Vector2(tex.DisplayWidth, tex.DisplayHeight) * fit;
+                statusIcon.Size = new Vector2(tex.DisplayWidth, tex.DisplayHeight);
                 statusIcon.Alpha = 1;
                 statusGlyph.Alpha = 0;
             }

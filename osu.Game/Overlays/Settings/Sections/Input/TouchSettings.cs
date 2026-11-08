@@ -10,6 +10,7 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Input
 {
@@ -30,7 +31,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
         [BackgroundDependencyLoader]
         private void load(OsuConfigManager osuConfig)
         {
-            Add(new SettingsItemV2(new FormCheckBox
+            Add(CreateItem(new CheckboxEntry
             {
                 Caption = TouchSettingsStrings.DisableTapsDuringGameplay,
                 Current = osuConfig.GetBindable<bool>(OsuSetting.TouchDisableGameplayTaps)

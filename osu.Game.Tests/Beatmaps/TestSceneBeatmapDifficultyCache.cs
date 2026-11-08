@@ -1,10 +1,12 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +17,7 @@ using osu.Framework.Bindables;
 using osu.Framework.Extensions;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps;
+using osu.Game.Database;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
@@ -62,6 +65,41 @@ namespace osu.Game.Tests.Beatmaps
             });
 
             AddUntilStep($"star difficulty -> {BASE_STARS}", () => starDifficultyBindable.Value.Stars == BASE_STARS);
+        }
+
+        [TestCase(5 * 1024 * 1024 - 1)]
+        [TestCase(5 * 1024 * 1024)]
+        [TestCase(5 * 1024 * 1024 + 1)]
+        public void TestDifficultyFileSizeLimit(int fileSize)
+        {
+            BeatmapInfo beatmap = null;
+            StarDifficulty? result = null;
+
+            AddStep("import padded beatmap", () =>
+            {
+                using var content = new MemoryStream();
+                using (var writer = new StreamWriter(content, leaveOpen: true))
+                {
+                    writer.Write("osu file format v14\n[General]\nMode:0\n[Metadata]\nTitle:Size limit test\nArtist:Test\nCreator:Test\nVersion:Test\n[Difficulty]\nCircleSize:4\nOverallDifficulty:5\nApproachRate:5\nSliderMultiplier:1.4\nSliderTickRate:1\n[TimingPoints]\n0,500,4,2,0,100,1,0\n[HitObjects]\n64,64,1000,1,0,0:0:0:0:\n448,320,1500,1,0,0:0:0:0:\n");
+                }
+                content.WriteByte((byte)'\n');
+                content.WriteByte((byte)'/');
+                content.WriteByte((byte)'/');
+                while (content.Length < fileSize)
+                    content.WriteByte((byte)' ');
+
+                using var archiveStream = new MemoryStream();
+                using (var archive = new ZipArchive(archiveStream, ZipArchiveMode.Create, true))
+                using (var entry = archive.CreateEntry("padded.osu").Open())
+                    entry.Write(content.ToArray());
+
+                archiveStream.Position = 0;
+                beatmap = beatmapManager.Import(new ImportTask(archiveStream, "padded.osz")).GetResultSafely().PerformRead(s => s.Beatmaps.Single().Clone());
+            });
+            AddStep("calculate difficulty", () => result = actualDifficultyCache.GetDifficultyAsync(beatmap, mods: new Mod[] { new OsuModDoubleTime() }).GetResultSafely());
+            AddAssert("difficulty available", () => result.HasValue);
+            AddAssert("only oversized files return zero", () => result.Value.Stars,
+                () => fileSize > 5 * 1024 * 1024 ? Is.Zero : Is.GreaterThan(0));
         }
 
         [Test]

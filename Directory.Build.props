@@ -1,5 +1,14 @@
 ﻿<!-- Contains required properties for osu!framework projects. -->
 <Project>
+  <PropertyGroup Label="Local framework">
+    <_G0V0FrameworkRoot>$(MSBuildThisFileDirectory)..\g0v0-framework\</_G0V0FrameworkRoot>
+    <G0V0SourceFramework Condition="'$(G0V0SourceFramework)' == '' and Exists('$(_G0V0FrameworkRoot)osu.Framework\osu.Framework.csproj')">true</G0V0SourceFramework>
+    <!-- Local source references are outside osu.sln. Keep the selected configuration instead of resolving their Debug outputs in VS Release builds. -->
+    <ShouldUnsetParentConfigurationAndPlatform>false</ShouldUnsetParentConfigurationAndPlatform>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(G0V0SourceFramework)' == 'true'">
+    <PackageReference Include="ppy.osu.Framework.SourceGeneration" Version="2025.1121.1" PrivateAssets="all" />
+  </ItemGroup>
   <PropertyGroup Label="C#">
     <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>

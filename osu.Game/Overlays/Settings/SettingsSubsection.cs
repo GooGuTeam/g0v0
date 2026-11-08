@@ -1,14 +1,15 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osuTK;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Game.Graphics.Sprites;
+using System;
 using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Localisation;
-using osu.Game.Graphics;
+using osu.Game.Overlays.Settings.Entries;
+using osu.Game.Overlays.Settings.Rendering;
 
 namespace osu.Game.Overlays.Settings
 {
@@ -31,6 +32,30 @@ namespace osu.Game.Overlays.Settings
 
         public bool FilteringActive { get; set; }
 
+        [Resolved(canBeNull: true)]
+        private ISettingsRenderer? renderer { get; set; }
+
+        /// <summary>
+        /// The renderer used for this subsection's entries, as chosen by the containing <see cref="SettingsPanel"/>.
+        /// Available from this subsection's <c>load</c> method onwards.
+        /// </summary>
+        protected ISettingsRenderer Renderer => renderer ?? LazerSettingsRenderer.DEFAULT;
+
+        private readonly List<SettingsEntry> entries = new List<SettingsEntry>();
+
+        /// <summary>
+        /// Creates the drawable for <paramref name="entry"/> using <see cref="Renderer"/>.
+        /// The entry's bindings are released when this subsection is disposed.
+        /// </summary>
+        protected Drawable CreateItem(SettingsEntry entry)
+        {
+            if (LoadState < LoadState.Loading)
+                throw new InvalidOperationException($"{nameof(CreateItem)} must be called during or after load, so that the panel's renderer is used.");
+
+            entries.Add(entry);
+            return entry.CreateDrawable(Renderer);
+        }
+
         protected SettingsSubsection()
         {
             RelativeSizeAxes = Axes.X;
@@ -46,8 +71,8 @@ namespace osu.Game.Overlays.Settings
             };
         }
 
-        private const int header_height = 43;
-        private const int header_font_size = 20;
+        private const int header_height = LazerSettingsRenderer.SUBSECTION_HEADER_HEIGHT;
+        private const int header_font_size = LazerSettingsRenderer.SUBSECTION_HEADER_FONT_SIZE;
 
         [BackgroundDependencyLoader]
         private void load()
@@ -66,15 +91,16 @@ namespace osu.Game.Overlays.Settings
             });
         }
 
-        protected virtual Drawable CreateHeader()
+        protected virtual Drawable CreateHeader() => Renderer.CreateSubsectionHeader(Header);
+
+        protected override void Dispose(bool isDisposing)
         {
-            return new OsuSpriteText
-            {
-                Text = Header,
-                Font = OsuFont.GetFont(size: header_font_size),
-                Margin = new MarginPadding { Vertical = VERTICAL_PADDING, Horizontal = 5 },
-                Padding = SettingsPanel.CONTENT_PADDING,
-            };
+            base.Dispose(isDisposing);
+
+            foreach (var entry in entries)
+                entry.Unbind();
+
+            entries.Clear();
         }
     }
 }

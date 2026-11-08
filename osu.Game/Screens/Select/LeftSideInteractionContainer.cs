@@ -39,9 +39,9 @@ namespace osu.Game.Screens.Select
         // as those will usually correspond to other interactions like adjusting volume.
         protected override bool OnScroll(ScrollEvent e) => !e.ControlPressed && !e.AltPressed && !e.ShiftPressed && !e.SuperPressed;
 
-        // Only claim the mouse-down in legacy (drag-forwarding) mode; otherwise let it fall through to
-        // whatever is underneath, matching upstream's background-preview behaviour.
-        protected override bool OnMouseDown(MouseDownEvent e) => canForwardDrag?.Invoke() == true;
+        // Never claim the mouse-down: song select's press-and-hold background reveal needs it, and the drag below is still offered to this
+        // container, since nothing handled the press.
+        protected override bool OnMouseDown(MouseDownEvent e) => false;
 
         // Only claim the drag when forwarding is allowed (legacy mode); otherwise leave behaviour as-is.
         protected override bool OnDragStart(DragStartEvent e) => canForwardDrag?.Invoke() == true;

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -15,7 +15,6 @@ using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Objects;
-using osu.Game.Rulesets.Osu.Skinning;
 
 namespace osu.Game.Rulesets.Osu.Mods
 {
@@ -80,8 +79,7 @@ namespace osu.Game.Rulesets.Osu.Mods
                 }
                 else if (drawableObject is DrawableSpinner spinner)
                 {
-                    spinner.Body.OnSkinChanged += () => hideSpinnerApproachCircle(spinner);
-                    hideSpinnerApproachCircle(spinner);
+                    spinner.HideApproachCircle();
                 }
             }
 
@@ -117,6 +115,8 @@ namespace osu.Game.Rulesets.Osu.Mods
 
                     using (drawableObject.BeginAbsoluteSequence(fadeStartTime))
                         fadeTarget.FadeOut(fadeDuration);
+
+                    circle.ApplyHiddenHitFeedback();
                     break;
 
                 case DrawableSlider slider:
@@ -146,6 +146,9 @@ namespace osu.Game.Rulesets.Osu.Mods
         {
             switch (drawableObject)
             {
+                case DrawableSliderTick tick:
+                    return GetTickFadeOutParameters((SliderTick)tick.HitObject, tick.FadeInDuration);
+
                 case DrawableSliderTail tail:
                     // Use the same fade sequence as the slider head.
                     Debug.Assert(tail.Slider != null);
@@ -173,10 +176,6 @@ namespace osu.Game.Rulesets.Osu.Mods
                     case Slider:
                         return (fadeOutStartTime, longFadeDuration);
 
-                    case SliderTick:
-                        double tickFadeOutDuration = Math.Min(hitObject.TimePreempt - DrawableSliderTick.ANIM_DURATION, 1000);
-                        return (hitObject.StartTime - tickFadeOutDuration, tickFadeOutDuration);
-
                     case Spinner:
                         return (fadeOutStartTime + longFadeDuration, fadeOutDuration);
 
@@ -186,14 +185,12 @@ namespace osu.Game.Rulesets.Osu.Mods
             }
         }
 
-        private static void hideSpinnerApproachCircle(DrawableSpinner spinner)
+        internal static (double StartTime, double Duration) GetTickFadeOutParameters(SliderTick tick, double fadeInDuration)
         {
-            var approachCircle = (spinner.Body.Drawable as IHasApproachCircle)?.ApproachCircle;
-            if (approachCircle == null)
-                return;
-
-            using (spinner.BeginAbsoluteSequence(spinner.HitObject.StartTime - spinner.HitObject.TimePreempt))
-                approachCircle.Hide();
+            // Match the end of the span-specific fade-in, capped to the final second before the tick.
+            double duration = Math.Min(tick.TimePreempt - fadeInDuration, 1000);
+            return (tick.StartTime - duration, duration);
         }
+
     }
 }

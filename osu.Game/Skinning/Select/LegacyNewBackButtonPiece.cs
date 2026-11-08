@@ -12,6 +12,7 @@ using osu.Framework.Input.Events;
 using osu.Game.Audio;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Graphics;
+using osu.Game.Screens.Select;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osuTK;
@@ -50,7 +51,7 @@ namespace osu.Game.Skinning.Select
                 {
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.BottomRight,
-                    Texture = skins.DefaultClassicSkin.GetTexture("back-button-layer"),
+                    Texture = skins.DefaultClassicSkin.GetStableTexture("back-button-layer"),
                     Colour = idle_colour,
                 },
                 text = new OsuSpriteText
@@ -58,7 +59,7 @@ namespace osu.Game.Skinning.Select
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.Centre,
                     Text = @"back",
-                    Font = OsuFont.Default.With(size: back_text_size),
+                    Font = LegacyFonts.Get(back_text_size, FontWeight.Medium),
                     Y = -vertical_offset,
                     UseFullGlyphHeight = false,
                 },
@@ -66,7 +67,7 @@ namespace osu.Game.Skinning.Select
                 {
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.BottomRight,
-                    Texture = skins.DefaultClassicSkin.GetTexture("back-button-layer"),
+                    Texture = skins.DefaultClassicSkin.GetStableTexture("back-button-layer"),
                     Colour = idle_colour,
                 },
                 icon = new SpriteIcon

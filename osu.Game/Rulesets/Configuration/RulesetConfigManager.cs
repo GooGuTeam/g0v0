@@ -10,6 +10,7 @@ using System.Linq;
 using osu.Framework.Bindables;
 using osu.Framework.Configuration;
 using osu.Framework.Extensions;
+using osu.Framework.Logging;
 using osu.Game.Configuration;
 using osu.Game.Database;
 
@@ -101,7 +102,18 @@ namespace osu.Game.Rulesets.Configuration
 
             if (setting != null)
             {
-                bindable.Parse(setting.Value, CultureInfo.InvariantCulture);
+                try
+                {
+                    bindable.Parse(setting.Value, CultureInfo.InvariantCulture);
+                }
+                catch (Exception e) when (e is ArgumentException || e is FormatException || e is OverflowException)
+                {
+                    Logger.Log($@"Unable to parse ruleset config key {rulesetName}/{variant}/{lookup}: {e}", LoggingTarget.Runtime, LogLevel.Important);
+                    bindable.SetDefault();
+
+                    lock (pendingWrites)
+                        pendingWrites.Add(lookup);
+                }
             }
             else
             {

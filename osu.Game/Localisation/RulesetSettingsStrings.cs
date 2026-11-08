@@ -10,6 +10,36 @@ namespace osu.Game.Localisation
         private const string prefix = @"osu.Game.Resources.Localisation.RulesetSettings";
 
         /// <summary>
+        /// "Show successful-hit feedback with Hidden"
+        /// </summary>
+        public static LocalisableString HiddenHitFeedback => new TranslatableString(getKey(@"hidden_hit_feedback"), @"Show successful-hit feedback with Hidden");
+
+        /// <summary>
+        /// "Show the skin's hit animations after successful circle and slider-head hits with Hidden. Requires hit animations. Disabled preserves lazer's Hidden fading."
+        /// </summary>
+        public static LocalisableString HiddenHitFeedbackDescription => new TranslatableString(getKey(@"hidden_hit_feedback_description"), @"Show the skin's hit animations after successful circle and slider-head hits with Hidden. Requires hit animations. Disabled preserves lazer's Hidden fading.");
+
+        /// <summary>
+        /// "Use osu!stable slider tick visibility"
+        /// </summary>
+        public static LocalisableString LegacySliderTickVisibility => new TranslatableString(getKey(@"legacy_slider_tick_visibility"), @"Use osu!stable slider tick visibility");
+
+        /// <summary>
+        /// "Hide ticks inside either slider endpoint circle during gameplay. Ticks are still judged. Disabled uses lazer's visible ticks."
+        /// </summary>
+        public static LocalisableString LegacySliderTickVisibilityDescription => new TranslatableString(getKey(@"legacy_slider_tick_visibility_description"), @"Hide ticks inside either slider endpoint circle during gameplay. Ticks are still judged. Disabled uses lazer's visible ticks.");
+
+        /// <summary>
+        /// "Use osu!stable slider tick fading"
+        /// </summary>
+        public static LocalisableString LegacySliderTickFading => new TranslatableString(getKey(@"legacy_slider_tick_fading"), @"Use osu!stable slider tick fading");
+
+        /// <summary>
+        /// "Use 200ms fade-in on repeat spans, including Hidden fade-out timing. Disabled uses lazer's 150ms."
+        /// </summary>
+        public static LocalisableString LegacySliderTickFadingDescription => new TranslatableString(getKey(@"legacy_slider_tick_fading_description"), @"Use 200ms fade-in on repeat spans, including Hidden fade-out timing. Disabled uses lazer's 150ms.");
+
+        /// <summary>
         /// "Rulesets"
         /// </summary>
         public static LocalisableString Rulesets => new TranslatableString(getKey(@"rulesets"), @"Rulesets");
@@ -307,6 +337,45 @@ namespace osu.Game.Localisation
         /// "Display accuracy judgements on slider heads when hit."
         /// </summary>
         public static LocalisableString ShowSliderHeadJudgementsDescription => new TranslatableString(getKey(@"show_slider_head_judgements_description"), @"Display accuracy judgements on slider heads when hit.");
+
+        /// <summary>
+        /// "Use stable-style 2B rendering"
+        /// </summary>
+        public static LocalisableString KeepOverlapCirclesVisible => new TranslatableString(getKey(@"keep_overlap_circles_visible"), @"Use stable-style 2B rendering");
+
+        /// <summary>
+        /// "Order slider bodies, circles and markers separately using stable-style visual priorities. Does not change hit judgement."
+        /// </summary>
+        public static LocalisableString KeepOverlapCirclesVisibleDescription => new TranslatableString(getKey(@"keep_overlap_circles_visible_description"), @"Order slider bodies, circles and markers separately using stable-style visual priorities. Does not change hit judgement.");
+
+        /// <summary>
+        /// "Show hidden sliders"
+        /// </summary>
+        public static LocalisableString ShowHiddenSliders => new TranslatableString(getKey(@"show_hidden_sliders"), @"Show hidden sliders");
+
+        /// <summary>
+        /// "Display sliders shorter than 1 ms, including their circles and markers. Does not change hit judgement."
+        /// </summary>
+        public static LocalisableString ShowHiddenSlidersDescription => new TranslatableString(getKey(@"show_hidden_sliders_description"), @"Display sliders shorter than 1 ms, including their circles and markers. Does not change hit judgement.");
+
+        /// <summary>
+        /// "Slider viewport size"
+        /// </summary>
+        public static LocalisableString SliderViewportSize => new TranslatableString(getKey(@"slider_viewport_size"), @"Slider viewport size");
+
+        /// <summary>
+        /// "Viewport limit for large slider bodies. Default uses 32768x32768. Custom uses the specified width and height."
+        /// </summary>
+        public static LocalisableString SliderViewportSizeDescription => new TranslatableString(getKey(@"slider_viewport_size_description"), @"Viewport limit for large slider bodies. Default uses 32768x32768. Custom uses the specified width and height.");
+
+        public static LocalisableString SliderViewportDefault => new TranslatableString(getKey(@"slider_viewport_default"), @"Default");
+
+        public static LocalisableString SliderViewportCustom => new TranslatableString(getKey(@"slider_viewport_custom"), @"Custom");
+
+
+        public static LocalisableString SliderViewportCustomSize => new TranslatableString(getKey(@"slider_viewport_custom_size"), @"Custom viewport size");
+
+        public static LocalisableString SliderViewportCustomSizeDescription => new TranslatableString(getKey(@"slider_viewport_custom_size_description"), @"Enter a number for a square viewport, or width x height (1–65536 pixels per dimension). Input is normalised on commit. Invalid input keeps the last valid size.");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

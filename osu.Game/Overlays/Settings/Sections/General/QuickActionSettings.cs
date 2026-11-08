@@ -18,6 +18,7 @@ using osu.Game.Utils;
 using SharpCompress.Archives.Zip;
 using SharpCompress.Common;
 using SharpCompress.Writers.Zip;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.General
 {
@@ -36,31 +37,31 @@ namespace osu.Game.Overlays.Settings.Sections.General
         {
             AddRange(new Drawable[]
             {
-                new SettingsButtonV2
+                CreateItem(new ButtonEntry
                 {
-                    Text = GeneralSettingsStrings.RunSetupWizard,
+                    Caption = GeneralSettingsStrings.RunSetupWizard,
                     Keywords = new[] { @"first run", @"initial", @"getting started", @"import", @"tutorial", @"recommended beatmaps" },
-                    TooltipText = FirstRunSetupOverlayStrings.FirstRunSetupDescription,
+                    HintText = FirstRunSetupOverlayStrings.FirstRunSetupDescription,
                     Action = () => firstRunSetupOverlay?.Show(),
-                },
-                new SettingsButtonV2
+                }),
+                CreateItem(new ButtonEntry
                 {
-                    Text = GeneralSettingsStrings.ReportIssue,
-                    TooltipText = GeneralSettingsStrings.ReportIssueTooltip,
+                    Caption = GeneralSettingsStrings.ReportIssue,
+                    HintText = GeneralSettingsStrings.ReportIssueTooltip,
                     BackgroundColour = colours.YellowDarker,
                     Action = () => dialogOverlay?.Push(new IssueReportDialog(() =>
                         game?.OpenUrlExternally(@"https://github.com/GooGuTeam/g0v0/issues", LinkWarnMode.NeverWarn)
                     )),
-                },
+                }),
             });
 
-            Add(new SettingsButtonV2
+            Add(CreateItem(new ButtonEntry
             {
-                Text = GeneralSettingsStrings.ExportLogs,
+                Caption = GeneralSettingsStrings.ExportLogs,
                 BackgroundColour = colours.YellowDarker.Darken(0.5f),
                 Keywords = new[] { @"bug", "report", "logs", "files" },
                 Action = () => Task.Run(exportLogs),
-            });
+            }));
 
             exportStorage = (storage as OsuStorage)?.GetExportStorage() ?? storage.GetStorageForDirectory(@"exports");
         }

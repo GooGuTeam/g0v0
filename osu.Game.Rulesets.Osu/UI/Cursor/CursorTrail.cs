@@ -50,6 +50,14 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
         /// </summary>
         protected bool AllowPartRotation { get; set; }
 
+        /// <summary>
+        /// Whether to drop the trail whenever this drawable's transform to screen space changes (e.g. the UI scale being adjusted).
+        /// Parts are stored in local space, so a changing transform would otherwise smear them and streak a trail from the stale position.
+        /// </summary>
+        public bool ClearOnTransformChange { get; set; }
+
+        private Matrix3 lastDrawMatrix;
+
         private Vector2 cursorScale = Vector2.One;
 
         public Vector2 CursorScale
@@ -145,11 +153,31 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
 
             Invalidate(Invalidation.DrawNode);
 
+            if (ClearOnTransformChange)
+            {
+                var drawMatrix = DrawInfo.Matrix;
+
+                if (drawMatrix != lastDrawMatrix)
+                {
+                    lastDrawMatrix = drawMatrix;
+                    clearParts();
+                }
+            }
+
             const int fade_clock_reset_threshold = 1000000;
 
             time = (float)((Time.Current - timeOffset) / FadeDuration);
             if (time > fade_clock_reset_threshold)
                 resetTime();
+        }
+
+        private void clearParts()
+        {
+            for (int i = 0; i < parts.Length; i++)
+                parts[i].InvalidationID = -1;
+
+            lastPosition = null;
+            resampler = new InputResampler();
         }
 
         private void resetTime()
@@ -175,7 +203,7 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
         protected virtual bool AvoidDrawingNearCursor => false;
 
         private Vector2? lastPosition;
-        private readonly InputResampler resampler = new InputResampler();
+        private InputResampler resampler = new InputResampler();
 
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => true;
 
@@ -188,6 +216,12 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
         protected void AddTrail(Vector2 position)
         {
             position = ToLocalSpace(position);
+
+            if (!float.IsFinite(position.X) || !float.IsFinite(position.Y))
+            {
+                clearParts();
+                return;
+            }
 
             if (InterpolateMovements)
             {
@@ -208,11 +242,19 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
                     Vector2 direction = diff / distance;
 
                     float interval = Texture.DisplayWidth * CursorScale.X / 2.5f * IntervalMultiplier;
-                    float stopAt = distance - (AvoidDrawingNearCursor ? interval : 0);
-
-                    for (float d = interval; d < stopAt; d += interval)
+                    int count = GetInterpolationCount(distance, interval, AvoidDrawingNearCursor, out double firstDistance);
+                    if (count == 0 && (!float.IsFinite(distance) || !float.IsFinite(interval) || interval <= 0))
                     {
-                        lastPosition = pos1 + direction * d;
+                        lastPosition = pos2;
+                        continue;
+                    }
+
+                    // Only the last max_sprites pieces survive the ring buffer anyway. Iterate with
+                    // an integer counter: float distance accumulation can stop advancing on Aspire
+                    // jumps once its ULP exceeds the interval, permanently blocking the update thread.
+                    for (int i = 0; i < count; i++)
+                    {
+                        lastPosition = pos1 + direction * (float)(firstDistance + (double)i * interval);
                         addPart(lastPosition.Value);
                     }
                 }
@@ -222,6 +264,19 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
                 lastPosition = position;
                 addPart(lastPosition.Value);
             }
+        }
+
+        internal static int GetInterpolationCount(float distance, float interval, bool avoidNearCursor, out double firstDistance)
+        {
+            firstDistance = 0;
+            if (!float.IsFinite(distance) || !float.IsFinite(interval) || interval <= 0 || distance <= 0)
+                return 0;
+
+            double stopAt = (double)distance - (avoidNearCursor ? interval : 0);
+            double total = Math.Max(0, Math.Ceiling(stopAt / interval) - 1);
+            int count = (int)Math.Min(max_sprites, total);
+            firstDistance = Math.Max(1, total - count + 1) * interval;
+            return count;
         }
 
         private void addPart(Vector2 localSpacePosition)

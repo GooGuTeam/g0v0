@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -24,12 +24,22 @@ namespace osu.Game.Overlays.Settings
 
         public Action? BackButtonAction;
 
+        /// <summary>
+        /// How far the panel's content is offset to make room for the sidebar.
+        /// </summary>
+        public virtual float ContentOffset => DrawWidth;
+
         protected override bool ExpandOnHover => false;
 
         private readonly bool showBackButton;
 
         public SettingsSidebar(bool showBackButton)
-            : base(CONTRACTED_WIDTH, EXPANDED_WIDTH)
+            : this(showBackButton, CONTRACTED_WIDTH, EXPANDED_WIDTH)
+        {
+        }
+
+        protected SettingsSidebar(bool showBackButton, float contractedWidth, float expandedWidth)
+            : base(contractedWidth, expandedWidth)
         {
             this.showBackButton = showBackButton;
             Expanded.Value = true;
@@ -38,12 +48,7 @@ namespace osu.Game.Overlays.Settings
         [BackgroundDependencyLoader]
         private void load(OverlayColourProvider colourProvider)
         {
-            AddInternal(new Box
-            {
-                Colour = colourProvider.Background5,
-                RelativeSizeAxes = Axes.Both,
-                Depth = float.MaxValue
-            });
+            AddInternal(CreateBackground(colourProvider).With(d => d.Depth = float.MaxValue));
 
             if (showBackButton)
             {
@@ -55,6 +60,12 @@ namespace osu.Game.Overlays.Settings
                 });
             }
         }
+
+        protected virtual Drawable CreateBackground(OverlayColourProvider colourProvider) => new Box
+        {
+            Colour = colourProvider.Background5,
+            RelativeSizeAxes = Axes.Both,
+        };
 
         public partial class BackButton : SidebarButton
         {

@@ -26,7 +26,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
         {
             InternalChild = perfectIndicator = new Sprite
             {
-                Texture = skin.GetTexture(@"ranking-perfect"),
+                Texture = skin.GetStableTexture(@"ranking-perfect"),
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,
             };

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -20,7 +20,9 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Events;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Configuration;
 using osu.Game.Overlays.Settings;
+using osu.Game.Overlays.Settings.Rendering;
 using osuTK.Graphics;
 
 namespace osu.Game.Overlays
@@ -52,7 +54,7 @@ namespace osu.Game.Overlays
         protected override Container<Drawable> Content => ContentContainer;
 
         protected SettingsSidebar Sidebar;
-        private SidebarIconButton selectedSidebarButton;
+        private ISettingsSidebarButton selectedSidebarButton;
 
         public SettingsSectionsContainer SectionsContainer { get; private set; }
 
@@ -81,6 +83,28 @@ namespace osu.Game.Overlays
             AutoSizeAxes = Axes.X;
         }
 
+        /// <summary>
+        /// The renderer used for the settings entries of this panel. Cached for all sections and subsections.
+        /// </summary>
+        public ISettingsRenderer Renderer { get; private set; }
+
+        /// <summary>
+        /// Chooses the control style of this panel. The choice is made once, when the panel is loaded.
+        /// </summary>
+        protected virtual ISettingsRenderer CreateRenderer(OsuConfigManager config)
+            => config?.Get<bool>(OsuSetting.ToriiLegacyOptions) == true ? StableSettingsRenderer.DEFAULT : LazerSettingsRenderer.DEFAULT;
+
+        private readonly SettingsFlyoutLayer flyoutLayer = new SettingsFlyoutLayer();
+
+        protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
+        {
+            var dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
+            dependencies.CacheAs(Renderer = CreateRenderer(parent.Get<OsuConfigManager>()));
+            // sections load with this panel's dependencies (before they join the sections container), so the flyout layer is cached here.
+            dependencies.Cache(flyoutLayer);
+            return dependencies;
+        }
+
         [BackgroundDependencyLoader]
         private void load()
         {
@@ -91,15 +115,7 @@ namespace osu.Game.Overlays
                 RelativeSizeAxes = Axes.Y,
                 Children = new Drawable[]
                 {
-                    new Box
-                    {
-                        Anchor = Anchor.TopRight,
-                        Origin = Anchor.TopRight,
-                        Scale = new Vector2(2, 1), // over-extend to the left for transitions
-                        RelativeSizeAxes = Axes.Both,
-                        Colour = colourProvider.Background4,
-                        Alpha = 1,
-                    },
+                    Renderer.CreatePanelBackground(),
                     loading = new LoadingLayer
                     {
                         State = { Value = Visibility.Visible }
@@ -110,7 +126,7 @@ namespace osu.Game.Overlays
             Add(new PopoverContainer
             {
                 RelativeSizeAxes = Axes.Both,
-                Child = SectionsContainer = new SettingsSectionsContainer
+                Child = SectionsContainer = new SettingsSectionsContainer(flyoutLayer)
                 {
                     Masking = true,
                     EdgeEffect = new EdgeEffectParameters
@@ -124,35 +140,26 @@ namespace osu.Game.Overlays
                     RelativeSizeAxes = Axes.Both,
                     ExpandableHeader = CreateHeader(),
                     SelectedSection = { BindTarget = CurrentSection },
-                    FixedHeader = new Container
-                    {
-                        RelativeSizeAxes = Axes.X,
-                        AutoSizeAxes = Axes.Y,
-                        Padding = new MarginPadding
-                        {
-                            Vertical = 6,
-                            Left = CONTENT_PADDING.Left,
-                            Right = CONTENT_PADDING.Right,
-                        },
-                        Anchor = Anchor.TopCentre,
-                        Origin = Anchor.TopCentre,
-                        Child = SearchTextBox = new SettingsSearchTextBox
-                        {
-                            RelativeSizeAxes = Axes.X,
-                            Origin = Anchor.TopCentre,
-                            Anchor = Anchor.TopCentre,
-                        }
-                    },
+                    FixedHeader = Renderer.CreateSearchBar((SettingsSearchTextBox)(SearchTextBox = new SettingsSearchTextBox())),
                     Footer = CreateFooter().With(f => f.Alpha = 0)
                 }
             });
 
-            AddInternal(Sidebar = new SettingsSidebar(showBackButton)
+            AddInternal(Sidebar = Renderer.CreateSidebar(showBackButton).With(s =>
             {
-                BackButtonAction = Hide,
-                Width = sidebar_width
-            });
+                s.BackButtonAction = Hide;
+                s.Width = sidebar_width;
+            }));
+
+            // a sub-panel (one with a sidebar back button) never gets a root back button.
+            if (!showBackButton && Renderer.CreateRootBackButton(GoBack) is Drawable rootBackButton)
+                AddInternal(rootBackButton);
         }
+
+        /// <summary>
+        /// Steps back one level from the root back button (see <see cref="ISettingsRenderer.CreateRootBackButton"/>).
+        /// </summary>
+        protected virtual void GoBack() => Hide();
 
         protected void AddSection(SettingsSection section)
         {
@@ -215,7 +222,7 @@ namespace osu.Game.Overlays
         {
             base.UpdateAfterChildren();
 
-            ContentContainer.Margin = new MarginPadding { Left = Sidebar?.DrawWidth ?? 0 };
+            ContentContainer.Margin = new MarginPadding { Left = Sidebar?.ContentOffset ?? 0 };
         }
 
         private const double fade_in_duration = 500;
@@ -263,28 +270,27 @@ namespace osu.Game.Overlays
                 {
                     selectedSidebarButton?.Selected = false;
 
-                    selectedSidebarButton = Sidebar.Children.OfType<SidebarIconButton>().FirstOrDefault(b => b.Section == section.NewValue);
+                    selectedSidebarButton = Sidebar.Children.OfType<ISettingsSidebarButton>().FirstOrDefault(b => b.Section == section.NewValue);
 
                     selectedSidebarButton?.Selected = true;
                 }, true);
             });
         }
 
-        private IEnumerable<SidebarIconButton> createSidebarButtons()
+        private IEnumerable<Drawable> createSidebarButtons()
         {
             foreach (var section in SectionsContainer)
             {
-                yield return new SidebarIconButton
+                var button = Renderer.CreateSidebarButton(section, () =>
                 {
-                    Section = section,
-                    Action = () =>
-                    {
-                        if (!SectionsContainer.IsLoaded)
-                            return;
+                    if (!SectionsContainer.IsLoaded)
+                        return;
 
-                        SectionsContainer.ScrollTo(section);
-                    },
-                };
+                    SectionsContainer.ScrollTo(section);
+                });
+
+                if (button != null)
+                    yield return (Drawable)button;
             }
         }
 
@@ -297,6 +303,17 @@ namespace osu.Game.Overlays
         public partial class SettingsSectionsContainer : SectionsContainer<SettingsSection>
         {
             public SearchContainer<SettingsSection> SearchContainer;
+
+            /// <summary>
+            /// Floating content of the settings (see <see cref="SettingsFlyoutLayer"/>), drawn above the sections and below the pinned headers,
+            /// which are added after construction.
+            /// </summary>
+            public readonly SettingsFlyoutLayer FlyoutLayer;
+
+            public SettingsSectionsContainer(SettingsFlyoutLayer flyoutLayer)
+            {
+                AddInternal(FlyoutLayer = flyoutLayer);
+            }
 
             public string SearchTerm
             {
@@ -313,13 +330,9 @@ namespace osu.Game.Overlays
                 };
 
             [BackgroundDependencyLoader]
-            private void load(OverlayColourProvider colourProvider)
+            private void load(ISettingsRenderer renderer)
             {
-                HeaderBackground = new Box
-                {
-                    Colour = colourProvider.Background5,
-                    RelativeSizeAxes = Axes.Both
-                };
+                HeaderBackground = renderer.CreatePinnedHeaderBackground();
 
                 SearchContainer.FilterCompleted += InvalidateScrollPosition;
             }

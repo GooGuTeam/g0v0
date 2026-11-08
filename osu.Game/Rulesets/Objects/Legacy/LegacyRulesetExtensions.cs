@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Game.Beatmaps;
@@ -35,6 +35,18 @@ namespace osu.Game.Rulesets.Objects.Legacy
 
                 default:
                     throw new ArgumentException("Must be a legacy ruleset", nameof(rulesetShortName));
+            }
+
+            if (rulesetShortName == "osu" && timingControlPoint.LegacyBeatLength is double legacyBeatLength)
+            {
+                double effectiveBeatLength = legacyBeatLength * bpmMultiplier;
+
+                // SliderVelocityAt falls back only after applying inherited timing. In particular,
+                // a non-positive redline must not gain velocity from a subsequent inherited point.
+                if (legacyBeatLength <= 0)
+                    return TimingControlPoint.DEFAULT_BEAT_LENGTH;
+
+                return effectiveBeatLength;
             }
 
             return timingControlPoint.BeatLength * bpmMultiplier;

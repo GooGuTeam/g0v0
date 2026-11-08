@@ -8,6 +8,7 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Gameplay
 {
@@ -20,25 +21,21 @@ namespace osu.Game.Overlays.Settings.Sections.Gameplay
         {
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormSliderBar<float>
+                CreateItem(new SliderEntry<float>
                 {
                     Caption = AudioSettingsStrings.PositionalLevel,
                     Current = osuConfig.GetBindable<float>(OsuSetting.PositionalHitsoundsLevel),
                     KeyboardStep = 0.01f,
                     DisplayAsPercentage = true,
                     LabelFormat = v => v == 0 ? CommonStrings.Disabled : FormSliderBar<float>.DefaultLabelFormat(v, true),
-                })
-                {
                     Keywords = new[] { @"positional", @"balance" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = GameplaySettingsStrings.AlwaysPlayFirstComboBreak,
-                    Current = config.GetBindable<bool>(OsuSetting.AlwaysPlayFirstComboBreak)
+                    Current = config.GetBindable<bool>(OsuSetting.AlwaysPlayFirstComboBreak),
+                    ClassicDefault = false,
                 })
-                {
-                    ApplyClassicDefault = c => ((IHasCurrentValue<bool>)c).Current.Value = false,
-                }
             };
         }
     }
