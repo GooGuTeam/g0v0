@@ -2,7 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -12,6 +15,9 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Testing;
+using osu.Game.Beatmaps;
+using osu.Game.Beatmaps.Drawables;
+using osu.Game.Database;
 using osu.Game.Overlays;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
@@ -43,6 +49,51 @@ namespace osu.Game.Tests.Visual.Ranking
 
         [Cached]
         private readonly OverlayColourProvider colourProvider = new OverlayColourProvider(OverlayColourScheme.Aquamarine);
+
+        [Resolved]
+        private RealmAccess realm { get; set; } = null!;
+
+        [Cached(typeof(BeatmapDifficultyCache))]
+        private readonly TestDifficultyCache difficultyCache = new TestDifficultyCache();
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void TestScoreDifficulty(bool localBeatmap, bool calculationFails)
+        {
+            V2ResultsPanel panel = null!;
+            ScoreInfo score = null!;
+            AddStep("load score difficulty", () =>
+            {
+                score = TestResources.CreateTestScoreInfo();
+                score.BeatmapInfo!.StarRating = 2;
+                score.Mods = new Mod[] { new OsuModHardRock(), new OsuModDoubleTime() };
+                difficultyCache.Difficulty = calculationFails ? null : new StarDifficulty(6.5, 0);
+                if (localBeatmap)
+                    realm.Write(r => r.Add(score.BeatmapInfo.Clone(), update: true));
+                Child = panel = new V2ResultsPanel(score);
+            });
+            AddUntilStep("panel loaded", () => panel.IsLoaded);
+            AddAssert("score difficulty displayed or original retained", () => panel.ChildrenOfType<StarRatingDisplay>().Single().Current.Value.Stars,
+                () => Is.EqualTo(localBeatmap && !calculationFails ? 6.5 : 2));
+            AddAssert("difficulty name uses matching colour", () => panel.ChildrenOfType<OsuSpriteText>().Single(t => t.Text.ToString() == score.BeatmapInfo!.DifficultyName).Colour.TopLeft.SRGB,
+                () => Is.EqualTo((osuTK.Graphics.Color4)new OsuColour().ForStarDifficulty(localBeatmap && !calculationFails ? 6.5 : 2)));
+            AddStep("reset difficulty cache", () => difficultyCache.Difficulty = null);
+        }
+
+        private partial class TestDifficultyCache : BeatmapDifficultyCache
+        {
+            public StarDifficulty? Difficulty { get; set; }
+
+            public override Task<StarDifficulty?> GetDifficultyAsync(IBeatmapInfo beatmapInfo, IRulesetInfo? rulesetInfo = null, IEnumerable<Mod>? mods = null,
+                                                                     CancellationToken cancellationToken = default, int computationDelay = 0)
+            {
+                Assert.That(rulesetInfo, Is.Not.Null);
+                if (Difficulty != null)
+                    Assert.That(mods!.Select(m => m.GetType()), Is.EqualTo(new[] { typeof(OsuModHardRock), typeof(OsuModDoubleTime) }));
+                return Task.FromResult(Difficulty);
+            }
+        }
 
         [Test]
         public void TestDetailsNavigation()
