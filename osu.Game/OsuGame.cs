@@ -94,6 +94,8 @@ using osuTK.Graphics;
 using Sentry;
 using IntroScreen = osu.Game.Screens.Menu.IntroScreen;
 using MatchType = osu.Game.Online.Rooms.MatchType;
+using osu.Game.Recording.Live;
+using osu.Game.Recording.Export;
 
 namespace osu.Game
 {
@@ -193,6 +195,12 @@ namespace osu.Game
 
         [Cached]
         private readonly ScreenshotManager screenshotManager = new ScreenshotManager();
+
+        [Cached]
+        private readonly LiveCaptureManager liveCaptureManager = new LiveCaptureManager();
+
+        [Cached]
+        private readonly ReplayVideoExporter replayVideoExporter = new ReplayVideoExporter();
 
         private SentryLogger sentryLogger;
 
@@ -1312,6 +1320,8 @@ namespace osu.Game
             loadComponentSingleFile(legacyImportManager, Add);
 
             loadComponentSingleFile(screenshotManager, Add);
+            loadComponentSingleFile(liveCaptureManager, Add, true);
+            loadComponentSingleFile(replayVideoExporter, Add, true);
 
             // dependency on notification overlay, dependent by settings overlay
             loadComponentSingleFile(CreateUpdateManager(), Add, true);
@@ -1779,6 +1789,16 @@ namespace osu.Game
                 case GlobalAction.PreviousVolumeMeter:
                     return volume.Adjust(e.Action);
 
+                case GlobalAction.ToggleVideoRecording:
+                    if (!liveCaptureManager.IsLoaded) return false;
+                    _ = liveCaptureManager.ToggleAsync();
+                    return true;
+
+                case GlobalAction.ToggleLiveStreaming:
+                    if (!liveCaptureManager.IsLoaded) return false;
+                    liveCaptureManager.ToggleStreaming();
+                    return true;
+
                 case GlobalAction.ToggleFPSDisplay:
                     fpsCounter.ToggleVisibility();
                     return true;
@@ -1874,6 +1894,16 @@ namespace osu.Game
 
         protected override bool OnExiting()
         {
+            if (replayVideoExporter.IsRunning)
+            {
+                replayVideoExporter.Cancel();
+                return true;
+            }
+            if (liveCaptureManager.IsRecording)
+            {
+                _ = liveCaptureManager.StopAsync();
+                return true;
+            }
             if (ScreenStack.CurrentScreen is Loader)
                 return false;
 

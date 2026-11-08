@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Specialized;
@@ -43,13 +43,13 @@ namespace osu.Game.Screens.Play.HUD
         private DrawablePool<SpectatorListEntry> pool = null!;
 
         [Resolved]
-        private SpectatorClient client { get; set; } = null!;
+        private SpectatorClient? client { get; set; }
 
         [Resolved]
         private GameplayState gameplayState { get; set; } = null!;
 
         [Resolved]
-        private MultiplayerClient multiplayerClient { get; set; } = null!;
+        private MultiplayerClient? multiplayerClient { get; set; }
 
         [BackgroundDependencyLoader]
         private void load(OsuColour colours)
@@ -86,6 +86,13 @@ namespace osu.Game.Screens.Play.HUD
         protected override void LoadComplete()
         {
             base.LoadComplete();
+
+            // Private replay scenes have no network clients or spectators.
+            if (client == null || multiplayerClient == null)
+            {
+                Hide();
+                return;
+            }
 
             ((IBindable<LocalUserPlayingState>)userPlayingState).BindTo(gameplayState.PlayingState);
 
