@@ -240,7 +240,7 @@ namespace osu.Game.Rulesets.Objects.Legacy
             bankInfo.Filename = split.Length > 4 ? split[4] : null;
         }
 
-        private PathType convertPathType(string input)
+        private PathType convertPathType(ReadOnlySpan<char> input)
         {
             switch (input[0])
             {
@@ -249,7 +249,7 @@ namespace osu.Game.Rulesets.Objects.Legacy
                     return PathType.CATMULL;
 
                 case 'B':
-                    if (input.Length > 1 && int.TryParse(input.AsSpan(1), out int degree) && degree > 0)
+                    if (input.Length > 1 && int.TryParse(input[1..], out int degree) && degree > 0)
                         return PathType.BSpline(degree);
 
                     return PathType.BEZIER;
@@ -286,17 +286,25 @@ namespace osu.Game.Rulesets.Objects.Legacy
         private PathControlPoint[] convertPathString(string pointString, Vector2 offset)
         {
             // This code takes on the responsibility of handling explicit segments of the path ("X" & "Y" from above). Implicit segments are handled by calls to convertPoints().
-            string[] pointStringSplit = pointString.Split('|');
+            ReadOnlySpan<char> pointData = pointString.AsSpan();
+            int pointCapacity = pointData.Count('|') + 1;
+            int segmentCapacity = 0;
+            foreach (var range in pointData.Split('|'))
+            {
+                if (char.IsLetter(pointData[range][0]))
+                    segmentCapacity++;
+            }
 
-            var pointsBuffer = ArrayPool<Vector2>.Shared.Rent(pointStringSplit.Length);
-            var segmentsBuffer = ArrayPool<(PathType Type, int StartIndex)>.Shared.Rent(pointStringSplit.Length);
+            var pointsBuffer = ArrayPool<Vector2>.Shared.Rent(pointCapacity);
+            var segmentsBuffer = ArrayPool<(PathType Type, int StartIndex)>.Shared.Rent(segmentCapacity);
             int currentPointsIndex = 0;
             int currentSegmentsIndex = 0;
 
             try
             {
-                foreach (string s in pointStringSplit)
+                foreach (var range in pointData.Split('|'))
                 {
+                    ReadOnlySpan<char> s = pointData[range];
                     if (char.IsLetter(s[0]))
                     {
                         // The start of a new segment(indicated by having an alpha character at position 0).
@@ -315,7 +323,7 @@ namespace osu.Game.Rulesets.Objects.Legacy
 
                 int pointsCount = currentPointsIndex;
                 int segmentsCount = currentSegmentsIndex;
-                var controlPoints = new List<ArraySegment<PathControlPoint>>(pointsCount);
+                var controlPoints = new List<ArraySegment<PathControlPoint>>(segmentsCount);
                 var allPoints = new ArraySegment<Vector2>(pointsBuffer, 0, pointsCount);
 
                 for (int i = 0; i < segmentsCount; i++)
@@ -341,15 +349,34 @@ namespace osu.Game.Rulesets.Objects.Legacy
                 ArrayPool<(PathType, int)>.Shared.Return(segmentsBuffer);
             }
 
-            Vector2 readPoint(string value, Vector2 startPos)
+            Vector2 readPoint(ReadOnlySpan<char> value, Vector2 startPos)
             {
-                string[] vertexSplit = value.Split(':');
+                int separator = value.IndexOf(':');
+                if (separator < 0)
+                    throw new FormatException("Missing control point coordinate separator.");
 
+                ReadOnlySpan<char> x = value[..separator];
+                ReadOnlySpan<char> y = value[(separator + 1)..];
+                int extraSeparator = y.IndexOf(':');
+                if (extraSeparator >= 0)
+                    y = y[..extraSeparator];
+
+                // Stable reads control points as doubles, truncates to integers, then stores them as floats.
+                // Applying the storyboard coordinate limit here discards Aspire sliders with large folded paths.
                 Vector2 pos = formatVersion >= LegacyBeatmapEncoder.FIRST_LAZER_VERSION
-                    ? new Vector2(Parsing.ParseFloat(vertexSplit[0], Parsing.MAX_COORDINATE_VALUE), Parsing.ParseFloat(vertexSplit[1], Parsing.MAX_COORDINATE_VALUE))
-                    : new Vector2((int)Parsing.ParseFloat(vertexSplit[0], Parsing.MAX_COORDINATE_VALUE), (int)Parsing.ParseFloat(vertexSplit[1], Parsing.MAX_COORDINATE_VALUE));
+                    ? new Vector2(Parsing.ParseFloat(x), Parsing.ParseFloat(y))
+                    : new Vector2(readLegacyCoordinate(x), readLegacyCoordinate(y));
                 pos -= startPos;
                 return pos;
+            }
+
+            static int readLegacyCoordinate(ReadOnlySpan<char> value)
+            {
+                // Most Aspire coordinates are plain integers. Avoid double conversion in this hot
+                // path, retaining the validated fallback for fractions, exponents and invalid input.
+                if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int integer) && integer != int.MinValue)
+                    return integer;
+                return (int)Parsing.ParseDouble(value);
             }
         }
 

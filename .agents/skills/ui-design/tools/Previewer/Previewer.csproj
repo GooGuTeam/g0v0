@@ -34,7 +34,6 @@
   <!-- The framework's source generator only reaches direct references, so reference the framework here as well, following the client's package/source switch. -->
   <ItemGroup Condition="'$(G0V0SourceFramework)' == 'true'">
     <ProjectReference Include="$(_G0V0FrameworkRoot)osu.Framework/osu.Framework.csproj" />
-    <PackageReference Include="ppy.osu.Framework.SourceGeneration" Version="2025.1121.1" />
   </ItemGroup>
   <ItemGroup Condition="'$(G0V0SourceFramework)' != 'true'">
     <PackageReference Include="g0v0.Framework" Version="$(G0V0FrameworkVersion)" />

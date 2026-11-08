@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Globalization;
@@ -16,6 +16,9 @@ namespace osu.Game.Beatmaps.Formats
         public const double MAX_PARSE_VALUE = int.MaxValue;
 
         public static float ParseFloat(string input, float parseLimit = (float)MAX_PARSE_VALUE, bool allowNaN = false)
+            => ParseFloat(input.AsSpan(), parseLimit, allowNaN);
+
+        public static float ParseFloat(ReadOnlySpan<char> input, float parseLimit = (float)MAX_PARSE_VALUE, bool allowNaN = false)
         {
             float output = float.Parse(input, CultureInfo.InvariantCulture);
 
@@ -28,6 +31,9 @@ namespace osu.Game.Beatmaps.Formats
         }
 
         public static double ParseDouble(string input, double parseLimit = MAX_PARSE_VALUE, bool allowNaN = false)
+            => ParseDouble(input.AsSpan(), parseLimit, allowNaN);
+
+        public static double ParseDouble(ReadOnlySpan<char> input, double parseLimit = MAX_PARSE_VALUE, bool allowNaN = false)
         {
             double output = double.Parse(input, CultureInfo.InvariantCulture);
 

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -77,6 +77,43 @@ namespace osu.Game.Rulesets.Osu.Tests
                 if (completionProgress > progressToHit && !slider.IsHit)
                     slider.HeadCircle.HitArea.Hit();
             }
+        }
+
+        [TestCase(1, 2000, false, 256)]
+        [TestCase(10000, 2000, false, 256)]
+        [TestCase(10000, 100729540, true, 256)]
+        [TestCase(10000, 100729540, true, 0)]
+        [TestCase(85000, 100729540, true, 0)]
+        public void TestViewportCompression(int folds, float extent, bool snake, int viewportLimit)
+        {
+            AddStep("create folded slider", () =>
+            {
+                snakingIn.Value = snake;
+                snakingOut.Value = false;
+                var config = (OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(Ruleset.Value.CreateInstance()).AsNonNull();
+                config.SetValue(OsuRulesetSetting.SliderViewportSize, viewportLimit);
+                var points = new List<Vector2> { Vector2.Zero };
+                for (int i = 0; i < folds; i++)
+                {
+                    points.Add(new Vector2(extent, 0));
+                    points.Add(new Vector2(extent, extent));
+                    points.Add(new Vector2(0, extent));
+                    points.Add(Vector2.Zero);
+                }
+                SetContents(_ => createDrawable(new Slider
+                {
+                    StartTime = Time.Current + 1000,
+                    Position = new Vector2(-100, -100),
+                    GenerateTicks = false,
+                    Path = new SliderPath(PathType.LINEAR, points.ToArray())
+                }, 4));
+            });
+            AddWaitStep("show viewport compression", folds > 1 ? 30 : 3);
+            AddStep("reset viewport limit", () =>
+            {
+                var config = (OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(Ruleset.Value.CreateInstance()).AsNonNull();
+                config.SetValue(OsuRulesetSetting.SliderViewportSize, 0);
+            });
         }
 
         [Test]
