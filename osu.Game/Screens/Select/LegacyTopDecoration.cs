@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 
 using osu.Framework.Allocation;
@@ -10,6 +10,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Game.Rulesets;
 using osu.Game.Skinning;
+using osu.Game.Skinning.Select;
 using osuTK;
 
 namespace osu.Game.Screens.Select
@@ -25,8 +26,8 @@ namespace osu.Game.Screens.Select
     /// </summary>
     public partial class LegacyTopDecoration : CompositeDrawable
     {
-        // coincide con LegacyFooter.buttons_pos_16_9 (140 * 1.6), la X del cluster de botones del footer.
-        private const float components_x = 140 * 1.6f;
+        // the mode button's x from the footer (LegacyFooter.ButtonsX), and the mode icon's offset from it.
+        private const float icon_offset_x = 57.6f / 2 * 1.6f;
 
         [Resolved]
         private ISkinSource skin { get; set; } = null!;
@@ -49,18 +50,26 @@ namespace osu.Game.Screens.Select
                 {
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.BottomLeft,
-                    Position = new Vector2(components_x, 0),
                 },
                 // icono mode-*-small: con offset desde el bottom-left del boton (como LegacyRulesetFooterButton).
                 icon = new Sprite
                 {
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.Centre,
-                    Position = new Vector2(components_x + 57.6f / 2 * 1.6f, -35 * 1.6f),
+                    Y = -35 * 1.6f,
                     // stable dibuja el iconito de modo aditivo (brilla sobre la decoracion).
                     Blending = BlendingParameters.Additive,
                 },
             };
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+
+            // follows the footer's buttons, which move to 120 units in on narrower than widescreen windows.
+            background.X = LegacyFooter.ButtonsX(DrawWidth);
+            icon.X = background.X + icon_offset_x;
         }
 
         protected override void LoadComplete()
@@ -73,8 +82,8 @@ namespace osu.Game.Screens.Select
 
         private void updateTextures()
         {
-            background.Texture = skin.GetTexture(@"selection-mode");
-            icon.Texture = skin.GetTexture($@"mode-{ruleset.Value.ShortName}-small");
+            background.Texture = skin.GetStableTexture(@"selection-mode");
+            icon.Texture = skin.GetStableTexture($@"mode-{ruleset.Value.ShortName}-small");
         }
 
         protected override void Dispose(bool isDisposing)

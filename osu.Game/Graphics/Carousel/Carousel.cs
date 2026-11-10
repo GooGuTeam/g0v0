@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -989,11 +989,12 @@ namespace osu.Game.Graphics.Carousel
                 if (c.Item == null)
                     continue;
 
-                float normalisedDepth = (float)(Math.Abs(selectedYPos - c.Item.CarouselYPosition) / DrawHeight);
-                Scroll.Panels.ChangeChildDepth(panel, c.Item.DepthLayer + normalisedDepth);
+                Scroll.Panels.ChangeChildDepth(panel, GetPanelDepth(c.Item, selectedYPos));
 
-                if (c.DrawYPosition != c.Item.CarouselYPosition)
-                    c.DrawYPosition = Interpolation.DampContinuously(c.DrawYPosition, c.Item.CarouselYPosition, 50, Time.Elapsed);
+                double yTarget = GetPanelYTarget(c.Item);
+
+                if (c.DrawYPosition != yTarget)
+                    c.DrawYPosition = Interpolation.DampContinuously(c.DrawYPosition, yTarget, PanelYDampHalfTime, Time.Elapsed);
 
                 panel.X = GetPanelXOffset(panel);
 
@@ -1023,6 +1024,22 @@ namespace osu.Game.Graphics.Carousel
         /// Returns the Y position to scroll to in order to show the most relevant carousel item(s).
         /// </summary>
         protected virtual double? GetScrollTarget() => currentKeyboardSelection.YPosition;
+
+        /// <summary>
+        /// The depth of a panel among the others. By default, panels nearer the selection are drawn in front.
+        /// </summary>
+        protected virtual float GetPanelDepth(CarouselItem item, double selectedYPos)
+            => item.DepthLayer + (float)(Math.Abs(selectedYPos - item.CarouselYPosition) / DrawHeight);
+
+        /// <summary>
+        /// The Y position a panel moves towards.
+        /// </summary>
+        protected virtual double GetPanelYTarget(CarouselItem item) => item.CarouselYPosition;
+
+        /// <summary>
+        /// The half-time of a panel's movement towards its Y position.
+        /// </summary>
+        protected virtual double PanelYDampHalfTime => 50;
 
         protected virtual float GetPanelXOffset(Drawable panel)
         {

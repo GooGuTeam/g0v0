@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 
 using osu.Framework.Allocation;
@@ -7,6 +7,8 @@ using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Events;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
@@ -28,6 +30,9 @@ namespace osu.Game.Screens.Select
     {
         public Bindable<string> Current { get; } = new Bindable<string>();
 
+        private const float font_size = 13 * 1.6f;
+        private const float line_height = font_size * 1.25f;
+
         [BackgroundDependencyLoader]
         private void load()
         {
@@ -37,21 +42,15 @@ namespace osu.Game.Screens.Select
             {
                 AutoSizeAxes = Axes.Both,
                 Masking = true,
-                CornerRadius = 5,
                 Children = new Drawable[]
                 {
-                    new Box
-                    {
-                        RelativeSizeAxes = Axes.Both,
-                        Colour = new Color4(0f, 0f, 0f, 0.4f),
-                    },
+                    // SongSelection: the "Search:" label (13pt bold), with the text box starting where it ends, 174 units long. skins that draw
+                    // their top through selection-mode often cover the label, leaving the text box's start as the edge to line up with.
                     new FillFlowContainer
                     {
                         AutoSizeAxes = Axes.X,
-                        Height = 26,
-                        Padding = new MarginPadding { Horizontal = 8 },
+                        Height = line_height,
                         Direction = FillDirection.Horizontal,
-                        Spacing = new Vector2(5, 0),
                         Children = new Drawable[]
                         {
                             new OsuSpriteText
@@ -59,7 +58,7 @@ namespace osu.Game.Screens.Select
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
                                 Text = @"Search:",
-                                Font = LegacyFonts.Get(20, FontWeight.Bold),
+                                Font = LegacyFonts.Get(font_size, FontWeight.Bold),
                                 Colour = Color4.GreenYellow,
                                 Shadow = true,
                             },
@@ -67,8 +66,9 @@ namespace osu.Game.Screens.Select
                             {
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
-                                Width = 200,
-                                Height = 24,
+                                Width = 174 * 1.6f,
+                                Height = line_height,
+                                FontSize = font_size,
                                 Current = { BindTarget = Current },
                             },
                         },
@@ -83,12 +83,42 @@ namespace osu.Game.Screens.Select
             // como en stable; el caret no las necesita con busquedas cortas.
             public override bool HandleLeftRightArrows => false;
 
+            protected override float LeftRightPadding => 0;
+
+            protected override FontUsage Font => LegacyFonts.Get(FontSize, FontWeight.Bold);
+
+            protected override SpriteText CreatePlaceholder() => new OsuSpriteText { Font = LegacyFonts.Get(font_size, FontWeight.Bold) };
+
+            private Caret caret = null!;
+            private bool caretSuppressed;
+
+            protected override Caret CreateCaret() => caret = base.CreateCaret();
+
+            protected override void Update()
+            {
+                base.Update();
+
+                // pTextBox draws no cursor while it shows its default text ("Type to search!"), only once something is typed.
+                bool suppress = string.IsNullOrEmpty(Text);
+
+                if (suppress)
+                {
+                    caret.ClearTransforms(targetMember: nameof(Alpha));
+                    caret.Alpha = 0;
+                }
+                else if (caretSuppressed && HasFocus)
+                    caret.Show();
+
+                caretSuppressed = suppress;
+            }
+
             public SearchTextBox()
             {
                 PlaceholderText = @"Type to search!";
                 // como en lazer: agarra y mantiene el foco asi se puede tipear directo sin clickear.
                 // solo esta presente en modo legacy, asi que no roba foco en el resto.
                 HoldFocus = true;
+                DrawBorder = false;
             }
 
             [BackgroundDependencyLoader]
@@ -96,6 +126,7 @@ namespace osu.Game.Screens.Select
             {
                 BackgroundUnfocused = Color4.Transparent;
                 BackgroundFocused = Color4.Transparent;
+                Placeholder.Colour = Color4.White;
             }
 
             protected override bool OnKeyDown(KeyDownEvent e)

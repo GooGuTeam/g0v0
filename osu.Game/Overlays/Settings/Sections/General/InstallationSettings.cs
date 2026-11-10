@@ -1,14 +1,14 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.Containers;
 using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Framework.Screens;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Settings.Sections.Maintenance;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.General
 {
@@ -22,38 +22,29 @@ namespace osu.Game.Overlays.Settings.Sections.General
         [BackgroundDependencyLoader]
         private void load(Storage storage)
         {
-            Add(new SettingsButtonV2
+            Add(CreateItem(new ButtonEntry
             {
-                Text = GeneralSettingsStrings.OpenOsuFolder,
+                Caption = GeneralSettingsStrings.OpenOsuFolder,
                 Keywords = new[] { @"logs", @"files", @"access", "directory" },
                 Action = () => storage.PresentExternally(),
-            });
+            }));
 
-            Add(new DangerousSettingsButtonV2
+            Add(CreateItem(new ButtonEntry
             {
-                Text = GeneralSettingsStrings.ChangeFolderLocation,
-                Action = () => game?.PerformFromScreen(menu => menu.Push(new MigrationSelectScreen()))
-            });
+                Caption = GeneralSettingsStrings.ChangeFolderLocation,
+                Action = () => game?.PerformFromScreen(menu => menu.Push(new MigrationSelectScreen())),
+                Dangerous = true,
+            }));
 
             // This is a temporary stand-in until we have a setup for `SettingsItemV2` which can handle buttons.
-            Add(new Container
+            Add(CreateItem(new NoteEntry
             {
-                RelativeSizeAxes = Axes.X,
-                AutoSizeAxes = Axes.Y,
-                Padding = SettingsPanel.CONTENT_PADDING,
-                Children = new Drawable[]
+                AttachedToPrevious = true,
+                Note =
                 {
-                    new SettingsNote
-                    {
-                        RelativeSizeAxes = Axes.X,
-                        Margin = new MarginPadding { Top = -SettingsSection.ITEM_SPACING_V2 },
-                        Current =
-                        {
-                            Value = new SettingsNote.Data(GeneralSettingsStrings.ChangeFolderLocationTooltip, SettingsNote.Type.Informational)
-                        }
-                    }
+                    Value = new SettingsNote.Data(GeneralSettingsStrings.ChangeFolderLocationTooltip, SettingsNote.Type.Informational)
                 }
-            });
+            }));
         }
     }
 }

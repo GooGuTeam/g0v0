@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -52,12 +52,29 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
         }
 
+        private readonly Bindable<bool> hiddenHitFeedback = new Bindable<bool>();
+
         private readonly Bindable<bool> hitAnimations = new Bindable<bool>(true);
+
+        [Resolved(CanBeNull = true)]
+        private OsuVisualOrdering? visualOrdering { get; set; }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            hiddenHitFeedback.BindValueChanged(_ => refreshHitFeedback());
+            hitAnimations.BindValueChanged(_ => refreshHitFeedback());
+
+            if (visualOrdering?.IsActive == true)
+                visualOrdering.Register(CirclePiece, this, OsuVisualKind.CircleGroup, () => shakeContainer, localDepth: 1);
+        }
 
         [BackgroundDependencyLoader]
         private void load(OsuRulesetConfigManager? osuConfig)
         {
             osuConfig?.BindWith(OsuRulesetSetting.HitAnimations, hitAnimations);
+            osuConfig?.BindWith(OsuRulesetSetting.HiddenHitFeedback, hiddenHitFeedback);
 
             Origin = Anchor.Centre;
 
@@ -232,6 +249,28 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             }
 
             Expire();
+        }
+
+        private void refreshHitFeedback()
+        {
+            // Hidden hit objects may be completely transparent and no longer updating their scheduler.
+            // Rebuild immediately on the settings update thread, including the Hidden override and skin transforms.
+            if (Entry != null)
+                RefreshStateTransforms();
+        }
+
+        internal void ApplyHiddenHitFeedback()
+        {
+            if (!hiddenHitFeedback.Value || !hitAnimations.Value || State.Value != ArmedState.Hit)
+                return;
+
+            // Hidden can fade either this ancestor or CirclePiece (first-object visibility).
+            // Restore both at the actual hit time, leaving the skin's own hit animation and approach circle untouched.
+            using (BeginAbsoluteSequence(HitStateUpdateTime))
+            {
+                this.FadeIn();
+                CirclePiece.FadeIn();
+            }
         }
 
         public Drawable ProxiedLayer => ApproachCircle;

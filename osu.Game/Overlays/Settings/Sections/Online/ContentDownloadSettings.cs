@@ -12,6 +12,7 @@ using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Online.API;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Online
 {
@@ -19,7 +20,7 @@ namespace osu.Game.Overlays.Settings.Sections.Online
     {
         protected override LocalisableString Header => OnlineSettingsStrings.ContentDownloadsHeader;
 
-        private FormTextBox customApiUrlTextBox = null!;
+        private TextBoxEntry customApiUrlTextBox = null!;
 
         private readonly Bindable<SettingsNote.Data?> customApiNote = new Bindable<SettingsNote.Data?>();
 
@@ -28,50 +29,42 @@ namespace osu.Game.Overlays.Settings.Sections.Online
         {
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = OnlineSettingsStrings.ExternalLinkWarning,
                     Current = config.GetBindable<bool>(OsuSetting.ExternalLinkWarning)
                 }),
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = OnlineSettingsStrings.PreferNoVideo,
-                    Current = config.GetBindable<bool>(OsuSetting.PreferNoVideo)
-                })
-                {
+                    Current = config.GetBindable<bool>(OsuSetting.PreferNoVideo),
                     Keywords = new[] { "no-video" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = OnlineSettingsStrings.AutomaticallyDownloadMissingBeatmaps,
                     Current = config.GetBindable<bool>(OsuSetting.AutomaticallyDownloadMissingBeatmaps),
-                })
-                {
                     Keywords = new[] { "spectator", "replay" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = OnlineSettingsStrings.ShowExplicitContent,
                     Current = config.GetBindable<bool>(OsuSetting.ShowOnlineExplicitContent),
-                })
-                {
                     Keywords = new[] { "nsfw", "18+", "offensive" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = OnlineSettingsStrings.HideCountryFlags,
                     Current = config.GetBindable<bool>(OsuSetting.HideCountryFlags)
                 }),
-                new SettingsItemV2(customApiUrlTextBox = new FormTextBox
+                CreateItem(customApiUrlTextBox = new TextBoxEntry
                 {
                     Caption = OnlineSettingsStrings.CustomApiUrl,
                     Current = config.GetBindable<string>(OsuSetting.CustomApiUrl),
                     PlaceholderText = api.Endpoints.APIUrl,
-                })
-                {
                     Keywords = new[] { "api", "server", "custom", "endpoint" },
                     Note = { BindTarget = customApiNote },
-                },
+                }),
             };
 
             customApiUrlTextBox.Current.BindValueChanged(onCustomApiUrlChanged, true);

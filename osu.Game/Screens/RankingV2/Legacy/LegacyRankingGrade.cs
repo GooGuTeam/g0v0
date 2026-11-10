@@ -66,7 +66,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
             // The fixed size is transferred manually from the sprite instead of using `AutoSizeAxes = Axes.Both`
             // so that the bounding box of this component does not change as the animation of this component plays.
             gradeAdditiveSprite.Size = gradeSprite.Size = Vector2.Zero;
-            gradeAdditiveSprite.Texture = gradeSprite.Texture = skin.GetTexture($@"ranking-{rank.ToString()}");
+            gradeAdditiveSprite.Texture = gradeSprite.Texture = skin.GetStableTexture($@"ranking-{rank.ToString()}");
             Size = gradeSprite.Size;
             lastShownRank = rank;
         }

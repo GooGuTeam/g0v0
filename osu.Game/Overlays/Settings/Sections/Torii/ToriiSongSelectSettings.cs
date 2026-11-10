@@ -8,6 +8,8 @@ using osu.Framework.Localisation;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
+using osu.Game.Overlays.Settings.Rendering;
 
 namespace osu.Game.Overlays.Settings.Sections.Torii
 {
@@ -27,6 +29,10 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
 
         // la preferencia REAL del usuario para el footer legacy standalone (lo que se guarda en config).
         private Bindable<bool> footerPref = null!;
+        private Bindable<bool> modSelectPref = null!;
+        private readonly BindableBool modSelectDisplay = new BindableBool();
+
+        private CheckboxEntry legacyOptions = null!;
 
         // lo que ve el checkbox: refleja la pref cuando stable esta apagado, o queda checked+disabled
         // cuando stable esta prendido. el writeback a footerPref solo persiste clicks REALES del usuario.
@@ -43,49 +49,96 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
         {
             stableSongSelect = config.GetBindable<bool>(OsuSetting.ToriiLegacyFooterUseSkin);
             footerPref = config.GetBindable<bool>(OsuSetting.ToriiLegacySongSelectFooter);
+            modSelectPref = config.GetBindable<bool>(OsuSetting.ToriiLegacyModSelect);
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
+                {
+                    Caption = UserInterfaceStrings.LegacyMainMenu,
+                    Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyMainMenu),
+                    HintText = UserInterfaceStrings.LegacyMainMenuDescription,
+                    Keywords = new[] { @"main", @"menu", @"legacy", @"stable", @"torii", @"cookie", @"buttons" },
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.LegacySongSelect,
                     Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyFooterUseSkin),
                     HintText = UserInterfaceStrings.LegacySongSelectDescription,
-                })
-                {
                     Keywords = new[] { @"footer", @"skin", @"song", @"select", @"legacy", @"bottom", @"buttons", @"torii", @"stable" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new EnumDropdownEntry<LegacySongSelectAspectRatio>
+                {
+                    Caption = UserInterfaceStrings.LegacySongSelectAspectRatio,
+                    Current = config.GetBindable<LegacySongSelectAspectRatio>(OsuSetting.ToriiLegacySongSelectAspectRatio),
+                    HintText = UserInterfaceStrings.LegacySongSelectAspectRatioDescription,
+                    Keywords = new[] { @"skin", @"aspect", @"ratio", @"16:9", @"16:10", @"letterbox", @"gameplay", @"loading", @"results", @"torii" },
+                }),
+                CreateItem(new CheckboxEntry
+                {
+                    Caption = UserInterfaceStrings.LegacyModSelect,
+                    Current = modSelectDisplay,
+                    HintText = UserInterfaceStrings.LegacyModSelectDescription,
+                    Keywords = new[] { @"mod", @"mods", @"legacy", @"stable", @"torii", @"selection", @"dialog" },
+                }),
+                CreateItem(legacyOptions = new CheckboxEntry
+                {
+                    Caption = UserInterfaceStrings.LegacyOptions,
+                    Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyOptions),
+                    HintText = UserInterfaceStrings.LegacyOptionsDescription,
+                    Keywords = new[] { @"options", @"settings", @"legacy", @"stable", @"sidebar", @"dialog", @"torii" },
+                }),
+                CreateItem(new CheckboxEntry
+                {
+                    Caption = UserInterfaceStrings.LegacyFpsCounter,
+                    Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyFpsCounter),
+                    HintText = UserInterfaceStrings.LegacyFpsCounterDescription,
+                    Keywords = new[] { @"fps", @"frame", @"rate", @"counter", @"legacy", @"stable", @"torii" },
+                }),
+                CreateItem(new CheckboxEntry
+                {
+                    Caption = UserInterfaceStrings.LegacyGameplayScreens,
+                    Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyGameplayScreens),
+                    HintText = UserInterfaceStrings.LegacyGameplayScreensDescription,
+                    Keywords = new[] { @"pause", @"fail", @"failed", @"loading", @"loader", @"gameplay", @"legacy", @"stable", @"torii" },
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.UseInterFont,
                     Current = config.GetBindable<bool>(OsuSetting.ToriiLegacyFont),
                     HintText = UserInterfaceStrings.UseInterFontDescription,
-                })
-                {
                     Keywords = new[] { @"font", @"inter", @"typeface", @"stable", @"legacy", @"song", @"select", @"torii" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.LegacySongSelectFooter,
                     Current = footerDisplay,
                     HintText = UserInterfaceStrings.LegacySongSelectFooterDescription,
-                })
-                {
                     Keywords = new[] { @"footer", @"legacy", @"stable", @"bottom", @"buttons", @"song", @"select", @"torii" },
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = UserInterfaceStrings.UnslantedSongSelectUI,
                     HintText = UserInterfaceStrings.UnslantedSongSelectUIDescription,
                     Current = config.GetBindable<bool>(OsuSetting.UnslantedSongSelectUI),
-                })
-                {
                     Keywords = new[] { @"slant", @"unslant", @"vertical", @"straight", @"shear", @"song", @"select", @"torii" },
-                },
+                }),
             };
 
             stableSongSelect.BindValueChanged(_ => syncDisplay(), true);
             footerPref.BindValueChanged(_ => syncDisplay());
+            modSelectPref.BindValueChanged(_ => syncDisplay());
+            modSelectDisplay.BindValueChanged(e =>
+            {
+                if (!syncingDisplay)
+                    modSelectPref.Value = e.NewValue;
+            });
+
+            // the settings panels pick their style once, when the game starts.
+            bool stableOptionsShown = Renderer is StableSettingsRenderer;
+            legacyOptions.Current.BindValueChanged(e => legacyOptions.Note.Value = e.NewValue != stableOptionsShown
+                ? new SettingsNote.Data(UserInterfaceStrings.LegacyOptionsRestartRequired, SettingsNote.Type.Informational)
+                : null, true);
 
             // writeback: solo persistimos cuando el cambio vino de un click real del usuario
             // (no durante syncDisplay, y solo posible cuando el checkbox no esta disabled).
@@ -107,6 +160,10 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
             footerDisplay.Value = stableOn || footerPref.Value;
             // con stable prendido el footer va si o si: checked y bloqueado.
             footerDisplay.Disabled = stableOn;
+
+            modSelectDisplay.Disabled = false;
+            modSelectDisplay.Value = stableOn || modSelectPref.Value;
+            modSelectDisplay.Disabled = stableOn;
 
             syncingDisplay = false;
         }

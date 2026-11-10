@@ -60,10 +60,74 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
             return base.OnMouseMove(e);
         }
 
+        /// <summary>
+        /// Whether Spun Out drives a Classic spinner at stable's fixed velocity instead of calling <see cref="AddRotation"/>.
+        /// </summary>
+        public bool LegacySpunOut { get; set; }
+
+        private LegacySpinnerRotation? legacyRotation;
+        private LegacySpinnerRotation.InputSample? legacySample;
+        private float legacyRotationOrigin;
+
         protected override void Update()
         {
             base.Update();
 
+            if (drawableSpinner.HitObject?.ClassicSpinnerBehaviour == true)
+                updateLegacyRotation();
+            else
+                updateRotation();
+
+            IsSpinning.Value = IsSpinnableTime && Math.Abs(currentRotation - Rotation) > 10f;
+            Rotation = (float)Interpolation.Damp(Rotation, currentRotation, 0.99, Math.Abs(Time.Elapsed));
+        }
+
+        private void updateLegacyRotation()
+        {
+            var spinner = drawableSpinner.HitObject;
+
+            if (legacyRotation == null)
+            {
+                legacyRotation = new LegacySpinnerRotation(spinner.StartTime, spinner.EndTime);
+                legacyRotationOrigin = Rotation;
+            }
+
+            double time = Time.Current;
+
+            if (time < legacyRotation.LastProcessedTime)
+            {
+                int removed = legacyRotation.RewindTo(time);
+                if (removed > 0)
+                    drawableSpinner.Result.History.ReportDelta(time, -180f * removed);
+            }
+            else
+            {
+                double rate = gameplayClock?.GetTrueGameplayRate() ?? Clock.Rate;
+
+                // Each scorable frame uses the sample taken by the previous update, the latest one at or before that frame.
+                legacyRotation.Advance(time, rate, legacySample, frameTime => drawableSpinner.Result.History.ReportDelta(frameTime, 180));
+            }
+
+            legacySample = mousePosition.HasValue || LegacySpunOut
+                ? new LegacySpinnerRotation.InputSample(legacyAngle(mousePosition), Tracking, LegacySpunOut)
+                : null;
+
+            currentRotation = legacyRotationOrigin + (float)double.RadiansToDegrees(legacyRotation.VisualRotation);
+        }
+
+        /// <summary>
+        /// The cursor angle as stable measures it: <c>atan2(y, x)</c> of the cursor relative to the spinner centre.
+        /// </summary>
+        private double legacyAngle(Vector2? position)
+        {
+            if (position is not Vector2 pos)
+                return 0;
+
+            return Math.Atan2(pos.Y - DrawSize.Y / 2, pos.X - DrawSize.X / 2);
+        }
+
+        private void updateRotation()
+        {
             if (mousePosition is Vector2 pos)
             {
                 float thisAngle = -float.RadiansToDegrees(MathF.Atan2(pos.X - DrawSize.X / 2, pos.Y - DrawSize.Y / 2));
@@ -82,9 +146,6 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
                     ? null
                     : thisAngle;
             }
-
-            IsSpinning.Value = IsSpinnableTime && Math.Abs(currentRotation - Rotation) > 10f;
-            Rotation = (float)Interpolation.Damp(Rotation, currentRotation, 0.99, Math.Abs(Time.Elapsed));
         }
 
         /// <summary>
@@ -123,6 +184,10 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
             currentRotation = 0;
             Rotation = 0;
             rotationTransferred = false;
+            LegacySpunOut = false;
+            legacyRotation = null;
+            legacySample = null;
+            legacyRotationOrigin = 0;
         }
 
         protected override void Dispose(bool isDisposing)

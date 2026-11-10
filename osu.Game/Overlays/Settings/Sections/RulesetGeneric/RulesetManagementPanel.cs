@@ -10,7 +10,7 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
     public partial class RulesetManagementPanel : SettingsSubPanel
     {
         protected override Drawable CreateHeader()
-            => new SettingsHeader(RulesetSettingsStrings.RulesetManagement, RulesetSettingsStrings.RulesetManagementSubheading);
+            => Renderer.CreatePanelHeader(RulesetSettingsStrings.RulesetManagement, RulesetSettingsStrings.RulesetManagementSubheading);
 
         [BackgroundDependencyLoader]
         private void load()

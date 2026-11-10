@@ -60,7 +60,6 @@ namespace osu.Game.Overlays.ImagePreview
         };
 
         private Box background = null!;
-        private Container imageArea = null!;
         private Sprite image = null!;
         private Container toolbar = null!;
         private OsuSpriteText zoomText = null!;

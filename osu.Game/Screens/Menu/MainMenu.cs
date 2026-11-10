@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -90,13 +90,17 @@ namespace osu.Game.Screens.Menu
         IBindable<bool> ISamplePlaybackDisabler.SamplePlaybackDisabled => samplePlaybackDisabled;
         private readonly Bindable<bool> samplePlaybackDisabled = new Bindable<bool>();
 
-        protected override BackgroundScreen CreateBackground() => new BackgroundScreenDefault();
+        protected override BackgroundScreen CreateBackground() => new BackgroundScreenDefault { UseLegacyMainMenuBackground = true };
 
         protected override bool PlayExitSound => false;
 
         private Bindable<double> holdDelay;
         private Bindable<bool> loginDisplayed;
         private Bindable<bool> showMobileDisclaimer;
+        private Bindable<bool> legacyMenuEnabled;
+        private LegacyButtonSystem legacyButtons;
+        private LegacyMusicControl legacyMusicControl;
+        private LegacyMenuSideFlashes legacySideFlashes;
 
         private HoldToExitGameOverlay holdToExitGameOverlay;
 
@@ -118,12 +122,16 @@ namespace osu.Game.Screens.Menu
         [CanBeNull]
         private IDisposable logoProxy;
 
+        [CanBeNull]
+        private OsuLogo ownedLogo;
+
         [BackgroundDependencyLoader(true)]
         private void load(BeatmapListingOverlay beatmapListing, SettingsOverlay settings, OsuConfigManager config, SessionStatics statics, AudioManager audio)
         {
             holdDelay = config.GetBindable<double>(OsuSetting.UIHoldActivationDelay);
             loginDisplayed = statics.GetBindable<bool>(Static.LoginOverlayDisplayed);
             showMobileDisclaimer = config.GetBindable<bool>(OsuSetting.ShowMobileDisclaimer);
+            legacyMenuEnabled = config.GetBindable<bool>(OsuSetting.ToriiLegacyMainMenu);
 
             if (host.CanExit)
             {
@@ -177,6 +185,40 @@ namespace osu.Game.Screens.Menu
                         }
                     }
                 },
+                legacyButtons = new LegacyButtonSystem
+                {
+                    OnEditBeatmap = () =>
+                    {
+                        Beatmap.SetDefault();
+                        this.Push(new EditorLoader());
+                    },
+                    OnEditSkin = () => skinEditor?.Show(),
+                    OnSolo = loadSongSelect,
+                    OnMultiplayer = () => this.Push(new Multiplayer()),
+                    OnQuickPlay = loadQuickPlay,
+                    OnRankedPlay = loadRankedPlay,
+                    OnPlaylists = () => this.Push(new Playlists()),
+                    OnDailyChallenge = room =>
+                    {
+                        if (statics.Get<bool>(Static.DailyChallengeIntroPlayed))
+                            this.Push(new DailyChallenge(room));
+                        else
+                            this.Push(new DailyChallengeIntro(room));
+                    },
+                    OnExit = e =>
+                    {
+                        exitConfirmedViaHoldOrClick = e is MouseEvent;
+                        this.Exit();
+                    },
+                    OnSettings = () => settings?.ToggleVisibility(),
+                    OnBeatmapListing = () => beatmapListing?.ToggleVisibility(),
+                },
+                new DrawSizePreservingFillContainer
+                {
+                    TargetDrawSize = new Vector2(640, 480),
+                    Child = legacyMusicControl = new LegacyMusicControl(),
+                },
+                legacySideFlashes = new LegacyMenuSideFlashes(),
                 logoTarget = new Container { RelativeSizeAxes = Axes.Both, },
                 sideFlashes = SeasonalUIConfig.ENABLED ? new SeasonalMenuSideFlashes() : new MenuSideFlashes(),
                 songTicker = new SongTicker
@@ -233,6 +275,25 @@ namespace osu.Game.Screens.Menu
             Buttons.OnSettings = () => settings?.ToggleVisibility();
             Buttons.OnBeatmapListing = () => beatmapListing?.ToggleVisibility();
 
+            legacyButtons.StateChanged += state =>
+            {
+                switch (state)
+                {
+                    case ButtonSystemState.Initial:
+                    case ButtonSystemState.Exit:
+                        ApplyToBackground(b => b.FadeColour(OsuColour.Gray(baseDim), 500, Easing.OutSine));
+                        onlineMenuBanner.State.Value = Visibility.Hidden;
+                        break;
+
+                    default:
+                        ApplyToBackground(b => b.FadeColour(OsuColour.Gray(baseDim * 0.8f), 500, Easing.OutSine));
+                        onlineMenuBanner.State.Value = Visibility.Visible;
+                        break;
+                }
+            };
+
+            legacyMenuEnabled.BindValueChanged(onLegacyMenuChanged, true);
+
             reappearSampleSwoosh = audio.Samples.Get(@"Menu/reappear-swoosh");
         }
 
@@ -242,12 +303,56 @@ namespace osu.Game.Screens.Menu
             GetContainingInputManager();
         }
 
-        public void ReturnToOsuLogo() => Buttons.State = ButtonSystemState.Initial;
+        private void onLegacyMenuChanged(ValueChangedEvent<bool> e)
+        {
+            bool legacy = e.NewValue;
+
+            buttonsContainer.Alpha = legacy ? 0 : 1;
+            bottomElementsFlow.Alpha = legacy ? 0 : 1;
+            Buttons.Alpha = legacy ? 0 : 1;
+
+            songTicker.ClearTransforms();
+            songTicker.Alpha = legacy ? 0 : 1;
+
+            sideFlashes.Alpha = legacy ? 0 : 1;
+
+            legacyButtons.Alpha = legacy ? 1 : 0;
+            legacyMusicControl.Alpha = legacy ? 1 : 0;
+            legacySideFlashes.Alpha = legacy ? 1 : 0;
+
+            if (logoTarget != null)
+                logoTarget.Alpha = legacy ? 0 : 1;
+
+            if (ownedLogo != null && this.IsCurrentScreen())
+            {
+                logoProxy?.Dispose();
+                logoProxy = null;
+                ownedLogo.ClearTransforms();
+                ownedLogo.Alpha = legacy ? 0 : 1;
+                Buttons.SetOsuLogo(legacy ? null : ownedLogo);
+                if (!legacy)
+                {
+                    logoProxy = ownedLogo.ProxyToContainer(logoTarget);
+                    Buttons.State = ButtonSystemState.TopLevel;
+                }
+            }
+        }
+
+        public void ReturnToOsuLogo()
+        {
+            if (legacyMenuEnabled.Value)
+                legacyButtons.SetIdle(true);
+            else
+                Buttons.State = ButtonSystemState.Initial;
+        }
 
         public override void OnEntering(ScreenTransitionEvent e)
         {
             base.OnEntering(e);
-            Buttons.FadeInFromZero(500);
+            if (!legacyMenuEnabled.Value)
+                Buttons.FadeInFromZero(500);
+            else
+                legacyButtons.FadeInFromZero(500);
 
             if (e.Last is IntroScreen && musicController.TrackLoaded)
             {
@@ -271,32 +376,51 @@ namespace osu.Game.Screens.Menu
         protected override void LogoArriving(OsuLogo logo, bool resuming)
         {
             base.LogoArriving(logo, resuming);
+            ownedLogo = logo;
 
-            Buttons.SetOsuLogo(logo);
-
-            logo.FadeColour(Color4.White, 100, Easing.OutQuint);
-            logo.FadeIn(100, Easing.OutQuint);
-
-            logoProxy = logo.ProxyToContainer(logoTarget);
-
-            if (resuming)
+            if (legacyMenuEnabled.Value)
             {
-                Buttons.State = ButtonSystemState.TopLevel;
+                logo.ClearTransforms();
+                logo.Alpha = 0;
+                logoTarget.Alpha = 0;
+                Buttons.SetOsuLogo(null);
 
-                this.FadeIn(FADE_IN_DURATION, Easing.OutQuint);
-                buttonsContainer.MoveTo(new Vector2(0, 0), FADE_IN_DURATION, Easing.OutQuint);
-
-                sideFlashes.Delay(FADE_IN_DURATION).FadeIn(64, Easing.InQuint);
+                if (resuming)
+                {
+                    legacyButtons.SetIdle(false);
+                    this.FadeIn(FADE_IN_DURATION, Easing.OutQuint);
+                    buttonsContainer.MoveTo(new Vector2(0, 0), FADE_IN_DURATION, Easing.OutQuint);
+                    legacyButtons.MoveTo(new Vector2(0, 0), FADE_IN_DURATION, Easing.OutQuint);
+                }
             }
             else
             {
-                // copy out old action to avoid accidentally capturing logo.Action in closure, causing a self-reference loop.
-                var previousAction = logo.Action;
+                Buttons.SetOsuLogo(logo);
 
-                // we want to hook into logo.Action to display certain overlays, but also preserve the return value of the old action.
-                // therefore pass the old action to displayLogin, so that it can return that value.
-                // this ensures that the OsuLogo sample does not play when it is not desired.
-                logo.Action = () => onLogoClick(previousAction);
+                logo.FadeColour(Color4.White, 100, Easing.OutQuint);
+                logo.FadeIn(100, Easing.OutQuint);
+
+                logoProxy = logo.ProxyToContainer(logoTarget);
+
+                if (resuming)
+                {
+                    Buttons.State = ButtonSystemState.TopLevel;
+
+                    this.FadeIn(FADE_IN_DURATION, Easing.OutQuint);
+                    buttonsContainer.MoveTo(new Vector2(0, 0), FADE_IN_DURATION, Easing.OutQuint);
+
+                    sideFlashes.Delay(FADE_IN_DURATION).FadeIn(64, Easing.InQuint);
+                }
+                else
+                {
+                    // copy out old action to avoid accidentally capturing logo.Action in closure, causing a self-reference loop.
+                    var previousAction = logo.Action;
+
+                    // we want to hook into logo.Action to display certain overlays, but also preserve the return value of the old action.
+                    // therefore pass the old action to displayLogin, so that it can return that value.
+                    // this ensures that the OsuLogo sample does not play when it is not desired.
+                    logo.Action = () => onLogoClick(previousAction);
+                }
             }
         }
 
@@ -334,6 +458,7 @@ namespace osu.Game.Screens.Menu
 
         protected override void LogoSuspending(OsuLogo logo)
         {
+            ownedLogo = null;
             var seq = logo.FadeOut(300, Easing.InSine)
                           .ScaleTo(0.2f, 300, Easing.InSine);
 
@@ -347,6 +472,7 @@ namespace osu.Game.Screens.Menu
         protected override void LogoExiting(OsuLogo logo)
         {
             base.LogoExiting(logo);
+            ownedLogo = null;
 
             logoProxy?.Dispose();
             logoProxy = null;
@@ -362,6 +488,12 @@ namespace osu.Game.Screens.Menu
             buttonsContainer.MoveTo(new Vector2(-800, 0), FADE_OUT_DURATION, Easing.InSine);
 
             sideFlashes.FadeOut(64, Easing.OutQuint);
+
+            if (legacyMenuEnabled.Value)
+            {
+                legacyButtons.FadeOut(FADE_OUT_DURATION, Easing.InSine);
+                legacyButtons.MoveTo(new Vector2(-800, 0), FADE_OUT_DURATION, Easing.InSine);
+            }
 
             bottomElementsFlow
                 .ScaleTo(0.9f, 1000, Easing.OutQuint)
@@ -382,14 +514,22 @@ namespace osu.Game.Screens.Menu
 
             musicController.EnsurePlayingSomething();
 
-            // Cycle tip on resuming
-            menuTipDisplay.ShowNextTip();
-
-            bottomElementsFlow
-                .ScaleTo(1, 1000, Easing.OutQuint)
-                .FadeIn(1000, Easing.OutQuint);
+            bottomElementsFlow.ScaleTo(1, 1000, Easing.OutQuint);
 
             samplePlaybackDisabled.Value = false;
+
+            if (legacyMenuEnabled.Value)
+            {
+                bottomElementsFlow.FadeOut();
+                legacyButtons.FadeIn(FADE_IN_DURATION, Easing.OutQuint);
+                legacyButtons.MoveTo(Vector2.Zero, FADE_IN_DURATION, Easing.OutQuint);
+                legacyButtons.SetIdle(true, instant: true);
+            }
+            else
+            {
+                menuTipDisplay.ShowNextTip();
+                bottomElementsFlow.FadeIn(1000, Easing.OutQuint);
+            }
         }
 
         public override bool OnExiting(ScreenExitEvent e)
@@ -431,6 +571,9 @@ namespace osu.Game.Screens.Menu
             OverlayActivationMode.Value = OverlayActivation.Disabled;
 
             songTicker.Hide();
+
+            if (legacyMenuEnabled.Value)
+                legacyButtons.BeginExit();
 
             this.FadeOut(3000);
 

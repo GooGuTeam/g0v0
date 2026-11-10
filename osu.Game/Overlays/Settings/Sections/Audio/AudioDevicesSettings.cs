@@ -15,6 +15,7 @@ using osu.Framework.Localisation;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osuTK;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.Audio
 {
@@ -25,13 +26,20 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         [Resolved]
         private AudioManager audio { get; set; } = null!;
 
-        private AudioDeviceDropdown dropdown = null!;
+        private DropdownEntry<string> dropdown = null!;
 
-        private FormCheckBox? legacyAudio;
-        private FormCheckBox? exclusive;
-        private FormCheckBox? autoSharedOnBackground;
-        private FormSliderBar<double>? buffer;
-        private FormSliderBar<double>? period;
+        /// <summary>
+        /// The inverse of <see cref="AudioManager.UseWasapi"/>, shown as the "legacy audio" toggle.
+        /// </summary>
+        private readonly BindableBool legacyAudioMode = new BindableBool();
+
+        private Bindable<bool> useWasapi = null!;
+
+        private CheckboxEntry? legacyAudio;
+        private CheckboxEntry? exclusive;
+        private CheckboxEntry? autoSharedOnBackground;
+        private SliderEntry<double>? buffer;
+        private SliderEntry<double>? period;
         private FillFlowContainer? wasapiSettings;
 
         [BackgroundDependencyLoader]
@@ -39,22 +47,24 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         {
             Children = new Drawable[]
             {
-                new SettingsItemV2(dropdown = new AudioDeviceDropdown
+                CreateItem(dropdown = new DropdownEntry<string>
                 {
                     Caption = AudioSettingsStrings.OutputDevice,
-                })
-                {
-                    Keywords = new[] { "speaker", "headphone", "output" }
-                },
+                    ItemLabel = item => string.IsNullOrEmpty(item) ? CommonStrings.Default : item,
+                    Keywords = new[] { "speaker", "headphone", "output" },
+                }),
             };
 
             if (RuntimeInfo.OS == RuntimeInfo.Platform.Windows)
             {
-                Add(new SettingsItemV2(legacyAudio = new LegacyAudioCheckbox())
+                Add(CreateItem(legacyAudio = new CheckboxEntry
                 {
+                    Caption = AudioSettingsStrings.LegacyAudioLabel,
+                    HintText = AudioSettingsStrings.LegacyAudioTooltip,
+                    Current = legacyAudioMode,
                     Keywords = new[] { "wasapi", "latency", "exclusive", "legacy", "experimental" },
-                });
-                Add(new SettingsButtonV2
+                }));
+                Add(CreateItem(new ButtonEntry
                 {
                     Keywords = new[] { "audio" },
                     Action = () =>
@@ -62,8 +72,8 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                         audio.RestartAudioEngine();
                         onDeviceChanged(string.Empty);
                     },
-                    Text = AudioSettingsStrings.RestartAudioEngine,
-                });
+                    Caption = AudioSettingsStrings.RestartAudioEngine,
+                }));
 
                 wasapiSettings = new FillFlowContainer
                 {
@@ -74,46 +84,38 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                     Masking = true,
                     Children = new Drawable[]
                     {
-                        new SettingsItemV2(exclusive = new FormCheckBox
+                        CreateItem(exclusive = new CheckboxEntry
                         {
                             Current = audio.WasapiIsExclusive,
                             Caption = AudioSettingsStrings.ExclusiveAudioMode,
                             HintText = AudioSettingsStrings.ExclusiveAudioModeTooltip,
-                        })
-                        {
                             Keywords = new[] { "wasapi", "latency", "exclusive" },
                             CanBeShown = { BindTarget = audio.UseWasapi },
-                        },
-                        new SettingsItemV2(autoSharedOnBackground = new FormCheckBox
+                        }),
+                        CreateItem(autoSharedOnBackground = new CheckboxEntry
                         {
                             Current = audio.WasapiAutoSharedOnBackground,
                             Caption = AudioSettingsStrings.AutoSharedAudioOnBackground,
                             HintText = AudioSettingsStrings.AutoSharedAudioOnBackgroundTooltip,
-                        })
-                        {
                             Keywords = new[] { "wasapi", "latency", "exclusive", "background", "shared" },
                             CanBeShown = { BindTarget = audio.UseWasapi },
-                        },
-                        new SettingsItemV2(buffer = new FormSliderBar<double>
+                        }),
+                        CreateItem(buffer = new SliderEntry<double>
                         {
                             Current = audio.WasapiBufferMilliseconds,
                             Caption = AudioSettingsStrings.BufferSize,
                             HintText = AudioSettingsStrings.BufferSizeTooltip,
-                        })
-                        {
                             Keywords = new[] { "wasapi", "latency", "exclusive" },
                             CanBeShown = { BindTarget = audio.UseWasapi },
-                        },
-                        new SettingsItemV2(period = new FormSliderBar<double>
+                        }),
+                        CreateItem(period = new SliderEntry<double>
                         {
                             Current = audio.WasapiPeriodMilliseconds,
                             Caption = AudioSettingsStrings.Period,
                             HintText = AudioSettingsStrings.PeriodTooltip,
-                        })
-                        {
                             Keywords = new[] { "wasapi", "latency", "exclusive" },
                             CanBeShown = { BindTarget = audio.UseWasapi },
-                        },
+                        }),
                     }
                 };
                 Add(wasapiSettings);
@@ -134,6 +136,17 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
 
             if (wasapiSettings != null)
             {
+                // Manual two-way binding because the toggle is the inverse of what the framework exposes.
+                useWasapi = audio.UseWasapi.GetBoundCopy();
+                legacyAudioMode.ValueChanged += legacy => useWasapi.Value = !legacy.NewValue;
+                useWasapi.BindValueChanged(experimental =>
+                {
+                    if (ThreadSafety.IsUpdateThread)
+                        legacyAudioMode.Value = !experimental.NewValue;
+                    else
+                        Scheduler.AddOnce(v => legacyAudioMode.Value = v, !experimental.NewValue);
+                }, true);
+
                 audio.UseWasapi.BindValueChanged(updateWasapiVisibility, true);
 
                 if (autoSharedOnBackground != null)
@@ -198,11 +211,6 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
             }
         }
 
-        private partial class AudioDeviceDropdown : FormDropdown<string>
-        {
-            protected override LocalisableString GenerateItemText(string item)
-                => string.IsNullOrEmpty(item) ? CommonStrings.Default : base.GenerateItemText(item);
-        }
     }
 
     public partial class LegacyAudioCheckbox : FormCheckBox

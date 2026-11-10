@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -9,6 +9,9 @@ using osu.Framework.Graphics.Cursor;
 using osu.Framework.Input;
 using osu.Framework.Input.StateChanges;
 using osu.Game.Configuration;
+using osu.Game.Beatmaps;
+using osu.Game.Rulesets;
+using osu.Game.Skinning;
 
 namespace osu.Game.Graphics.Cursor
 {
@@ -23,7 +26,11 @@ namespace osu.Game.Graphics.Cursor
         /// </summary>
         internal bool ShowCursor = true;
 
-        CursorContainer IProvideCursor.Cursor => MenuCursor;
+        CursorContainer IProvideCursor.Cursor => UseGameplayCursor && gameplayCursor != null ? gameplayCursor : MenuCursor;
+
+        internal bool UseGameplayCursor;
+        private CursorContainer? gameplayCursor;
+        private CursorContainer? displayedCursor;
 
         public MenuCursorContainer MenuCursor { get; }
 
@@ -49,6 +56,21 @@ namespace osu.Game.Graphics.Cursor
             });
         }
 
+        [BackgroundDependencyLoader]
+        private void load(RulesetStore rulesets)
+        {
+            var ruleset = rulesets.GetRuleset(0)?.CreateInstance();
+            gameplayCursor = ruleset?.CreateMenuCursor();
+            if (gameplayCursor == null || ruleset == null)
+                return;
+
+            gameplayCursor.Hide();
+            AddInternal(new RulesetSkinProvidingContainer(ruleset, new Beatmap(), null)
+            {
+                Child = gameplayCursor,
+            });
+        }
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
@@ -66,7 +88,8 @@ namespace osu.Game.Graphics.Cursor
 
             if (!hasValidInput || !ShowCursor)
             {
-                currentOverrideProvider?.Cursor?.Hide();
+                displayedCursor?.Hide();
+                displayedCursor = null;
                 currentOverrideProvider = null;
                 return;
             }
@@ -82,11 +105,12 @@ namespace osu.Game.Graphics.Cursor
                 }
             }
 
-            if (currentOverrideProvider == newOverrideProvider)
+            if (currentOverrideProvider == newOverrideProvider && displayedCursor == newOverrideProvider.Cursor)
                 return;
 
-            currentOverrideProvider?.Cursor?.Hide();
-            newOverrideProvider.Cursor?.Show();
+            displayedCursor?.Hide();
+            displayedCursor = newOverrideProvider.Cursor;
+            displayedCursor?.Show();
 
             currentOverrideProvider = newOverrideProvider;
         }

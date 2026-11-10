@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup Label="Project">
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
@@ -43,7 +43,8 @@ Full licence text: see LICENCE and LICENCE-OSU.</PackageReleaseNotes>
   </ItemGroup>
   <ItemGroup Label="Package References">
     <!-- Resources are released separately from GooGuTeam/g0v0-resources and must stay aligned with the game package version. -->
-    <PackageReference Include="g0v0.osu.Game.Resources" Version="$(G0V0ResourcesVersion)" />
+    <ProjectReference Include="..\..\g0v0-resources\osu.Game.Resources\osu.Game.Resources.csproj" Condition="Exists('..\..\g0v0-resources\osu.Game.Resources\osu.Game.Resources.csproj')" />
+    <PackageReference Include="g0v0.osu.Game.Resources" Version="$(G0V0ResourcesVersion)" Condition="!Exists('..\..\g0v0-resources\osu.Game.Resources\osu.Game.Resources.csproj')" />
     <!-- Held back due to licencing change stupidness. Silenced vulnerability does not affect us. -->
     <PackageReference Include="AutoMapper" Version="13.0.1">
       <NoWarn>NU1903</NoWarn>

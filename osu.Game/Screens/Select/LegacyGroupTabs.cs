@@ -32,9 +32,9 @@ namespace osu.Game.Screens.Select
 
         // cada tab es un rectangulo redondeado del ancho del step mas o menos, con un solape chiquito
         // para que cierren las junturas (banda pegada, no el solape pesado de la textura entera de 228px).
-        private const float step = 124f;
-        private const float bg_width = 150f;
-        private const float tab_height = 24f;
+        private const float step = 118.4f;
+        private const float end_tab_width = 137.6f;
+        private const float tab_height = 23f;
 
         private static readonly Color4 crimson = Color4.Crimson;
 
@@ -52,12 +52,12 @@ namespace osu.Game.Screens.Select
         private OsuSpriteText[] labels = null!;
 
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin)
+        private void load(ISkinSource skin, SkinManager skins)
         {
             Height = tab_height;
-            Width = tab_definitions.Length * step;
+            Width = (tab_definitions.Length - 1) * step + end_tab_width;
 
-            Texture? tabTexture = skin.GetTexture(@"selection-tab");
+            Texture? tabTexture = skin.GetStableTexture(@"selection-tab") ?? skins.DefaultClassicSkin.GetStableTexture(@"selection-tab");
 
             backgroundLayer = new Container { RelativeSizeAxes = Axes.Both };
             var foregroundLayer = new Container { RelativeSizeAxes = Axes.Both };
@@ -68,13 +68,15 @@ namespace osu.Game.Screens.Select
             for (int i = 0; i < tab_definitions.Length; i++)
             {
                 var def = tab_definitions[i];
+                float slotWidth = i == tab_definitions.Length - 1 ? end_tab_width : step;
 
                 backgroundLayer.Add(backgrounds[i] = new Sprite
                 {
                     Anchor = Anchor.CentreLeft,
-                    Origin = Anchor.Centre,
-                    X = i * step + step / 2,
-                    Size = new Vector2(bg_width, tab_height),
+                    Origin = Anchor.CentreLeft,
+                    X = i * step,
+                    Size = new Vector2(slotWidth + (i == tab_definitions.Length - 1 ? 0 : 6), tab_height),
+                    FillMode = FillMode.Stretch,
                     Texture = tabTexture,
                     Colour = crimson,
                 });
@@ -84,7 +86,7 @@ namespace osu.Game.Screens.Select
                     Anchor = Anchor.CentreLeft,
                     Origin = Anchor.CentreLeft,
                     X = i * step,
-                    Size = new Vector2(step, tab_height),
+                    Size = new Vector2(slotWidth, tab_height),
                     Action = () => Current.Value = def.mode,
                 };
                 slot.Add(labels[i] = new OsuSpriteText
@@ -92,7 +94,7 @@ namespace osu.Game.Screens.Select
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
                     Text = def.text,
-                    Font = LegacyFonts.Get(14, FontWeight.Bold),
+                    Font = LegacyFonts.Get(15, FontWeight.Bold),
                     Shadow = true,
                 });
                 foregroundLayer.Add(slot);
