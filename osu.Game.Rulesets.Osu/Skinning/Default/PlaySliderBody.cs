@@ -1,10 +1,12 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics.Lines;
+using osu.Game.Rulesets.Osu.Skinning.Legacy;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Configuration;
 using osu.Game.Rulesets.Osu.Objects;
@@ -26,6 +28,10 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
         private IReadOnlyList<Vector2>? viewportVertices;
         private PathDrawRange? viewportRange;
         private int viewportPathVersion = -1;
+        private DrawableSlider drawableSlider = null!;
+        private LegacySliderBodyRenderer? oversizedRenderer;
+        private DrawableSliderPath? gradientPath;
+        private Func<float, Color4>? sampleBodyGradient;
         private Vector2 viewportMinimum;
         private Vector2 viewportMaximum;
 
@@ -40,7 +46,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
         [BackgroundDependencyLoader]
         private void load(ISkinSource skin, DrawableHitObject drawableObject)
         {
-            var drawableSlider = (DrawableSlider)drawableObject;
+            drawableSlider = (DrawableSlider)drawableObject;
 
             ScaleBindable = drawableSlider.ScaleBindable.GetBoundCopy();
             ScaleBindable.BindValueChanged(scale => PathRadius = OsuHitObject.OBJECT_RADIUS * scale.NewValue, true);
@@ -73,7 +79,40 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
             base.UpdateAfterChildren();
 
             Vector2 limit = LegacySliderViewport.GetLimit(viewportMode.Value, customViewport);
+            if (viewportMode.Value == SliderViewportMode.Default) limit = new Vector2(32767);
+
+            var fieldOrigin = drawableSlider.Parent!.ToScreenSpace(Vector2.Zero);
+            float ratio = (drawableSlider.Parent.ToScreenSpace(Vector2.UnitX) - fieldOrigin).Length;
+            bool oversized = Path.Width * ratio > limit.X || Path.Height * ratio > limit.Y;
+
+            if (oversized)
+            {
+                oversizedRenderer ??= createOversizedRenderer();
+
+                if (!ReferenceEquals(gradientPath, Path))
+                {
+                    gradientPath = (DrawableSliderPath)Path;
+                    sampleBodyGradient = this is LegacySliderBody ? null : gradientPath.SampleBodyGradient;
+                }
+
+                Vector2 shake = ToScreenSpace(Vector2.Zero) - drawableSlider.ToScreenSpace(Vector2.Zero);
+                Vector2 displayOrigin = fieldOrigin + shake + drawableSlider.HitObject.StackOffset * ratio;
+                bool rendered = oversizedRenderer.Configure(drawableSlider.HitObject.Path, drawableSlider.HitObject.Position, displayOrigin, ratio,
+                    PathRadius, SnakedStart ?? 0, SnakedEnd ?? 1, AccentColour, BorderColour, limit,
+                    sampleBodyGradient, BorderSize);
+                oversizedRenderer.Alpha = rendered ? 1 : 0;
+                Path.Alpha = rendered ? 0 : 1;
+
+                if (rendered) return;
+            }
+            else
+            {
+                oversizedRenderer?.Alpha = 0;
+                Path.Alpha = 1;
+            }
+
             var start = ToScreenSpace(Vector2.Zero);
+
             if (Path.DrawRange is not { } range || !float.IsFinite(start.X) || !float.IsFinite(start.Y))
             {
                 Path.Scale = Vector2.One;
@@ -123,7 +162,21 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
             Path.Position = anchor * (Vector2.One - scale);
 
             Vector2 toDisplay(Vector2 point) => ToScreenSpace(Path.PositionInBoundingBox(point));
+        }
 
+        private LegacySliderBodyRenderer createOversizedRenderer()
+        {
+            var renderer = new LegacySliderBodyRenderer { Alpha = 0 };
+            AddInternal(renderer);
+            return renderer;
+        }
+
+        public override void RecyclePath()
+        {
+            base.RecyclePath();
+            oversizedRenderer = null;
+            gradientPath = null;
+            sampleBodyGradient = null;
         }
 
         protected virtual Color4 GetBodyAccentColour(ISkinSource skin, Color4 hitObjectAccentColour) => hitObjectAccentColour;
