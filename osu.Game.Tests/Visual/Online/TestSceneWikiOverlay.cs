@@ -138,6 +138,40 @@ namespace osu.Game.Tests.Visual.Online
         }
 
         [Test]
+        public void TestSupersededFailureIsIgnored()
+        {
+            const string article_path = "Article_styling_criteria/Formatting";
+
+            GetWikiRequest? pending = null;
+
+            AddStep("install request handler", () => dummyAPI.HandleRequest = request =>
+            {
+                if (request is not GetWikiRequest getWikiRequest)
+                    return false;
+
+                // deliberately left pending, so that failures can be triggered at an exact point in time.
+                pending = getWikiRequest;
+                return true;
+            });
+
+            AddStep("Show main page", () => wiki.ShowPage());
+            AddUntilStep("Main page request pending", () => pending?.CompletionState == APIRequestCompletionState.Waiting);
+
+            // the failure is scheduled, so navigating away within the same step supersedes it before it is applied.
+            AddStep("Fail main page and navigate away", () =>
+            {
+                pending!.TriggerFailure(new WebException());
+                wiki.ShowPage(article_path);
+            });
+
+            AddUntilStep("Article page requested", () => pending?.Path == article_path);
+            AddWaitStep("wait for the superseded failure", 5);
+
+            AddAssert("Current path is requested page", () => wiki.CurrentPath == article_path);
+            AddAssert("Error placeholder not displayed", () => !wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
+        }
+
+        [Test]
         public void TestReturnAfterErrorPage()
         {
             setUpWikiResponse(responseArticlePage);

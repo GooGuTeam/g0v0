@@ -141,9 +141,18 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
 
         private ScheduledDelegate? queryChangedDebounce;
 
+        /// <summary>
+        /// The search request whose response is currently being awaited. Callbacks belonging to any other request
+        /// are ignored, as the search which issued them has been superseded.
+        /// </summary>
+        private SearchUsersRequest? activeSearch;
+
         private void queueUpdateSearch()
         {
             queryChangedDebounce?.Cancel();
+
+            // the query is about to change, so whatever is in flight no longer relates to what the user will see.
+            abandonActiveSearch();
 
             if (!api.IsLoggedIn)
             {
@@ -156,6 +165,8 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
 
         private void performSearch()
         {
+            abandonActiveSearch();
+
             if (string.IsNullOrEmpty(searchTextBox.Current.Value))
             {
                 loading.Value = false;
@@ -163,10 +174,23 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
             }
 
             loading.Value = true;
+
             var getUsersRequest = new SearchUsersRequest(searchTextBox.Current.Value);
-            getUsersRequest.Success += showResults;
+            activeSearch = getUsersRequest;
+
+            getUsersRequest.Success += response =>
+            {
+                if (getUsersRequest != activeSearch)
+                    return;
+
+                showResults(response);
+            };
+
             getUsersRequest.Failure += e =>
             {
+                if (getUsersRequest != activeSearch)
+                    return;
+
                 if (e is OperationCanceledException)
                     return;
 
@@ -177,6 +201,17 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
             };
 
             api.Queue(getUsersRequest);
+        }
+
+        /// <summary>
+        /// Forgets any in-flight search, so that its response can no longer update the displayed results.
+        /// </summary>
+        private void abandonActiveSearch()
+        {
+            var previous = activeSearch;
+
+            activeSearch = null;
+            previous?.Cancel();
         }
 
         private void showResults(SearchUsersResponse response)

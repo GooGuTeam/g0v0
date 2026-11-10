@@ -112,21 +112,39 @@ namespace osu.Game.Overlays
             // Language code + path, or just path1 + path2 in case
             string[] values = path.Split('/', 2);
 
-            if (values.Length > 1 && LanguageExtensions.TryParseCultureCode(values[0], out var parsedLang))
-                request = new GetWikiRequest(values[1], parsedLang);
-            else
-                request = new GetWikiRequest(path, lang);
+            var newRequest = values.Length > 1 && LanguageExtensions.TryParseCultureCode(values[0], out var parsedLang)
+                ? new GetWikiRequest(values[1], parsedLang)
+                : new GetWikiRequest(path, lang);
+
+            request = newRequest;
 
             Loading.Show();
 
-            request.Success += response => Schedule(() => onSuccess(response));
-            request.Failure += ex =>
+            // the callbacks below are scheduled, so they must refer to the request they were created for rather than
+            // to the mutable field, which may already point at a newer request by the time they run.
+            newRequest.Success += response => Schedule(() =>
             {
-                if (ex is not OperationCanceledException)
-                    Schedule(() => onFail(ex, request.Path));
+                if (request != newRequest)
+                    return;
+
+                onSuccess(response);
+            });
+
+            newRequest.Failure += ex =>
+            {
+                if (ex is OperationCanceledException)
+                    return;
+
+                Schedule(() =>
+                {
+                    if (request != newRequest)
+                        return;
+
+                    onFail(ex, newRequest.Path);
+                });
             };
 
-            api.PerformAsync(request);
+            api.PerformAsync(newRequest);
         }
 
         private void onPathChanged(ValueChangedEvent<string> e)
