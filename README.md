@@ -6,6 +6,17 @@ with [g0v0-server](https://github.com/GooGuTeam/g0v0-server) out of the box.
 g0v0! keeps all gameplay, UI, and framework behaviour of the upstream lazer client intact and only changes the parts that talk to the
 server (for example a custom API server and Relax / Autopilot special rulesets).
 
+> [!IMPORTANT]
+> **g0v0! is an unofficial fork of the upstream client.**
+>
+> - We are **not affiliated with, endorsed by, or supported by ppy Pty Ltd**, or the upstream development team.
+> - The upstream name, the "lazer" codename, and all related branding are trademarks of **ppy Pty Ltd**. g0v0! is a separately-named project.
+> - **Please support the original project.** The upstream game is free, lovingly maintained, and the only reason this fork can exist. If you enjoy rhythm games, the best thing you can do is:
+>   - Play on the [official servers](https://osu.ppy.sh) — your scores there count for the real leaderboards.
+>   - Become a [supporter](https://osu.ppy.sh/home/support) — it directly funds upstream development.
+>   - File issues and PRs on the [upstream repo](https://github.com/ppy/osu) instead of pinging the upstream team about g0v0!.
+> - g0v0! exists to connect to community servers (such as g0v0-server) and to experiment. **It is not a replacement for the official client.** If you are new to the game, please install the [official client](https://osu.ppy.sh/home/download) first.
+
 ## Differences from upstream
 
 The full list of changes is maintained on the
