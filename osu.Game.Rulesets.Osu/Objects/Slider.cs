@@ -53,6 +53,7 @@ namespace osu.Game.Rulesets.Osu.Objects
                 path.ControlPoints.AddRange(value.ControlPoints.Select(c => new PathControlPoint(c.Position, c.Type)));
 
                 path.ExpectedDistance.Value = value.ExpectedDistance.Value;
+                path.LegacyPath = value.LegacyPath;
             }
         }
 

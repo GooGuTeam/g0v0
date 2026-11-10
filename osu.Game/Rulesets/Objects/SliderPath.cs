@@ -12,6 +12,7 @@ using osu.Framework.Caching;
 using osu.Framework.Graphics.Lines;
 using osu.Framework.Utils;
 using osu.Game.Rulesets.Objects.Types;
+using osu.Game.Rulesets.Objects.Legacy;
 using osuTK;
 
 namespace osu.Game.Rulesets.Objects
@@ -41,6 +42,13 @@ namespace osu.Game.Rulesets.Objects
         /// The control points of the path.
         /// </summary>
         public readonly BindableList<PathControlPoint> ControlPoints = new BindableList<PathControlPoint>();
+
+        /// <summary>
+        /// Optional original legacy geometry, used only for visual sampling. Editing control
+        /// points clears this metadata; changing expected length retains the original points.
+        /// </summary>
+        [JsonIgnore]
+        public LegacySliderPath? LegacyPath { get; set; }
 
         /// <summary>
         /// Whether stable's length trimming removes every approximated path segment, preventing sprite registration.
@@ -85,7 +93,7 @@ namespace osu.Game.Rulesets.Objects
         {
             // A path can contain hundreds of thousands of points. Share one handler rather than
             // allocating a delegate for every point added to the collection.
-            Action invalidateHandler = invalidate;
+            Action invalidateHandler = invalidateControlPoints;
             ExpectedDistance.ValueChanged += _ => invalidate();
 
             ControlPoints.CollectionChanged += (_, args) =>
@@ -109,7 +117,7 @@ namespace osu.Game.Rulesets.Objects
                         break;
                 }
 
-                invalidate();
+                invalidateControlPoints();
             };
         }
 
@@ -306,6 +314,12 @@ namespace osu.Game.Rulesets.Objects
         {
             pathCache.Invalidate();
             version.Value++;
+        }
+
+        private void invalidateControlPoints()
+        {
+            LegacyPath = null;
+            invalidate();
         }
 
         private void ensureValid()

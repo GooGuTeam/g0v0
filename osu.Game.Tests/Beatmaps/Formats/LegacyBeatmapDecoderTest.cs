@@ -1145,8 +1145,9 @@ namespace osu.Game.Tests.Beatmaps.Formats
             {
                 var controlPoints = (LegacyControlPointInfo)decoder.Decode(stream).ControlPointInfo;
 
-                Assert.That(controlPoints.TimingPoints.Count, Is.EqualTo(1));
-                Assert.That(controlPoints.DifficultyPoints.Count, Is.EqualTo(2));
+                Assert.That(controlPoints.TimingPoints.Count, Is.EqualTo(2));
+                Assert.That(controlPoints.TimingPointAt(0).LegacyBeatLength, Is.NaN);
+                Assert.That(controlPoints.DifficultyPoints.Count, Is.EqualTo(4));
 
                 Assert.That(controlPoints.TimingPointAt(1000).BeatLength, Is.EqualTo(500));
 

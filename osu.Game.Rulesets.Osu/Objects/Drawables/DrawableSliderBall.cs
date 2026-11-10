@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -11,6 +11,7 @@ using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Skinning.Default;
 using osu.Game.Skinning;
+using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Objects.Drawables
 {
@@ -20,6 +21,11 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
         private DrawableSlider drawableSlider;
         private Drawable ball;
+        private readonly LegacySliderBallPosition legacyPosition = new LegacySliderBallPosition();
+
+        internal Vector2 LegacyVisualPosition => Position;
+        internal Vector2 GameplayPosition { get; private set; }
+        internal Vector2 GameplayScreenSpaceCentre => Parent.ToScreenSpace(GameplayPosition + AnchorPosition + Parent.ChildOffset);
 
         [BackgroundDependencyLoader]
         private void load(DrawableHitObject drawableSlider)
@@ -64,7 +70,14 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         public void UpdateProgress(double completionProgress)
         {
             Slider slider = drawableSlider.HitObject;
-            Position = slider.CurvePositionAt(completionProgress);
+            GameplayPosition = slider.CurvePositionAt(completionProgress);
+
+            // Place the visual directly. Offsetting a child from a continuous position near
+            // 1e8 loses whole pixels through float cancellation, even if sampling is exact.
+            // Gameplay consumers use the separate continuous position below.
+            Position = legacyPosition.TryGetPosition(slider.Path, slider.StartTime, slider.Velocity, slider.SpanCount(), Time.Current, out var position, slider.Position)
+                ? position
+                : GameplayPosition;
 
             // 0.1 / slider.Path.Distance is the additional progress needed to ensure the diff length is 0.1
             double checkDistance = 0.1 / slider.Path.Distance;

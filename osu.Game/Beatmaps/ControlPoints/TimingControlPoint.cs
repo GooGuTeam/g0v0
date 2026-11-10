@@ -117,7 +117,7 @@ namespace osu.Game.Beatmaps.ControlPoints
         private double? legacyBeatLength;
 
         /// <summary>
-        /// The raw finite beat length of an imported legacy redline, or null for an edited/native timing point.
+        /// The raw beat length (finite or NaN) of an imported legacy redline, or null for an edited/native timing point.
         /// Only standard legacy slider timing and legacy encoding use this value; <see cref="BeatLength"/>
         /// remains bounded for editing, display and other shared timing consumers.
         /// </summary>
@@ -132,10 +132,10 @@ namespace osu.Game.Beatmaps.ControlPoints
             get => legacyBeatLength;
             set
             {
-                if (value.HasValue && !double.IsFinite(value.Value))
-                    throw new ArgumentOutOfRangeException(nameof(value), "Legacy beat length must be finite.");
+                if (value.HasValue && double.IsInfinity(value.Value))
+                    throw new ArgumentOutOfRangeException(nameof(value), "Legacy beat length must not be infinite.");
 
-                if (legacyBeatLength == value)
+                if (Nullable.Equals(legacyBeatLength, value))
                     return;
 
                 if (BeatLengthBindable.Disabled)
@@ -197,7 +197,7 @@ namespace osu.Game.Beatmaps.ControlPoints
                && LegacyTimeSignature == other.LegacyTimeSignature
                && OmitFirstBarLine == other.OmitFirstBarLine
                && BeatLength.Equals(other.BeatLength)
-               && LegacyBeatLength == other.LegacyBeatLength;
+               && Nullable.Equals(LegacyBeatLength, other.LegacyBeatLength);
 
         public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), TimeSignature, LegacyTimeSignature, BeatLength, LegacyBeatLength, OmitFirstBarLine);
     }

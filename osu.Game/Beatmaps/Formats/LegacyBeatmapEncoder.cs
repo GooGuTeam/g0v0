@@ -266,7 +266,10 @@ namespace osu.Game.Beatmaps.Formats
 
                 // Output any remaining effects as secondary non-timing control point.
                 writer.Write(FormattableString.Invariant($"{group.Time},"));
-                writer.Write(FormattableString.Invariant($"{-100 / controlPointProperties.SliderVelocity},"));
+                double inheritedBeatLength = legacyControlPoints.DifficultyPointAt(group.Time).GenerateTicks
+                    ? -100 / controlPointProperties.SliderVelocity
+                    : double.NaN;
+                writer.Write(FormattableString.Invariant($"{inheritedBeatLength},"));
                 outputControlPointAt(controlPointProperties, false);
                 lastControlPointProperties = controlPointProperties;
             }

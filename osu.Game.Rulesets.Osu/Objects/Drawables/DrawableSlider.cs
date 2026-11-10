@@ -263,7 +263,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                     // keep the sliding sample playing at the current tracking position
                     if (!slidingSample.RequestedPlaying)
                         slidingSample.Play();
-                    slidingSample.Balance.Value = CalculateSamplePlaybackBalance(CalculateDrawableRelativePosition(Ball));
+                    slidingSample.Balance.Value = CalculateSamplePlaybackBalance(CalculateScreenSpaceRelativePosition(Ball.GameplayScreenSpaceCentre));
                 }
                 else if (slidingSample.IsPlaying || slidingSample.RequestedPlaying)
                     slidingSample.Stop();

@@ -302,7 +302,7 @@ namespace osu.Game.Beatmaps.Formats
                     break;
 
                 case @"StackLeniency":
-                    beatmap.StackLeniency = Parsing.ParseFloat(pair.Value);
+                    beatmap.StackLeniency = Math.Clamp(Parsing.ParseFloat(pair.Value, allowNaN: true), 0, 1);
                     break;
 
                 case @"Mode":
@@ -518,8 +518,13 @@ namespace osu.Game.Beatmaps.Formats
 
             double time = getOffsetTime(Parsing.ParseDouble(split[0].Trim()));
 
-            // beatLength is allowed to be NaN to handle an edge case in which some beatmaps use NaN slider velocity to disable slider tick generation (see LegacyDifficultyControlPoint).
-            double beatLength = Parsing.ParseDouble(split[1].Trim(), double.MaxValue, allowNaN: true);
+            // Stable skips unparseable infinity symbols. Do not turn these lines into timing or sample changes.
+            string beatLengthText = split[1].Trim();
+            if (beatLengthText is "∞" or "+∞" or "-∞")
+                return;
+
+            // Both inherited and uninherited NaN points disable slider tick generation.
+            double beatLength = Parsing.ParseDouble(beatLengthText, double.MaxValue, allowNaN: true);
 
             int timeSignature = 4;
             if (split.Length >= 3)
@@ -563,12 +568,11 @@ namespace osu.Game.Beatmaps.Formats
 
             if (timingChange)
             {
-                if (double.IsNaN(beatLength))
-                    throw new InvalidDataException("Beat length cannot be NaN in a timing control point");
-
                 var controlPoint = CreateTimingControlPoint();
 
-                controlPoint.BeatLength = beatLength;
+                // Keep shared timing consumers finite. Stable's SliderVelocityAt uses its default
+                // velocity when the redline beat length is NaN; retain the raw value separately.
+                controlPoint.BeatLength = double.IsNaN(beatLength) ? TimingControlPoint.DEFAULT_BEAT_LENGTH : beatLength;
                 controlPoint.LegacyBeatLength = beatLength;
                 // Stable stores a signed enum. Keep an unrepresentable meter separately from the
                 // positive native/editor signature rather than dropping the entire timing line.
