@@ -1,6 +1,6 @@
 # Templates
 
-Templates for use when creating osu! dependent projects. Create a fully-testable (and ready for git) custom ruleset in just two lines.
+Templates for use when creating projects that depend on the upstream game. Create a fully-testable (and ready for git) custom ruleset in just two lines.
 
 ## Usage
 

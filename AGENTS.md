@@ -1,13 +1,13 @@
 # AGENTS.md
 
 面向在本仓库工作的 AI 编码代理（以及人类贡献者）。
-本文件只写**在这个 fork 里必须知道、且从上游 osu! 资料看不出来**的内容；通用架构与玩法逻辑请直接读代码。
+本文件只写**在这个 fork 里必须知道、且从上游资料看不出来**的内容；通用架构与玩法逻辑请直接读代码。
 
 ---
 
 ## 1. 这是什么项目
 
-- `g0v0.osu.Game` 是 [ppy/osu](https://github.com/ppy/osu)（osu!lazer）的 fork，由 **GooGuTeam** 维护，客户端对外名称是 **g0v0!**，对接 [g0v0-server](https://github.com/GooGuTeam/g0v0-server)。
+- `g0v0.osu.Game` 是 [ppy/osu](https://github.com/ppy/osu)（上游 lazer）的 fork，由 **GooGuTeam** 维护，客户端对外名称是 **g0v0!**，对接 [g0v0-server](https://github.com/GooGuTeam/g0v0-server)。
 - 相比上游的主要改动：自定义 API 服务器、Relax / Autopilot 特殊规则集、规则集哈希校验、服务器信息通知、更新源与错误上报切换到 GooGuTeam。逐条说明见 `README.md`，代码位置见第 6 节。
 - 许可：代码 MIT（上游部分见 `LICENCE-OSU`，本 fork 新增部分见 `LICENCE`）；游戏资源 CC-BY-NC 4.0，仅限非商业使用。
 
