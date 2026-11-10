@@ -8,6 +8,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Sample;
+using osu.Framework.Extensions;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
@@ -20,6 +21,7 @@ using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Drawables;
+using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
@@ -185,7 +187,7 @@ namespace osu.Game.Screens.Ranking
         }
 
         [BackgroundDependencyLoader]
-        private void load(ResultsScreen? resultsScreen, OsuColour colours, AudioManager audio)
+        private void load(ResultsScreen? resultsScreen, OsuColour colours, AudioManager audio, RealmAccess realmAccess, BeatmapDifficultyCache beatmapDifficultyCache)
         {
             appearanceSample = audio.Samples.Get(@"Results/score-panel-top-appear");
 
@@ -208,8 +210,14 @@ namespace osu.Game.Screens.Ranking
             var metadata = beatmap.BeatmapSet?.Metadata ?? beatmap.Metadata;
             var ruleset = score.Ruleset.CreateInstance();
 
+            StarDifficulty starDifficulty = new StarDifficulty(beatmap.StarRating, 0);
+
+            // Online-only beatmaps cannot be recalculated. For local beatmaps, use this score's ruleset and mods.
+            if (realmAccess.Run(r => r.Find<BeatmapInfo>(beatmap.ID)) != null)
+                starDifficulty = beatmapDifficultyCache.GetDifficultyAsync(beatmap, score.Ruleset, score.Mods).GetResultSafely() ?? starDifficulty;
+
             // Theme colours: everything comes from the provider / star rating, nothing is hard-coded except semantic colours.
-            var difficultyColour = colours.ForStarDifficulty(beatmap.StarRating);
+            var difficultyColour = colours.ForStarDifficulty(starDifficulty.Stars);
             var titleBackground = colourProvider.Background3;
             var stripBackground = colourProvider.Background5;
             var scoreBackground = colourProvider.Background6;
@@ -593,7 +601,7 @@ namespace osu.Game.Screens.Ranking
                             d.Size = new Vector2(20);
                             d.Colour = difficultyColour;
                         }),
-                        new StarRatingDisplay(new StarDifficulty(beatmap.StarRating, 0), StarRatingDisplaySize.Small)
+                        new StarRatingDisplay(starDifficulty, StarRatingDisplaySize.Small)
                         {
                             Name = "Difficulty rating",
                             Anchor = Anchor.CentreLeft,
