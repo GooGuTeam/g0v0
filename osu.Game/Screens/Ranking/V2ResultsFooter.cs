@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -13,6 +14,8 @@ using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osu.Game.Online;
 using osu.Game.Overlays;
+using osu.Game.Recording.Export;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Screens.Footer;
 using osuTK;
@@ -67,6 +70,8 @@ namespace osu.Game.Screens.Ranking
 
         private readonly Bindable<DownloadState> replayState = new Bindable<DownloadState>();
         private bool exportWhenDownloaded;
+        private ScreenFooterButton videoButton = null!;
+        private bool exportVideoWhenDownloaded;
 
         [Resolved]
         private ScoreManager scoreManager { get; set; } = null!;
@@ -76,6 +81,12 @@ namespace osu.Game.Screens.Ranking
 
         [Resolved]
         private OsuGame? game { get; set; }
+
+        [Resolved]
+        private ReplayVideoExporter? videoExporter { get; set; }
+
+        // Autoplay scores keep no replay, so their video is generated again by the autoplay mod.
+        private bool isAutoplay => Score?.Mods.OfType<ModAutoplay>().Any() == true;
 
         [Resolved]
         private OverlayColourProvider? colourProvider { get; set; }
@@ -141,6 +152,14 @@ namespace osu.Game.Screens.Ranking
                     AccentColour = colours.Yellow,
                     Hotkey = GlobalAction.SaveReplay,
                     Action = watchReplay,
+                },
+                videoButton = new ScreenFooterButton
+                {
+                    Text = VideoRecordingStrings.ExportReplay,
+                    Icon = FontAwesome.Solid.Video,
+                    AccentColour = colours.Yellow,
+                    Action = exportVideo,
+                    Enabled = { Value = false },
                 },
                 RetryButton = new ScreenFooterButton
                 {
@@ -236,8 +255,14 @@ namespace osu.Game.Screens.Ranking
             bool available = AllowWatchingReplay && Score != null && (local || Score.HasOnlineReplay);
 
             if (replayState.Value == DownloadState.NotDownloaded)
+            {
                 exportWhenDownloaded = false;
+                exportVideoWhenDownloaded = false;
+            }
 
+            bool videoAvailable = isAutoplay || available;
+            videoButton.Enabled.Value = videoAvailable && !busy && videoExporter != null;
+            videoButton.TooltipText = busy ? ResultsScreenStrings.DownloadingReplay : videoAvailable ? VideoRecordingStrings.ExportReplay : ResultsScreenStrings.ReplayUnavailable;
             ExportButton.Enabled.Value = available && !busy;
             ReplayButton.Enabled.Value = available && !busy && game != null;
             ReplayButton.TooltipText = busy ? ResultsScreenStrings.DownloadingReplay : available ? SongSelectStrings.WatchReplay : ResultsScreenStrings.ReplayUnavailable;
@@ -247,6 +272,12 @@ namespace osu.Game.Screens.Ranking
             {
                 exportWhenDownloaded = false;
                 _ = scoreManager.Export(Score!);
+            }
+
+            if (local && exportVideoWhenDownloaded)
+            {
+                exportVideoWhenDownloaded = false;
+                videoExporter?.Export(Score!);
             }
         }
 
@@ -271,6 +302,22 @@ namespace osu.Game.Screens.Ranking
             else
             {
                 exportWhenDownloaded = true;
+                downloader.Download(Score);
+            }
+        }
+
+        private void exportVideo()
+        {
+            if (!videoButton.Enabled.Value || Score == null || videoExporter == null)
+                return;
+
+            if (isAutoplay)
+                videoExporter.ExportAutoplay(Score.BeatmapInfo!, Score.Ruleset, Score.Mods);
+            else if (replayState.Value == DownloadState.LocallyAvailable)
+                videoExporter.Export(Score);
+            else
+            {
+                exportVideoWhenDownloaded = true;
                 downloader.Download(Score);
             }
         }

@@ -16,6 +16,7 @@ using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
+using osu.Game.Recording.Export;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Screens.Edit;
 using osu.Game.Screens.Footer;
@@ -37,6 +38,9 @@ namespace osu.Game.Screens.Select
 
         [Resolved]
         private BeatmapSetOverlay? beatmapOverlay { get; set; }
+
+        [Resolved]
+        private ReplayVideoExporter? videoExporter { get; set; }
 
         [Resolved]
         private BeatmapManager beatmaps { get; set; } = null!;
@@ -67,6 +71,9 @@ namespace osu.Game.Screens.Select
         {
             yield return new OsuMenuItem(ButtonSystemStrings.Play.ToSentence(), MenuItemType.Highlighted, () => SelectAndRun(beatmap, OnStart)) { Icon = FontAwesome.Solid.Check };
             yield return new OsuMenuItem(ButtonSystemStrings.Edit.ToSentence(), MenuItemType.Standard, () => Edit(beatmap)) { Icon = FontAwesome.Solid.PencilAlt };
+
+            if (videoExporter != null)
+                yield return new OsuMenuItem(VideoRecordingStrings.ExportAutoplay, MenuItemType.Standard, () => videoExporter.ExportAutoplay(beatmap, Ruleset.Value, Mods.Value)) { Icon = FontAwesome.Solid.Video };
 
             yield return new OsuMenuItemSpacer();
 
