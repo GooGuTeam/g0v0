@@ -156,7 +156,7 @@ namespace osu.Game.Rulesets.Objects.Legacy
                 for (int i = 0; i < nodes; i++)
                     nodeSamples.Add(convertSoundType(nodeSoundTypes[i], nodeBankInfos[i]));
 
-                result = createSlider(pos, combo, comboOffset, convertPathString(split[5], pos), length, repeatCount, nodeSamples);
+                result = createSlider(pos, combo, comboOffset, convertPathString(split[5], pos), length, repeatCount, nodeSamples, split[5]);
             }
             else if (type.HasFlag(LegacyHitObjectType.Spinner))
             {
@@ -505,11 +505,14 @@ namespace osu.Game.Rulesets.Objects.Legacy
         /// <param name="length">The slider length.</param>
         /// <param name="repeatCount">The slider repeat count.</param>
         /// <param name="nodeSamples">The samples to be played when the slider nodes are hit. This includes the head and tail of the slider.</param>
+        /// <param name="pointString">Original absolute control points, retained for stable visual sampling.</param>
         /// <returns>The hit object.</returns>
         private ConvertHitObject createSlider(Vector2 position, bool newCombo, int comboOffset, PathControlPoint[] controlPoints, double? length, int repeatCount,
-                                              IList<IList<HitSampleInfo>> nodeSamples)
+                                              IList<IList<HitSampleInfo>> nodeSamples, string pointString)
         {
             var path = new SliderPath(controlPoints, length);
+            if (formatVersion < LegacyBeatmapEncoder.FIRST_LAZER_VERSION)
+                path.LegacyPath = new LegacySliderPath(pointString, position, formatVersion);
 
             // there are known instances of beatmaps (https://osu.ppy.sh/beatmapsets/594828#osu/1258033) which contain zero-length sliders with non-zero numbers of repeats.
             // this was exploiting a bug in stable in which the slider repeats would be generated as objects but never actually judged as a hit *or* miss during gameplay,

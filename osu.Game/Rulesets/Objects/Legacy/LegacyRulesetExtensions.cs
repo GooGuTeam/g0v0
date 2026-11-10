@@ -43,7 +43,7 @@ namespace osu.Game.Rulesets.Objects.Legacy
 
                 // SliderVelocityAt falls back only after applying inherited timing. In particular,
                 // a non-positive redline must not gain velocity from a subsequent inherited point.
-                if (legacyBeatLength <= 0)
+                if (!(legacyBeatLength > 0))
                     return TimingControlPoint.DEFAULT_BEAT_LENGTH;
 
                 return effectiveBeatLength;

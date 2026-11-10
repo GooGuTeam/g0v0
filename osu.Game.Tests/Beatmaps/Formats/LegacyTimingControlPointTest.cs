@@ -392,22 +392,78 @@ namespace osu.Game.Tests.Beatmaps.Formats
             Assert.That(editor.ControlPointInfo.TimingPoints.Single().LegacyBeatLength, Is.EqualTo(rawBeatLength));
         }
 
-        [TestCase("NaN")]
+        [TestCase("∞")]
+        [TestCase("+∞")]
+        [TestCase("-∞")]
         [TestCase("Infinity")]
         [TestCase("-Infinity")]
-        public void TestNonFiniteRedlinesStillRejected(string value)
+        public void TestInfiniteRedlinesStillRejected(string value)
         {
             var beatmap = decodeText(source(500).Replace("0,500,4", $"0,{value},4", StringComparison.Ordinal));
             Assert.That(beatmap.ControlPointInfo.TimingPoints, Is.Empty);
             Assert.That(standardSlider(beatmap).Velocity, Is.EqualTo(0.1));
         }
 
-        [TestCase(double.NaN)]
         [TestCase(double.PositiveInfinity)]
         [TestCase(double.NegativeInfinity)]
         public void TestRawPropertyRejectsNonFiniteValues(double value)
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => new TimingControlPoint { LegacyBeatLength = value });
+        }
+
+        [Test]
+        public void TestNaNRedlinePreservesStateAndUsesStableVelocity()
+        {
+            var beatmap = decodeText(source(500, "500,NaN,4,2,3,46,1,9\n3000,400,4,1,0,100,1,0"));
+            var points = (LegacyControlPointInfo)beatmap.ControlPointInfo;
+            var point = points.TimingPointAt(1000);
+            Assert.That(point.LegacyBeatLength, Is.NaN);
+            Assert.That(point.BeatLength, Is.EqualTo(TimingControlPoint.DEFAULT_BEAT_LENGTH));
+            Assert.That(point.OmitFirstBarLine, Is.True);
+            Assert.That(points.SamplePointAt(1000).SampleBank, Is.EqualTo("soft"));
+            Assert.That(points.SamplePointAt(1000).SampleVolume, Is.EqualTo(46));
+            Assert.That(points.SamplePointAt(1000).ApplyTo(new osu.Game.Rulesets.Objects.Legacy.ConvertHitObjectParser.LegacyHitSampleInfo("hitnormal")).LookupNames.First(), Does.Contain("3"));
+            Assert.That(points.EffectPointAt(1000).KiaiMode, Is.True);
+            Assert.That(points.DifficultyPointAt(1000).GenerateTicks, Is.False);
+            Assert.That(points.DifficultyPointAt(3000).GenerateTicks, Is.True);
+            Assert.That(points.TimingPointAt(3000).LegacyBeatLength, Is.EqualTo(400));
+
+            var slider = standardSlider(beatmap);
+            Assert.That(slider.Velocity, Is.EqualTo(0.1));
+            Assert.That(slider.Duration, Is.EqualTo(2000));
+            Assert.That(slider.NestedHitObjects.OfType<SliderTick>(), Is.Empty);
+            Assert.That(slider.NestedHitObjects.All(h => double.IsFinite(h.StartTime)), Is.True);
+
+            var clone = (TimingControlPoint)point.DeepClone();
+            Assert.That(clone, Is.EqualTo(point));
+            Assert.That(clone.GetHashCode(), Is.EqualTo(point.GetHashCode()));
+            var restored = point.Serialize().Deserialize<TimingControlPoint>();
+            restored.Time = point.Time;
+            Assert.That(restored, Is.EqualTo(point));
+            int changes = 0;
+            clone.Changed += _ => changes++;
+            clone.LegacyBeatLength = double.NaN;
+            Assert.That(changes, Is.Zero);
+            clone.BeatLength = 500;
+            Assert.That(clone.LegacyBeatLength, Is.Null);
+
+            using var output = new StringWriter();
+            new LegacyBeatmapEncoder(beatmap, null, null).Encode(output);
+            var roundtrip = decodeText(output.ToString());
+            Assert.That(roundtrip.ControlPointInfo.TimingPointAt(1000).LegacyBeatLength, Is.NaN);
+            Assert.That(((LegacyControlPointInfo)roundtrip.ControlPointInfo).DifficultyPointAt(1000).GenerateTicks, Is.False);
+        }
+
+        [TestCase("NaN", float.NaN)]
+        [TestCase("-1", 0)]
+        [TestCase("2", 1)]
+        [TestCase("0.7", 0.7f)]
+        public void TestStableStackLeniency(string value, float expected)
+        {
+            var beatmap = decodeText(source(500).Replace("[General]", $"[General]\nStackLeniency: {value}", StringComparison.Ordinal));
+            Assert.That(beatmap.StackLeniency, Is.EqualTo(expected));
+            var playable = new TestWorkingBeatmap(beatmap).GetPlayableBeatmap(new OsuRuleset().RulesetInfo);
+            Assert.That(playable.StackLeniency, Is.EqualTo(expected));
         }
 
         [Test]

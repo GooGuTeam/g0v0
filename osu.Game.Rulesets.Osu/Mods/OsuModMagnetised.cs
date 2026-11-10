@@ -64,7 +64,7 @@ namespace osu.Game.Rulesets.Osu.Mods
                         if (!slider.HeadCircle.Result.HasResult)
                             easeTo(playfield.Clock, slider, cursorPos);
                         else
-                            easeTo(playfield.Clock, slider, cursorPos - slider.Ball.DrawPosition);
+                            easeTo(playfield.Clock, slider, cursorPos - slider.Ball.GameplayPosition);
 
                         break;
                 }
