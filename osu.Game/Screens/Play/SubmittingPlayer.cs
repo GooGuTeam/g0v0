@@ -10,11 +10,13 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
+using osu.Framework.Localisation;
 using osu.Framework.Logging;
 using osu.Framework.Screens;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Database;
+using osu.Game.Localisation;
 using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.Multiplayer;
@@ -148,12 +150,12 @@ namespace osu.Game.Screens.Play
 
                 if (displayNotification || shouldExit)
                 {
-                    string whatWillHappen = shouldExit
-                        ? "Cannot start play"
-                        : "Score will not be submitted";
+                    LocalisableString whatWillHappen = shouldExit
+                        ? ScoreSubmissionStrings.CannotStartPlay
+                        : ScoreSubmissionStrings.NotSubmittingScore;
 
                     if (string.IsNullOrEmpty(exception.Message))
-                        notifications?.Post(new ScoreSubmissionFailureNotification(whatWillHappen, "Failed to retrieve a score submission token."));
+                        notifications?.Post(new ScoreSubmissionFailureNotification(whatWillHappen, ScoreSubmissionStrings.TokenRetrievalFailure));
                     else
                         notifications?.Post(new ScoreSubmissionFailureNotification(whatWillHappen, getUserFacingAPIError(exception)));
                 }
@@ -344,27 +346,14 @@ namespace osu.Game.Screens.Play
             return scoreSubmissionSource.Task;
         }
 
-        private static string getUserFacingAPIError(Exception exception)
+        private static LocalisableString getUserFacingAPIError(Exception exception) => exception.Message switch
         {
-            switch (exception.Message)
-            {
-                case @"missing token header":
-                case @"invalid client hash":
-                case @"invalid verification hash":
-                case @"invalid token":
-                case @"outdated client":
-                    return "Please ensure that you are using the latest version of the official game releases.";
-
-                case @"invalid or missing beatmap_hash":
-                    return "This beatmap does not match the online version. Please update or redownload it.";
-
-                case @"expired token":
-                    return "Your system clock is set incorrectly. Please check your system time, date and timezone.";
-
-                default:
-                    return exception.Message;
-            }
-        }
+            @"missing token header" or @"invalid client hash" or @"invalid verification hash"
+                or @"invalid token" or @"outdated client" => ScoreSubmissionStrings.InvalidClient,
+            @"invalid or missing beatmap_hash" => ScoreSubmissionStrings.BeatmapMismatch,
+            @"expired token" => ScoreSubmissionStrings.InvalidTime,
+            _ => exception.Message,
+        };
 
         protected override ResultsScreen CreateResults(ScoreInfo score) => new SoloResultsScreen(score)
         {
