@@ -1,7 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
-
-#nullable disable
 
 using System;
 using osu.Framework.Allocation;
@@ -13,44 +11,22 @@ using osu.Game.Rulesets.Osu.Skinning.Default;
 using osu.Game.Skinning;
 using osuTK;
 
+#nullable disable
+
 namespace osu.Game.Rulesets.Osu.Objects.Drawables
 {
     public partial class DrawableSliderBall : CircularContainer, ISliderProgress
     {
         public const float FOLLOW_AREA = 2.4f;
+        internal LegacySliderBallPosition LegacyPosition { get; } = new LegacySliderBallPosition();
+
+        internal Vector2 LegacyVisualPosition => Position;
+        internal Vector2 GameplayScreenSpaceCentre => Parent!.ToScreenSpace(GameplayPosition + AnchorPosition + Parent.ChildOffset);
+        internal float LegacyRotation { get; private set; }
+        internal Vector2 GameplayPosition { get; private set; }
 
         private DrawableSlider drawableSlider;
         private Drawable ball;
-        private readonly LegacySliderBallPosition legacyPosition = new LegacySliderBallPosition();
-
-        internal Vector2 LegacyVisualPosition => Position;
-        internal Vector2 GameplayPosition { get; private set; }
-        internal Vector2 GameplayScreenSpaceCentre => Parent.ToScreenSpace(GameplayPosition + AnchorPosition + Parent.ChildOffset);
-
-        [BackgroundDependencyLoader]
-        private void load(DrawableHitObject drawableSlider)
-        {
-            this.drawableSlider = (DrawableSlider)drawableSlider;
-
-            Origin = Anchor.Centre;
-
-            Size = OsuHitObject.OBJECT_DIMENSIONS;
-
-            Children = new[]
-            {
-                new SkinnableDrawable(new OsuSkinComponentLookup(OsuSkinComponents.SliderFollowCircle), _ => new DefaultFollowCircle())
-                {
-                    Origin = Anchor.Centre,
-                    Anchor = Anchor.Centre,
-                    RelativeSizeAxes = Axes.Both,
-                },
-                ball = new SkinnableDrawable(new OsuSkinComponentLookup(OsuSkinComponents.SliderBall), _ => new DefaultSliderBall())
-                {
-                    Anchor = Anchor.Centre,
-                    Origin = Anchor.Centre,
-                },
-            };
-        }
 
         public override void ClearTransformsAfter(double time, bool propagateChildren = false, string targetMember = null)
         {
@@ -75,10 +51,12 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             // Place the visual directly. Offsetting a child from a continuous position near
             // 1e8 loses whole pixels through float cancellation, even if sampling is exact.
             // Gameplay consumers use the separate continuous position below.
-            Position = legacyPosition.TryGetPosition(slider.Path, slider.StartTime, slider.Velocity, slider.SpanCount(), Time.Current, out var position, slider.Position)
+            Position = LegacyPosition.TryGetPosition(slider.Path, slider.StartTime, slider.Velocity, slider.SpanCount(), Time.Current, out var position, slider.Position)
                 ? position
                 : GameplayPosition;
 
+            // Keep the existing tangent rotation for non-legacy skins. The legacy skin
+            // applies its original movement/reverse angle relative to this parent angle.
             // 0.1 / slider.Path.Distance is the additional progress needed to ensure the diff length is 0.1
             double checkDistance = 0.1 / slider.Path.Distance;
             var diff = slider.CurvePositionAt(Math.Min(1 - checkDistance, completionProgress)) - slider.CurvePositionAt(Math.Min(1, completionProgress + checkDistance));
@@ -88,7 +66,43 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (diff.LengthFast < 0.01f)
                 return;
 
-            ball.Rotation = -90 + (float)(-Math.Atan2(diff.X, diff.Y) * 180 / Math.PI);
+            ball.Rotation = LegacyRotation = -90 + (float)(-Math.Atan2(diff.X, diff.Y) * 180 / Math.PI);
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+            var slider = drawableSlider?.HitObject;
+            if (slider == null) return;
+            // Update the movement direction before the skinned child samples its reverse
+            // state. The slider also invokes UpdateProgress after layout; sampling the same
+            // integer clock there is cached and does not advance the skin's animation.
+            UpdateProgress(slider.Duration > 0 ? Math.Clamp((Time.Current - slider.StartTime) / slider.Duration, 0, 1) : 0);
+        }
+
+        [BackgroundDependencyLoader]
+        private void load(DrawableHitObject drawableSlider)
+        {
+            this.drawableSlider = (DrawableSlider)drawableSlider;
+
+            Origin = Anchor.Centre;
+
+            Size = OsuHitObject.OBJECT_DIMENSIONS;
+
+            Children = new[]
+            {
+                new SkinnableDrawable(new OsuSkinComponentLookup(OsuSkinComponents.SliderFollowCircle), _ => new DefaultFollowCircle())
+                {
+                    Origin = Anchor.Centre,
+                    Anchor = Anchor.Centre,
+                    RelativeSizeAxes = Axes.Both
+                },
+                ball = new SkinnableDrawable(new OsuSkinComponentLookup(OsuSkinComponents.SliderBall), _ => new DefaultSliderBall())
+                {
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre
+                }
+            };
         }
     }
 }

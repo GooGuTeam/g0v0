@@ -13,16 +13,17 @@ using osuTK;
 namespace osu.Game.Rulesets.Osu.Objects.Drawables
 {
     /// <summary>
-    /// Builds the absolute, independently rounded lines consumed by stable's ball animations.
-    /// This geometry is separate from both gameplay paths and body rasterisation.
+    ///     Builds the absolute, independently rounded lines consumed by stable's ball animations.
+    ///     This geometry is separate from both gameplay paths and body rasterisation.
     /// </summary>
     internal static class LegacySliderBallPath
     {
-        internal readonly record struct Edge(Vector2 From, Vector2 To);
+        internal readonly record struct Edge(Vector2 From, Vector2 To, bool Straight = false, bool ForceEnd = false);
 
         public static bool Build(SliderPath path, Vector2 origin, List<Edge> edges)
         {
             edges.Clear();
+
             if (path.LegacyPath is { } legacy)
             {
                 if (!appendOriginal(legacy.PointString, legacy.Origin, legacy.FormatVersion, edges))
@@ -32,12 +33,14 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                 return false;
 
             bool valid = trim(path.ExpectedDistance.Value, edges);
+
             if (valid && path.LegacyPath is { } original && original.Origin != origin)
             {
                 Vector2 offset = origin - original.Origin;
                 for (int i = 0; i < edges.Count; i++)
-                    edges[i] = new Edge(edges[i].From + offset, edges[i].To + offset);
+                    edges[i] = edges[i] with { From = edges[i].From + offset, To = edges[i].To + offset };
             }
+
             return valid;
         }
 
@@ -45,6 +48,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             var controls = path.ControlPoints;
             int start = 0;
+
             for (int i = 1; i < controls.Count; i++)
             {
                 if (i < controls.Count - 1 && controls[i].Type == null)
@@ -63,7 +67,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                         // Even stable's two-point lines go through this arithmetic. At Aspire
                         // coordinates From + (To - From) can differ from To, leaving a gap to
                         // the next line. A contiguous vertex list cannot preserve those gaps.
-                        edges.Add(new Edge(from + (to - from) * 0f, from + (to - from) * 1f));
+                        edges.Add(new Edge(from + (to - from) * 0f, from + (to - from) * 1f, true, true));
                     }
                 }
                 else
@@ -79,12 +83,13 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                             // optimisation and duplicate-vertex removal are drawing shortcuts.
                             var catmull = PathApproximator.CatmullToPiecewiseLinear(points);
                             for (int j = 0; j + 1 < catmull.Count; j += 2)
-                                edges.Add(new Edge(catmull[j], catmull[j + 1]));
+                                edges.Add(new Edge(catmull[j], catmull[j + 1], false, j % 100 == 98));
                             break;
 
                         case SplineType.PerfectCurve:
                             if (points.Length == 3 && appendArc(points, edges))
                                 break;
+
                             appendBezier(points, edges);
                             break;
 
@@ -93,8 +98,10 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                             break;
                     }
                 }
+
                 start = i;
             }
+
             return true;
         }
 
@@ -103,48 +110,58 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             ReadOnlySpan<char> data = pointString.AsSpan();
             var points = new List<Vector2> { origin };
             bool first = true;
+
             foreach (var range in data.Split('|'))
             {
                 ReadOnlySpan<char> token = data[range];
+
                 if (first)
                 {
                     first = false;
                     if (token.Length != 1)
                         return false;
+
                     continue;
                 }
+
                 int separator = token.IndexOf(':');
                 if (separator < 0)
                     return false;
+
                 ReadOnlySpan<char> y = token[(separator + 1)..];
                 int extra = y.IndexOf(':');
                 if (extra >= 0)
                     y = y[..extra];
                 points.Add(new Vector2(coordinate(token[..separator]), coordinate(y)));
             }
+
             if (points.Count < 2)
                 return false;
 
             char type = data[0];
             if (type == 'P' && points.Count == 3)
                 return appendArc(points.ToArray(), edges);
+
             if (type == 'L' || (type == 'P' && points.Count < 3))
             {
                 for (int i = 1; i < points.Count; i++)
                     appendStraight(points[i - 1], points[i], edges);
                 return true;
             }
+
             if (type == 'C')
             {
                 var curve = PathApproximator.CatmullToPiecewiseLinear(points.ToArray());
                 for (int i = 0; i + 1 < curve.Count; i += 2)
-                    edges.Add(new Edge(curve[i], curve[i + 1]));
+                    edges.Add(new Edge(curve[i], curve[i + 1], false, i % 100 == 98));
                 return true;
             }
+
             if (type != 'B' && type != 'P')
                 return false;
 
             int start = 0;
+
             for (int i = 0; i < points.Count; i++)
             {
                 bool duplicate = version > 6
@@ -152,7 +169,9 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                     : i > 0 && points[i] == points[i - 1];
                 if (!duplicate && i != points.Count - 1)
                     continue;
+
                 Vector2[] segment = points.GetRange(start, i - start + 1).ToArray();
+
                 if (version > 8 && segment.Length == 2)
                     appendStraight(segment[0], segment[1], edges);
                 else if (version == 9)
@@ -161,35 +180,46 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                     Vector2[] scratch = new Vector2[segment.Length];
                     Vector2 previous = segment[0];
                     int samples = 50 * segment.Length;
+
                     for (int sample = 1; sample < samples; sample++)
                     {
                         segment.CopyTo(scratch, 0);
+
                         for (int depth = 0; depth < scratch.Length; depth++)
+                        {
                             for (int j = 0; j < scratch.Length - depth - 1; j++)
                                 scratch[j] = scratch[j] + (scratch[j + 1] - scratch[j]) * ((float)sample / samples);
+                        }
+
                         edges.Add(new Edge(previous, scratch[0]));
                         previous = scratch[0];
                     }
                 }
                 else
                     appendBezier(segment, edges);
+
+                if (edges.Count > 0)
+                    edges[^1] = edges[^1] with { ForceEnd = true };
                 if (duplicate && version > 6)
                     i++;
                 start = i;
             }
+
             return true;
 
             static int coordinate(ReadOnlySpan<char> value)
                 => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int integer) && integer != int.MinValue
-                    ? integer : (int)Parsing.ParseDouble(value);
+                    ? integer
+                    : (int)Parsing.ParseDouble(value);
         }
 
         private static void appendStraight(Vector2 from, Vector2 to, List<Edge> edges)
-            => edges.Add(new Edge(from + (to - from) * 0f, from + (to - from) * 1f));
+        {
+            edges.Add(new Edge(from + (to - from) * 0f, from + (to - from) * 1f, true, true));
+        }
 
         private static bool trim(double? expectedDistance, List<Edge> edges)
         {
-
             // SliderOsu.UpdateCalculations trims its float line list, rather than using
             // lazer's already length-adjusted relative vertices. Preserve the cast order.
             double length = 0;
@@ -197,22 +227,27 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                 length += (edge.To - edge.From).Length;
             if (!double.IsFinite(length))
                 return false;
+
             if (length > 0)
             {
                 double expected = expectedDistance is double value && value != 0 ? value : length;
                 if (!double.IsFinite(expected))
                     return false;
+
                 double excess = length - expected;
+
                 while (edges.Count > 0)
                 {
                     Edge edge = edges[^1];
                     float distance = (edge.To - edge.From).Length;
+
                     if (distance > excess + 0.0001)
                     {
                         if (edge.To != edge.From)
                             edges[^1] = edge with { To = edge.From + (edge.To - edge.From).Normalized() * (distance - (float)excess) };
                         break;
                     }
+
                     edges.RemoveAt(edges.Count - 1);
                     excess -= distance;
                 }
@@ -225,7 +260,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             var curve = PathApproximator.BSplineToPiecewiseLinear(points, points.Length);
             for (int i = 1; i < curve.Count; i++)
-                edges.Add(new Edge(curve[i - 1], curve[i]));
+                edges.Add(new Edge(curve[i - 1], curve[i], false, i == curve.Count - 1));
         }
 
         private static bool appendArc(Vector2[] points, List<Edge> edges)
@@ -233,10 +268,11 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             Vector2 a = points[0];
             Vector2 b = points[1];
             Vector2 c = points[2];
+
             if ((b.X - a.X) * (c.Y - a.Y) - (c.X - a.X) * (b.Y - a.Y) == 0)
             {
-                edges.Add(new Edge(a + (b - a) * 0f, a + (b - a) * 1f));
-                edges.Add(new Edge(b + (c - b) * 0f, b + (c - b) * 1f));
+                appendStraight(a, b, edges);
+                appendStraight(b, c, edges);
                 return true;
             }
 
@@ -263,8 +299,10 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             double count = Math.Abs((final - initial) * radius) * 0.125;
             if (!double.IsFinite(count) || count > 1_000_000)
                 return false;
+
             int subdivisions = (int)count;
             Vector2 previous = a;
+
             for (int i = 1; i < subdivisions; i++)
             {
                 double progress = (double)i / subdivisions;
@@ -273,6 +311,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                 edges.Add(new Edge(previous, next));
                 previous = next;
             }
+
             edges.Add(new Edge(previous, c));
             return true;
         }

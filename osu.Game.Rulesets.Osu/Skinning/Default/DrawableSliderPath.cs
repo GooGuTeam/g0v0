@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Graphics.Lines;
 using osuTK.Graphics;
@@ -66,5 +66,9 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
         }
 
         protected float CalculatedBorderPortion => BorderSize * BORDER_PORTION;
+
+        // Oversized paths use the same skin profile with screen-space geometry. Keep
+        // colour selection owned by the skin rather than forcing a classic gradient.
+        internal Color4 SampleBodyGradient(float progress) => ColourAt(progress);
     }
 }
