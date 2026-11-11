@@ -1021,6 +1021,7 @@ namespace osu.Game.Tests.Database
         // fails before it can exercise the importer. Re-evaluate on the next upstream sync.
         [Ignore("Fixture cannot be constructed: SharpCompress 0.50.4 rejects duplicate entry keys.")]
         [Test]
+        [Ignore("Temporary disable pending investigation")]
         public void TestImportFailsWithFilenamesDifferingOnlyInCase()
         {
             RunTestWithRealmAsync(async (realm, storage) =>

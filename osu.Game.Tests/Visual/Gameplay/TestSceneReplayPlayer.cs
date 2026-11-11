@@ -230,6 +230,29 @@ namespace osu.Game.Tests.Visual.Gameplay
         }
 
         [Test]
+        public void TestFocusReleasedOnSettingsHidden()
+        {
+            loadPlayerWithBeatmap();
+
+            AddUntilStep("wait for settings overlay hidden", () => settingsOverlay().Expanded.Value, () => Is.False);
+            AddStep("move mouse to right of screen", () => InputManager.MoveMouseTo(Player.ScreenSpaceDrawQuad.TopRight));
+            AddUntilStep("wait for settings overlay visible", () => settingsOverlay().Expanded.Value, () => Is.True);
+            AddUntilStep("click to focus on a slider on the settings overlay", () =>
+            {
+                InputManager.MoveMouseTo(settingsSlider().Bar);
+                InputManager.Click(MouseButton.Left);
+
+                return settingsSlider().Bar.HasFocus;
+            });
+            AddStep("move mouse to centre of screen", () => InputManager.MoveMouseTo(Player.ScreenSpaceDrawQuad.Centre));
+            AddUntilStep("wait for settings overlay hidden", () => settingsOverlay().Expanded.Value, () => Is.False);
+            AddAssert("focus not on the settings slider", () => settingsSlider().Bar.HasFocus, () => Is.False);
+
+            ReplaySettingsOverlay settingsOverlay() => Player.ChildrenOfType<ReplaySettingsOverlay>().Single();
+            PlayerSliderBar<double> settingsSlider() => settingsOverlay().ChildrenOfType<PlaybackSettings>().Single().ChildrenOfType<PlayerSliderBar<double>>().Single();
+        }
+
+        [Test]
         public void TestChangePlaybackRateViaHoldingShift()
         {
             loadPlayerWithBeatmap();
