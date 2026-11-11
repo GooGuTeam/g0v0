@@ -1,8 +1,7 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -116,7 +115,6 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
             enqueueSample = audio.Samples.Get(@"Multiplayer/Matchmaking/enqueue");
             matchFoundSample = audio.Samples.Get(@"Multiplayer/Matchmaking/match-found");
 
-            LinkFlowContainer experimentalText;
 
             InternalChild = new InverseScalingDrawSizePreservingFillContainer
             {
@@ -173,27 +171,6 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                                                             AutoSizeAxes = Axes.Y,
                                                             Children = new Drawable[]
                                                             {
-                                                                new Container
-                                                                {
-                                                                    RelativeSizeAxes = Axes.X,
-                                                                    AutoSizeAxes = Axes.Y,
-                                                                    Masking = true,
-                                                                    CornerRadius = 5,
-                                                                    Children = new Drawable[]
-                                                                    {
-                                                                        new Box
-                                                                        {
-                                                                            RelativeSizeAxes = Axes.Both,
-                                                                            Colour = colours.Yellow
-                                                                        },
-                                                                        experimentalText = new ExperimentalLinkFlowContainer
-                                                                        {
-                                                                            RelativeSizeAxes = Axes.X,
-                                                                            AutoSizeAxes = Axes.Y,
-                                                                            Padding = new MarginPadding(10),
-                                                                        }
-                                                                    }
-                                                                },
                                                                 new QueueSectionHeader("Queued players")
                                                             }
                                                         }
@@ -354,14 +331,6 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                 }
             };
 
-            experimentalText.AddIcon(FontAwesome.Solid.Lightbulb);
-            experimentalText.AddText(@" ");
-            experimentalText.AddText("This system is under continuous and rapid development.\n", sp => sp.Font = sp.Font.With(weight: FontWeight.SemiBold));
-            experimentalText.AddText("Follow the ");
-            experimentalText.AddLink("changelog", @"https://osu.ppy.sh/community/forums/topics/2202736", sp => sp.Font = sp.Font.With(weight: FontWeight.SemiBold));
-            experimentalText.AddText(" and provide any ");
-            experimentalText.AddLink("feedback", @"https://osu.ppy.sh/community/forums/topics/2198397", sp => sp.Font = sp.Font.With(weight: FontWeight.SemiBold));
-            experimentalText.AddText(" on the osu! forums!");
         }
 
         protected override void LoadComplete()
@@ -855,36 +824,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
             }
         }
 
-        private partial class ExperimentalLinkFlowContainer : LinkFlowContainer
-        {
-            public ExperimentalLinkFlowContainer()
-                : base(sp => sp.Colour = Color4.Black)
-            {
-            }
 
-            protected override DrawableLinkCompiler CreateLinkCompiler(ITextPart textPart)
-                => new LinkCompiler(textPart);
-
-            private partial class LinkCompiler : DrawableLinkCompiler
-            {
-                public LinkCompiler(ITextPart part)
-                    : base(part)
-                {
-                }
-
-                public LinkCompiler(IEnumerable<Drawable> parts)
-                    : base(parts)
-                {
-                }
-
-                [BackgroundDependencyLoader]
-                private void load(OsuColour colours)
-                {
-                    IdleColour = colours.YellowDarker;
-                    HoverColour = Color4.Black;
-                }
-            }
-        }
 
         private partial class QueueTimerText : OsuSpriteText
         {

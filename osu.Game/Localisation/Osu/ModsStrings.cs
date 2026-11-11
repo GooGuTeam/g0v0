@@ -360,9 +360,9 @@ namespace osu.Game.Localisation.Osu
         public static LocalisableString ClassicSliderJudgementLabel => new TranslatableString(getKey(@"classic_slider_judgement"), @"Classic slider judgement");
 
         /// <summary>
-        /// "Judge slider ticks and tails at fixed points in time, matching osu!stable."
+        /// "Judge slider ticks and tails at fixed points in time, matching stable."
         /// </summary>
-        public static LocalisableString ClassicSliderJudgementDescription => new TranslatableString(getKey(@"classic_slider_judgement_description"), @"Judge slider ticks and tails at fixed points in time, matching osu!stable.");
+        public static LocalisableString ClassicSliderJudgementDescription => new TranslatableString(getKey(@"classic_slider_judgement_description"), @"Judge slider ticks and tails at fixed points in time, matching stable.");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
