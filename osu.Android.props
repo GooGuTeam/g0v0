@@ -36,7 +36,7 @@
 
          Exclude the desktop native assets from Android builds so that only Android (bionic)
          libraries can be packaged. -->
-    <PackageReference Include="ppy.osu.Framework.NativeLibs" Version="2025.806.0-nativelibs" ExcludeAssets="native" />
+    <PackageReference Include="ppy.osu.Framework.NativeLibs" Version="2026.1029.0" ExcludeAssets="native" />
     <PackageReference Include="ppy.SDL2-CS" Version="1.0.741-alpha" ExcludeAssets="native" />
   </ItemGroup>
   <PropertyGroup>
