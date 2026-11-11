@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Collections.Generic;
 using JetBrains.Annotations;
@@ -23,7 +23,7 @@ namespace osu.Game.Skinning
         public static SkinInfo CreateInfo() => new SkinInfo
         {
             ID = Skinning.SkinInfo.CLASSIC_SKIN, // this is temporary until database storage is decided upon.
-            Name = "osu! \"classic\" g0v0! ver (2026)",
+            Name = "classic — g0v0! edition (2026)",
             Creator = "team osu! and GooGuTeam",
             Protected = true,
             InstantiationInfo = typeof(DefaultLegacySkin).GetInvariantInstantiationInfo()

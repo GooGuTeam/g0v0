@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using JetBrains.Annotations;
 using osu.Framework.Audio.Sample;
@@ -14,7 +14,7 @@ namespace osu.Game.Skinning
         public new static SkinInfo CreateInfo() => new SkinInfo
         {
             ID = Skinning.SkinInfo.ARGON_PRO_SKIN,
-            Name = "osu! \"argon\" pro (2022)",
+            Name = "argon pro (2022)",
             Creator = "team osu!",
             Protected = true,
             InstantiationInfo = typeof(ArgonProSkin).GetInvariantInstantiationInfo()
