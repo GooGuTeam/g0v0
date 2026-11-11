@@ -21,7 +21,7 @@ Full licence text: see LICENCE and LICENCE-OSU.</PackageReleaseNotes>
     <Title>g0v0!</Title>
     <PackageId>g0v0.osu.Game</PackageId>
     <Version>2026.913.0</Version>
-    <G0V0ResourcesVersion Condition="'$(G0V0ResourcesVersion)' == ''">2026.1101.0</G0V0ResourcesVersion>
+    <G0V0ResourcesVersion Condition="'$(G0V0ResourcesVersion)' == ''">2026.1111.1</G0V0ResourcesVersion>
     <PackageIcon>icon.png</PackageIcon>
     <IsPackable>true</IsPackable>
     <PackageTags>g0v0 osu game rhythm</PackageTags>
@@ -70,6 +70,6 @@ Full licence text: see LICENCE and LICENCE-OSU.</PackageReleaseNotes>
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
-    <PackageReference Include="g0v0.Framework" Version="2026.1111.0" />
+    <PackageReference Include="g0v0.Framework" Version="2026.1111.1" />
   </ItemGroup>
 </Project>

@@ -15,7 +15,7 @@
     <NoWarn>$(NoWarn);XA1040</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="g0v0.Framework.Android" Version="2026.1111.0" />
+    <PackageReference Include="g0v0.Framework.Android" Version="2026.1111.1" />
   </ItemGroup>
   <ItemGroup>
     <!-- ppy.osu.Framework.NativeLibs and ppy.SDL2-CS only carry desktop (linux/win/osx) native
