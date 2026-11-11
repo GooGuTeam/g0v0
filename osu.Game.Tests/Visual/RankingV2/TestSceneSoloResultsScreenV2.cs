@@ -70,7 +70,6 @@ namespace osu.Game.Tests.Visual.RankingV2
             });
             AddStep("set argon skin", () => skins.CurrentSkinInfo.SetDefault());
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("set retro skin", () => skins.CurrentSkinInfo.Value = skins.RetroSkin.SkinInfo);
             AddStep("start animating", () => soloResults.StartAnimating());
             AddStep("finish animating", () => soloResults.FinishAnimating());
             AddToggleStep("toggle skin editor", b => skinEditor.State.Value = b ? Visibility.Visible : Visibility.Hidden);

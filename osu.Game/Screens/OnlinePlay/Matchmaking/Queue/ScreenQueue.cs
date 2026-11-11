@@ -17,7 +17,6 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Audio;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
-using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Screens;
@@ -31,7 +30,6 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Input.Bindings;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
-using osu.Game.Online.Chat;
 using osu.Game.Online.Matchmaking;
 using osu.Game.Online.Matchmaking.Requests;
 using osu.Game.Online.Multiplayer;
@@ -43,7 +41,6 @@ using osu.Game.Screens.Footer;
 using osu.Game.Screens.OnlinePlay.Matchmaking.Match;
 using osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay;
 using osuTK;
-using osuTK.Graphics;
 
 namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
 {
@@ -329,7 +326,6 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                     }
                 }
             };
-
         }
 
         protected override void LoadComplete()
@@ -824,8 +820,6 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
             {
             }
         }
-
-
 
         private partial class QueueTimerText : OsuSpriteText
         {

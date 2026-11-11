@@ -46,7 +46,6 @@ namespace osu.Game.Skinning
         /// <summary>
         /// The "retro" skin.
         /// </summary>
-        public Skin RetroSkin { get; }
 
         private readonly AudioManager audio;
 
