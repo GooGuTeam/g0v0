@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -11,6 +11,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Framework.Utils;
+using osu.Game.Extensions;
 using osu.Game.Graphics;
 using osuTK;
 
@@ -46,7 +47,7 @@ namespace osu.Game.Screens.Play.HUD
 
                 double progress = Math.Clamp(lastMouseX, 0, DrawWidth) / DrawWidth;
 
-                TimeSpan currentSpan = TimeSpan.FromMilliseconds(Math.Round((EndTime - StartTime) * progress));
+                TimeSpan currentSpan = Math.Round((EndTime - StartTime) * progress).ToClampedTimeSpan();
 
                 int seconds = currentSpan.Duration().Seconds;
                 int minutes = (int)Math.Floor(currentSpan.Duration().TotalMinutes);

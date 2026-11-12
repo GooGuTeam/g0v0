@@ -1,9 +1,10 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osuTK;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Objects;
+using osu.Game.Rulesets.Objects.Legacy;
 using osu.Game.Rulesets.Osu.Objects;
 using System.Collections.Generic;
 using osu.Game.Rulesets.Objects.Types;
@@ -49,6 +50,18 @@ namespace osu.Game.Rulesets.Osu.Beatmaps
                         TickDistanceMultiplier = beatmap.BeatmapVersion < 8 ? 1f / ((LegacyControlPointInfo)beatmap.ControlPointInfo).DifficultyPointAt(original.StartTime).SliderVelocity : 1,
                         GenerateTicks = generateTicksData?.GenerateTicks ?? true,
                         SliderVelocityMultiplier = sliderVelocityData?.SliderVelocityMultiplier ?? 1,
+                    }.Yield();
+
+                // osu!stable creates a HitCircleHold for hold notes found in osu! beatmaps: an ordinary circle
+                // which merely remembers an end time. It never becomes a spinner, whatever its length.
+                case IHasLegacyHitObjectType legacy when legacy.LegacyType.HasFlag(LegacyHitObjectType.Hold) && !legacy.LegacyType.HasFlag(LegacyHitObjectType.Spinner):
+                    return new HitCircle
+                    {
+                        StartTime = original.StartTime,
+                        Samples = original.Samples,
+                        Position = positionData?.Position ?? Vector2.Zero,
+                        NewCombo = comboData?.NewCombo ?? false,
+                        LegacyHoldEndTime = (original as IHasLegacyHoldEndTime)?.LegacyEndTime,
                     }.Yield();
 
                 case IHasDuration endTimeData:

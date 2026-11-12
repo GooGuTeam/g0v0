@@ -220,7 +220,9 @@ namespace osu.Game.Rulesets.Osu.UI
         private void onNewResult(DrawableHitObject judgedObject, JudgementResult result)
         {
             // Hitobjects that block future hits should miss previous hitobjects if they're hit out-of-order.
-            hitPolicy.HandleHit(judgedObject);
+            // Legacy holds judged by their end time bypass note lock entirely, as in stable.
+            if (judgedObject is not DrawableHitCircle { JudgedByLegacyHoldEnd: true })
+                hitPolicy.HandleHit(judgedObject);
 
             if (!judgedObject.DisplayResult || !DisplayJudgements.Value)
                 return;

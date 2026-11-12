@@ -78,8 +78,9 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
         {
             base.UpdateAfterChildren();
 
+            // Stable hands the requested viewport to the driver without a limit of its own. The default
+            // is the 32768 of desktop OpenGL drivers, not the 32767 reported by ANGLE on Direct3D 11.
             Vector2 limit = LegacySliderViewport.GetLimit(viewportMode.Value, customViewport);
-            if (viewportMode.Value == SliderViewportMode.Default) limit = new Vector2(32767);
 
             var fieldOrigin = drawableSlider.Parent!.ToScreenSpace(Vector2.Zero);
             float ratio = (drawableSlider.Parent.ToScreenSpace(Vector2.UnitX) - fieldOrigin).Length;

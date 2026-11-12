@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using Humanizer;
@@ -17,7 +17,16 @@ namespace osu.Game.Extensions
         /// <param name="milliseconds">A time value in milliseconds.</param>
         /// <returns>An editor formatted display string.</returns>
         public static string ToEditorFormattedString(this double milliseconds) =>
-            ToEditorFormattedString(TimeSpan.FromMilliseconds(milliseconds));
+            ToEditorFormattedString(milliseconds.ToClampedTimeSpan());
+
+        // Beatmaps may declare lengths far beyond what a TimeSpan can hold (roughly 29,000 years).
+        private const double max_displayable_milliseconds = 9e14;
+
+        /// <summary>
+        /// Converts milliseconds to a <see cref="TimeSpan"/>, saturating rather than throwing for values it cannot hold.
+        /// </summary>
+        public static TimeSpan ToClampedTimeSpan(this double milliseconds)
+            => TimeSpan.FromMilliseconds(double.IsNaN(milliseconds) ? 0 : Math.Clamp(milliseconds, -max_displayable_milliseconds, max_displayable_milliseconds));
 
         /// <summary>
         /// Get an editor formatted string (mm:ss:mss)
@@ -33,7 +42,7 @@ namespace osu.Game.Extensions
         /// <param name="milliseconds">A duration in milliseconds.</param>
         /// <returns>A formatted duration string.</returns>
         public static LocalisableString ToFormattedDuration(this double milliseconds) =>
-            ToFormattedDuration(TimeSpan.FromMilliseconds(milliseconds));
+            ToFormattedDuration(milliseconds.ToClampedTimeSpan());
 
         /// <summary>
         /// Get a formatted duration (dd:hh:mm:ss with days/hours omitted if zero).

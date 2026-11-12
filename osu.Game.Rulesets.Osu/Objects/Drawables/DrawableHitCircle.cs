@@ -151,12 +151,37 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
         public override void Shake() => shakeContainer.Shake();
 
+        /// <summary>
+        /// Whether the current result came from a legacy hold's end time rather than from input or expiry.
+        /// Stable applies such results directly, without consulting note lock.
+        /// </summary>
+        public bool JudgedByLegacyHoldEnd { get; private set; }
+
         protected override void CheckForResult(bool userTriggered, double timeOffset)
         {
             Debug.Assert(HitObject.HitWindows != null);
 
+            JudgedByLegacyHoldEnd = false;
+
             if (!userTriggered)
             {
+                if (legacyHoldHasEnded())
+                {
+                    // Stable judges a hold in an osu! beatmap as though it were hit at this moment.
+                    HitResult holdResult = ResultFor(timeOffset);
+
+                    JudgedByLegacyHoldEnd = true;
+                    ApplyResult<(HitResult result, Vector2? position)>((r, state) =>
+                    {
+                        var circleResult = (OsuHitCircleJudgementResult)r;
+
+                        circleResult.Type = state.result == HitResult.None ? r.Judgement.MinResult : state.result;
+                        circleResult.CursorPositionAtHit = state.position;
+                    }, (holdResult, computeHitPosition()));
+
+                    return;
+                }
+
                 if (!HitObject.HitWindows.CanBeHit(timeOffset))
                 {
                     ApplyResult((r, position) =>
@@ -187,6 +212,22 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                 circleResult.Type = state.result;
                 circleResult.CursorPositionAtHit = state.position;
             }, (result, computeHitPosition()));
+        }
+
+        /// <summary>
+        /// Whether this circle came from a legacy hold whose end time, plus the 50 hit window, has passed.
+        /// The sum wraps as a 32-bit integer, as it does in stable: a hold ending at <see cref="int.MaxValue"/>
+        /// is judged as soon as it becomes active.
+        /// </summary>
+        private bool legacyHoldHasEnded()
+        {
+            if ((HitObject as HitCircle)?.LegacyHoldEndTime is not double endTime || !double.IsFinite(endTime))
+                return false;
+
+            int end = (int)Math.Clamp(endTime, int.MinValue, int.MaxValue);
+            int window = (int)HitObject.HitWindows.WindowFor(HitResult.Meh);
+
+            return unchecked(end + window) < Time.Current;
         }
 
         private Vector2? computeHitPosition()
