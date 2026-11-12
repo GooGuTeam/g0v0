@@ -1,12 +1,21 @@
 # Slider rendering
 
+## Known compatibility limitation
+
+The oversized-body compatibility work is **not visually complete**. The exterior
+fill around the ellipse at 213173ms has been reported as incorrect compared with
+stable gameplay. Earlier isolated-renderer/screenshot agreement did not validate
+stable's complete rendering/composition path and is not acceptance evidence for
+that fill. Historical body screenshot generation has been suspended at the user's
+request; do not use its outputs as golden images.
+
 ## Settings
 
 In the osu! ruleset settings (`OsuSettingsSubsection`, stored by `OsuRulesetConfigManager`):
 
 | Setting | Default | Effect |
 | --- | --- | --- |
-| Slider viewport mode / custom size (`SliderViewportMode`, `SliderViewportCustomSize`) | Default / `1920x1080` | Default reproduces the tested stable viewport ceiling; Custom requests independent X/Y limits |
+| Slider viewport mode / custom size (`SliderViewportMode`, `SliderViewportCustomSize`) | Default / `1920x1080` | Default currently emulates the historical diagnostic ANGLE viewport ceiling, not a universal stable limit; Custom requests independent X/Y limits |
 | Use stable-style 2B rendering (`KeepOverlapCirclesVisible`) | off | Orders slider bodies, circles and markers by stable's visual priorities ([classic-2b-input.md](classic-2b-input.md)) |
 | Show hidden sliders (`ShowHiddenSliders`) | off | Draws sliders shorter than 1 ms, with their circles and markers |
 
@@ -43,8 +52,33 @@ return. Colour/profile/border changes invalidate the cached FBO.
 
 The first external delivery only attached the renderer to `LegacySliderBody`;
 Argon Pro consequently retained the staircase stretching and ellipse fragments.
-The follow-up covers actual published Release binaries with Argon Pro and classic
-at 720p/1080p, plus a truly MultiThreaded offscreen host.
+The follow-up exercised actual published Release binaries with Argon Pro and classic
+at 720p/1080p, plus a truly MultiThreaded offscreen host. These runs established
+branch coverage, not correctness of the disputed ellipse fill or intermittent
+behaviour during gameplay.
+
+## Oversized classic gradient
+
+`LegacySliderBodyGradient` isolates the classic oversized body's 128-texel ramp.
+It starts at transparent **black** (osuTK's `Color4.Transparent` is transparent
+white), computes the original byte-domain colour endpoints, then interpolates
+at texel centres. Darkening divides by 1.1; lightening uses `value * 1.125 + 63.75`.
+Both endpoints are truncated to bytes before interpolation, with body alpha 180.
+The shadow alpha is 64. Anti-aliasing uses the screen-space radius and is clamped
+to `[3/256, 1/16]`, as in stable's `DefaultRadius` setup. The gradient cache includes
+that radius, so display-scale changes cannot retain a gradient for the old scale.
+
+These corrections apply only to the default oversized classic profile. Ordinary
+classic paths retain their distance-field/filtering pipeline, and other skins
+retain their supplied profile, alpha and cache behaviour. No global gamma,
+blending, mesh, viewport or sliderball changes accompany this correction.
+
+Regression coverage includes original-IL byte endpoints, all 256 input channel
+values, seven complete CPU ramps at 720p/1080p, border alpha and display-scale
+cache invalidation. The ramp expectations model ideal interpolation, not an
+assertion that every GL driver rasterises the gradient identically. Scoped
+before/after captures check the change; they do not resolve the exterior-fill
+limitation described above.
 
 ## Path rendering
 
@@ -63,8 +97,20 @@ The FBO is shared between the drawable's draw-node copies; shader/texture/FBO
 resources are disposed through the renderer. `RecyclePath` drops the disposed
 renderer so pooled sliders do not reuse dead resources.
 
-Validation: 6 objects × 3 progress states × 2 display conditions have matching
-prepared line counts and viewport bounds versus the original 20260924.1 IL.
-The staircase at 149574ms and ellipse at 213173ms have restored large-scale
-appearance at 720p/1080p on D3D11 and Vulkan. Gradient/raster edge differences are
-measured separately; a coarse silhouette pass is not pixel identity.
+Historical preparation checks: 6 objects × 3 progress states × 2 display
+conditions had matching prepared line counts and viewport bounds versus the
+isolated original 20260924.1 IL. This is geometry-preparation evidence only.
+The previous claim that the ellipse's large-scale appearance was restored is
+withdrawn: the exterior fill is a known unresolved discrepancy, not merely an AA
+or border difference. The shared FBO/depth lifetime regression is separate from
+visual acceptance of this object.
+
+CPU investigation of the published Release mesh has traced selected filled pixels
+to very thin horizontal path segments after viewport compression. Thus stale FBO
+contents are not required to explain those pixels. Changing the emulated limit
+from 32767 to 32768 changes their gradient samples but does not by itself remove
+their coverage. A separate no-op centre-anchor transform loses precision and is
+currently mistaken for shake displacement. Neither observation alone establishes
+the cause of intermittent real-gameplay behaviour. In particular, gameplay's
+head-hit-dependent snaking-out changes the remaining path bounds; the historical
+body capture forced snaking-out off and could not exercise this distinction.

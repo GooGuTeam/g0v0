@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -83,8 +83,19 @@ namespace osu.Game.Rulesets.Osu.UI
         {
             get
             {
-                if (Objects.FirstOrDefault() is OsuHitObject first)
+                if (Objects.FirstOrDefault() is not OsuHitObject first)
+                    return 0;
+
+                if (!MasterGameplayClockContainer.OverflowsLegacyLeadIn(first.StartTime, first.TimePreempt))
                     return first.StartTime - Math.Max(2000, first.TimePreempt);
+
+                // Stable's lead-in for the first object overflows, so the beatmap starts from its own lead-in
+                // regardless of that object or of any others placed before that point.
+                double earliest = -Math.Max(0, Beatmap.AudioLeadIn);
+                var firstPlayable = Objects.OfType<OsuHitObject>().FirstOrDefault(h => h.StartTime >= earliest);
+
+                if (firstPlayable != null)
+                    return Math.Max(earliest, firstPlayable.StartTime - Math.Max(2000, firstPlayable.TimePreempt));
 
                 return 0;
             }

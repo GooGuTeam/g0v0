@@ -18,7 +18,66 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
     {
         internal readonly record struct Edge(Vector2 From, Vector2 To);
 
-        internal readonly record struct Viewport(Vector2 Origin, Vector2 RequestedSize);
+        internal readonly record struct Viewport(Vector2 Origin, Vector2 RequestedSize)
+        {
+            /// <summary>
+            /// The integer rectangle stable hands to <c>ResetOrtho</c>: left, right, and the two vertical
+            /// extents named after their place in the (vertically flipped) GL window.
+            /// </summary>
+            public int OrthoLeft { get; init; }
+
+            public int OrthoRight { get; init; }
+
+            public int OrthoBottom { get; init; }
+
+            public int OrthoTop { get; init; }
+        }
+
+        /// <summary>
+        /// Reproduces what stable's vertex shader and the driver's viewport transform do to a display-space
+        /// vertex, in 32-bit floats. Aspire sliders place sub-pixel lines exactly on pixel centres at this
+        /// precision, so a more accurate projection changes which pixels they cover.
+        /// </summary>
+        internal readonly struct WindowProjection
+        {
+            private const double subpixels = 256;
+
+            private readonly float m11, m41, m22, m42;
+            private readonly double halfWidth, halfHeight;
+
+            public WindowProjection(Viewport viewport, Vector2 limit)
+            {
+                // Matrix4.CreateOrthographicOffCenter, with stable's integer bounds converted to floats.
+                float left = viewport.OrthoLeft, right = viewport.OrthoRight, bottom = viewport.OrthoBottom, top = viewport.OrthoTop;
+                float inverseWidth = 1f / (right - left);
+                float inverseHeight = 1f / (top - bottom);
+
+                m11 = 2f * inverseWidth;
+                m41 = -(right + left) * inverseWidth;
+                m22 = 2f * inverseHeight;
+                m42 = -(top + bottom) * inverseHeight;
+
+                // glViewport silently clamps to the driver's maximum dimensions.
+                halfWidth = Math.Min((double)viewport.OrthoRight - viewport.OrthoLeft, limit.X) / 2;
+                halfHeight = Math.Min((double)viewport.OrthoTop - viewport.OrthoBottom, limit.Y) / 2;
+            }
+
+            /// <summary>
+            /// Window coordinates in pixels, snapped to the rasteriser's sub-pixel grid. Y increases with
+            /// display Y; stable's window has it pointing up, so its image of the body is upside down.
+            /// </summary>
+            public Vector2 ToWindow(Vector3 position)
+            {
+                float clipX = position.X * m11;
+                clipX += m41;
+                float clipY = position.Y * m22;
+                clipY += m42;
+
+                return new Vector2(snap((clipX + 1.0) * halfWidth), snap((clipY + 1.0) * halfHeight));
+            }
+
+            private static float snap(double value) => (float)(Math.Round(value * subpixels, MidpointRounding.ToEven) / subpixels);
+        }
 
         public static Viewport Prepare(IReadOnlyList<LegacySliderBallPath.Edge> source, double progressStart, double progressEnd,
                                        Vector2 origin, Vector2 offset, float ratio, float radius, double? expectedLength, List<Edge> lines)
@@ -97,9 +156,18 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
 
             int x = (int)(min.X - radius * 1.15);
             int y = (int)(min.Y - radius * 1.15);
-            int width = (int)((double)max.X - min.X + radius * 2.3);
-            int height = (int)((double)max.Y - min.Y + radius * 2.3);
-            return new Viewport(new Vector2(Math.Max(x, 0), Math.Max(y, 0)), new Vector2(width, (float)(height - Math.Max(-(double)y, 0))));
+            // Stable subtracts the bounds as floats before widening.
+            int width = (int)((double)(max.X - min.X) + radius * 2.3);
+            int height = (int)((double)(max.Y - min.Y) + radius * 2.3);
+
+            return new Viewport(new Vector2(Math.Max(x, 0), Math.Max(y, 0)), new Vector2(width, (float)(height - Math.Max(-(double)y, 0))))
+            {
+                // Clipping a negative left edge shifts the projection; clipping the top shortens it.
+                OrthoLeft = Math.Max(x, 0),
+                OrthoRight = (int)Math.Clamp((long)Math.Max(x, 0) + width, int.MinValue, int.MaxValue),
+                OrthoBottom = Math.Max(y, 0),
+                OrthoTop = (int)Math.Clamp((long)y + height, int.MinValue, int.MaxValue),
+            };
 
             Vector2 display(Vector2 point) => point * ratio + offset;
         }

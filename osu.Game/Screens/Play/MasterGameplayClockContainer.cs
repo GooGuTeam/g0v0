@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -93,11 +93,29 @@ namespace osu.Game.Screens.Play
             // some beatmaps specify a current lead-in time which should be used instead of the ruleset-provided value when available.
             // this is not available as an option in the live editor but can still be applied via .osu editing.
             double firstHitObjectTime = beatmap.HitObjects.First().StartTime;
+
             if (beatmap.AudioLeadIn > 0)
-                time = Math.Min(time, firstHitObjectTime - beatmap.AudioLeadIn);
+            {
+                // Stable only ever consults the first hit object. Where its lead-in overflows, nothing but
+                // the beatmap's own lead-in (counted back from zero) and the storyboard delay the start.
+                time = Math.Min(time, OverflowsLegacyLeadIn(firstHitObjectTime) ? -beatmap.AudioLeadIn : firstHitObjectTime - beatmap.AudioLeadIn);
+            }
 
             return time;
         }
+
+        /// <summary>
+        /// Whether a hit object starts so early that osu!stable's lead-in calculation overflows.
+        /// </summary>
+        /// <remarks>
+        /// Stable computes the lead-in required by the first hit object as <c>max(1800, preempt) - startTime</c>
+        /// using 32-bit integers. For extremely negative start times this wraps to a negative value, so the
+        /// object does not delay the start of the beatmap at all.
+        /// </remarks>
+        /// <param name="startTime">The start time of the hit object.</param>
+        /// <param name="preempt">The duration for which the hit object is visible before its start time.</param>
+        public static bool OverflowsLegacyLeadIn(double startTime, double preempt = 0)
+            => Math.Max(1800, Math.Floor(preempt)) - Math.Floor(startTime) > int.MaxValue;
 
         public override void Seek(double time)
         {

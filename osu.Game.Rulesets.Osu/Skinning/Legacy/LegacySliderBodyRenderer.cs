@@ -38,7 +38,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         private IRenderer? renderer;
         private Texture? gradient;
         private LegacySliderBodyMesh.Viewport viewport;
-        private Vector2 viewportLimit = new Vector2(32767);
+        private Vector2 viewportLimit = new Vector2(32768);
         private LegacySliderBodyMesh.Edge[] lineSnapshot = Array.Empty<LegacySliderBodyMesh.Edge>();
         private float radius;
         private int revision;
@@ -102,24 +102,23 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                 Invalidate(Invalidation.DrawNode | Invalidation.MiscGeometry);
             }
 
-            if (accent != colour || border != borderColour || gradientRadius != fieldRadius || gradientBorderSize != borderSize || customGradient != (sampleGradient != null))
+            // The classic profile depends on screen radius (including display scale).
+            // Skin-provided profiles retain their existing field-radius cache key.
+            float currentGradientRadius = sampleGradient == null ? radius : fieldRadius;
+
+            if (accent != colour || border != borderColour || gradientRadius != currentGradientRadius || gradientBorderSize != borderSize || customGradient != (sampleGradient != null))
             {
-                gradientRadius = fieldRadius;
+                gradientRadius = currentGradientRadius;
                 gradientBorderSize = borderSize;
                 customGradient = sampleGradient != null;
                 accent = colour;
                 border = borderColour;
-                var raw = new Image<Rgba32>(128, 1);
-                float aa = Math.Clamp(0.5f / fieldRadius, 3f / 256, 0.0625f);
-                var shadow = new Color4(0, 0, 0, 64 / 255f);
-                var outer = new Color4(colour.R * 0.9f, colour.G * 0.9f, colour.B * 0.9f, 180 / 255f);
-                var inner = new Color4(Math.Min(1, colour.R * 1.125f + 0.25f), Math.Min(1, colour.G * 1.125f + 0.25f), Math.Min(1, colour.B * 1.125f + 0.25f), 180 / 255f);
-                float[] positions = { 0, 5f / 64 - aa, 5f / 64 + aa, 0.1875f - aa, 0.1875f + aa, 1 };
-                Color4[] colours = { Color4.Transparent, shadow, borderColour, borderColour, outer, inner };
+                var raw = new Image<Rgba32>(LegacySliderBodyGradient.TEXTURE_WIDTH, 1);
+                var classicGradient = sampleGradient == null ? new LegacySliderBodyGradient(colour, borderColour, currentGradientRadius) : default;
 
-                for (int i = 0; i < 128; i++)
+                for (int i = 0; i < LegacySliderBodyGradient.TEXTURE_WIDTH; i++)
                 {
-                    float x = (i + 0.5f) / 128;
+                    float x = (i + 0.5f) / LegacySliderBodyGradient.TEXTURE_WIDTH;
 
                     if (sampleGradient != null)
                     {
@@ -129,11 +128,8 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                         continue;
                     }
 
-                    int j = 1;
-                    while (j < positions.Length - 1 && x > positions[j]) j++;
-                    float t = (x - positions[j - 1]) / (positions[j] - positions[j - 1]);
-                    Color4 a = colours[j - 1], b = colours[j];
-                    raw[i, 0] = new Rgba32(a.R + (b.R - a.R) * t, a.G + (b.G - a.G) * t, a.B + (b.B - a.B) * t, a.A + (b.A - a.A) * t);
+                    Color4 classicPixel = classicGradient.Sample(x);
+                    raw[i, 0] = new Rgba32(classicPixel.R, classicPixel.G, classicPixel.B, classicPixel.A);
                 }
 
                 gradient.SetData(new TextureUpload(raw));
@@ -156,7 +152,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             meshShaders = new MeshShaders(renderer, shaders);
             meshShader = meshShaders.Load("StableBody", "StableBody");
             textureShader = shaders.Load(VertexShaderDescriptor.TEXTURE_2, FragmentShaderDescriptor.TEXTURE);
-            gradient = new DisposableTexture(renderer.CreateTexture(128, 1, true));
+            gradient = new DisposableTexture(renderer.CreateTexture(LegacySliderBodyGradient.TEXTURE_WIDTH, 1, true));
         }
 
         private sealed class MeshShaders : ShaderManager
@@ -248,15 +244,15 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                 {
                     buffer.Size = new Vector2(screen.Width, screen.Height);
                     buffer.Bind();
-                    // Emulate the legacy viewport by cropping its projection, not by
-                    // submitting a 32767+ physical viewport (invalid on some Vulkan devices).
-                    // framebufferPixels / requestedViewport gives the identical visible slice.
-                    Vector2 physicalViewport = Vector2.ComponentMin(viewport.RequestedSize, viewportLimit);
-                    Vector2 visibleProjection = new Vector2(viewport.RequestedSize.X * screen.Width / physicalViewport.X,
-                        viewport.RequestedSize.Y * screen.Height / physicalViewport.Y);
+                    // Stable projects in 32-bit floats onto a viewport clamped by the driver, and draws
+                    // into the window upside down. Both decide whether lines far thinner than a pixel
+                    // cover a pixel centre, so vertices are projected here rather than by the shader:
+                    // the framebuffer then only receives window pixels, never a 32768+ viewport.
+                    var projection = new LegacySliderBodyMesh.WindowProjection(viewport, viewportLimit);
+                    float windowHeight = screen.Height;
                     renderer.PushViewport(new RectangleI(0, 0, screen.Width, screen.Height));
                     renderer.PushScissorState(false);
-                    renderer.PushOrtho(new RectangleF(viewport.Origin, visibleProjection));
+                    renderer.PushOrtho(new RectangleF(0, 0, screen.Width, screen.Height));
                     renderer.PushDepthInfo(new DepthInfo(true, true, BufferTestFunction.LessThanOrEqual));
 
                     try
@@ -272,10 +268,19 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                             renderer.BindTexture(gradient);
                             quadBatch ??= renderer.CreateQuadBatch<TexturedVertex3D>(4096, 10);
                             capBatch ??= renderer.CreateLinearBatch<TexturedVertex3D>(7200, 10, PrimitiveTopology.Triangles);
-                            LegacySliderBodyMesh.Emit(lines, radius, quadBatch.Add, null);
+                            var quads = quadBatch;
+                            var caps = capBatch;
+                            LegacySliderBodyMesh.Emit(lines, radius, v => quads.Add(toWindow(v)), null);
                             quadBatch.Draw();
-                            LegacySliderBodyMesh.Emit(lines, radius, null, capBatch.Add);
+                            LegacySliderBodyMesh.Emit(lines, radius, null, v => caps.Add(toWindow(v)));
                             capBatch.Draw();
+
+                            TexturedVertex3D toWindow(TexturedVertex3D vertex)
+                            {
+                                Vector2 window = projection.ToWindow(vertex.Position);
+                                vertex.Position = new Vector3(window.X, windowHeight - window.Y, vertex.Position.Z);
+                                return vertex;
+                            }
                         }
                         finally { meshShader.Unbind(); }
                     }
@@ -293,7 +298,11 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
 
                 renderer.SetBlend(DrawColourInfo.Blending);
                 textureShader.Bind();
-                renderer.DrawFrameBuffer(buffer, new Quad(viewport.Origin.X, viewport.Origin.Y, screen.Width, screen.Height), DrawColourInfo.Colour);
+                // The framebuffer holds stable's upside-down window image; flip it back, as the copy to
+                // the body texture does there.
+                Vector2 topLeft = viewport.Origin;
+                Vector2 bottomRight = viewport.Origin + new Vector2(screen.Width, screen.Height);
+                renderer.DrawFrameBuffer(buffer, new Quad(new Vector2(topLeft.X, bottomRight.Y), bottomRight, topLeft, new Vector2(bottomRight.X, topLeft.Y)), DrawColourInfo.Colour);
                 textureShader.Unbind();
             }
         }

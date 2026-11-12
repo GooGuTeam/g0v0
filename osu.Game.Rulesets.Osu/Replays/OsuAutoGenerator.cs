@@ -368,7 +368,9 @@ namespace osu.Game.Rulesets.Osu.Replays
                     // With Classic the spinner itself applies stable's acceleration, so the cursor spins at stable autoplay's constant speed.
                     bool rampCursor = spinner.LegacySpinnerScoring && !spinner.ClassicSpinnerBehaviour;
 
-                    for (double nextFrame = h.StartTime + GetFrameDelay(h.StartTime); nextFrame < spinner.EndTime; nextFrame += GetFrameDelay(nextFrame))
+                    double spinnerStep = getMinimumFrameStep(spinner.Duration);
+
+                    for (double nextFrame = h.StartTime + Math.Max(spinnerStep, GetFrameDelay(h.StartTime)); nextFrame < spinner.EndTime; nextFrame += Math.Max(spinnerStep, GetFrameDelay(nextFrame)))
                     {
                         t = ApplyModsToTimeDelta(previousFrame, nextFrame) * spinnerDirection;
 
@@ -409,7 +411,9 @@ namespace osu.Game.Rulesets.Osu.Replays
                     break;
 
                 case Slider slider:
-                    for (double j = GetFrameDelay(slider.StartTime); j < slider.Duration; j += GetFrameDelay(slider.StartTime + j))
+                    double sliderStep = getMinimumFrameStep(slider.Duration);
+
+                    for (double j = Math.Max(sliderStep, GetFrameDelay(slider.StartTime)); j < slider.Duration; j += Math.Max(sliderStep, GetFrameDelay(slider.StartTime + j)))
                     {
                         Vector2 pos = slider.StackedPositionAt(j / slider.Duration);
                         AddFrameToReplay(new OsuReplayFrame(h.StartTime + j, new Vector2(pos.X, pos.Y), action));
@@ -423,6 +427,15 @@ namespace osu.Game.Rulesets.Osu.Replays
             if (Frames[^1].Time <= endFrame.Time)
                 AddFrameToReplay(endFrame);
         }
+
+        /// <summary>
+        /// The most frames generated while following a single hit object. This is half an hour at 60Hz;
+        /// objects lasting days or longer (as found in Aspire beatmaps) are followed with coarser steps
+        /// instead of generating frames until memory runs out.
+        /// </summary>
+        private const int max_frames_per_object = 108000;
+
+        private static double getMinimumFrameStep(double duration) => double.IsFinite(duration) ? duration / max_frames_per_object : double.PositiveInfinity;
 
         #endregion
 
