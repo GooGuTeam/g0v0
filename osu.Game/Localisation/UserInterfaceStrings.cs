@@ -10,16 +10,6 @@ namespace osu.Game.Localisation
         private const string prefix = @"osu.Game.Resources.Localisation.UserInterface";
 
         /// <summary>
-        /// "Strictly vertical UI (no slant)"
-        /// </summary>
-        public static LocalisableString UnslantedSongSelectUI => new TranslatableString(getKey(@"unslanted_song_select_ui"), @"Strictly vertical UI (no slant)");
-
-        /// <summary>
-        /// "Re-render the slanted Song Select panels (wedges, leaderboard, dropdowns) as straight rectangles. Takes effect on next entry to song select."
-        /// </summary>
-        public static LocalisableString UnslantedSongSelectUIDescription => new TranslatableString(getKey(@"unslanted_song_select_ui_description"), @"Re-render the slanted Song Select panels (wedges, leaderboard, dropdowns) as straight rectangles. Takes effect on next entry to song select.");
-
-        /// <summary>
         /// "User Interface"
         /// </summary>
         public static LocalisableString UserInterfaceSectionHeader => new TranslatableString(getKey(@"user_interface_section_header"), @"User Interface");
