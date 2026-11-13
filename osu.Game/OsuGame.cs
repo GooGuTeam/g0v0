@@ -119,9 +119,7 @@ namespace osu.Game
         /// <summary>
         /// A common shear factor applied to most components of the game.
         /// </summary>
-        public static readonly Vector2 DEFAULT_SHEAR = new Vector2(0.2f, 0);
-        public static Vector2 SHEAR { get; private set; } = new Vector2(0.2f, 0);
-        public static void SetUnslantedUI(bool unslanted) => SHEAR = unslanted ? Vector2.Zero : DEFAULT_SHEAR;
+        public static readonly Vector2 SHEAR = new Vector2(0.2f, 0);
 
         /// <summary>
         /// For elements placed close to the screen edge, this is the margin to leave to the edge.
