@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -34,7 +34,7 @@ namespace osu.Game.Online.Matchmaking
                 switch (RulesetId)
                 {
                     case 0:
-                        return $"osu! ({Name})";
+                        return $"standard ({Name})";
 
                     case 1:
                         return $"taiko ({Name})";

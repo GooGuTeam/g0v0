@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -203,6 +203,8 @@ namespace osu.Game.Screens.Menu
                         },
                         onlineMenuBanner = new OnlineMenuBanner
                         {
+                            // Keep the banner available until a server-provided content endpoint is ready.
+                            FetchOnlineContent = false,
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
                         }

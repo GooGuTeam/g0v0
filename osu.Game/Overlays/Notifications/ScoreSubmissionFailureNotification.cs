@@ -21,7 +21,7 @@ namespace osu.Game.Overlays.Notifications
 
             IsCritical = true;
 
-            Text = $"{heading}: {reason}";
+            Text = LocalisableString.Interpolate($"{heading}: {reason}");
         }
 
         [BackgroundDependencyLoader]

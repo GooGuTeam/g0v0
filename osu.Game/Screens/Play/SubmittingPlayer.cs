@@ -174,11 +174,11 @@ namespace osu.Game.Screens.Play
                 if (!gameplayBlocked && (displayNotification || shouldExit))
                 {
                     LocalisableString whatWillHappen = shouldExit
-                        ? ScoreSubmissionStrings.CannotStartPlay
-                        : ScoreSubmissionStrings.NotSubmittingScore;
+                        ? NotificationsStrings.CannotStartPlay
+                        : NotificationsStrings.ScoreWillNotBeSubmitted;
 
                     if (string.IsNullOrEmpty(exception.Message))
-                        notifications?.Post(new ScoreSubmissionFailureNotification(whatWillHappen, ScoreSubmissionStrings.TokenRetrievalFailure));
+                        notifications?.Post(new ScoreSubmissionFailureNotification(whatWillHappen, NotificationsStrings.FailedToRetrieveScoreSubmissionToken));
                     else
                         notifications?.Post(new ScoreSubmissionFailureNotification(whatWillHappen, getUserFacingAPIError(exception)));
                 }
@@ -369,14 +369,32 @@ namespace osu.Game.Screens.Play
             return scoreSubmissionSource.Task;
         }
 
-        private static LocalisableString getUserFacingAPIError(Exception exception) => exception.Message switch
+        private static LocalisableString getUserFacingAPIError(Exception exception)
         {
-            @"missing token header" or @"invalid client hash" or @"invalid verification hash"
-                or @"invalid token" or @"outdated client" => ScoreSubmissionStrings.InvalidClient,
-            @"invalid or missing beatmap_hash" => ScoreSubmissionStrings.BeatmapMismatch,
-            @"expired token" => ScoreSubmissionStrings.InvalidTime,
-            _ => exception.Message,
-        };
+            switch (exception.Message)
+            {
+                case @"missing token header":
+                case @"invalid client hash":
+                case @"invalid verification hash":
+                case @"invalid token":
+                case @"outdated client":
+                    return NotificationsStrings.PreventSubmittingWithOutdatedClient;
+
+                case @"invalid or missing beatmap_hash":
+                    return NotificationsStrings.PreventSubmittingWithInvalidBeatmapHash;
+
+                case @"expired token":
+                    return NotificationsStrings.PreventSubmittingWithExpiredToken;
+
+                // Exception message, may be actually displayed to user.
+                // See https://github.com/ppy/osu/blob/382c3bf717b7736bc74387b82249757ef5b12947/osu.Game/Screens/Play/SubmittingPlayer.cs#L111
+                case @"Online functionality is not available.":
+                    return NotificationsStrings.OnlineFunctionalityIsNotAvailable;
+
+                default:
+                    return exception.Message;
+            }
+        }
 
         protected override ResultsScreen CreateResults(ScoreInfo score) => new SoloResultsScreen(score)
         {
