@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using Humanizer;
@@ -71,7 +72,7 @@ namespace osu.Game.Tests.Visual.Online
                 DisplayName = stream.Humanize(), // not quite there, but good enough.
             }).ToDictionary(stream => stream.Name);
 
-            string version = DateTimeOffset.Now.ToString("yyyy.Mdd.0");
+            string version = DateTimeOffset.Now.ToString("yyyy.Mdd.0", CultureInfo.InvariantCulture);
             builds = APIUpdateStream.KNOWN_STREAMS.Keys.Select(stream => new APIChangelogBuild
             {
                 Version = version,
@@ -293,10 +294,10 @@ Paragraph above only contains html video and should not be rendered."
 
             AddStep("make listing request succeed", () => failListingRequest = false);
             AddStep("press retry", () => changelog.ChildrenOfType<OnlineErrorPlaceholder>()
-                                                 .Single()
-                                                 .ChildrenOfType<RoundedButton>()
-                                                 .Single(button => button.Text.ToString() == OnlineErrorStrings.Retry.ToString())
-                                                 .TriggerClick());
+                                                  .Single()
+                                                  .ChildrenOfType<RoundedButton>()
+                                                  .Single(button => button.Text.ToString() == OnlineErrorStrings.Retry.ToString())
+                                                  .TriggerClick());
 
             AddUntilStep("listing loaded", () => changelog.Streams?.Count > 0);
             AddUntilStep("error placeholder hidden", () => !changelog.ChildrenOfType<OnlineErrorPlaceholder>().Any(d => d.IsPresent));

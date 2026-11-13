@@ -11,19 +11,17 @@ namespace osu.Game.Online.API.Requests
     {
         public readonly string Path;
 
-        private readonly Language language;
-
         /// <summary>
         /// The language the page is requested in. This is not part of <see cref="Path"/>.
         /// </summary>
-        internal Language RequestLanguage => language;
+        internal Language RequestLanguage { get; }
 
         public GetWikiRequest(string path, Language language = Language.en)
         {
             Path = path;
-            this.language = language;
+            RequestLanguage = language;
         }
 
-        protected override string Target => $"wiki/{language.ToCultureCode()}/{Path}";
+        protected override string Target => $"wiki/{RequestLanguage.ToCultureCode()}/{Path}";
     }
 }

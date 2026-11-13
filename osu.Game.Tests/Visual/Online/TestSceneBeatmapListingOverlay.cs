@@ -243,10 +243,10 @@ namespace osu.Game.Tests.Visual.Online
             });
 
             AddStep("press retry", () => overlay.ChildrenOfType<OnlineErrorPlaceholder>()
-                                             .Single()
-                                             .ChildrenOfType<RoundedButton>()
-                                             .Single(button => button.Text.ToString() == OnlineErrorStrings.Retry.ToString())
-                                             .TriggerClick());
+                                                .Single()
+                                                .ChildrenOfType<RoundedButton>()
+                                                .Single(button => button.Text.ToString() == OnlineErrorStrings.Retry.ToString())
+                                                .TriggerClick());
 
             AddUntilStep("results shown", () => this.ChildrenOfType<BeatmapCard>().Count(card => card.IsLoaded) == 3);
             AddUntilStep("error placeholder hidden", () => !overlay.ChildrenOfType<OnlineErrorPlaceholder>().Any(d => d.IsPresent));
@@ -286,10 +286,10 @@ namespace osu.Game.Tests.Visual.Online
             });
 
             AddStep("press retry", () => overlay.ChildrenOfType<OnlineErrorPlaceholder>()
-                                             .Single()
-                                             .ChildrenOfType<RoundedButton>()
-                                             .Single(button => button.Text.ToString() == OnlineErrorStrings.Retry.ToString())
-                                             .TriggerClick());
+                                                .Single()
+                                                .ChildrenOfType<RoundedButton>()
+                                                .Single(button => button.Text.ToString() == OnlineErrorStrings.Retry.ToString())
+                                                .TriggerClick());
 
             AddUntilStep("more results shown", () => this.ChildrenOfType<BeatmapCard>().Count(card => card.IsLoaded) == 70);
             AddUntilStep("error placeholder hidden", () => !overlay.ChildrenOfType<OnlineErrorPlaceholder>().Any(d => d.IsPresent));
