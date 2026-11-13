@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -42,6 +42,7 @@ namespace osu.Game.Overlays
         private IBindable<APIUser> apiUser;
 
         private Container panelTarget;
+        private Container pageErrorTarget;
         private FillFlowContainer<BeatmapCard> foundContent;
 
         private BeatmapListingFilterControl filterControl => Header.FilterControl;
@@ -78,7 +79,16 @@ namespace osu.Game.Overlays
                                 RelativeSizeAxes = Axes.X,
                                 Masking = true,
                                 Padding = new MarginPadding { Horizontal = 20 },
-                            }
+                            },
+                            // The panel content
+                            pageErrorTarget = new Container
+                            {
+                                Anchor = Anchor.BottomCentre,
+                                Origin = Anchor.BottomCentre,
+                                RelativeSizeAxes = Axes.X,
+                                AutoSizeAxes = Axes.Y,
+                                Padding = new MarginPadding { Horizontal = 20 },
+                            },
                         },
                     },
                 }
@@ -163,10 +173,25 @@ namespace osu.Game.Overlays
         {
             cancellationToken?.Cancel();
 
+            clearPageError();
+
             if (searchResult.Type == BeatmapListingFilterControl.SearchResultType.SupporterOnlyFilters)
             {
                 var supporterOnly = new SupporterRequiredDrawable(searchResult.SupporterOnlyFiltersUsed);
                 replaceResultsAreaContent(supporterOnly);
+                return;
+            }
+
+            if (searchResult.Type == BeatmapListingFilterControl.SearchResultType.SearchFailed)
+            {
+                replaceResultsAreaContent(new OnlineErrorPlaceholder(searchResult.Exception, filterControl.Refresh));
+                return;
+            }
+
+            if (searchResult.Type == BeatmapListingFilterControl.SearchResultType.PageFailed)
+            {
+                // the pages which did load remain usable, so the failure is shown beneath them rather than replacing them.
+                showPageError(new OnlineErrorPlaceholder(searchResult.Exception, filterControl.RetryNextPage));
                 return;
             }
 
@@ -235,6 +260,15 @@ namespace osu.Game.Overlays
             lastFetchDisplayedTime = Time.Current;
 
             panelTarget.Child = content;
+
+            content.FadeInFromZero();
+        }
+
+        private void clearPageError() => pageErrorTarget?.Clear();
+
+        private void showPageError(Drawable content)
+        {
+            pageErrorTarget.Child = content;
 
             content.FadeInFromZero();
         }

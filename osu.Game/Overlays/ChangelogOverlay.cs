@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -11,9 +11,11 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Events;
+using osu.Framework.Logging;
 using osu.Game.Input.Bindings;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -132,7 +134,10 @@ namespace osu.Game.Overlays
                 performAfterFetch(() => Current.TriggerChange());
         }
 
-        private Task initialFetchTask;
+        /// <summary>
+        /// The initial listing fetch, completing with the failure which prevented it (or <see langword="null"/> on success).
+        /// </summary>
+        private Task<Exception> initialFetchTask;
 
         private void performAfterFetch(Action action)
         {
@@ -140,19 +145,36 @@ namespace osu.Game.Overlays
 
             Schedule(() =>
             {
-                fetchListing()?.ContinueWith(_ =>
-                    Schedule(action), TaskContinuationOptions.OnlyOnRanToCompletion);
+                fetchListing().ContinueWith(t => Schedule(() =>
+                {
+                    Exception failure = t.GetResultSafely();
+
+                    if (failure == null)
+                        action();
+                    else
+                        showFetchFailure(failure, action);
+                }));
             });
         }
 
-        private Task fetchListing()
+        private void showFetchFailure(Exception failure, Action retryAction)
+        {
+            Content.FadeIn(300, Easing.OutQuint);
+            Content.Child = new OnlineErrorPlaceholder(failure, () =>
+            {
+                Content.Child = Empty();
+                performAfterFetch(retryAction);
+            });
+        }
+
+        private Task<Exception> fetchListing()
         {
             if (initialFetchTask != null)
                 return initialFetchTask;
 
             return initialFetchTask = Task.Run(async () =>
             {
-                var tcs = new TaskCompletionSource<bool>();
+                var tcs = new TaskCompletionSource<Exception>();
 
                 var req = new GetChangelogRequest();
 
@@ -167,19 +189,25 @@ namespace osu.Game.Overlays
 
                     Header.Populate(res.Streams);
 
-                    tcs.SetResult(true);
+                    tcs.SetResult(null);
                 });
 
                 req.Failure += e =>
                 {
+                    // allow a later attempt to fetch the listing again.
                     initialFetchTask = null;
-                    tcs.SetException(e);
+
+                    Logger.Log($@"Failed to fetch the changelog listing: {e}", LoggingTarget.Network);
+
+                    // the failure is reported to the user by the error state shown in `showFetchFailure()`, so the task
+                    // itself completes successfully to avoid surfacing an unobserved exception.
+                    tcs.SetResult(e);
                 };
 
                 await API.PerformAsync(req).ConfigureAwait(false);
 
-                return tcs.Task;
-            }).Unwrap();
+                return await tcs.Task.ConfigureAwait(false);
+            });
         }
 
         private CancellationTokenSource loadContentCancellation;

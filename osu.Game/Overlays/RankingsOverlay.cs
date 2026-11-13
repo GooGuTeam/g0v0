@@ -1,11 +1,13 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
+using osu.Framework.Logging;
 using osu.Game.Overlays.Rankings;
 using osu.Game.Users;
 using osu.Game.Rulesets;
@@ -117,8 +119,30 @@ namespace osu.Game.Overlays
                 return;
             }
 
-            request.Success += () => Schedule(() => LoadDisplay(createTableFromResponse(request)));
-            request.Failure += _ => Schedule(() => LoadDisplay(Empty()));
+            // both callbacks are scheduled, so the tab may have been changed by the time they run.
+            request.Success += () => Schedule(() =>
+            {
+                if (lastRequest != request || Header.Current.Value != tab)
+                    return;
+
+                LoadDisplay(createTableFromResponse(request));
+            });
+
+            request.Failure += e =>
+            {
+                if (e is OperationCanceledException)
+                    return;
+
+                Logger.Log($@"Failed to fetch rankings for {Header.Current.Value}: {e}", level: LogLevel.Important);
+
+                Schedule(() =>
+                {
+                    if (lastRequest != request || Header.Current.Value != tab)
+                        return;
+
+                    LoadDisplay(new OnlineErrorPlaceholder(e, triggerTabChanged));
+                });
+            };
 
             api.Queue(request);
         }
