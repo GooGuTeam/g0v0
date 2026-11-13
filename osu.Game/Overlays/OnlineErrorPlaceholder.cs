@@ -152,14 +152,19 @@ namespace osu.Game.Overlays
                 yield return createButton(action.Text, action.Action);
 
             if (game != null)
-                yield return createButton(OnlineErrorStrings.CopyErrorDescription, () => game?.CopyToClipboard(buildErrorDescription()));
+                yield return createButton(OnlineErrorStrings.CopyErrorDescription, () => game?.CopyToClipboard(BuildErrorDescription()));
         }
 
-        private string buildErrorDescription()
+        /// <summary>
+        /// Builds the report that is human-readable by users and is easy to copy.
+        /// </summary>
+        internal string BuildErrorDescription()
         {
             var builder = new StringBuilder();
 
-            builder.Append(description.ToString());
+            string descriptionText = description.ToString();
+
+            builder.Append(descriptionText);
 
             HttpStatusCode? statusCode = null;
             string? url = null;
@@ -175,22 +180,35 @@ namespace osu.Game.Overlays
                     statusCode = requestException.StatusCode;
                     url = requestException.Url;
                     break;
+
+                case WebException webException:
+                    url = webException.Response?.ResponseUri.ToString();
+                    break;
             }
 
-            if (statusCode == null && url == null)
-                return builder.ToString();
-
-            builder.Append('\n');
-
-            if (statusCode != null)
-                builder.Append(@"HTTP ").Append((int)statusCode.Value).Append(' ').Append(statusCode.Value);
-
-            if (url != null)
+            if (statusCode != null || url != null)
             {
-                if (statusCode != null)
-                    builder.Append(@" · ");
+                builder.Append('\n');
 
-                builder.Append(url);
+                if (statusCode != null)
+                    builder.Append(@"HTTP ").Append((int)statusCode.Value).Append(' ').Append(statusCode.Value);
+
+                if (url != null)
+                {
+                    if (statusCode != null)
+                        builder.Append(@" · ");
+
+                    builder.Append(url);
+                }
+            }
+
+            for (Exception? current = exception; current != null; current = current.InnerException)
+            {
+                builder.Append('\n').Append(current.GetType().Name);
+
+                // the description is often the message of the outermost exception, in which case repeating it adds noise.
+                if (!string.IsNullOrEmpty(current.Message) && current.Message != descriptionText)
+                    builder.Append(@": ").Append(current.Message);
             }
 
             return builder.ToString();

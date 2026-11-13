@@ -267,6 +267,34 @@ namespace osu.Game.Tests.Visual.Online
             AddUntilStep("server message shown", () => errorPlaceholderDescription == "You have reached the maximum attempts for this room");
         }
 
+        [Test]
+        public void TestPageFailureKeepsResultsAndCanBeRetried()
+        {
+            AddStep("show many results", () => fetchFor(getManyBeatmaps(50).ToArray(), true));
+            AddUntilStep("wait for loaded", () => this.ChildrenOfType<BeatmapCard>().Count(card => card.IsLoaded) == 50);
+
+            AddStep("make next page fail", () => failSearchRequests = true);
+            AddStep("scroll to end", () => overlay.ChildrenOfType<OverlayScrollContainer>().Single().ScrollToEnd());
+
+            AddUntilStep("error placeholder shown", () => overlay.ChildrenOfType<OnlineErrorPlaceholder>().SingleOrDefault()?.IsPresent == true);
+            AddAssert("results kept", () => this.ChildrenOfType<BeatmapCard>().Count(card => card.IsLoaded) == 50);
+
+            AddStep("make requests succeed with another page", () =>
+            {
+                failSearchRequests = false;
+                setSearchResponse(getManyBeatmaps(20), false);
+            });
+
+            AddStep("press retry", () => overlay.ChildrenOfType<OnlineErrorPlaceholder>()
+                                             .Single()
+                                             .ChildrenOfType<RoundedButton>()
+                                             .Single(button => button.Text.ToString() == OnlineErrorStrings.Retry.ToString())
+                                             .TriggerClick());
+
+            AddUntilStep("more results shown", () => this.ChildrenOfType<BeatmapCard>().Count(card => card.IsLoaded) == 70);
+            AddUntilStep("error placeholder hidden", () => !overlay.ChildrenOfType<OnlineErrorPlaceholder>().Any(d => d.IsPresent));
+        }
+
         /// <summary>
         /// During pagination, the first beatmap of the second page may be a duplicate of the last beatmap from the previous page.
         /// This is currently the case with osu!web API due to ES relevance score's presence in the response cursor.

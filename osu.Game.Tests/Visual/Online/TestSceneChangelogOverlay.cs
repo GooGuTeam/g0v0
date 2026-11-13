@@ -9,7 +9,9 @@ using System.Linq;
 using System.Net;
 using Humanizer;
 using NUnit.Framework;
+using osu.Framework.Graphics.Sprites;
 using osu.Framework.Testing;
+using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Online.API;
@@ -35,6 +37,30 @@ namespace osu.Game.Tests.Visual.Online
         /// When set, the dummy API reports failed changelog listing requests.
         /// </summary>
         private bool failListingRequest;
+
+        /// <summary>
+        /// When set, the dummy API reports failed requests for the details of a single build.
+        /// </summary>
+        private bool failBuildRequest;
+
+        /// <summary>
+        /// The second line of the displayed error placeholder, i.e. the description below the title.
+        /// </summary>
+        private string errorPlaceholderDescription
+        {
+            get
+            {
+                var flow = changelog.ChildrenOfType<OnlineErrorPlaceholder>()
+                                    .SingleOrDefault()?
+                                    .ChildrenOfType<OsuTextFlowContainer>()
+                                    .SingleOrDefault();
+
+                if (flow == null)
+                    return string.Empty;
+
+                return string.Concat(flow.ChildrenOfType<SpriteText>().Select(sprite => sprite.Text));
+            }
+        }
 
         public TestSceneChangelogOverlay()
         {
@@ -63,6 +89,7 @@ namespace osu.Game.Tests.Visual.Online
         {
             requestedBuild = null;
             failListingRequest = false;
+            failBuildRequest = false;
 
             dummyAPI.HandleRequest = request =>
             {
@@ -84,6 +111,12 @@ namespace osu.Game.Tests.Visual.Online
                         return true;
 
                     case GetChangelogBuildRequest buildRequest:
+                        if (failBuildRequest)
+                        {
+                            buildRequest.TriggerFailure(new APIException("This build is not available", new WebException(), HttpStatusCode.BadRequest));
+                            return true;
+                        }
+
                         if (requestedBuild != null)
                             buildRequest.TriggerSuccess(requestedBuild);
                         return true;
@@ -267,6 +300,17 @@ Paragraph above only contains html video and should not be rendered."
 
             AddUntilStep("listing loaded", () => changelog.Streams?.Count > 0);
             AddUntilStep("error placeholder hidden", () => !changelog.ChildrenOfType<OnlineErrorPlaceholder>().Any(d => d.IsPresent));
+        }
+
+        [Test]
+        public void TestBuildFailureShowsServerMessage()
+        {
+            AddStep("make build request fail with a server message", () => failBuildRequest = true);
+
+            showBuild(() => builds[APIUpdateStream.KNOWN_STREAMS.Keys.First()]);
+
+            AddUntilStep("error placeholder shown", () => changelog.ChildrenOfType<OnlineErrorPlaceholder>().SingleOrDefault()?.IsPresent == true);
+            AddUntilStep("server message shown", () => errorPlaceholderDescription == "This build is not available");
         }
 
         private void showBuild(Func<APIChangelogBuild> build)

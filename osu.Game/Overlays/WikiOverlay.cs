@@ -112,9 +112,16 @@ namespace osu.Game.Overlays
             // Language code + path, or just path1 + path2 in case
             string[] values = path.Split('/', 2);
 
-            var newRequest = values.Length > 1 && LanguageExtensions.TryParseCultureCode(values[0], out var parsedLang)
-                ? new GetWikiRequest(values[1], parsedLang)
-                : new GetWikiRequest(path, lang);
+            string pagePath = path;
+            Language pageLanguage = lang;
+
+            if (values.Length > 1 && LanguageExtensions.TryParseCultureCode(values[0], out var parsedLang))
+            {
+                pagePath = values[1];
+                pageLanguage = parsedLang;
+            }
+
+            var newRequest = new GetWikiRequest(pagePath, pageLanguage);
 
             request = newRequest;
 
@@ -140,7 +147,9 @@ namespace osu.Game.Overlays
                     if (request != newRequest)
                         return;
 
-                    onFail(ex, newRequest.Path);
+                    // the language is passed on alongside the path because a language prefix in the path takes precedence
+                    // over the language of the header, which may not be the one the failed page was requested in.
+                    onFail(ex, pagePath, pageLanguage);
                 });
             };
 
@@ -192,7 +201,7 @@ namespace osu.Game.Overlays
             }
         }
 
-        private void onFail(Exception exception, string originalPath)
+        private void onFail(Exception exception, string pagePath, Language pageLanguage)
         {
             wikiData.Value = null;
             path.Value = "error";
@@ -203,7 +212,7 @@ namespace osu.Game.Overlays
             LoadDisplay(new OnlineErrorPlaceholder(
                 exception,
                 OnlineErrorStrings.PageUnavailableDescription,
-                () => loadPage(originalPath, Header.CurrentLanguage.Value),
+                () => loadPage(pagePath, pageLanguage),
                 new OnlineErrorAction(OnlineErrorStrings.BackToHome, () => ShowPage())));
         }
 

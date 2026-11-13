@@ -166,8 +166,15 @@ namespace osu.Game.Overlays
 
                 Logger.Log($@"Failed to fetch the news listing: {e}", level: LogLevel.Important);
 
-                // the listing is the whole content of this view, so an error state is all that can be shown without it.
-                Schedule(() => LoadDisplay(new OnlineErrorPlaceholder(e, () => loadListing(displayedYear))));
+                // the callback is scheduled, so a newer listing may have been requested in the meantime, in which case
+                // this failure no longer describes what the user is looking at.
+                Schedule(() =>
+                {
+                    if (request != listingRequest)
+                        return;
+
+                    LoadDisplay(new OnlineErrorPlaceholder(e, () => loadListing(displayedYear)));
+                });
             };
 
             API.PerformAsync(listingRequest);

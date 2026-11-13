@@ -8,6 +8,7 @@ using System.Net;
 using NUnit.Framework;
 using osu.Framework.Testing;
 using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -130,6 +131,7 @@ namespace osu.Game.Tests.Visual.Online
 
             AddStep("Show nonexistent page", () => wiki.ShowPage("This_page_will_error_out"));
             AddUntilStep("Wait for error page", () => wiki.CurrentPath == "error");
+            AddUntilStep("Error placeholder shown", () => wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
 
             AddStep("Press back to home", () => errorPlaceholderButtons[1].TriggerClick());
 
@@ -185,6 +187,46 @@ namespace osu.Game.Tests.Visual.Online
             AddStep("Show article page", () => wiki.ShowPage("Article_styling_criteria/Formatting"));
             AddUntilStep("Wait for non-error page", () => wiki.CurrentPath == "Article_styling_criteria/Formatting");
             AddUntilStep("Error placeholder not displayed", () => !wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
+        }
+
+        [Test]
+        public void TestRetryKeepsRequestedLanguage()
+        {
+            // the language prefix overrides the language of the header.
+            const string page_path = @"zh/Main_page";
+
+            List<GetWikiRequest> requests = new List<GetWikiRequest>();
+
+            AddStep("Install failing request handler", () => dummyAPI.HandleRequest = request =>
+            {
+                if (request is not GetWikiRequest getWikiRequest)
+                    return false;
+
+                requests.Add(getWikiRequest);
+                getWikiRequest.TriggerFailure(new WebException());
+
+                return true;
+            });
+
+            AddStep("Set header language to English", () => wiki.Header.CurrentLanguage.Value = Language.en);
+
+            AddStep("Show page in Simplified Chinese", () =>
+            {
+                requests.Clear();
+                wiki.ShowPage(page_path);
+            });
+
+            AddUntilStep("Error placeholder shown", () => wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
+            AddAssert("Requested page in Simplified Chinese", () => requests.Count > 0 && requests[0].RequestLanguage == Language.zh);
+
+            AddStep("Press retry", () =>
+            {
+                requests.Clear();
+                errorPlaceholderButtons[0].TriggerClick();
+            });
+
+            AddUntilStep("Requested again", () => requests.Count > 0);
+            AddAssert("Retried in the same language", () => requests[0].RequestLanguage == Language.zh);
         }
 
         private void setUpWikiResponse(APIWikiPage r, string? redirectionPath = null)

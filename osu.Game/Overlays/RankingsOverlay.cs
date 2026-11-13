@@ -119,7 +119,15 @@ namespace osu.Game.Overlays
                 return;
             }
 
-            request.Success += () => Schedule(() => LoadDisplay(createTableFromResponse(request)));
+            // both callbacks are scheduled, so the tab may have been changed by the time they run.
+            request.Success += () => Schedule(() =>
+            {
+                if (lastRequest != request || Header.Current.Value != tab)
+                    return;
+
+                LoadDisplay(createTableFromResponse(request));
+            });
+
             request.Failure += e =>
             {
                 if (e is OperationCanceledException)
@@ -127,7 +135,13 @@ namespace osu.Game.Overlays
 
                 Logger.Log($@"Failed to fetch rankings for {Header.Current.Value}: {e}", level: LogLevel.Important);
 
-                Schedule(() => LoadDisplay(new OnlineErrorPlaceholder(e, triggerTabChanged)));
+                Schedule(() =>
+                {
+                    if (lastRequest != request || Header.Current.Value != tab)
+                        return;
+
+                    LoadDisplay(new OnlineErrorPlaceholder(e, triggerTabChanged));
+                });
             };
 
             api.Queue(request);

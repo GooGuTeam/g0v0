@@ -37,6 +37,7 @@ namespace osu.Game.Overlays.Changelog
             bool complete = false;
 
             APIChangelogBuild? onlineBuildDetails = null;
+            Exception? failure = null;
 
             var req = new GetChangelogBuildRequest(build.UpdateStream.Name, build.Version);
             req.Success += res =>
@@ -44,7 +45,11 @@ namespace osu.Game.Overlays.Changelog
                 onlineBuildDetails = res;
                 complete = true;
             };
-            req.Failure += _ => complete = true;
+            req.Failure += ex =>
+            {
+                failure = ex;
+                complete = true;
+            };
 
             api.PerformAsync(req);
 
@@ -64,7 +69,7 @@ namespace osu.Game.Overlays.Changelog
                 // the build details are the whole content of this view, so there is nothing left to show without them.
                 Children = new Drawable[]
                 {
-                    new OnlineErrorPlaceholder(),
+                    new OnlineErrorPlaceholder(failure),
                 };
 
                 return;

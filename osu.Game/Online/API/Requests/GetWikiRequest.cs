@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Game.Extensions;
 using osu.Game.Localisation;
@@ -12,6 +12,11 @@ namespace osu.Game.Online.API.Requests
         public readonly string Path;
 
         private readonly Language language;
+
+        /// <summary>
+        /// The language the page is requested in. This is not part of <see cref="Path"/>.
+        /// </summary>
+        internal Language RequestLanguage => language;
 
         public GetWikiRequest(string path, Language language = Language.en)
         {

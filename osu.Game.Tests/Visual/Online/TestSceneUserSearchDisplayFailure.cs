@@ -74,6 +74,22 @@ namespace osu.Game.Tests.Visual.Online
             AddAssert("Second search is for the new query", () => requests[1].Query == "peppy2");
         }
 
+        [Test]
+        public void TestClearingQueryDismissesPlaceholder()
+        {
+            installRequestHandler();
+
+            searchFor("peppy");
+            AddUntilStep("Search requested", () => requests.Count == 1);
+
+            AddStep("Fail search", () => requests[0].TriggerFailure(new WebException(@"search failed")));
+            AddUntilStep("Error placeholder shown", () => display.ChildrenOfType<OnlineErrorPlaceholder>().Any());
+
+            // a failed search cannot be retried without a query, so the placeholder must not outlive the query.
+            AddStep("Clear query", () => setQuery(string.Empty));
+            AddUntilStep("Error placeholder hidden", () => !display.ChildrenOfType<OnlineErrorPlaceholder>().Any());
+        }
+
         private void installRequestHandler()
             => AddStep("install request handler", () => dummyAPI.HandleRequest = request =>
             {

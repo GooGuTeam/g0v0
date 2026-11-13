@@ -169,6 +169,8 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
 
             if (string.IsNullOrEmpty(searchTextBox.Current.Value))
             {
+                clearErrorPlaceholder();
+
                 loading.Value = false;
                 return;
             }
@@ -241,6 +243,19 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
             listContainer.Clear();
 
             loading.Value = false;
+        }
+
+        private void clearErrorPlaceholder()
+        {
+            foreach (var child in listContainer.Children)
+            {
+                if (child is not OnlineErrorPlaceholder)
+                    continue;
+
+                // the placeholder is shown in place of the results, so the list holds nothing else at this point.
+                listContainer.Clear();
+                return;
+            }
         }
     }
 }

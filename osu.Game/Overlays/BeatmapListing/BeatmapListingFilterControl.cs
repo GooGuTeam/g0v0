@@ -56,6 +56,11 @@ namespace osu.Game.Overlays.BeatmapListing
         private bool fetchFailed;
 
         /// <summary>
+        /// True when retrieving the next page failed. Results of the pages which did load are preserved.
+        /// </summary>
+        private bool pageFetchFailed;
+
+        /// <summary>
         /// The current page fetched of results (zero index).
         /// </summary>
         public int CurrentPage { get; private set; }
@@ -207,6 +212,10 @@ namespace osu.Game.Overlays.BeatmapListing
             if (fetchFailed)
                 return;
 
+            // the last page failed, and scrolling to the end would otherwise retry it every frame.
+            if (pageFetchFailed)
+                return;
+
             // there may already be an active request.
             if (getSetsRequest != null)
                 return;
@@ -215,6 +224,18 @@ namespace osu.Game.Overlays.BeatmapListing
                 CurrentPage++;
 
             performRequest();
+        }
+
+        /// <summary>
+        /// Requests the page which failed to load again, keeping the pages which did load on screen.
+        /// </summary>
+        public void RetryNextPage()
+        {
+            if (!pageFetchFailed)
+                return;
+
+            pageFetchFailed = false;
+            FetchNextPage();
         }
 
         private void resetSortControl() => sortControl.Reset(searchControl.Category.Value, !string.IsNullOrEmpty(searchControl.Query.Value));
@@ -305,9 +326,10 @@ namespace osu.Game.Overlays.BeatmapListing
                 {
                     // the results already on screen stay valid, so only the failed page is dropped.
                     CurrentPage--;
-                    noMoreResults = true;
+                    pageFetchFailed = true;
 
                     Logger.Log($@"Failed to fetch page {CurrentPage + 2} of the beatmap listing: {e}", level: LogLevel.Important);
+                    SearchFinished?.Invoke(SearchResult.PageFailed(e));
                     return;
                 }
 
@@ -328,6 +350,7 @@ namespace osu.Game.Overlays.BeatmapListing
         {
             noMoreResults = false;
             fetchFailed = false;
+            pageFetchFailed = false;
             CurrentPage = 0;
 
             lastResponse = null;
@@ -363,7 +386,12 @@ namespace osu.Game.Overlays.BeatmapListing
             /// <summary>
             /// The results could not be retrieved, for example because the client is offline or the server is unreachable.
             /// </summary>
-            SearchFailed
+            SearchFailed,
+
+            /// <summary>
+            /// A new page of results could not be retrieved. Can be requested again with <see cref="RetryNextPage"/>.
+            /// </summary>
+            PageFailed
         }
 
         /// <summary>
@@ -387,7 +415,8 @@ namespace osu.Game.Overlays.BeatmapListing
 
             /// <summary>
             /// The failure which caused the search to abort.
-            /// Valid for read if and only if <see cref="Type"/> is <see cref="SearchResultType.SearchFailed"/>.
+            /// Valid for read if and only if <see cref="Type"/> is <see cref="SearchResultType.SearchFailed"/> or
+            /// <see cref="SearchResultType.PageFailed"/>.
             /// </summary>
             public Exception Exception { get; private set; }
 
@@ -406,6 +435,12 @@ namespace osu.Game.Overlays.BeatmapListing
             public static SearchResult Failed(Exception exception) => new SearchResult
             {
                 Type = SearchResultType.SearchFailed,
+                Exception = exception
+            };
+
+            public static SearchResult PageFailed(Exception exception) => new SearchResult
+            {
+                Type = SearchResultType.PageFailed,
                 Exception = exception
             };
         }
