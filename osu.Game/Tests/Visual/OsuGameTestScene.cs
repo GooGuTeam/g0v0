@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -58,6 +58,10 @@ namespace osu.Game.Tests.Visual
         [SetUpSteps]
         public virtual void SetUpSteps()
         {
+            // score submission tokens have to be retrievable for gameplay to be entered,
+            // otherwise the player loader will hold back gameplay waiting for the user to acknowledge that the score will be lost.
+            AddStep("stub score token retrieval", StubScoreSubmissionTokenRetrieval);
+
             CreateNewGame();
             ConfirmAtMainMenu();
         }
