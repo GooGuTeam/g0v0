@@ -273,8 +273,8 @@ namespace osu.Game.Screens.Menu
 
                 initialBeatmap.PrepareTrackForPreview(false, useSpecificOffset ? ThemeMusic.PREVIEW_OFFSET : -2600);
 
-                // Manually reset the restart point to the start.
-                if (!config.Get<bool>(OsuSetting.ThemeMusicStartFromPreview))
+                // Manually reset the restart point to the start when the custom theme should not start from its preview point.
+                if (useSpecificOffset && !config.Get<bool>(OsuSetting.ThemeMusicStartFromPreview))
                     Track.RestartPoint = 0;
 
                 drawableTrack.VolumeTo(0);

@@ -261,7 +261,14 @@ namespace osu.Game.Screens.Menu
                 // presume the track is the current beatmap's track. not sure how correct this assumption is but it has worked until now.
                 if (!track.IsRunning)
                 {
-                    Beatmap.Value.PrepareTrackForPreview(false, ThemeMusic.UseSpecificOffset(Beatmap.Value, config) ? ThemeMusic.PREVIEW_OFFSET : null);
+                    bool useSpecificOffset = ThemeMusic.UseSpecificOffset(Beatmap.Value, config);
+
+                    Beatmap.Value.PrepareTrackForPreview(false, useSpecificOffset ? ThemeMusic.PREVIEW_OFFSET : null);
+
+                    // Keep the start-from-beginning choice made in the intro if the custom theme stopped before the menu was entered.
+                    if (useSpecificOffset && !config.Get<bool>(OsuSetting.ThemeMusicStartFromPreview))
+                        track.RestartPoint = 0;
+
                     track.Restart();
                 }
             }
