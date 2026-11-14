@@ -129,7 +129,7 @@ namespace osu.Game.Tests.Visual.Online
             AddAssert("preview shows the clicked image", () => preview.ChildrenOfType<Sprite>().Any(s => s.Texture == texture));
             AddAssert("preview keeps the image proportions", () => Precision.AlmostEquals(
                 preview.ImageHolder.DrawWidth / preview.ImageHolder.DrawHeight,
-                (float)texture.DisplayWidth / texture.DisplayHeight));
+                texture.DisplayWidth / texture.DisplayHeight));
         }
 
         private void addImageSteps()

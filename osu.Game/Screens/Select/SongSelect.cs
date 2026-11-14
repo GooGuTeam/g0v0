@@ -123,6 +123,7 @@ namespace osu.Game.Screens.Select
         private BeatmapTitleWedge titleWedge = null!;
         private BeatmapDetailsArea detailsArea = null!;
         private FillFlowContainer wedgesContainer = null!;
+
         // Torii: legacy (stable-style) song-select UI. When on, the modern lazer chrome
         // (filter/sort/star-rating bar + the left info & details wedges) is hidden so the
         // screen reads like osu!stable (carousel + legacy footer). Shares the footer-skin toggle.
@@ -202,7 +203,7 @@ namespace osu.Game.Screens.Select
         {
             errorSample = audio.Samples.Get(@"UI/generic-error");
 
-            AddRangeInternal(new Drawable[]
+            AddRangeInternal(new[]
             {
                 new ScrollAdjustsVolume(),
                 onlineLookupSource,
@@ -441,7 +442,7 @@ namespace osu.Game.Screens.Select
         /// </summary>
         private void updateLegacyChrome()
         {
-            if (FilterControl == null)
+            if (LoadState < LoadState.Ready)
                 return;
 
             bool legacy = legacyUi.Value;
@@ -1268,7 +1269,6 @@ namespace osu.Game.Screens.Select
                 }
             }
 
-
             switch (e.Action)
             {
                 case GlobalAction.Select:
@@ -1520,7 +1520,7 @@ namespace osu.Game.Screens.Select
 
         protected override void Dispose(bool isDisposing)
         {
-            if (skinSource != null)
+            if (LoadState >= LoadState.Ready)
                 skinSource.SourceChanged -= onSkinChangedWhileLegacy;
 
             base.Dispose(isDisposing);

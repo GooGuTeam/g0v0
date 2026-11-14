@@ -65,9 +65,7 @@ namespace osu.Game.Medals.Awarders
                 }
             }
 
-            var temp = previousPositions;
-            previousPositions = currentPositions;
-            currentPositions = temp;
+            (previousPositions, currentPositions) = (currentPositions, previousPositions);
             currentPositions.Clear();
 
             return false;

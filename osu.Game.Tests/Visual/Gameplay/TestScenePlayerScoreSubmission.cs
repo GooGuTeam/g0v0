@@ -4,6 +4,7 @@
 #nullable disable
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -109,9 +110,9 @@ namespace osu.Game.Tests.Visual.Gameplay
 
             AddUntilStep("results displayed", () => Player.GetChildScreen() is ResultsScreen);
             AddAssert("ensure passing submission", () => Player.SubmittedScore?.ScoreInfo.Passed == true);
-            AddAssert("server PP retained", () => ((ResultsScreen)Player.GetChildScreen()).Score.PP, () => Is.EqualTo(123.45));
-            AddAssert("baseline is pre-play best PP not highest score", () => ((ResultsScreen)Player.GetChildScreen()).ComparisonScore.Value.PP, () => Is.EqualTo(100));
-            AddAssert("baseline combo retained", () => ((ResultsScreen)Player.GetChildScreen()).ComparisonScore.Value.MaxCombo, () => Is.EqualTo(321));
+            AddAssert("server PP retained", () => (Player.GetChildScreen() as ResultsScreen)?.Score?.PP, () => Is.EqualTo(123.45));
+            AddAssert("baseline is pre-play best PP not highest score", () => (Player.GetChildScreen() as ResultsScreen)?.ComparisonScore.Value.PP, () => Is.EqualTo(100));
+            AddAssert("baseline combo retained", () => (Player.GetChildScreen() as ResultsScreen)?.ComparisonScore.Value.MaxCombo, () => Is.EqualTo(321));
         }
 
         [Test]
@@ -384,7 +385,7 @@ namespace osu.Game.Tests.Visual.Gameplay
                         case GetBeatmapUserScoresRequest personalScoresRequest:
                             personalScoresRequest.TriggerSuccess(new APIScoresCollection
                             {
-                                Scores = new()
+                                Scores = new List<SoloScoreInfo>
                                 {
                                     new SoloScoreInfo { PP = 80, TotalScore = 900000, Passed = true },
                                     new SoloScoreInfo { PP = 100, TotalScore = 800000, Passed = true, MaxCombo = 321 },

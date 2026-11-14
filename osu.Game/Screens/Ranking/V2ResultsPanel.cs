@@ -250,6 +250,10 @@ namespace osu.Game.Screens.Ranking
             statistics.AddRange(topStatistics);
             statistics.AddRange(hitStatistics);
 
+            // Perfect-or-better hit statistics, grouped into rows of three on mania and a single row otherwise.
+            int hitRowChunkSize = score.Ruleset.OnlineID == 3 ? 3 : Math.Max(1, hitStatistics.Count(s => s.Result <= HitResult.Perfect));
+            IEnumerable<Drawable> hitRows = hitStatistics.Where(s => s.Result <= HitResult.Perfect).Chunk(hitRowChunkSize).Select(s => statisticRow(s, true, separatorColour));
+
             // ------------------------------------------------------------------------------------------------
             // Skeleton: dimmer + scaled surface (left column pinned left, right column pinned right).
             // ------------------------------------------------------------------------------------------------
@@ -365,13 +369,13 @@ namespace osu.Game.Screens.Ranking
                         Shear = OsuGame.SHEAR,
                         CornerRadius = 5,
                         Masking = true,
-                                                        EdgeEffect = new EdgeEffectParameters
-                                {
-                                    Type = EdgeEffectType.Shadow,
-                                    Colour = Colour4.Black.Opacity(0.3f),
-                                    Radius = 16,
-                                    Offset = new Vector2(5, 4),
-                                },
+                        EdgeEffect = new EdgeEffectParameters
+                        {
+                            Type = EdgeEffectType.Shadow,
+                            Colour = Colour4.Black.Opacity(0.3f),
+                            Radius = 16,
+                            Offset = new Vector2(5, 4),
+                        },
                         Child = new Box
                         {
                             RelativeSizeAxes = Axes.Both,
@@ -499,7 +503,7 @@ namespace osu.Game.Screens.Ranking
                         {
                             Name = "Score wedge",
                             RelativeSizeAxes = Axes.X,
-                            Size = new Vector2(1.02f,553f),
+                            Size = new Vector2(1.02f, 553f),
                             Padding = new MarginPadding { Top = header_height + wedge_gap - 17 },
                             Child = new Container
                             {
@@ -536,7 +540,11 @@ namespace osu.Game.Screens.Ranking
                                 Radius = 16,
                                 Offset = new Vector2(5, 4),
                             },
-                            Child = new Box() {RelativeSizeAxes = Axes.Both,                                    Colour = stripBackground.Opacity(1.0f),}
+                            Child = new Box
+                            {
+                                RelativeSizeAxes = Axes.Both,
+                                Colour = stripBackground.Opacity(1.0f),
+                            }
                         },
                     },
                 },
@@ -547,7 +555,7 @@ namespace osu.Game.Screens.Ranking
                     AutoSizeAxes = Axes.Both,
                     Direction = FillDirection.Horizontal,
                     Spacing = new Vector2(4, 0),
-                    Children = new Drawable[]
+                    Children = new[]
                     {
                         new BeatmapSetOnlineStatusPill
                         {
@@ -592,7 +600,7 @@ namespace osu.Game.Screens.Ranking
                     Name = "Difficulty indicators",
                     Position = new Vector2(61, difficulty_strip_y),
                     Size = new Vector2(78, 34),
-                    Children = new Drawable[]
+                    Children = new[]
                     {
                         ruleset.CreateIcon().With(d =>
                         {
@@ -659,9 +667,7 @@ namespace osu.Game.Screens.Ranking
                             AutoSizeAxes = Axes.Y,
                             Direction = FillDirection.Vertical,
                             Spacing = new Vector2(0, 12),
-                            ChildrenEnumerable = hitStatistics.Where(s => s.Result <= HitResult.Perfect)
-                                .Chunk(score.Ruleset.OnlineID == 3 ? 3 : Math.Max(1, hitStatistics.Count(s => s.Result <= HitResult.Perfect)))
-                                .Select(s => statisticRow(s, true, separatorColour)),
+                            ChildrenEnumerable = hitRows,
                         },
                         new FillFlowContainer
                         {
@@ -830,7 +836,7 @@ namespace osu.Game.Screens.Ranking
                             AutoSizeAxes = Axes.Y,
                             Direction = FillDirection.Vertical,
                             Spacing = new Vector2(0, 4),
-                            ChildrenEnumerable = changes?[i] is { } change ? new Drawable[] { s, change } : new Drawable[] { s },
+                            ChildrenEnumerable = changes?[i] is { } change ? new[] { s, change } : new[] { s },
                         },
                         new Box
                         {

@@ -4,8 +4,8 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using osu.Framework.Graphics;
 using osu.Framework.Testing;
+using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.UI;
 using osu.Game.Screens;
 using osu.Game.Screens.Play;
@@ -58,7 +58,7 @@ namespace osu.Game.Medals.Awarders
             if (hitObjectContainer == null)
                 return false;
 
-            foreach (Drawable drawable in hitObjectContainer.AliveObjects)
+            foreach (DrawableHitObject drawable in hitObjectContainer.AliveObjects)
             {
                 if (!drawable_spinner_type.IsInstanceOfType(drawable))
                     continue;

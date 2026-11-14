@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 
 using System;
@@ -34,6 +34,7 @@ using osu.Game.Users.Drawables;
 using osuTK;
 using osuTK.Graphics;
 using CommonStrings = osu.Game.Localisation.CommonStrings;
+using WebCommonStrings = osu.Game.Resources.Localisation.Web.CommonStrings;
 
 namespace osu.Game.Screens.Select
 {
@@ -91,11 +92,11 @@ namespace osu.Game.Screens.Select
         private OsuScrollContainer scoreScroll = null!;
         private Container scoreContainer = null!;
         private Container personalBest = null!;
-        private LegacyStableDropdown<BeatmapLeaderboardScope> scopeDropdown = null!;
         private Sprite noRecords = null!;
         private LoadingSpinner loadingSpinner = null!;
 
         private const float row_step = 52;
+
         // en stable el contenido de la fila llega a ~x258 (time-ago) / x236 (acc) en espacio 480; la
         // carta es un poco mas ancha que eso -> ~430 en el espacio x1.6.
         private const float list_width = 410;
@@ -103,7 +104,9 @@ namespace osu.Game.Screens.Select
 
         // la lista muestra max_rows a la vez (como stable); si hay mas, scrollean.
         private const float list_top = 150;
+
         private const float scroll_height = max_rows * row_step;
+
         // el Personal Best va pegado abajo del scroll (no forma parte), con un huequito.
         private const float pb_top = list_top + scroll_height + 12;
 
@@ -156,7 +159,7 @@ namespace osu.Game.Screens.Select
                     AutoSizeAxes = Axes.Y,
                 },
                 // se dibuja ultimo asi el menu abierto del dropdown queda arriba de los scores / "no records".
-                scopeDropdown = new LegacyStableDropdown<BeatmapLeaderboardScope>
+                new LegacyStableDropdown<BeatmapLeaderboardScope>
                 {
                     Anchor = Anchor.TopLeft,
                     Origin = Anchor.TopLeft,
@@ -191,7 +194,7 @@ namespace osu.Game.Screens.Select
             // torii: cuando el mouse entra a la region real de la leaderboard (la misma que captura
             // input) disparamos el scroll-a-la-seleccion una sola vez. la zona vacia de al lado no
             // entra aca (RPIAt da false ahi), asi sigue siendo solo para drag-scroll.
-            bool over = HoverScrollRequested != null && inputManager != null
+            bool over = HoverScrollRequested != null
                         && ReceivePositionalInputAt(inputManager.CurrentState.Mouse.Position);
 
             if (over && !wasLeaderboardHovered)
@@ -328,7 +331,7 @@ namespace osu.Game.Screens.Select
 
             var top = result.TopScores;
 
-            if (top == null || top.Count == 0)
+            if (top.Count == 0)
             {
                 noRecords.ClearTransforms();
                 noRecords.ScaleTo(0.9f).Then().ScaleTo(1f, 600, Easing.OutQuint);
@@ -364,7 +367,7 @@ namespace osu.Game.Screens.Select
                     ? $"#{pos:#,0} of {result.TotalScores:#,0}"
                     : result.UserScore.User.Username;
 
-                addAnimated(personalBest, new LegacyScoreRow(result.UserScore, name, null) { Y = 28 }, cascade++);
+                addAnimated(personalBest, new LegacyScoreRow(result.UserScore, name, null) { Y = 28 }, cascade);
             }
             else
             {
@@ -395,7 +398,7 @@ namespace osu.Game.Screens.Select
                             Font = LegacyFonts.Get(20, FontWeight.Light),
                         },
                     },
-                }, cascade++);
+                }, cascade);
             }
         }
 
@@ -587,7 +590,7 @@ namespace osu.Game.Screens.Select
                         items.Add(new OsuMenuItem(SongSelectStrings.WatchReplay, MenuItemType.Standard, () => songSelect.PresentScore(score, ScorePresentType.Gameplay)));
 
                     items.Add(new OsuMenuItem(CommonStrings.Export, MenuItemType.Standard, () => scoreManager.Export(score)));
-                    items.Add(new OsuMenuItem(osu.Game.Resources.Localisation.Web.CommonStrings.ButtonsDelete, MenuItemType.Destructive, () => dialogOverlay?.Push(new LocalScoreDeleteDialog(score))));
+                    items.Add(new OsuMenuItem(WebCommonStrings.ButtonsDelete, MenuItemType.Destructive, () => dialogOverlay?.Push(new LocalScoreDeleteDialog(score))));
 
                     return items.ToArray();
                 }
