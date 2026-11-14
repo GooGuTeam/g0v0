@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -157,6 +157,20 @@ namespace osu.Game.Screens.Play
         /// Whether the current player instance has been consumed via <see cref="consumePlayer"/>.
         /// </summary>
         private bool playerConsumed;
+
+        /// <summary>
+        /// Whether the user has acknowledged that the current player cannot submit its score.
+        /// See <see cref="SubmittingPlayer.ScoreSubmissionBlockedReason"/>.
+        /// </summary>
+        private bool scoreSubmissionConfirmed;
+
+        private PlayerLoaderScoreSubmissionNotice? scoreSubmissionNotice;
+
+        /// <summary>
+        /// Whether the loader is holding back the start of gameplay, waiting for the user to acknowledge
+        /// that the score of the loaded player will not be submitted.
+        /// </summary>
+        private bool awaitingScoreSubmissionConfirmation => !scoreSubmissionConfirmed && CurrentPlayer is SubmittingPlayer { ScoreSubmissionBlockedReason: not null };
 
         private LogoTrackingContainer content = null!;
         private IDisposable? logoTracking;
@@ -509,7 +523,9 @@ namespace osu.Game.Screens.Play
             if (!this.IsCurrentScreen())
                 return;
 
-            MetadataInfo.UserBlocked = !ReadyForGameplay && CurrentPlayer?.LoadState == LoadState.Ready;
+            MetadataInfo.UserBlocked = (!ReadyForGameplay || awaitingScoreSubmissionConfirmation) && CurrentPlayer?.LoadState == LoadState.Ready;
+
+            updateScoreSubmissionNotice();
 
             // We need to perform this check here rather than in OnHover as any number of children of VisualSettings
             // may also be handling the hover events.
@@ -550,6 +566,9 @@ namespace osu.Game.Screens.Play
         {
             if (!this.IsCurrentScreen())
                 return;
+
+            scoreSubmissionConfirmed = false;
+            clearScoreSubmissionNotice();
 
             CurrentPlayer = createPlayer();
             CurrentPlayer.Configuration.AutomaticallySkipIntro |= QuickRestart;
@@ -665,6 +684,7 @@ namespace osu.Game.Screens.Play
                        .MoveToX(-disclaimers.DrawWidth, CONTENT_OUT_DURATION * 2, Easing.OutQuint);
             sideContent.FadeOut(CONTENT_OUT_DURATION, Easing.OutQuint)
                        .MoveToX(sideContent.DrawWidth, CONTENT_OUT_DURATION * 2, Easing.OutQuint);
+            scoreSubmissionNotice?.FadeOut(CONTENT_OUT_DURATION, Easing.OutQuint);
 
             lowPassFilter?.CutoffTo(AudioFilter.MAX_LOWPASS_CUTOFF, CONTENT_OUT_DURATION);
             highPassFilter?.CutoffTo(0, CONTENT_OUT_DURATION);
@@ -680,6 +700,8 @@ namespace osu.Game.Screens.Play
                 !playerConsumed
                 // don't push unless the player is completely loaded
                 && CurrentPlayer?.LoadState == LoadState.Ready
+                // don't push unless the user has acknowledged that the score cannot be submitted (if applicable).
+                && !awaitingScoreSubmissionConfirmation
                 // don't push unless the player is ready to start gameplay
                 && ReadyForGameplay;
 
@@ -739,6 +761,37 @@ namespace osu.Game.Screens.Play
         {
             scheduledPushPlayer?.Cancel();
             scheduledPushPlayer = null;
+        }
+
+        /// <summary>
+        /// Displays the notice asking the user to acknowledge that the loaded player will not be able to submit its score.
+        /// Gameplay will not start until that notice has been confirmed (see <see cref="awaitingScoreSubmissionConfirmation"/>).
+        /// </summary>
+        private void updateScoreSubmissionNotice()
+        {
+            if (scoreSubmissionNotice != null || scoreSubmissionConfirmed)
+                return;
+
+            if (CurrentPlayer is not SubmittingPlayer { ScoreSubmissionBlockedReason: { } blockedReason })
+                return;
+
+            AddInternal(scoreSubmissionNotice = new PlayerLoaderScoreSubmissionNotice(blockedReason)
+            {
+                Anchor = Anchor.BottomCentre,
+                Origin = Anchor.BottomCentre,
+                Margin = new MarginPadding { Bottom = ScreenFooter.HEIGHT + 20 },
+                Confirmed = () =>
+                {
+                    scoreSubmissionConfirmed = true;
+                    scoreSubmissionNotice?.FadeOut(CONTENT_OUT_DURATION, Easing.OutQuint);
+                },
+            });
+        }
+
+        private void clearScoreSubmissionNotice()
+        {
+            scoreSubmissionNotice?.Expire();
+            scoreSubmissionNotice = null;
         }
 
         private void endHighPerformance()

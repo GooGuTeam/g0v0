@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -19,6 +19,7 @@ using osu.Framework.Utils;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -119,6 +120,8 @@ namespace osu.Game.Tests.Visual.Gameplay
         public override void SetUpSteps()
         {
             base.SetUpSteps();
+
+            AddStep("ensure logged in", () => ((DummyAPIAccess)API).Login("test", "test"));
 
             AddStep("set up request handling", () =>
             {
@@ -589,6 +592,100 @@ namespace osu.Game.Tests.Visual.Gameplay
                 savedMasterVolume = audioManager.Volume.Value;
                 savedMutedState = volumeOverlay.IsMuted.Value;
             });
+        }
+
+        [Test]
+        public void TestScoreSubmissionFailureHoldsGameplayUntilConfirmed()
+        {
+            AddStep("fail score token requests", () => ((DummyAPIAccess)API).HandleRequest = req =>
+            {
+                switch (req)
+                {
+                    case GetScoresRequest getScores:
+                        getScores.TriggerSuccess(new APIScoresCollection { Scores = [] });
+                        return true;
+
+                    case CreateSoloScoreRequest createSoloScore:
+                        createSoloScore.TriggerFailure(new InvalidOperationException("test failure"));
+                        return true;
+
+                    default:
+                        return false;
+                }
+            });
+
+            AddStep("load dummy beatmap", () => resetPlayer(false));
+
+            AddUntilStep("wait for player load", () => player?.LoadState == LoadState.Ready);
+            AddUntilStep("wait for notice", () => getNotice() != null);
+
+            AddAssert("notice laid out", () => getNotice()!.ChildrenOfType<RoundedButton>().Single().DrawWidth, () => Is.GreaterThan(0));
+
+            // the loader must not push the player on its own while the notice is up.
+            AddWaitStep("wait for push delay", 5);
+
+            AddAssert("loader still current", () => loader.IsCurrentScreen());
+            AddAssert("player not yet entered", () => !player.IsCurrentScreen());
+
+            AddStep("confirm notice", () => getNotice()!.ChildrenOfType<RoundedButton>().Single().TriggerClick());
+
+            AddUntilStep("player becomes current", () => player.IsCurrentScreen());
+
+            PlayerLoaderScoreSubmissionNotice getNotice() => loader.ChildrenOfType<PlayerLoaderScoreSubmissionNotice>().SingleOrDefault();
+        }
+
+        [Test]
+        public void TestMissingTokenRequestDoesNotHoldGameplay()
+        {
+            AddStep("load non-online beatmap", () =>
+            {
+                prepareBeatmap();
+                Beatmap.Value.BeatmapInfo.OnlineID = 0;
+
+                LoadScreen(loader = new TestPlayerLoader(() => player = new TestPlayer(false, false)));
+            });
+
+            AddUntilStep("player becomes current", () => player?.IsCurrentScreen() == true);
+
+            AddAssert("player not blocked", () => player.ScoreSubmissionBlockedReason, () => Is.Null);
+        }
+
+        [Test]
+        public void TestUnsubmittableBeatmapDoesNotHoldGameplayWhenLoggedOut()
+        {
+            AddStep("log out", () => ((DummyAPIAccess)API).Logout());
+
+            AddStep("load non-online beatmap", () =>
+            {
+                prepareBeatmap();
+                Beatmap.Value.BeatmapInfo.OnlineID = 0;
+
+                LoadScreen(loader = new TestPlayerLoader(() => player = new TestPlayer(false, false)));
+            });
+
+            AddUntilStep("player becomes current", () => player?.IsCurrentScreen() == true);
+
+            AddAssert("player not blocked", () => player.ScoreSubmissionBlockedReason, () => Is.Null);
+        }
+
+        [Test]
+        public void TestLoggedOutHoldsGameplayUntilConfirmed()
+        {
+            AddStep("log out", () => ((DummyAPIAccess)API).Logout());
+            AddStep("load dummy beatmap", () => resetPlayer(false));
+
+            AddUntilStep("wait for player load", () => player?.LoadState == LoadState.Ready);
+            AddUntilStep("wait for notice", () => getNotice() != null);
+
+            AddAssert("notification not posted", () => notificationOverlay.UnreadCount.Value, () => Is.EqualTo(0));
+            AddAssert("loader still current", () => loader.IsCurrentScreen());
+            AddAssert("player not yet entered", () => !player.IsCurrentScreen());
+
+            AddStep("confirm notice", () => getNotice()!.ChildrenOfType<RoundedButton>().Single().TriggerClick());
+
+            AddUntilStep("player becomes current", () => player.IsCurrentScreen());
+
+            PlayerLoaderScoreSubmissionNotice getNotice() => loader.ChildrenOfType<PlayerLoaderScoreSubmissionNotice>().SingleOrDefault();
         }
 
         [Test]

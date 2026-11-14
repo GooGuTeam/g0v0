@@ -17,10 +17,8 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Audio;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
-using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
-using osu.Framework.Logging;
 using osu.Framework.Screens;
 using osu.Framework.Threading;
 using osu.Game.Database;
@@ -32,7 +30,6 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Input.Bindings;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
-using osu.Game.Online.Chat;
 using osu.Game.Online.Matchmaking;
 using osu.Game.Online.Matchmaking.Requests;
 using osu.Game.Online.Multiplayer;
@@ -44,7 +41,6 @@ using osu.Game.Screens.Footer;
 using osu.Game.Screens.OnlinePlay.Matchmaking.Match;
 using osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay;
 using osuTK;
-using osuTK.Graphics;
 
 namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
 {
@@ -97,7 +93,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
         private DrawableSample waitingLoop = null!;
         private ScheduledDelegate? pushScreenDelegate;
 
-        private int? userRating;
+        private MatchmakingUserStats? userStats;
 
         private GridContainer mainGrid = null!;
 
@@ -330,7 +326,6 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                     }
                 }
             };
-
         }
 
         protected override void LoadComplete()
@@ -402,10 +397,11 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                            }), cancellation.Token);
 
             // Global (incremental) updates will not contain the user rating, so keep the one we already received from initial status data.
-            if (status.UserRating != null)
-                userRating = status.UserRating;
+            // The rank value can be null if the rating is provisional, so we don't check for it here.
+            if (status.UserRating != null && status.UserSigma != null)
+                userStats = new MatchmakingUserStats(status.UserRating.Value, status.UserSigma.Value, status.UserRank);
 
-            ratingGraph.SetData(status.RatingDistribution, userRating);
+            ratingGraph.SetData(status.RatingDistribution, userStats?.Rating);
 
             loadRecentMatches(status.RecentMatches.OfType<RankedPlayRoomState>().ToArray()).FireAndForget();
         });
@@ -461,7 +457,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
         {
             resultPanelContainer.Clear();
             resultPanelContainer.LayoutDuration = 0;
-            userRating = null;
+            userStats = null;
             ratingGraph.SetData([], null);
 
             cloud.Users = Array.Empty<APIUser>();
@@ -692,29 +688,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                         }
                     };
 
-                    using (BeginDelayedSequence(2000))
-                    {
-                        pushScreenDelegate = Schedule(() =>
-                        {
-                            if (client.Room == null)
-                            {
-                                Logger.Log("Room became null, returning to idle");
-                                queue.CurrentState.Value = MatchmakingScreenState.Idle;
-                                return;
-                            }
-
-                            switch (poolType)
-                            {
-                                case MatchmakingPoolType.QuickPlay:
-                                    this.Push(new ScreenMatchmaking(client.Room));
-                                    break;
-
-                                case MatchmakingPoolType.RankedPlay:
-                                    this.Push(new RankedPlayScreen(client.Room));
-                                    break;
-                            }
-                        });
-                    }
+                    pushScreenDelegate = Scheduler.AddDelayed(attemptJoinRoom, 2000);
 
                     break;
 
@@ -762,6 +736,29 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
         {
             waitingLoopChannel?.Stop();
             waitingLoopChannel?.Dispose();
+        }
+
+        private void attemptJoinRoom()
+        {
+            if (currentState.Value != MatchmakingScreenState.InRoom)
+                return;
+
+            if (client.Room == null)
+            {
+                pushScreenDelegate = Scheduler.Add(attemptJoinRoom);
+                return;
+            }
+
+            switch (poolType)
+            {
+                case MatchmakingPoolType.QuickPlay:
+                    this.Push(new ScreenMatchmaking(client.Room));
+                    break;
+
+                case MatchmakingPoolType.RankedPlay:
+                    this.Push(new RankedPlayScreen(client.Room));
+                    break;
+            }
         }
 
         public partial class PanelBackground : CompositeDrawable
@@ -823,8 +820,6 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
             {
             }
         }
-
-
 
         private partial class QueueTimerText : OsuSpriteText
         {

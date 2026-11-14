@@ -53,7 +53,22 @@ namespace osu.Game.Graphics.Containers
 
         private readonly bool keepRightPadding;
 
-        protected OsuRearrangeableListItem(TModel item, bool keepRightPadding = false)
+        // This is reserved to keep compatibility with upstream rulesets.
+        protected OsuRearrangeableListItem(TModel item)
+            // ReSharper disable once IntroduceOptionalParameters.Global
+            : this(item, false)
+        {
+        }
+
+        /// <summary>
+        /// Create a list item, optionally reserving space on the right-hand side equal to the drag handle column.
+        /// </summary>
+        /// <param name="item">The item to display.</param>
+        /// <param name="keepRightPadding">
+        /// Whether to reserve a right-hand spacer as wide as the drag handle column, so that content appears
+        /// horizontally centred within the full width of the item. Defaults to <c>false</c>.
+        /// </param>
+        protected OsuRearrangeableListItem(TModel item, bool keepRightPadding)
             : base(item)
         {
             RelativeSizeAxes = Axes.X;

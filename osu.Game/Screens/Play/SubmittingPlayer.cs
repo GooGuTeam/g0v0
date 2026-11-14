@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -64,6 +64,17 @@ namespace osu.Game.Screens.Play
         private readonly Lock scoreSubmissionLock = new Lock();
         private TaskCompletionSource<bool> scoreSubmissionSource;
 
+        /// <summary>
+        /// Why would the gameplay be blocked (about score submission).
+        /// </summary>
+        /// <remarks>
+        /// Only set when token retrieval failed for reasons which are not inherent to the beatmap or the ruleset being played
+        /// (e.g. the online services being unavailable, or the user not being logged in), and when this player is willing to
+        /// continue play regardless (see <see cref="ShouldExitOnTokenRetrievalFailure"/>).
+        /// <see cref="PlayerLoader"/> holds back entering the player until the user has confirmed.
+        /// </remarks>
+        public LocalisableString? ScoreSubmissionBlockedReason { get; private set; }
+
         protected SubmittingPlayer(PlayerConfiguration configuration = null)
             : base(configuration)
         {
@@ -112,17 +123,21 @@ namespace osu.Game.Screens.Play
                 return false;
             }
 
-            if (!api.IsLoggedIn || api.State.Value == APIState.Failing)
-            {
-                handleTokenFailure(new InvalidOperationException("Online functionality is not available."), displayNotification: api.State.Value == APIState.Failing);
-                return false;
-            }
-
+            // the request is constructed before checking the state of the online services, so that a beatmap or ruleset
+            // which can never be submitted to (e.g. one which has no online representation) is not treated as a failure.
             var req = CreateTokenRequest();
 
             if (req == null)
             {
                 handleTokenFailure(new InvalidOperationException("Request could not be constructed."));
+                return false;
+            }
+
+            if (!api.IsLoggedIn || api.State.Value == APIState.Failing)
+            {
+                handleTokenFailure(new InvalidOperationException("Online functionality is not available."),
+                    displayNotification: api.State.Value == APIState.Failing,
+                    blockedReason: ScoreSubmissionStrings.OnlineUnavailable);
                 return false;
             }
 
@@ -132,7 +147,7 @@ namespace osu.Game.Screens.Play
                 token = r.ID;
                 tcs.SetResult(true);
             };
-            req.Failure += ex => handleTokenFailure(ex, displayNotification: true);
+            req.Failure += ex => handleTokenFailure(ex, displayNotification: true, blockedReason: getUserFacingAPIError(ex));
 
             api.Queue(req);
 
@@ -142,20 +157,28 @@ namespace osu.Game.Screens.Play
 
             return true;
 
-            void handleTokenFailure(Exception exception, bool displayNotification = false)
+            void handleTokenFailure(Exception exception, bool displayNotification = false, LocalisableString? blockedReason = null)
             {
-                tcs.SetResult(false);
-
                 bool shouldExit = ShouldExitOnTokenRetrievalFailure(exception);
 
-                if (displayNotification || shouldExit)
+                // gameplay is going to continue without the score being submitted.
+                // remember the reason, so that the user can be asked to confirm before gameplay starts (see `ScoreSubmissionBlockedReason`).
+                bool gameplayBlocked = !shouldExit && blockedReason != null;
+
+                if (gameplayBlocked)
+                    ScoreSubmissionBlockedReason = blockedReason;
+
+                tcs.SetResult(false);
+
+                // when gameplay is blocked, the reason is surfaced by the confirmation prompt in the player loader instead.
+                if (!gameplayBlocked && (displayNotification || shouldExit))
                 {
                     LocalisableString whatWillHappen = shouldExit
-                        ? ScoreSubmissionStrings.CannotStartPlay
-                        : ScoreSubmissionStrings.NotSubmittingScore;
+                        ? NotificationsStrings.CannotStartPlay
+                        : NotificationsStrings.ScoreWillNotBeSubmitted;
 
                     if (string.IsNullOrEmpty(exception.Message))
-                        notifications?.Post(new ScoreSubmissionFailureNotification(whatWillHappen, ScoreSubmissionStrings.TokenRetrievalFailure));
+                        notifications?.Post(new ScoreSubmissionFailureNotification(whatWillHappen, NotificationsStrings.FailedToRetrieveScoreSubmissionToken));
                     else
                         notifications?.Post(new ScoreSubmissionFailureNotification(whatWillHappen, getUserFacingAPIError(exception)));
                 }
@@ -346,14 +369,32 @@ namespace osu.Game.Screens.Play
             return scoreSubmissionSource.Task;
         }
 
-        private static LocalisableString getUserFacingAPIError(Exception exception) => exception.Message switch
+        private static LocalisableString getUserFacingAPIError(Exception exception)
         {
-            @"missing token header" or @"invalid client hash" or @"invalid verification hash"
-                or @"invalid token" or @"outdated client" => ScoreSubmissionStrings.InvalidClient,
-            @"invalid or missing beatmap_hash" => ScoreSubmissionStrings.BeatmapMismatch,
-            @"expired token" => ScoreSubmissionStrings.InvalidTime,
-            _ => exception.Message,
-        };
+            switch (exception.Message)
+            {
+                case @"missing token header":
+                case @"invalid client hash":
+                case @"invalid verification hash":
+                case @"invalid token":
+                case @"outdated client":
+                    return NotificationsStrings.PreventSubmittingWithOutdatedClient;
+
+                case @"invalid or missing beatmap_hash":
+                    return NotificationsStrings.PreventSubmittingWithInvalidBeatmapHash;
+
+                case @"expired token":
+                    return NotificationsStrings.PreventSubmittingWithExpiredToken;
+
+                // Exception message, may be actually displayed to user.
+                // See https://github.com/ppy/osu/blob/382c3bf717b7736bc74387b82249757ef5b12947/osu.Game/Screens/Play/SubmittingPlayer.cs#L111
+                case @"Online functionality is not available.":
+                    return NotificationsStrings.OnlineFunctionalityIsNotAvailable;
+
+                default:
+                    return exception.Message;
+            }
+        }
 
         protected override ResultsScreen CreateResults(ScoreInfo score) => new SoloResultsScreen(score)
         {

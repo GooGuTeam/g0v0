@@ -76,7 +76,6 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ToriiLegacySongSelectFooter, false);
             SetDefault(OsuSetting.ToriiStableResults, false);
             SetDefault(OsuSetting.ToriiLegacyFont, false);
-            SetDefault(OsuSetting.UnslantedSongSelectUI, false);
 
             // Online settings
             SetDefault(OsuSetting.Username, string.Empty);
@@ -531,7 +530,6 @@ namespace osu.Game.Configuration
         ToriiLegacySongSelectFooter,
         ToriiStableResults,
         ToriiLegacyFont,
-        UnslantedSongSelectUI,
 
         /// <summary>
         /// Uses the mod-specific difficulty and performance algorithms of rulesets which provide them (for example Relax in osu!).
