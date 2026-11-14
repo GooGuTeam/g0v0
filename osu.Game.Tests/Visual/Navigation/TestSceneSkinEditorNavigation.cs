@@ -109,7 +109,9 @@ namespace osu.Game.Tests.Visual.Navigation
         public void TestMutateProtectedSkinFromMainMenu_UndoToInitialStateIsCorrect()
         {
             AddStep("set default skin", () => Game.Dependencies.Get<SkinManager>().CurrentSkinInfo.SetDefault());
-            AddStep("import beatmap", () => BeatmapImportHelper.LoadQuickOszIntoOsu(Game).WaitSafely());
+            BeatmapSetInfo beatmapSet = null;
+            AddStep("import beatmap", () => beatmapSet = BeatmapImportHelper.LoadQuickOszIntoOsu(Game).GetResultSafely());
+            AddStep("select beatmap", () => Game.Beatmap.Value = Game.BeatmapManager.GetWorkingBeatmap(beatmapSet.Beatmaps.First(b => b.Ruleset.OnlineID == 0)));
 
             openSkinEditor();
             AddUntilStep("current skin is mutable", () => !Game.Dependencies.Get<SkinManager>().CurrentSkin.Value.SkinInfo.Value.Protected);
@@ -453,6 +455,7 @@ namespace osu.Game.Tests.Visual.Navigation
 
         private void openSkinEditor()
         {
+            AddUntilStep("skin editor overlay ready", () => Game.ChildrenOfType<SkinEditorOverlay>().SingleOrDefault()?.IsLoaded == true);
             toggleSkinEditor();
             AddUntilStep("skin editor loaded", () => skinEditor != null);
         }

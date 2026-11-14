@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Extensions;
+using osu.Framework.Graphics.Containers;
 using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Framework.Testing;
@@ -186,7 +187,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         [FlakyTest]
         public void TestBeatmapListingFilter()
         {
-            AddStep("set playmode to taiko", () => ((DummyAPIAccess)API).LocalUser.Value.PlayMode = "taiko");
+            AddUntilStep("wait for toolbar to load", () => Game.Toolbar.IsLoaded);
 
             AddStep("open beatmap listing", () =>
             {
@@ -196,7 +197,7 @@ namespace osu.Game.Tests.Visual.SongSelect
                 InputManager.ReleaseKey(Key.ControlLeft);
             });
 
-            AddUntilStep("wait for load", () => Game.ChildrenOfType<BeatmapListingOverlay>().SingleOrDefault()?.IsLoaded, () => Is.True);
+            AddUntilStep("wait for listing to open", () => Game.ChildrenOfType<BeatmapListingOverlay>().SingleOrDefault()?.State.Value, () => Is.EqualTo(Visibility.Visible));
 
             checkRecommendedDifficulty(3);
 
@@ -217,9 +218,9 @@ namespace osu.Game.Tests.Visual.SongSelect
             checkRecommendedDifficulty(5);
 
             void checkRecommendedDifficulty(double starRating)
-                => AddAssert($"recommended difficulty is {starRating}",
-                    () => Game.ChildrenOfType<BeatmapSearchGeneralFilterRow>().Single().ChildrenOfType<OsuSpriteText>()
-                              .Any(t => t.Text == LocalisableString.Interpolate($"{SearchGeneral.Recommended.GetLocalisableDescription()} ({starRating.FormatStarRating()})")));
+                => AddUntilStep($"recommended difficulty is {starRating}",
+                    () => Game.ChildrenOfType<BeatmapSearchGeneralFilterRow>().Single().ChildrenOfType<OsuSpriteText>().Select(t => t.Text).ToArray(),
+                    () => Does.Contain(LocalisableString.Interpolate($"{SearchGeneral.Recommended.GetLocalisableDescription()} ({starRating.FormatStarRating()})")));
         }
 
         private BeatmapSetInfo importBeatmapSet(IEnumerable<RulesetInfo> difficultyRulesets)
@@ -263,6 +264,15 @@ namespace osu.Game.Tests.Visual.SongSelect
             public NoBeatmapUpdateGame(Storage storage, IAPIProvider api, string[] args = null)
                 : base(storage, api, args)
             {
+            }
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+
+                // TestOsuGame logs in during LoadComplete, replacing the profile. Set its default mode
+                // before the asynchronously preloaded listing reads it, not after reaching the main menu.
+                ((DummyAPIAccess)API).LocalUser.Value.PlayMode = "taiko";
             }
 
             protected override IBeatmapUpdater CreateBeatmapUpdater() => new TestBeatmapUpdater();

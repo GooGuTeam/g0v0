@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Net.WebSockets;
@@ -163,11 +163,22 @@ namespace osu.Game.IPC
 
             await runningTokenSource.CancelAsync().ConfigureAwait(false);
 
-            if (readWriteTask != null)
-                await readWriteTask.WaitAsync(stoppingToken).ConfigureAwait(false);
+            if (readWriteTask == null)
+                return;
 
-            if (stoppingToken.IsCancellationRequested)
+            try
+            {
+                await readWriteTask.WaitAsync(stoppingToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // a forced shutdown aborts the socket and then still joins the receive loop: the loop must not be left
+                // pending when the caller tears down the listener, otherwise the abort of its outstanding receive is
+                // left unobserved (see https://github.com/dotnet/runtime/issues/126148).
                 webSocket.Abort();
+                await readWriteTask.ConfigureAwait(false);
+                throw;
+            }
         }
 
         public void Dispose()
