@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -29,6 +29,7 @@ namespace osu.Game.Graphics.Backgrounds
         public Action? StoryboardLoaded { get; set; }
 
         public readonly BindableBool ShowStoryboard = new BindableBool(true);
+
         [Resolved(CanBeNull = true)]
         private MusicController? musicController { get; set; }
 

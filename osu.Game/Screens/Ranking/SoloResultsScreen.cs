@@ -80,8 +80,7 @@ namespace osu.Game.Screens.Ranking
             }
 
             // A personal-best badge must be backed by the user's best score, not inferred from rank or placement.
-            bool isPersonalBest = Score.UserID == api.LocalUser.Value.OnlineID && result.UserScore != null
-                                  && (Score.Equals(result.UserScore) || Score.MatchesOnlineID(result.UserScore));
+            bool isPersonalBest = Score.UserID == api.LocalUser.Value.OnlineID && result.UserScore != null && (Score.Equals(result.UserScore) || Score.MatchesOnlineID(result.UserScore));
             Schedule(() => IsPersonalBest.Value = isPersonalBest);
 
             var clonedScores = result.AllScores.Select(s => s.DeepClone()).ToArray();
