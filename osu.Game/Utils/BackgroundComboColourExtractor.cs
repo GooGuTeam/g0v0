@@ -1,14 +1,12 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using osu.Framework.Graphics;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Processing.Processors.Quantization;
+using osu.Framework.Imaging;
 
 namespace osu.Game.Utils
 {
@@ -22,6 +20,9 @@ namespace osu.Game.Utils
         // Resolution to downscale to before quantizing.
         private const int max_dimension = 128;
 
+        // Pixels more transparent than this are not considered part of the background's palette.
+        private const byte min_alpha = 128;
+
         // Ranking criteria: avoid colours with lightness <50 or >220.
         private const float min_lightness = 50 / 255f;
         private const float max_lightness = 220 / 255f;
@@ -30,24 +31,27 @@ namespace osu.Game.Utils
         {
             using var image = Image.Load<Rgba32>(imageStream);
 
-            image.Mutate(context => context.Resize(new ResizeOptions
-            {
-                Size = new Size(max_dimension, max_dimension),
-                Mode = ResizeMode.Max,
-            }));
+            var size = FitWithin(image.Size, max_dimension);
+            image.Mutate(context => { context.Resize(size, ImageResampler.Bicubic); });
 
-            var quantizer = new WuQuantizer(new QuantizerOptions
-            {
-                MaxColors = MAX_COLOUR_COUNT,
-            });
+            return ColourQuantizer.Quantize(image.Pixels, MAX_COLOUR_COUNT, min_alpha)
+                                  .Select(clampLightness)
+                                  .ToArray();
+        }
 
-            using var frameQuantizer = quantizer.CreatePixelSpecificQuantizer<Rgba32>(SixLabors.ImageSharp.Configuration.Default);
-            using var result = frameQuantizer.BuildPaletteAndQuantizeFrame(image.Frames.RootFrame, image.Bounds);
+        /// <summary>
+        /// Scales the given size down until both dimensions fit within <paramref name="maxDimension"/>, preserving aspect ratio.
+        /// </summary>
+        internal static Size FitWithin(Size size, int maxDimension)
+        {
+            if (size.Width <= maxDimension && size.Height <= maxDimension)
+                return size;
 
-            return result.Palette.ToArray()
-                         .Where(p => p.A >= 128)
-                         .Select(p => clampLightness(new Colour4(p.R, p.G, p.B, 255)))
-                         .ToArray();
+            float scale = maxDimension / (float)Math.Max(size.Width, size.Height);
+
+            return new Size(
+                Math.Clamp((int)MathF.Round(size.Width * scale), 1, maxDimension),
+                Math.Clamp((int)MathF.Round(size.Height * scale), 1, maxDimension));
         }
 
         private static Colour4 clampLightness(Colour4 colour)
