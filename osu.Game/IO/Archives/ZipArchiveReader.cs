@@ -76,7 +76,19 @@ namespace osu.Game.IO.Archives
                 {
                     int length = (int)entry.Size;
                     var owner = MemoryPool<byte>.Shared.Rent(length);
-                    s.ReadExactly(owner.Memory.Span[..length]);
+
+                    try
+                    {
+                        s.ReadExactly(owner.Memory.Span[..length]);
+                    }
+                    catch
+                    {
+                        // the rental is owned by us until the stream below takes over, so a truncated entry
+                        // or a decompression failure must not leave it unreturned.
+                        owner.Dispose();
+                        throw;
+                    }
+
                     return new MemoryOwnerMemoryStream(owner, length);
                 }
 
@@ -112,6 +124,9 @@ namespace osu.Game.IO.Archives
 
             protected override void Dispose(bool disposing)
             {
+                // the stream reads straight out of the pooled buffer, so it must be disposed
+                // before the buffer is handed back to the pool.
+                stream?.Dispose();
                 owner?.Dispose();
                 base.Dispose(disposing);
             }
