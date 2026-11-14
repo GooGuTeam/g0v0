@@ -23,6 +23,11 @@ g0v0-server. Any client that implements the g0v0! Standard is fully compatible w
 server, and g0v0! is the reference implementation. g0v0! Standard changes have been flagged in the differences list
 above.
 
+## Hitsounding
+
+The editor includes a dedicated hitsounding mode for inspecting and editing sample points and volumes across a beatmap.
+It provides sample and additions lanes, selection controls, sample-set previews, and a sample gallery.
+
 ## Download
 
 g0v0! is available for Windows (x64 / ARM64), macOS (Intel / Apple Silicon), Linux (x64 / ARM64), Android, and iOS. Grab

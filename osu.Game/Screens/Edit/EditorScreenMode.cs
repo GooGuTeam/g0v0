@@ -20,6 +20,9 @@ namespace osu.Game.Screens.Edit
         [LocalisableDescription(typeof(EditorStrings), nameof(EditorStrings.TimingScreen))]
         Timing,
 
+        [LocalisableDescription(typeof(EditorStrings), nameof(EditorStrings.HitSoundingScreen))]
+        HitSounding,
+
         [LocalisableDescription(typeof(EditorStrings), nameof(EditorStrings.VerifyScreen))]
         Verify,
     }

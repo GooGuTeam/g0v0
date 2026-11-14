@@ -237,6 +237,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.EditorTimelineShowTimingChanges, true);
             SetDefault(OsuSetting.EditorTimelineShowBreaks, true);
             SetDefault(OsuSetting.EditorTimelineShowTicks, true);
+            SetDefault(OsuSetting.EditorHitSoundingNormalVisibility, HitSoundingNormalVisibility.HideNormal0);
 
             SetDefault(OsuSetting.EditorContractSidebars, false);
 
@@ -477,6 +478,7 @@ namespace osu.Game.Configuration
         EditorScaleOrigin,
         EditorRotationOrigin,
         EditorTimelineShowBreaks,
+        EditorHitSoundingNormalVisibility,
         EditorAdjustExistingObjectsOnTimingChanges,
         AlwaysRequireHoldingForPause,
         MultiplayerShowInProgressFilter,
