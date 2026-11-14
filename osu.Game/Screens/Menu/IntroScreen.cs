@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -62,6 +62,9 @@ namespace osu.Game.Screens.Menu
         private OsuScreen nextScreen;
 
         [Resolved]
+        private OsuConfigManager config { get; set; } = null!;
+
+        [Resolved]
         private AudioManager audio { get; set; }
 
         [Resolved]
@@ -86,7 +89,7 @@ namespace osu.Game.Screens.Menu
         private BeatmapManager beatmaps { get; set; }
 
         [BackgroundDependencyLoader]
-        private void load(OsuConfigManager config, Framework.Game game, RealmAccess realm, IAPIProvider api)
+        private void load(RealmAccess realm, IAPIProvider api)
         {
             // prevent user from changing beatmap while the intro is still running.
             beatmap = Beatmap.BeginLease(false);
@@ -99,8 +102,21 @@ namespace osu.Game.Screens.Menu
             else
                 seeya = audio.Samples.Get(SeeyaSampleName);
 
+            if (config.Get<bool>(OsuSetting.UseCustomThemeMusic))
+            {
+                var customThemeMusic = ThemeMusic.GetBeatmapSet(config, realm, out bool isAvailable);
+
+                if (isAvailable && customThemeMusic != null)
+                {
+                    var working = beatmaps.GetWorkingBeatmap(customThemeMusic.Beatmaps.First(), refetch: true);
+
+                    if (hasAllFiles(working))
+                        initialBeatmap = working;
+                }
+            }
+
             // if the user has requested not to play theme music, we should attempt to find a random beatmap from their collection.
-            if (!MenuMusic.Value)
+            if (initialBeatmap == null && !MenuMusic.Value)
             {
                 realm.Run(r =>
                 {
@@ -253,11 +269,17 @@ namespace osu.Game.Screens.Menu
 
             if (initialBeatmap != null)
             {
-                initialBeatmap.PrepareTrackForPreview(false, -2600);
+                bool useSpecificOffset = ThemeMusic.UseSpecificOffset(initialBeatmap, config);
+
+                initialBeatmap.PrepareTrackForPreview(false, useSpecificOffset ? ThemeMusic.PREVIEW_OFFSET : -2600);
+
+                // Manually reset the restart point to the start when the custom theme should not start from its preview point.
+                if (useSpecificOffset && !config.Get<bool>(OsuSetting.ThemeMusicStartFromPreview))
+                    Track.RestartPoint = 0;
 
                 drawableTrack.VolumeTo(0);
                 drawableTrack.Restart();
-                drawableTrack.VolumeTo(1, 2600, Easing.InCubic);
+                drawableTrack.VolumeTo(1, useSpecificOffset ? -ThemeMusic.PREVIEW_OFFSET : 2600, Easing.InCubic);
             }
             else
             {

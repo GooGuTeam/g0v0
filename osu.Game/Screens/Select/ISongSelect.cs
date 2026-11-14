@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Collections.Generic;
 using osu.Framework.Allocation;
@@ -20,6 +20,11 @@ namespace osu.Game.Screens.Select
         /// Requests the user for confirmation to delete the given beatmap set.
         /// </summary>
         void Delete(BeatmapSetInfo beatmapBeatmapSetInfo);
+
+        /// <summary>
+        /// Select the given beatmapset as the theme music played on startup.
+        /// </summary>
+        void UseAsThemeMusic(BeatmapSetInfo beatmapSet);
 
         /// <summary>
         /// Immediately restores any hidden beatmaps in the provided beatmap set.

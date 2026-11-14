@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -274,6 +274,9 @@ namespace osu.Game.Screens.Select
                     collectionItems.Add(new OsuMenuItem(CommonStrings.Manage, MenuItemType.Standard, manageCollectionsDialog.Show));
 
                 items.Add(new OsuMenuItem(CommonStrings.Collections) { Items = collectionItems });
+
+                // The beatmap set panel isn't included in SongSelect's `GetForwardActions()`.
+                items.Add(new OsuMenuItem(ThemeMusicStrings.UseAsThemeMusic, MenuItemType.Standard, () => songSelect?.UseAsThemeMusic(beatmapSet)));
 
                 if (beatmapSet.Beatmaps.Any(b => b.Hidden))
                     items.Add(new OsuMenuItem(SongSelectStrings.RestoreAllHidden, MenuItemType.Standard, () => songSelect?.RestoreAllHidden(beatmapSet)));
