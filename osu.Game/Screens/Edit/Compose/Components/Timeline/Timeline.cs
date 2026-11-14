@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -251,6 +251,10 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         {
             base.UpdateAfterChildren();
 
+            // Hidden editor screens may update before their timeline has a usable layout.
+            if (Content.DrawWidth <= 0 || editorClock.TrackLength <= 0)
+                return;
+
             if (handlingDragInput)
                 seekTrackToCurrent();
             else if (!editorClock.IsRunning)
@@ -328,6 +332,11 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         /// The total amount of time visible on the timeline.
         /// </summary>
         public double VisibleRange => editorClock.TrackLength / Zoom;
+
+        /// <summary>
+        /// Converts a screen position using the current animated zoom and scroll offset.
+        /// </summary>
+        public double TimeAtScreenSpacePosition(Vector2 position) => TimeAtPosition(Content.ToLocalSpace(position).X);
 
         public double TimeAtPosition(double x)
         {
