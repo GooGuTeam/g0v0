@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -798,7 +798,22 @@ namespace osu.Game.Database
 
                 realm_instances_created.Value++;
 
-                return Realm.GetInstance(getConfiguration());
+                // Update-thread instances need their scheduler for subscriptions. Short-lived worker
+                // instances must not retain a caller's context after its lifetime (e.g. NUnit teardown).
+                if (ThreadSafety.IsUpdateThread)
+                    return Realm.GetInstance(getConfiguration());
+
+                var previousContext = SynchronizationContext.Current;
+                SynchronizationContext.SetSynchronizationContext(null);
+
+                try
+                {
+                    return Realm.GetInstance(getConfiguration());
+                }
+                finally
+                {
+                    SynchronizationContext.SetSynchronizationContext(previousContext);
+                }
             }
             finally
             {

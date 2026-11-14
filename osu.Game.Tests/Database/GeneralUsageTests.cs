@@ -1,12 +1,14 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using NUnit.Framework.Legacy;
+using osu.Framework.Development;
 using osu.Framework.Extensions;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
@@ -24,6 +26,46 @@ namespace osu.Game.Tests.Database
         public void TestConstructRealm()
         {
             RunTestWithRealm((realm, _) => { realm.Run(r => r.Refresh()); });
+        }
+
+        /// <summary>
+        /// Ensures that a realm opened on a non-update thread does not capture the calling thread's
+        /// <see cref="SynchronizationContext"/>, while still restoring it for the caller.
+        /// </summary>
+        [Test]
+        public void TestNonUpdateThreadRealmDoesNotRetainSynchronizationContext()
+        {
+            WeakReference? synchronizationContextReference = null;
+            bool contextRestored = false;
+            bool contextRetainedWhileRealmOpen = false;
+
+            RunTestWithRealm((realm, _) =>
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    synchronizationContextReference = installSynchronizationContext();
+
+                    realm.Run(workerRealm =>
+                    {
+                        Assert.That(ThreadSafety.IsUpdateThread, Is.False, "Test must run on a non-update thread.");
+                        contextRestored = isProbeContextInstalled();
+
+                        // Drop this thread's reference before collecting. If the realm captured the
+                        // context in its native scheduler, the scheduler's GCHandle will keep it alive.
+                        SynchronizationContext.SetSynchronizationContext(null);
+                        collectGarbage();
+
+                        // The realm is still open here; make sure the collector could not consider it dead.
+                        GC.KeepAlive(workerRealm);
+
+                        contextRetainedWhileRealmOpen = synchronizationContextReference!.IsAlive;
+                    });
+                }, TaskCreationOptions.LongRunning | TaskCreationOptions.HideScheduler).GetAwaiter().GetResult();
+            });
+
+            Assert.That(contextRestored, Is.True, "The synchronization context was not restored after opening the realm.");
+            Assert.That(synchronizationContextReference, Is.Not.Null);
+            Assert.That(contextRetainedWhileRealmOpen, Is.False, "The realm retained the synchronization context.");
         }
 
         [Test]
@@ -182,6 +224,29 @@ namespace osu.Game.Tests.Database
                 {
                 }
             });
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static WeakReference installSynchronizationContext()
+        {
+            var context = new ProbeSynchronizationContext();
+            SynchronizationContext.SetSynchronizationContext(context);
+            return new WeakReference(context);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static bool isProbeContextInstalled() => SynchronizationContext.Current is ProbeSynchronizationContext;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void collectGarbage()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+
+        private sealed class ProbeSynchronizationContext : SynchronizationContext
+        {
         }
     }
 }

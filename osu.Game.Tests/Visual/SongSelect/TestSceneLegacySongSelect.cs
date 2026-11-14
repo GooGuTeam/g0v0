@@ -24,7 +24,7 @@ namespace osu.Game.Tests.Visual.SongSelect
             AddStep("enable legacy song select", () => Config.SetValue(OsuSetting.ToriiLegacyFooterUseSkin, true));
             ImportBeatmapForRuleset(0);
             LoadSongSelect();
-            AddAssert("legacy top loaded", () => SongSelect.ChildrenOfType<LegacySongSelectTop>().Single().IsLoaded);
+            AddUntilStep("legacy top loaded", () => SongSelect.ChildrenOfType<LegacySongSelectTop>().SingleOrDefault()?.IsLoaded == true);
             AddAssert("global footer owns legacy presentation", () => SongSelect.FooterContent.Value.Mode == ScreenFooterContent.FooterMode.Argon && SongSelect.AllowLegacyFooterSkinning);
             AddUntilStep("modern filter hidden", () => !SongSelect.ChildrenOfType<FilterControl>().Single().IsPresent);
             AddStep("disable legacy live", () => Config.SetValue(OsuSetting.ToriiLegacyFooterUseSkin, false));

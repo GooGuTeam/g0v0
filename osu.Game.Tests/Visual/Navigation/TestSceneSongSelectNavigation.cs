@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -101,6 +101,9 @@ namespace osu.Game.Tests.Visual.Navigation
         {
             BeatmapSetInfo beatmapInfo = null!;
 
+            // Import blocks updates, so prevent the menu track from queuing an automatic track change while it runs.
+            AddStep("stop menu track", () => Game.MusicController.Stop());
+
             AddStep("import beatmap", () =>
             {
                 var task = BeatmapImportHelper.LoadOszIntoOsu(Game, virtualTrack: true);
@@ -110,14 +113,12 @@ namespace osu.Game.Tests.Visual.Navigation
 
             AddStep("present beatmap", () => Game.PresentBeatmap(beatmapInfo));
 
+            waitForScreen<SoloSongSelect>();
+
             AddUntilStep("wait for track playing", () => Game.MusicController.IsPlaying);
 
             AddAssert("ensure time is reset to preview point",
-                () =>
-                {
-                    double timeFromPreviewPoint = Math.Abs(Game.MusicController.CurrentTrack.CurrentTime - beatmapInfo.Metadata.PreviewTime);
-                    return timeFromPreviewPoint < 5000;
-                });
+                () => Math.Abs(Game.MusicController.CurrentTrack.CurrentTime - beatmapInfo.Metadata.PreviewTime), () => Is.LessThan(5000));
         }
 
         [TestCase(true)]

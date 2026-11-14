@@ -582,6 +582,8 @@ namespace osu.Game.Screens.Select
 
             skinSource.SourceChanged += onSkinChangedWhileLegacy;
 
+            updateLegacyChrome();
+
             modSelectOverlayRegistration = overlayManager?.RegisterBlockingOverlay(modSelectOverlay);
 
             inputManager = GetContainingInputManager()!;
