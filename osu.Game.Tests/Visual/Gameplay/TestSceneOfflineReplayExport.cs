@@ -131,7 +131,7 @@ namespace osu.Game.Tests.Visual.Gameplay
 
                     var session = new OfflineReplayExportSession(request.StartingAt(startTime), ArgonSkin.CreateInfo(), skins, storage, new Dictionary<OsuSetting, string>(),
                         typeof(OsuRuleset), new Dictionary<string, string>(), output, new VideoRecordingOptions(frame_rate, width: 640, height: 360),
-                        RecordingBackend.Automatic, string.Empty, null, factory, CancellationToken.None);
+                        RecordingBackend.Automatic, @"ffmpeg", null, factory, CancellationToken.None);
 
                     try
                     {

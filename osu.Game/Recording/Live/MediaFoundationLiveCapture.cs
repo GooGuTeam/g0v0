@@ -1,7 +1,6 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using osu.Framework.Audio;

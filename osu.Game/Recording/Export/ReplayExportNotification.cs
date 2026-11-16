@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Game.Localisation;
-using osu.Game.Screens.Play;
 using osu.Game.Overlays.Notifications;
 
 namespace osu.Game.Recording.Export

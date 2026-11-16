@@ -33,11 +33,8 @@ using osu.Game.Online.API;
 using osu.Game.Resources;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
-using osu.Game.Scoring;
 using osu.Game.Skinning;
 using osuTK;
-using osu.Game.Recording;
-using osu.Game.Screens.Play;
 
 namespace osu.Game.Recording.Export
 {
