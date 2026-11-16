@@ -73,15 +73,6 @@ namespace osu.Game.Overlays.Settings.Sections.Torii
                 {
                     Keywords = new[] { @"footer", @"legacy", @"stable", @"bottom", @"buttons", @"song", @"select", @"torii" },
                 },
-                new SettingsItemV2(new FormCheckBox
-                {
-                    Caption = UserInterfaceStrings.UnslantedSongSelectUI,
-                    HintText = UserInterfaceStrings.UnslantedSongSelectUIDescription,
-                    Current = config.GetBindable<bool>(OsuSetting.UnslantedSongSelectUI),
-                })
-                {
-                    Keywords = new[] { @"slant", @"unslant", @"vertical", @"straight", @"shear", @"song", @"select", @"torii" },
-                },
             };
 
             stableSongSelect.BindValueChanged(_ => syncDisplay(), true);

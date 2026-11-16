@@ -10,6 +10,7 @@ using System.Net.Sockets;
 using System.Threading;
 using Newtonsoft.Json;
 using osu.Framework.Bindables;
+using osu.Framework.IO.Network;
 
 namespace osu.Game.Online.API
 {
@@ -109,6 +110,11 @@ namespace osu.Game.Online.API
             catch (HttpRequestException)
             {
                 // Network failure.
+                return false;
+            }
+            catch (WebRequestException requestException) when (requestException.IsConnectivityFailure)
+            {
+                // Network failure. The refresh token is still usable, so it must not be discarded.
                 return false;
             }
             catch

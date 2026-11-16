@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -16,7 +16,6 @@ using SharpCompress.Archives;
 using SharpCompress.Archives.Zip;
 using SharpCompress.Common;
 using SharpCompress.Readers;
-using SixLabors.ImageSharp.Memory;
 
 namespace osu.Game.IO.Archives
 {
@@ -75,9 +74,22 @@ namespace osu.Game.IO.Archives
 
                 if (entry.Size > 0)
                 {
-                    var owner = MemoryAllocator.Default.Allocate<byte>((int)entry.Size);
-                    s.ReadExactly(owner.Memory.Span);
-                    return new MemoryOwnerMemoryStream(owner);
+                    int length = (int)entry.Size;
+                    var owner = MemoryPool<byte>.Shared.Rent(length);
+
+                    try
+                    {
+                        s.ReadExactly(owner.Memory.Span[..length]);
+                    }
+                    catch
+                    {
+                        // the rental is owned by us until the stream below takes over, so a truncated entry
+                        // or a decompression failure must not leave it unreturned.
+                        owner.Dispose();
+                        throw;
+                    }
+
+                    return new MemoryOwnerMemoryStream(owner, length);
                 }
 
                 // due to a sharpcompress bug (https://github.com/adamhathcock/sharpcompress/issues/88),
@@ -102,15 +114,19 @@ namespace osu.Game.IO.Archives
             private readonly IMemoryOwner<byte> owner;
             private readonly Stream stream;
 
-            public MemoryOwnerMemoryStream(IMemoryOwner<byte> owner)
+            public MemoryOwnerMemoryStream(IMemoryOwner<byte> owner, int length)
             {
                 this.owner = owner;
 
-                stream = owner.Memory.AsStream();
+                // pooled memory is usually longer than requested, so the excess must not leak into the stream.
+                stream = owner.Memory[..length].AsStream();
             }
 
             protected override void Dispose(bool disposing)
             {
+                // the stream reads straight out of the pooled buffer, so it must be disposed
+                // before the buffer is handed back to the pool.
+                stream?.Dispose();
                 owner?.Dispose();
                 base.Dispose(disposing);
             }

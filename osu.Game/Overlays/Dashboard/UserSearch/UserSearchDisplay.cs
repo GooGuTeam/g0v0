@@ -1,11 +1,13 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Logging;
 using osu.Framework.Threading;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.API;
@@ -139,9 +141,18 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
 
         private ScheduledDelegate? queryChangedDebounce;
 
+        /// <summary>
+        /// The search request whose response is currently being awaited. Callbacks belonging to any other request
+        /// are ignored, as the search which issued them has been superseded.
+        /// </summary>
+        private SearchUsersRequest? activeSearch;
+
         private void queueUpdateSearch()
         {
             queryChangedDebounce?.Cancel();
+
+            // the query is about to change, so whatever is in flight no longer relates to what the user will see.
+            abandonActiveSearch();
 
             if (!api.IsLoggedIn)
             {
@@ -154,16 +165,55 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
 
         private void performSearch()
         {
+            abandonActiveSearch();
+
             if (string.IsNullOrEmpty(searchTextBox.Current.Value))
             {
+                clearErrorPlaceholder();
+
                 loading.Value = false;
                 return;
             }
 
             loading.Value = true;
+
             var getUsersRequest = new SearchUsersRequest(searchTextBox.Current.Value);
-            getUsersRequest.Success += showResults;
+            activeSearch = getUsersRequest;
+
+            getUsersRequest.Success += response =>
+            {
+                if (getUsersRequest != activeSearch)
+                    return;
+
+                showResults(response);
+            };
+
+            getUsersRequest.Failure += e =>
+            {
+                if (getUsersRequest != activeSearch)
+                    return;
+
+                if (e is OperationCanceledException)
+                    return;
+
+                Logger.Log($@"Failed to search for users: {e}", level: LogLevel.Important);
+
+                loading.Value = false;
+                showError(new OnlineErrorPlaceholder(e, performSearch));
+            };
+
             api.Queue(getUsersRequest);
+        }
+
+        /// <summary>
+        /// Forgets any in-flight search, so that its response can no longer update the displayed results.
+        /// </summary>
+        private void abandonActiveSearch()
+        {
+            var previous = activeSearch;
+
+            activeSearch = null;
+            previous?.Cancel();
         }
 
         private void showResults(SearchUsersResponse response)
@@ -175,6 +225,17 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
             friendsList.FadeInFromZero(500, Easing.OutQuint);
         }
 
+        /// <summary>
+        /// Replaces the current results with the given error state.
+        /// </summary>
+        private void showError(Drawable content)
+        {
+            clearPreviousResults();
+
+            listContainer.Add(content);
+            content.FadeInFromZero(300, Easing.OutQuint);
+        }
+
         private void clearPreviousResults()
         {
             foreach (var child in listContainer.Children)
@@ -182,6 +243,19 @@ namespace osu.Game.Overlays.Dashboard.UserSearch
             listContainer.Clear();
 
             loading.Value = false;
+        }
+
+        private void clearErrorPlaceholder()
+        {
+            foreach (var child in listContainer.Children)
+            {
+                if (child is not OnlineErrorPlaceholder)
+                    continue;
+
+                // the placeholder is shown in place of the results, so the list holds nothing else at this point.
+                listContainer.Clear();
+                return;
+            }
         }
     }
 }

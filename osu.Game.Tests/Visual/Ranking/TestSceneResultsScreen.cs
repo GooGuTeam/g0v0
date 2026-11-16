@@ -110,8 +110,6 @@ namespace osu.Game.Tests.Visual.Ranking
         [Test]
         public void TestLegacyResultsFavouriteButton()
         {
-            TestResultsScreen screen = null;
-
             AddStep("enable legacy results", () => config.SetValue(OsuSetting.ToriiStableResults, true));
 
             AddStep("set up network requests", () =>
@@ -152,18 +150,16 @@ namespace osu.Game.Tests.Visual.Ranking
                 score.OnlineID = onlineScoreID++;
                 beatmap = score.BeatmapInfo;
 
-                Child = resultsContainer = new TestResultsContainer(screen = createResultsScreen(score));
+                Child = resultsContainer = new TestResultsContainer(createResultsScreen(score));
             });
 
             AddUntilStep("legacy panel loaded", () => this.ChildrenOfType<LegacyRankingPanel>().Any(p => p.IsLoaded));
 
-            LegacyRankingOverlay legacyOverlay = null!;
             FavouriteButton favouriteButton = null!;
 
             AddStep("grab legacy favourite button", () =>
             {
-                legacyOverlay = this.ChildrenOfType<LegacyRankingOverlay>().Single();
-                favouriteButton = legacyOverlay.ChildrenOfType<FavouriteButton>().Single();
+                favouriteButton = this.ChildrenOfType<LegacyRankingOverlay>().Single().ChildrenOfType<FavouriteButton>().Single();
             });
 
             AddUntilStep("favourite button enabled", () => favouriteButton.Enabled.Value);
@@ -176,26 +172,22 @@ namespace osu.Game.Tests.Visual.Ranking
         [Test]
         public void TestLegacyResultsCollectionButton()
         {
-            TestResultsScreen screen = null;
-
             AddStep("enable legacy results", () => config.SetValue(OsuSetting.ToriiStableResults, true));
 
             AddStep("load legacy results", () =>
             {
                 var score = TestResources.CreateTestScoreInfo();
                 score.OnlineID = onlineScoreID++;
-                Child = resultsContainer = new TestResultsContainer(screen = createResultsScreen(score));
+                Child = resultsContainer = new TestResultsContainer(createResultsScreen(score));
             });
 
             AddUntilStep("legacy panel loaded", () => this.ChildrenOfType<LegacyRankingPanel>().Any(p => p.IsLoaded));
 
-            LegacyRankingOverlay legacyOverlay = null!;
             CollectionButton collectionButton = null!;
 
             AddStep("grab legacy collection button", () =>
             {
-                legacyOverlay = this.ChildrenOfType<LegacyRankingOverlay>().Single();
-                collectionButton = legacyOverlay.ChildrenOfType<CollectionButton>().Single();
+                collectionButton = this.ChildrenOfType<LegacyRankingOverlay>().Single().ChildrenOfType<CollectionButton>().Single();
             });
 
             AddStep("click collection button", () => collectionButton.TriggerClick());
@@ -204,7 +196,7 @@ namespace osu.Game.Tests.Visual.Ranking
 
             AddStep("click elsewhere to dismiss", () => InputManager.Click(MouseButton.Left));
             AddUntilStep("collection popover hidden", () =>
-                !this.ChildrenOfType<CollectionPopover>().Any(p => p.State.Value == Visibility.Visible));
+                this.ChildrenOfType<CollectionPopover>().All(p => p.State.Value != Visibility.Visible));
 
             AddStep("reset legacy setting", () => config.SetValue(OsuSetting.ToriiStableResults, false));
         }
@@ -212,8 +204,6 @@ namespace osu.Game.Tests.Visual.Ranking
         [Test]
         public void TestLegacyResultsFavouriteButtonBeatmapSetFetchFailure()
         {
-            TestResultsScreen screen = null;
-
             AddStep("enable legacy results", () => config.SetValue(OsuSetting.ToriiStableResults, true));
 
             AddStep("set up failing beatmap set request", () =>
@@ -235,18 +225,16 @@ namespace osu.Game.Tests.Visual.Ranking
             {
                 var score = TestResources.CreateTestScoreInfo();
                 score.OnlineID = onlineScoreID++;
-                Child = resultsContainer = new TestResultsContainer(screen = createResultsScreen(score));
+                Child = resultsContainer = new TestResultsContainer(createResultsScreen(score));
             });
 
             AddUntilStep("legacy panel loaded", () => this.ChildrenOfType<LegacyRankingPanel>().Any(p => p.IsLoaded));
 
-            LegacyRankingOverlay legacyOverlay = null!;
             FavouriteButton favouriteButton = null!;
 
             AddStep("grab legacy favourite button", () =>
             {
-                legacyOverlay = this.ChildrenOfType<LegacyRankingOverlay>().Single();
-                favouriteButton = legacyOverlay.ChildrenOfType<FavouriteButton>().Single();
+                favouriteButton = this.ChildrenOfType<LegacyRankingOverlay>().Single().ChildrenOfType<FavouriteButton>().Single();
             });
 
             AddUntilStep("favourite button disabled", () => !favouriteButton.Enabled.Value);
@@ -258,8 +246,8 @@ namespace osu.Game.Tests.Visual.Ranking
         [Test]
         public void TestLegacyResultsFavouriteButtonPostFailure()
         {
-            TestResultsScreen screen = null;
-            ScoreInfo testScore = null;
+            ScoreInfo testScore = TestResources.CreateTestScoreInfo();
+            testScore.OnlineID = onlineScoreID++;
 
             AddStep("enable legacy results", () => config.SetValue(OsuSetting.ToriiStableResults, true));
 
@@ -286,20 +274,16 @@ namespace osu.Game.Tests.Visual.Ranking
 
             AddStep("load legacy results", () =>
             {
-                testScore = TestResources.CreateTestScoreInfo();
-                testScore.OnlineID = onlineScoreID++;
-                Child = resultsContainer = new TestResultsContainer(screen = createResultsScreen(testScore));
+                Child = resultsContainer = new TestResultsContainer(createResultsScreen(testScore));
             });
 
             AddUntilStep("legacy panel loaded", () => this.ChildrenOfType<LegacyRankingPanel>().Any(p => p.IsLoaded));
 
-            LegacyRankingOverlay legacyOverlay = null!;
             FavouriteButton favouriteButton = null!;
 
             AddStep("grab legacy favourite button", () =>
             {
-                legacyOverlay = this.ChildrenOfType<LegacyRankingOverlay>().Single();
-                favouriteButton = legacyOverlay.ChildrenOfType<FavouriteButton>().Single();
+                favouriteButton = this.ChildrenOfType<LegacyRankingOverlay>().Single().ChildrenOfType<FavouriteButton>().Single();
             });
 
             AddUntilStep("favourite button enabled", () => favouriteButton.Enabled.Value);
@@ -313,7 +297,8 @@ namespace osu.Game.Tests.Visual.Ranking
         public void TestLegacyResultsFavouriteButtonExitWithRequestInFlight()
         {
             TestResultsScreen screen = null;
-            ScoreInfo testScore = null;
+            ScoreInfo testScore = TestResources.CreateTestScoreInfo();
+            testScore.OnlineID = onlineScoreID++;
 
             AddStep("enable legacy results", () => config.SetValue(OsuSetting.ToriiStableResults, true));
 
@@ -342,20 +327,16 @@ namespace osu.Game.Tests.Visual.Ranking
 
             AddStep("load legacy results", () =>
             {
-                testScore = TestResources.CreateTestScoreInfo();
-                testScore.OnlineID = onlineScoreID++;
                 Child = resultsContainer = new TestResultsContainer(screen = createResultsScreen(testScore));
             });
 
             AddUntilStep("legacy panel loaded", () => this.ChildrenOfType<LegacyRankingPanel>().Any(p => p.IsLoaded));
 
-            LegacyRankingOverlay legacyOverlay = null!;
             FavouriteButton favouriteButton = null!;
 
             AddStep("grab legacy favourite button", () =>
             {
-                legacyOverlay = this.ChildrenOfType<LegacyRankingOverlay>().Single();
-                favouriteButton = legacyOverlay.ChildrenOfType<FavouriteButton>().Single();
+                favouriteButton = this.ChildrenOfType<LegacyRankingOverlay>().Single().ChildrenOfType<FavouriteButton>().Single();
             });
 
             AddUntilStep("favourite button enabled", () => favouriteButton.Enabled.Value);
@@ -366,7 +347,6 @@ namespace osu.Game.Tests.Visual.Ranking
 
             AddStep("reset legacy setting", () => config.SetValue(OsuSetting.ToriiStableResults, false));
         }
-
 
         [Test]
         public void TestFullyPopulated()
@@ -529,7 +509,7 @@ namespace osu.Game.Tests.Visual.Ranking
             AddStep("disable v2 results", () => config.SetValue(OsuSetting.UseV2ResultsScreen, false));
             AddAssert("original panels restored", () => screen.ChildrenOfType<ScorePanelList>().Single().IsPresent);
             AddAssert("original input restored", () => screen.ChildrenOfType<ScorePanelList>().Single().HandleInput);
-            AddAssert("v2 panel hidden", () => !screen.ChildrenOfType<V2ResultsPanel>().Single().Parent.IsPresent);
+            AddAssert("v2 panel hidden", () => screen.ChildrenOfType<V2ResultsPanel>().Single().Parent?.IsPresent != true);
         }
 
         private int onlineScoreID = 1;

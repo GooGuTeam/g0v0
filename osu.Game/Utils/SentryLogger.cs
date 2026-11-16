@@ -16,6 +16,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Configuration;
 using osu.Framework.Development;
+using osu.Framework.IO.Network;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Statistics;
@@ -23,6 +24,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Models;
+using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays;
@@ -78,11 +80,13 @@ namespace osu.Game.Utils
             Logger.NewEntry += processLogEntry;
         }
 
-        private static string? getConfiguredDsn() => typeof(SentryLogger).Assembly
-            .GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(attribute => attribute.Key == sentry_dsn_assembly_metadata_key)?
-            .Value
-            ?.Trim();
+        private static string? getConfiguredDsn()
+        {
+            Assembly assembly = typeof(SentryLogger).Assembly;
+            AssemblyMetadataAttribute? metadata = assembly.GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(attribute => attribute.Key == sentry_dsn_assembly_metadata_key);
+
+            return metadata?.Value?.Trim();
+        }
 
         ~SentryLogger()
         {
@@ -262,9 +266,14 @@ namespace osu.Game.Utils
 
             switch (exception)
             {
-                // disk I/O failures, invalid formats, etc.
-
                 case IOException ioe:
+                    // named pipe failures, often due to a user error.
+                    // fires from osu!framework NamedPipeIpcProvider.listen(NamedPipeServerStream pipe)
+                    // see https://github.com/dotnet/runtime/blob/719ca2546bd31a54244731185c55c8fc208204bf/src/libraries/System.IO.Pipes/src/System/IO/Pipes/NamedPipeServerStream.cs#L185
+                    if (ioe.Message == "Pipe is broken.")
+                        return false;
+
+                    // disk I/O failures, invalid formats, etc.
                     if (ignored_io_exception_hresults.Contains(ioe.HResult))
                         return false;
 
@@ -273,6 +282,10 @@ namespace osu.Game.Utils
                 case UnauthorizedAccessException:
                 case SharpCompress.Common.InvalidFormatException:
                     return false;
+
+                // only report servers exceptions related to our backend.
+                case WebRequestException wre:
+                    return wre.IsServerError && OfficialServer.IsOfficialUrl(wre.Url);
 
                 // stuff that should really never make it to sentry
                 case APIAccess.WebRequestFlushedException:
@@ -289,6 +302,9 @@ namespace osu.Game.Utils
             {
                 case TimeoutException te:
                     return te.Message.Contains(@"elapsed without receiving a message from the server");
+
+                case WebRequestException wre:
+                    return wre.IsConnectivityFailure;
 
                 case WebException we:
                     // more statuses may need to be blocked as we come across them.

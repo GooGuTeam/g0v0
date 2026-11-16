@@ -19,6 +19,8 @@ using osu.Framework.Extensions;
 using osu.Framework.Extensions.ExceptionExtensions;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.IO.Network;
+using osu.Framework.Localisation;
 using osu.Framework.Logging;
 using osu.Game.Configuration;
 using osu.Game.Localisation;
@@ -285,7 +287,7 @@ namespace osu.Game.Online.API
         private void triggerOutage(string reason)
         {
             state.Value = APIState.Failing;
-            string userFacingMessage = reason ?? "Online functionality is not available due to an outage. Sorry for the inconvenience.";
+            LocalisableString userFacingMessage = reason ?? NotificationsStrings.ServerOutageExplanation;
 
             userFacingOutageMessage.Value = userFacingMessage;
 
@@ -294,7 +296,7 @@ namespace osu.Game.Online.API
                 if (PostNotification != null)
                     PostNotification?.Invoke(new OutageNotification(userFacingMessage));
                 else
-                    log.Add(userFacingMessage, LogLevel.Important);
+                    log.Add(userFacingMessage.ToString(), LogLevel.Important);
             });
         }
 
@@ -424,7 +426,7 @@ namespace osu.Game.Online.API
                             log.Add($@"Login failed for username {ProvidedUsername} on user retrieval ({LastLoginError.Message})!");
                             Logout();
                         }
-                        else if (ex is WebException webException && webException.Message == @"Unauthorized")
+                        else if (ex.HasStatusCode(HttpStatusCode.Unauthorized))
                         {
                             log.Add(@"Login no longer valid");
                             Logout();
@@ -577,6 +579,12 @@ namespace osu.Game.Online.API
                 failureCount = 0;
                 return true;
             }
+            catch (WebRequestException wre)
+            {
+                log.Add($"{nameof(WebRequestException)} while performing request {req}: {wre.Message}");
+                handleRequestFailure(wre);
+                return false;
+            }
             catch (HttpRequestException re)
             {
                 log.Add($"{nameof(HttpRequestException)} while performing request {req}: {re.Message}");
@@ -614,9 +622,26 @@ namespace osu.Game.Online.API
         /// </summary>
         public IBindable<APIState> State => state;
 
-        public IBindable<string> UserFacingOutageMessage => userFacingOutageMessage;
+        public IBindable<LocalisableString?> UserFacingOutageMessage => userFacingOutageMessage;
 
-        private readonly Bindable<string> userFacingOutageMessage = new Bindable<string>(string.Empty);
+        private readonly Bindable<LocalisableString?> userFacingOutageMessage = new Bindable<LocalisableString?>(string.Empty);
+
+        /// <summary>
+        /// Handles a request which failed for a reason originating outside of the client (network conditions or an
+        /// unsuccessful status code).
+        /// </summary>
+        private void handleRequestFailure(WebRequestException exception)
+        {
+            if (exception.StatusCode is HttpStatusCode statusCode)
+            {
+                handleStatusCode(statusCode);
+                return;
+            }
+
+            // no response was received at all, which means the client is likely offline (or the server is unreachable).
+            if (exception.IsConnectivityFailure)
+                handleFailure();
+        }
 
         private void handleWebException(WebException we)
         {
@@ -632,9 +657,15 @@ namespace osu.Game.Online.API
                     break;
             }
 
+            handleStatusCode(statusCode);
+        }
+
+        private void handleStatusCode(HttpStatusCode statusCode)
+        {
             switch (statusCode)
             {
                 case HttpStatusCode.Unauthorized:
+                case HttpStatusCode.Forbidden:
                     Logout();
                     break;
 

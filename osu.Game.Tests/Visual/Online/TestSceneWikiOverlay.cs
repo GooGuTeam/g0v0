@@ -1,12 +1,14 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using NUnit.Framework;
-using osu.Framework.Graphics.Sprites;
 using osu.Framework.Testing;
+using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -20,8 +22,24 @@ namespace osu.Game.Tests.Visual.Online
 
         private WikiOverlay wiki = null!;
 
+        /// <summary>
+        /// Buttons offered by the currently displayed error placeholder, in presentation order: retry first, then any
+        /// navigation actions, then the action which copies the failure details.
+        /// </summary>
+        private RoundedButton[] errorPlaceholderButtons => wiki.ChildrenOfType<OnlineErrorPlaceholder>()
+                                                               .Single()
+                                                               .ChildrenOfType<RoundedButton>()
+                                                               .ToArray();
+
         [SetUp]
-        public void SetUp() => Schedule(() => Child = wiki = new WikiOverlay());
+        public void SetUp() => Schedule(() =>
+        {
+            // the test browser runs every test in this fixture on a single instance, so request handling which a
+            // previous test installed would otherwise leak into the next one.
+            dummyAPI.HandleRequest = null;
+
+            Child = wiki = new WikiOverlay();
+        });
 
         [Test]
         public void TestMainPage()
@@ -33,10 +51,31 @@ namespace osu.Game.Tests.Visual.Online
         [Test]
         public void TestCancellationDoesntShowError()
         {
-            AddStep("Show main page", () => wiki.ShowPage());
-            AddStep("Show another page", () => wiki.ShowPage("Article_styling_criteria/Formatting"));
+            const string article_path = "Article_styling_criteria/Formatting";
 
-            AddUntilStep("Current path is not error", () => wiki.CurrentPath != "error");
+            List<GetWikiRequest> requests = new List<GetWikiRequest>();
+
+            AddStep("install request handler", () => dummyAPI.HandleRequest = request =>
+            {
+                if (request is not GetWikiRequest getWikiRequest)
+                    return false;
+
+                // deliberately left pending, so that cancellation is the only way these can fail.
+                requests.Add(getWikiRequest);
+                return true;
+            });
+
+            AddStep("Show main page", () => wiki.ShowPage());
+            AddStep("Show another page", () => wiki.ShowPage(article_path));
+
+            AddUntilStep("Superseded request cancelled", () => requests.Count >= 2 && requests[0].CompletionState == APIRequestCompletionState.Failed);
+
+            // the cancellation is delivered through the API scheduler, so allow a few frames for it to (wrongly)
+            // surface as a failure before asserting that it didn't.
+            AddWaitStep("wait for potential failure display", 5);
+
+            AddAssert("Current path is requested page", () => wiki.CurrentPath == article_path);
+            AddAssert("Error placeholder not displayed", () => !wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
         }
 
         [Test]
@@ -68,7 +107,70 @@ namespace osu.Game.Tests.Visual.Online
             setUpWikiResponse(responseArticlePage);
             AddStep("Show nonexistent page", () => wiki.ShowPage("This_page_will_error_out"));
             AddUntilStep("Wait for error page", () => wiki.CurrentPath == "error");
-            AddUntilStep("Error message correct", () => wiki.ChildrenOfType<SpriteText>().Any(text => text.Text == "\"This_page_will_error_out\"."));
+            AddUntilStep("Error placeholder shown", () => wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
+
+            setUpWikiResponse(new APIWikiPage
+            {
+                Title = "Recovered",
+                Layout = "markdown_page",
+                Path = "This_page_will_error_out",
+                Locale = "en",
+                Markdown = "# Recovered\n\nThe page could be retrieved on the second attempt.",
+            });
+
+            AddStep("Press retry", () => errorPlaceholderButtons[0].TriggerClick());
+
+            AddUntilStep("Page retrieved", () => wiki.CurrentPath == "This_page_will_error_out");
+            AddUntilStep("Error placeholder hidden", () => !wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
+        }
+
+        [Test]
+        public void TestErrorPageCanReturnToIndex()
+        {
+            setUpWikiResponse(responseMainPage);
+
+            AddStep("Show nonexistent page", () => wiki.ShowPage("This_page_will_error_out"));
+            AddUntilStep("Wait for error page", () => wiki.CurrentPath == "error");
+            AddUntilStep("Error placeholder shown", () => wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
+
+            AddStep("Press back to home", () => errorPlaceholderButtons[1].TriggerClick());
+
+            AddUntilStep("Returned to index", () => wiki.CurrentPath == WikiOverlay.INDEX_PATH);
+            AddUntilStep("Error placeholder hidden", () => !wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
+        }
+
+        [Test]
+        public void TestSupersededFailureIsIgnored()
+        {
+            const string article_path = "Article_styling_criteria/Formatting";
+
+            GetWikiRequest? pending = null;
+
+            AddStep("install request handler", () => dummyAPI.HandleRequest = request =>
+            {
+                if (request is not GetWikiRequest getWikiRequest)
+                    return false;
+
+                // deliberately left pending, so that failures can be triggered at an exact point in time.
+                pending = getWikiRequest;
+                return true;
+            });
+
+            AddStep("Show main page", () => wiki.ShowPage());
+            AddUntilStep("Main page request pending", () => pending?.CompletionState == APIRequestCompletionState.Waiting);
+
+            // the failure is scheduled, so navigating away within the same step supersedes it before it is applied.
+            AddStep("Fail main page and navigate away", () =>
+            {
+                pending!.TriggerFailure(new WebException());
+                wiki.ShowPage(article_path);
+            });
+
+            AddUntilStep("Article page requested", () => pending?.Path == article_path);
+            AddWaitStep("wait for the superseded failure", 5);
+
+            AddAssert("Current path is requested page", () => wiki.CurrentPath == article_path);
+            AddAssert("Error placeholder not displayed", () => !wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
         }
 
         [Test]
@@ -84,7 +186,47 @@ namespace osu.Game.Tests.Visual.Online
 
             AddStep("Show article page", () => wiki.ShowPage("Article_styling_criteria/Formatting"));
             AddUntilStep("Wait for non-error page", () => wiki.CurrentPath == "Article_styling_criteria/Formatting");
-            AddUntilStep("Error message not displayed", () => wiki.ChildrenOfType<SpriteText>().All(text => text.Text != "\"This_page_will_error_out\"."));
+            AddUntilStep("Error placeholder not displayed", () => !wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
+        }
+
+        [Test]
+        public void TestRetryKeepsRequestedLanguage()
+        {
+            // the language prefix overrides the language of the header.
+            const string page_path = @"zh/Main_page";
+
+            List<GetWikiRequest> requests = new List<GetWikiRequest>();
+
+            AddStep("Install failing request handler", () => dummyAPI.HandleRequest = request =>
+            {
+                if (request is not GetWikiRequest getWikiRequest)
+                    return false;
+
+                requests.Add(getWikiRequest);
+                getWikiRequest.TriggerFailure(new WebException());
+
+                return true;
+            });
+
+            AddStep("Set header language to English", () => wiki.Header.CurrentLanguage.Value = Language.en);
+
+            AddStep("Show page in Simplified Chinese", () =>
+            {
+                requests.Clear();
+                wiki.ShowPage(page_path);
+            });
+
+            AddUntilStep("Error placeholder shown", () => wiki.ChildrenOfType<OnlineErrorPlaceholder>().Any(p => p.IsPresent));
+            AddAssert("Requested page in Simplified Chinese", () => requests.Count > 0 && requests[0].RequestLanguage == Language.zh);
+
+            AddStep("Press retry", () =>
+            {
+                requests.Clear();
+                errorPlaceholderButtons[0].TriggerClick();
+            });
+
+            AddUntilStep("Requested again", () => requests.Count > 0);
+            AddAssert("Retried in the same language", () => requests[0].RequestLanguage == Language.zh);
         }
 
         private void setUpWikiResponse(APIWikiPage r, string? redirectionPath = null)

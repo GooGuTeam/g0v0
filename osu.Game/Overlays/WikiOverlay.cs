@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -112,21 +112,48 @@ namespace osu.Game.Overlays
             // Language code + path, or just path1 + path2 in case
             string[] values = path.Split('/', 2);
 
+            string pagePath = path;
+            Language pageLanguage = lang;
+
             if (values.Length > 1 && LanguageExtensions.TryParseCultureCode(values[0], out var parsedLang))
-                request = new GetWikiRequest(values[1], parsedLang);
-            else
-                request = new GetWikiRequest(path, lang);
+            {
+                pagePath = values[1];
+                pageLanguage = parsedLang;
+            }
+
+            var newRequest = new GetWikiRequest(pagePath, pageLanguage);
+
+            request = newRequest;
 
             Loading.Show();
 
-            request.Success += response => Schedule(() => onSuccess(response));
-            request.Failure += ex =>
+            // the callbacks below are scheduled, so they must refer to the request they were created for rather than
+            // to the mutable field, which may already point at a newer request by the time they run.
+            newRequest.Success += response => Schedule(() =>
             {
-                if (ex is not OperationCanceledException)
-                    Schedule(onFail, request.Path);
+                if (request != newRequest)
+                    return;
+
+                onSuccess(response);
+            });
+
+            newRequest.Failure += ex =>
+            {
+                if (ex is OperationCanceledException)
+                    return;
+
+                Schedule(() =>
+                {
+                    if (request != newRequest)
+                        return;
+
+                    // the language is passed on alongside the path because a language prefix in the path takes precedence
+                    // over the language of the header, which may not be the one the failed page was requested in.
+                    onFail(ex, pagePath, pageLanguage);
+                });
             };
 
-            api.PerformAsync(request);
+            api.PerformAsync(newRequest);
         }
 
         private void onPathChanged(ValueChangedEvent<string> e)
@@ -174,13 +201,19 @@ namespace osu.Game.Overlays
             }
         }
 
-        private void onFail(string originalPath)
+        private void onFail(Exception exception, string pagePath, Language pageLanguage)
         {
             wikiData.Value = null;
             path.Value = "error";
 
-            LoadDisplay(articlePage = new WikiArticlePage($@"{api.Endpoints.WebsiteUrl}/wiki/",
-                $"Something went wrong when trying to fetch page \"{originalPath}\".\n\n[Return to the main page]({INDEX_PATH})."));
+            articlePage = null;
+
+            // when the page is missing, show a button to navigate back.
+            LoadDisplay(new OnlineErrorPlaceholder(
+                exception,
+                OnlineErrorStrings.PageUnavailableDescription,
+                () => loadPage(pagePath, pageLanguage),
+                new OnlineErrorAction(OnlineErrorStrings.BackToHome, () => ShowPage())));
         }
 
         private void showParentPage()

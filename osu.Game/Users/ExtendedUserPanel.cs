@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -71,10 +71,10 @@ namespace osu.Game.Users
             var alignment = rightAlignedChildren ? Anchor.CentreRight : Anchor.CentreLeft;
 
             statusContainer.Add(LastVisitMessage = new TextFlowContainer(t =>
-                {
-                    t.AllowMultiline = false;
-                    t.Font = OsuFont.GetFont(size: 12, weight: FontWeight.SemiBold);
-                }).With(text =>
+            {
+                t.AllowMultiline = false;
+                t.Font = OsuFont.GetFont(size: 12, weight: FontWeight.SemiBold);
+            }).With(text =>
             {
                 text.Anchor = alignment;
                 text.Origin = alignment;

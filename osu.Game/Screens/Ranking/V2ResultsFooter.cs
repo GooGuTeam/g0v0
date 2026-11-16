@@ -64,7 +64,6 @@ namespace osu.Game.Screens.Ranking
         public override bool UpdateSubTreeMasking() => false;
 
         private FillFlowContainer<ScreenFooterButton> buttonsFlow = null!;
-        private Box background = null!;
         private ScreenFooterButton screenshotButton = null!;
         private bool screenshotUploadMode;
 
@@ -176,7 +175,7 @@ namespace osu.Game.Screens.Ranking
             InternalChildren = new Drawable[]
             {
                 // 1. ������ɫ�ĵף����� ScreenFooter��
-                background = new Box
+                new Box
                 {
                     RelativeSizeAxes = Axes.Both,
                     Colour = colourProvider?.Background5 ?? Colour4.FromHex("#1C2125"),
