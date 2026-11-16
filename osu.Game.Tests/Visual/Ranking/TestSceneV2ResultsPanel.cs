@@ -77,7 +77,7 @@ namespace osu.Game.Tests.Visual.Ranking
             AddAssert("score difficulty displayed or original retained", () => panel.ChildrenOfType<StarRatingDisplay>().Single().Current.Value.Stars,
                 () => Is.EqualTo(localBeatmap && !calculationFails ? 6.5 : 2));
             AddAssert("difficulty name uses matching colour", () => panel.ChildrenOfType<OsuSpriteText>().Single(t => t.Text.ToString() == score.BeatmapInfo!.DifficultyName).Colour.TopLeft.SRGB,
-                () => Is.EqualTo((osuTK.Graphics.Color4)new OsuColour().ForStarDifficulty(localBeatmap && !calculationFails ? 6.5 : 2)));
+                () => Is.EqualTo(new OsuColour().ForStarDifficulty(localBeatmap && !calculationFails ? 6.5 : 2)));
             AddStep("reset difficulty cache", () => difficultyCache.Difficulty = null);
         }
 
