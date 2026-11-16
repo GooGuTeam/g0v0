@@ -328,7 +328,9 @@ namespace osu.Game.Screens.Play
             {
                 score.ScoreInfo.OnlineID = s.ID;
                 score.ScoreInfo.Position = s.Position;
-                score.ScoreInfo.PP = s.PP ?? score.ScoreInfo.PP;
+                // The server reports 0 until it has calculated the pp; keep it unset so the result screen calculates it locally.
+                if (s.PP is > 0)
+                    score.ScoreInfo.PP = s.PP;
 
                 scoreSubmissionSource.SetResult(true);
                 Logger.Log($"Score submission completed! (token:{token.Value} id:{s.ID})");
