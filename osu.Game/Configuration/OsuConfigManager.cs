@@ -76,7 +76,6 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ToriiLegacySongSelectFooter, false);
             SetDefault(OsuSetting.ToriiStableResults, false);
             SetDefault(OsuSetting.ToriiLegacyFont, false);
-            SetDefault(OsuSetting.UnslantedSongSelectUI, false);
 
             // Online settings
             SetDefault(OsuSetting.Username, string.Empty);
@@ -120,6 +119,10 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.MenuVoice, true);
             SetDefault(OsuSetting.MenuMusic, true);
             SetDefault(OsuSetting.MenuTips, true);
+
+            SetDefault(OsuSetting.UseCustomThemeMusic, false);
+            SetDefault(OsuSetting.ThemeMusicStartFromPreview, false);
+            SetDefault(OsuSetting.ThemeMusicBeatmapSetId, string.Empty);
 
             SetDefault(OsuSetting.AudioOffset, 0, -500.0, 500.0, 1);
 
@@ -529,12 +532,19 @@ namespace osu.Game.Configuration
         ToriiLegacySongSelectFooter,
         ToriiStableResults,
         ToriiLegacyFont,
-        UnslantedSongSelectUI,
 
         /// <summary>
         /// Uses the mod-specific difficulty and performance algorithms of rulesets which provide them (for example Relax in osu!).
         /// Scores which were already submitted are not recalculated.
         /// </summary>
         UseModSpecificCalculation,
+
+        UseCustomThemeMusic,
+        ThemeMusicStartFromPreview,
+
+        /// <summary>
+        /// The <see cref="osu.Game.Beatmaps.BeatmapSetInfo.ID"/> of the beatmap set used as custom theme music, stored as a string.
+        /// </summary>
+        ThemeMusicBeatmapSetId,
     }
 }

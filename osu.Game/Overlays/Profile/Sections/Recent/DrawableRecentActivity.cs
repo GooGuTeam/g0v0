@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using osu.Framework.Allocation;
@@ -8,6 +8,8 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Game.Graphics;
+using osu.Framework.Localisation;
+using osu.Game.Localisation;
 using osu.Game.Graphics.Containers;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
@@ -195,12 +197,12 @@ namespace osu.Game.Overlays.Profile.Sections.Recent
 
                 case RecentActivityType.UserSupportFirst:
                     addUserLink();
-                    addText(" has become an osu!supporter - thanks for your generosity!");
+                    addText(ActivityStrings.SupporterFirst);
                     break;
 
                 case RecentActivityType.UserSupportGift:
                     addUserLink();
-                    addText(" has received the gift of osu!supporter!");
+                    addText(ActivityStrings.SupporterGift);
                     break;
 
                 case RecentActivityType.UsernameChange:
@@ -227,7 +229,7 @@ namespace osu.Game.Overlays.Profile.Sections.Recent
         private FontUsage getLinkFont(FontWeight fontWeight = FontWeight.Regular)
             => OsuFont.GetFont(size: font_size, weight: fontWeight, italics: true);
 
-        private void addText(string text)
+        private void addText(LocalisableString text)
             => content.AddText(text, t => t.Font = OsuFont.GetFont(size: font_size, weight: FontWeight.SemiBold));
     }
 }

@@ -105,7 +105,7 @@
 				<string>sh.ppy.osu.items</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>osu! replay</string>
+			<string>Replay</string>
 			<key>UTTypeIdentifier</key>
 			<string>sh.ppy.osu.osr</string>
 			<key>UTTypeTagSpecification</key>
@@ -120,7 +120,7 @@
 				<string>sh.ppy.osu.items</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>osu! skin</string>
+			<string>Skin</string>
 			<key>UTTypeIdentifier</key>
 			<string>sh.ppy.osu.osk</string>
 			<key>UTTypeTagSpecification</key>
@@ -135,7 +135,7 @@
 				<string>sh.ppy.osu.items</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>osu! beatmap</string>
+			<string>Beatmap</string>
 			<key>UTTypeIdentifier</key>
 			<string>sh.ppy.osu.osz</string>
 			<key>UTTypeTagSpecification</key>
@@ -150,7 +150,7 @@
 				<string>sh.ppy.osu.items</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>osu! beatmap</string>
+			<string>Beatmap</string>
 			<key>UTTypeIdentifier</key>
 			<string>sh.ppy.osu.olz</string>
 			<key>UTTypeTagSpecification</key>
@@ -166,7 +166,7 @@
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
 			<key>CFBundleTypeName</key>
-			<string>Supported osu! files</string>
+			<string>Supported game files</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSItemContentTypes</key>

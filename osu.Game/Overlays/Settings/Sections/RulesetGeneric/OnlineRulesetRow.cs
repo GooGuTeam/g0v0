@@ -101,9 +101,6 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         private OsuColour osuColour { get; set; } = null!;
 
         [Resolved(CanBeNull = true)]
-        private OsuGame? game { get; set; }
-
-        [Resolved(CanBeNull = true)]
         private IDialogOverlay? dialogOverlay { get; set; }
 
         [Resolved(CanBeNull = true)]

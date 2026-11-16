@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -115,11 +115,14 @@ namespace osu.Game.Screens.Menu
         [Resolved(canBeNull: true)]
         private SkinEditorOverlay skinEditor { get; set; }
 
+        [Resolved]
+        private OsuConfigManager config { get; set; } = null!;
+
         [CanBeNull]
         private IDisposable logoProxy;
 
         [BackgroundDependencyLoader(true)]
-        private void load(BeatmapListingOverlay beatmapListing, SettingsOverlay settings, OsuConfigManager config, SessionStatics statics, AudioManager audio)
+        private void load(BeatmapListingOverlay beatmapListing, SettingsOverlay settings, SessionStatics statics, AudioManager audio)
         {
             holdDelay = config.GetBindable<double>(OsuSetting.UIHoldActivationDelay);
             loginDisplayed = statics.GetBindable<bool>(Static.LoginOverlayDisplayed);
@@ -203,6 +206,8 @@ namespace osu.Game.Screens.Menu
                         },
                         onlineMenuBanner = new OnlineMenuBanner
                         {
+                            // Keep the banner available until a server-provided content endpoint is ready.
+                            FetchOnlineContent = false,
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
                         }
@@ -256,7 +261,14 @@ namespace osu.Game.Screens.Menu
                 // presume the track is the current beatmap's track. not sure how correct this assumption is but it has worked until now.
                 if (!track.IsRunning)
                 {
-                    Beatmap.Value.PrepareTrackForPreview(false);
+                    bool useSpecificOffset = ThemeMusic.UseSpecificOffset(Beatmap.Value, config);
+
+                    Beatmap.Value.PrepareTrackForPreview(false, useSpecificOffset ? ThemeMusic.PREVIEW_OFFSET : null);
+
+                    // Keep the start-from-beginning choice made in the intro if the custom theme stopped before the menu was entered.
+                    if (useSpecificOffset && !config.Get<bool>(OsuSetting.ThemeMusicStartFromPreview))
+                        track.RestartPoint = 0;
+
                     track.Restart();
                 }
             }

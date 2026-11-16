@@ -119,9 +119,7 @@ namespace osu.Game
         /// <summary>
         /// A common shear factor applied to most components of the game.
         /// </summary>
-        public static readonly Vector2 DEFAULT_SHEAR = new Vector2(0.2f, 0);
-        public static Vector2 SHEAR { get; private set; } = new Vector2(0.2f, 0);
-        public static void SetUnslantedUI(bool unslanted) => SHEAR = unslanted ? Vector2.Zero : DEFAULT_SHEAR;
+        public static readonly Vector2 SHEAR = new Vector2(0.2f, 0);
 
         /// <summary>
         /// For elements placed close to the screen edge, this is the margin to leave to the edge.
@@ -135,6 +133,11 @@ namespace osu.Game
         public Toolbar Toolbar { get; private set; }
 
         private ChatOverlay chatOverlay;
+
+        /// <summary>
+        /// Whether a ruleset skin preference is currently being applied, so that skin change events that result from it are ignored.
+        /// </summary>
+        private bool switchingSkin;
 
         private ChannelManager channelManager;
 
@@ -483,11 +486,10 @@ namespace osu.Game
                 rulesetSkins = new Dictionary<string, string>();
             }
 
-            bool switchingSkin = false;
-
             void restoreSkin()
             {
                 switchingSkin = true;
+
                 try
                 {
                     string skin = useRulesetSkins.Value && rulesetSkins.TryGetValue(Ruleset.Value.ShortName, out string preferredSkin)
@@ -1890,8 +1892,7 @@ namespace osu.Game
         {
             base.UpdateAfterChildren();
 
-            if (Toolbar != null)
-                Toolbar.UseV2ResultsStyle.Value = ScreenStack.CurrentScreen is ResultsScreen { IsV2Overview: true };
+            Toolbar?.UseV2ResultsStyle.Value = ScreenStack.CurrentScreen is ResultsScreen { IsV2Overview: true };
 
             ScreenOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };
             overlayOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };

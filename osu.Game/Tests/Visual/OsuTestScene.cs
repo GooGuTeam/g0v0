@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -27,6 +27,8 @@ using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Online.Rooms;
+using osu.Game.Online.Solo;
 using osu.Game.Overlays;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
@@ -65,6 +67,23 @@ namespace osu.Game.Tests.Visual
         }
 
         private DummyAPIAccess dummyAPI;
+
+        /// <summary>
+        /// Makes solo score submission token requests succeed, allowing gameplay to be entered through a <see cref="Screens.Play.PlayerLoader"/>.
+        /// </summary>
+        protected void StubScoreSubmissionTokenRetrieval()
+        {
+            ((DummyAPIAccess)API).HandleRequest = req =>
+            {
+                if (req is CreateSoloScoreRequest soloScoreRequest)
+                {
+                    soloScoreRequest.TriggerSuccess(new APIScoreToken { ID = 123456 });
+                    return true;
+                }
+
+                return false;
+            };
+        }
 
         /// <summary>
         /// Whether this test scene requires real-world API access.

@@ -40,8 +40,10 @@ namespace osu.Game.Screens.Ranking
         [BackgroundDependencyLoader]
         private void load(UserStatisticsWatcher? watcher, ResultsScreen? resultsScreen, IAPIProvider api)
         {
-            waiting = WaitForUpdate || (resultsScreen?.IsLocalPlay == true && watcher != null && api.IsLoggedIn
-                            && score.UserID == api.LocalUser.Value.OnlineID && score.OnlineID > 0 && score.Ruleset.IsLegacyRuleset());
+            waiting = WaitForUpdate || (resultsScreen?.IsLocalPlay == true && watcher != null && isLocalUser());
+
+            bool isLocalUser() => api.IsLoggedIn && score.UserID == api.LocalUser.Value.OnlineID && score.OnlineID > 0 && score.Ruleset.IsLegacyRuleset();
+
             InternalChildren = new Drawable[]
             {
                 spinner = new LoadingSpinner

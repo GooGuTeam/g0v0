@@ -54,7 +54,7 @@ namespace osu.Game.Graphics.UserInterfaceV2
         // toggle in Settings → Torii → Interface. The pill is a
         // visual cue only; the enforcement is server-side via
         // UserPreference.profile_media_show_nsfw + apply_nsfw_media_policy.
-        private bool showExplicitContentBadge;
+        private readonly bool showExplicitContentBadge;
 
         public bool ShowExplicitContentBadge
         {

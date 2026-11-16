@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -30,9 +30,9 @@ namespace osu.Game.Localisation
         public static LocalisableString Cancel => new TranslatableString(getKey(@"cancel"), @"No! Abort mission");
 
         /// <summary>
-        /// "Failed to automatically locate an osu!stable installation."
+        /// "Failed to automatically locate a stable installation."
         /// </summary>
-        public static LocalisableString StableDirectoryLocationHeaderText => new TranslatableString(getKey(@"stable_directory_location_header_text"), @"Failed to automatically locate an osu!stable installation.");
+        public static LocalisableString StableDirectoryLocationHeaderText => new TranslatableString(getKey(@"stable_directory_location_header_text"), @"Failed to automatically locate a stable installation.");
 
         /// <summary>
         /// "An existing install could not be located. If you know where it is, you can help locate it."
@@ -45,9 +45,9 @@ namespace osu.Game.Localisation
         public static LocalisableString StableDirectoryLocationOkButton => new TranslatableString(getKey(@"stable_directory_location_ok_button"), @"Sure! I know where it is located!");
 
         /// <summary>
-        /// "Actually I don't have osu!stable installed."
+        /// "Actually I don't have stable installed."
         /// </summary>
-        public static LocalisableString StableDirectoryLocationCancelButton => new TranslatableString(getKey(@"stable_directory_location_cancel_button"), @"Actually I don't have osu!stable installed.");
+        public static LocalisableString StableDirectoryLocationCancelButton => new TranslatableString(getKey(@"stable_directory_location_cancel_button"), @"Actually I don't have stable installed.");
 
         /// <summary>
         /// "All local scores on {0}"

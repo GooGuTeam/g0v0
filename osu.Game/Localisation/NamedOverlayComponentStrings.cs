@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Localisation;
 
@@ -15,9 +15,9 @@ namespace osu.Game.Localisation
         public static LocalisableString BeatmapListingDescription => new TranslatableString(getKey(@"beatmap_listing_description"), @"browse for new beatmaps");
 
         /// <summary>
-        /// "track recent dev updates in the osu! ecosystem"
+        /// "track recent dev updates in the g0v0! ecosystem"
         /// </summary>
-        public static LocalisableString ChangelogDescription => new TranslatableString(getKey(@"changelog_description"), @"track recent dev updates in the osu! ecosystem");
+        public static LocalisableString ChangelogDescription => new TranslatableString(getKey(@"changelog_description"), @"track recent dev updates in the g0v0! ecosystem");
 
         /// <summary>
         /// "view your friends and spectate other players"
