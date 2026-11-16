@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -256,7 +256,7 @@ namespace osu.Game.Database
             cancellationToken.ThrowIfCancellationRequested();
 
             Live<TModel>? import;
-            using (ArchiveReader reader = task.GetReader())
+            using (ArchiveReader reader = GetArchiveReader(task))
                 import = await importFromArchive(reader, parameters, cancellationToken).ConfigureAwait(false);
 
             // We may or may not want to delete the file depending on where it is stored.
@@ -275,6 +275,8 @@ namespace osu.Game.Database
 
             return import;
         }
+
+        protected virtual ArchiveReader GetArchiveReader(ImportTask task) => task.GetReader();
 
         /// <summary>
         /// Create and import a model based off the provided <see cref="ArchiveReader"/>.

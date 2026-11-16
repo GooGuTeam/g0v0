@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -21,6 +21,7 @@ using osu.Game.IO.Archives;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Objects.Types;
+using osu.Game.Rulesets.Formats;
 using Realms;
 
 namespace osu.Game.Beatmaps
@@ -30,9 +31,22 @@ namespace osu.Game.Beatmaps
     /// </summary>
     public class BeatmapImporter : RealmArchiveModelImporter<BeatmapSetInfo>
     {
-        public override IEnumerable<string> HandledExtensions => new[] { ".osz", ".olz" };
+        private static readonly string[] beatmap_archive_extensions = { @".osz", @".olz" };
 
-        protected override string[] HashableFileTypes => new[] { ".osu" };
+        /// <summary>
+        /// Archive extensions which belong to beatmaps outright (and are deleted after import).
+        /// </summary>
+        private static IEnumerable<string> ownedExtensions => beatmap_archive_extensions
+                                                              .Concat(RulesetBeatmapFormat.Registered.SelectMany(f => f.HandledExtensions));
+
+        /// <summary>
+        /// Generic container extensions which are only imported when a ruleset format recognises their content.
+        /// </summary>
+        private static IEnumerable<string> probedExtensions => RulesetBeatmapFormat.Registered.SelectMany(f => f.ProbedExtensions);
+
+        public override IEnumerable<string> HandledExtensions => ownedExtensions.Concat(probedExtensions).Distinct();
+
+        protected override string[] HashableFileTypes => new[] { @".osu" };
 
         public ProcessBeatmapDelegate? ProcessBeatmap { private get; set; }
 
@@ -162,7 +176,40 @@ namespace osu.Game.Beatmaps
             }
         }
 
-        protected override bool ShouldDeleteArchive(string path) => HandledExtensions.Contains(Path.GetExtension(path).ToLowerInvariant());
+        // Probed containers (e.g. .zip) may be anything the user owns; only delete beatmap-specific archive types after import.
+        protected override bool ShouldDeleteArchive(string path) => ownedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant());
+
+        protected override ArchiveReader GetArchiveReader(ImportTask task)
+        {
+            var reader = base.GetArchiveReader(task);
+
+            try
+            {
+                foreach (var format in RulesetBeatmapFormat.Registered)
+                {
+                    if (!format.Claims(task.Path, reader))
+                        continue;
+
+                    var converted = format.ConvertArchive(reader);
+                    if (converted != null)
+                        return converted;
+                }
+
+                // A probed container nobody recognised is only acceptable if it is a plain beatmap archive under another name.
+                string extension = Path.GetExtension(task.Path).ToLowerInvariant();
+
+                if (!beatmap_archive_extensions.Contains(extension) && !ownedExtensions.Contains(extension)
+                                                                   && !reader.Filenames.Any(f => f.EndsWith(@".osu", StringComparison.OrdinalIgnoreCase)))
+                    throw new InvalidDataException($"{Path.GetFileName(task.Path)} is not a recognised beatmap archive.");
+
+                return reader;
+            }
+            catch
+            {
+                reader.Dispose();
+                throw;
+            }
+        }
 
         protected override void Populate(BeatmapSetInfo beatmapSet, ArchiveReader? archive, Realm realm, CancellationToken cancellationToken = default)
         {
@@ -399,7 +446,8 @@ namespace osu.Game.Beatmaps
                     var decodedInfo = decoded.BeatmapInfo;
                     var decodedDifficulty = decodedInfo.Difficulty;
 
-                    var ruleset = realm.All<RulesetInfo>().FirstOrDefault(r => r.OnlineID == decodedInfo.Ruleset.OnlineID);
+                    var ruleset = realm.Find<RulesetInfo>(decodedInfo.Ruleset.ShortName)
+                                  ?? realm.All<RulesetInfo>().FirstOrDefault(r => r.OnlineID == decodedInfo.Ruleset.OnlineID && r.OnlineID >= 0);
 
                     if (ruleset?.Available != true)
                     {

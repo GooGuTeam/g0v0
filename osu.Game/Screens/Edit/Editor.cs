@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -61,6 +61,7 @@ using osu.Game.Screens.OnlinePlay;
 using osu.Game.Users;
 using osuTK.Input;
 using WebCommonStrings = osu.Game.Resources.Localisation.Web.CommonStrings;
+using osu.Game.Rulesets.Formats;
 
 namespace osu.Game.Screens.Edit
 {
@@ -302,11 +303,15 @@ namespace osu.Game.Screens.Edit
 
             editorBeatmap.UpdateInProgress.BindValueChanged(_ => updateSampleDisabledState());
 
-            canSave = editorBeatmap.BeatmapInfo.Ruleset.CreateInstance() is ILegacyRuleset;
+            // Rulesets with a native chart format save and undo through it; others need legacy (.osu) representability.
+            var nativeFormat = RulesetBeatmapFormat.ForRuleset(editorBeatmap.BeatmapInfo.Ruleset);
+            canSave = nativeFormat != null || editorBeatmap.BeatmapInfo.Ruleset.CreateInstance() is ILegacyRuleset;
 
             if (canSave)
             {
-                changeHandler = new BeatmapEditorChangeHandler(editorBeatmap);
+                changeHandler = nativeFormat != null
+                    ? new NativeBeatmapEditorChangeHandler(editorBeatmap, nativeFormat)
+                    : new BeatmapEditorChangeHandler(editorBeatmap);
                 dependencies.CacheAs<IEditorChangeHandler>(changeHandler);
             }
 

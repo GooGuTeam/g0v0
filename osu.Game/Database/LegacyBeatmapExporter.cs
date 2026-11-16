@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -20,6 +20,7 @@ using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Skinning;
 using osu.Game.Utils;
 using osuTK;
+using osu.Game.Rulesets.Formats;
 
 namespace osu.Game.Database
 {
@@ -46,6 +47,15 @@ namespace osu.Game.Database
 
             if (contentStream == null)
                 return null;
+
+            // Native ruleset charts have no legacy .osu representation; ship them unchanged.
+            if (contentStream.CanSeek && RulesetBeatmapFormat.IsNativeContent(contentStream))
+            {
+                var raw = new MemoryStream();
+                contentStream.CopyTo(raw);
+                raw.Seek(0, SeekOrigin.Begin);
+                return raw;
+            }
 
             using var contentStreamReader = new LineBufferedReader(contentStream);
 

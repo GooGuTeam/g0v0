@@ -1,11 +1,10 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,7 +23,6 @@ using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Extensions;
 using osu.Game.Graphics.Containers;
-using osu.Game.IO.Archives;
 using osu.Game.Online.API;
 using osu.Game.Overlays;
 using osu.Game.Rulesets;
@@ -33,7 +31,6 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.UI;
 using osu.Game.Rulesets.UI.Scrolling;
 using osu.Game.Scoring;
-using osu.Game.Scoring.Legacy;
 using osu.Game.Screens.Ranking;
 using osu.Game.Skinning;
 using osu.Game.Users;
@@ -1249,16 +1246,7 @@ namespace osu.Game.Screens.Play
             if (DrawableRuleset.ReplayScore != null)
                 return Task.CompletedTask;
 
-            ByteArrayArchiveReader replayReader = null;
-
-            if (score.ScoreInfo.Ruleset.IsLegacyRuleset())
-            {
-                using (var stream = new MemoryStream())
-                {
-                    new LegacyScoreEncoder(score, GameplayState.Beatmap).Encode(stream);
-                    replayReader = new ByteArrayArchiveReader(stream.ToArray(), "replay.osr");
-                }
-            }
+            using var replayReader = ScoreReplayFormat.ForRuleset(score.ScoreInfo.Ruleset.CreateInstance())?.CreateArchive(score, GameplayState.Beatmap);
 
             // the import process will re-attach managed beatmap/rulesets to this score. we don't want this for now, so create a temporary copy to import.
             var importableScore = score.ScoreInfo.DeepClone();

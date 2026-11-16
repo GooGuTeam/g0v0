@@ -12,6 +12,7 @@ using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
+using osu.Game.Rulesets.Formats;
 
 namespace osu.Game.Rulesets
 {
@@ -142,6 +143,26 @@ namespace osu.Game.Rulesets
 
                 availableRulesets.AddRange(detachedRulesets.Order());
             });
+
+            registerBeatmapFormats();
+        }
+
+        private void registerBeatmapFormats()
+        {
+            foreach (var ruleset in availableRulesets)
+            {
+                try
+                {
+                    var format = ruleset.CreateInstance().CreateBeatmapFormat();
+
+                    if (format != null)
+                        RulesetBeatmapFormat.Register(format);
+                }
+                catch (Exception e)
+                {
+                    LogRulesetFailure(ruleset, e);
+                }
+            }
         }
 
         private bool checkRulesetUpToDate(Ruleset instance)

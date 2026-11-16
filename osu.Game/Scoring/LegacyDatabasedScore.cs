@@ -1,36 +1,20 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
-using System;
-using System.Linq;
 using osu.Framework.IO.Stores;
 using osu.Game.Beatmaps;
-using osu.Game.Extensions;
 using osu.Game.Rulesets;
-using osu.Game.Scoring.Legacy;
 
 namespace osu.Game.Scoring
 {
-    public class LegacyDatabasedScore : Score
+    /// <summary>Compatibility entry point; stored replays are loaded by the shared codec registry.</summary>
+    public class LegacyDatabasedScore : DatabasedScore
     {
         public LegacyDatabasedScore(ScoreInfo score, RulesetStore rulesets, BeatmapManager beatmaps, IResourceStore<byte[]> store)
+            : base(score, rulesets, beatmaps, store)
         {
-            ScoreInfo = score;
-
-            string replayFilename = score.Files.FirstOrDefault(f => f.Filename.EndsWith(".osr", StringComparison.InvariantCultureIgnoreCase))?.File.GetStoragePath();
-
-            if (replayFilename == null)
-                return;
-
-            using (var stream = store.GetStream(replayFilename))
-            {
-                if (stream == null)
-                    return;
-
-                Replay = new DatabasedLegacyScoreDecoder(rulesets, beatmaps).Parse(stream).Replay;
-            }
         }
     }
 }

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -30,6 +30,7 @@ using osu.Game.Skinning;
 using osu.Game.Storyboards;
 using osu.Game.Utils;
 using Realms;
+using osu.Game.Rulesets.Formats;
 
 namespace osu.Game.Beatmaps
 {
@@ -548,8 +549,11 @@ namespace osu.Game.Beatmaps
             Realm.Write(r =>
             {
                 using var stream = new MemoryStream();
-                using (var sw = new StreamWriter(stream, Encoding.UTF8, 1024, true))
-                    new LegacyBeatmapEncoder(beatmapContent, beatmapSkin, storyboard).Encode(sw);
+                if (!RulesetBeatmapFormat.TryEncode(beatmapContent, stream))
+                {
+                    using (var sw = new StreamWriter(stream, Encoding.UTF8, 1024, true))
+                        new LegacyBeatmapEncoder(beatmapContent, beatmapSkin, storyboard).Encode(sw);
+                }
 
                 stream.Seek(0, SeekOrigin.Begin);
 
