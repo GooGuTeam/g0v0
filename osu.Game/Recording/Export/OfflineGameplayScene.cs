@@ -21,7 +21,6 @@ using osu.Game.Screens.Backgrounds;
 using osu.Game.Skinning;
 using osuTK;
 using osu.Game.Screens;
-using osu.Game.Screens.Play;
 
 namespace osu.Game.Recording.Export
 {

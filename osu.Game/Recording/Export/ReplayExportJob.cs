@@ -53,15 +53,18 @@ namespace osu.Game.Recording.Export
                     try { session?.DisposeAsync().AsTask().GetAwaiter().GetResult(); }
                     catch (Exception ex) { failure ??= ex; }
                 }
+                if (failure == null)
+                {
+                    try { progress?.Report(1); }
+                    catch (Exception ex) { failure = ex; }
+                }
+
                 if (failure is OperationCanceledException && cancellationToken.IsCancellationRequested)
                     completion.TrySetCanceled(cancellationToken);
                 else if (failure != null)
                     completion.TrySetException(failure);
                 else
-                {
-                    progress?.Report(1);
                     completion.TrySetResult();
-                }
             })
             { IsBackground = true, Name = @"Replay video export" }.Start();
             return completion.Task;

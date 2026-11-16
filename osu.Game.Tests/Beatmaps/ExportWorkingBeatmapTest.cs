@@ -11,7 +11,6 @@ using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Mods;
-using osu.Game.Recording;
 using osu.Game.Recording.Export;
 using osu.Game.Audio;
 using osu.Game.Skinning;
