@@ -549,6 +549,7 @@ namespace osu.Game.Beatmaps
             Realm.Write(r =>
             {
                 using var stream = new MemoryStream();
+
                 if (!RulesetBeatmapFormat.TryEncode(beatmapContent, stream))
                 {
                     using (var sw = new StreamWriter(stream, Encoding.UTF8, 1024, true))

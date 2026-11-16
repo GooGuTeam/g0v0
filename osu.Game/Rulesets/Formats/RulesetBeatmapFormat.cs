@@ -184,8 +184,22 @@ namespace osu.Game.Rulesets.Formats
             {
                 using var reader = new StreamReader(content, Encoding.UTF8, true, 1024, true);
                 using var json = new JsonTextReader(reader);
-                return json.Read() && json.TokenType == JsonToken.StartObject
-                                   && json.Read() && json.TokenType == JsonToken.PropertyName && (string?)json.Value == ENVELOPE_KEY;
+                if (!json.Read() || json.TokenType != JsonToken.StartObject)
+                    return false;
+
+                while (json.Read() && json.TokenType == JsonToken.PropertyName)
+                {
+                    bool isMarker = (string?)json.Value == ENVELOPE_KEY;
+                    if (!json.Read())
+                        return false;
+
+                    if (isMarker && json.TokenType == JsonToken.String)
+                        return true;
+
+                    json.Skip();
+                }
+
+                return false;
             }
             catch (JsonException)
             {

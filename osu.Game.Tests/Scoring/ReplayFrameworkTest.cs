@@ -11,6 +11,7 @@ using osu.Framework.Testing;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
 using osu.Game.Models;
+using osu.Game.Rulesets;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Replays;
 using osu.Game.Scoring;
@@ -64,6 +65,30 @@ namespace osu.Game.Tests.Scoring
             var format = new RulesetReplayFormat<CustomFrame>();
             Assert.Throws<InvalidDataException>(() => format.Decode(new JArray(), 2));
             Assert.Throws<InvalidDataException>(() => format.Decode(new JArray(new JObject { ["time"] = double.NaN }), 1));
+        }
+
+        [TestCase(".custom.g0r")]
+        [TestCase("..g0r")]
+        [TestCase(".")]
+        [TestCase("g0r")]
+        [TestCase(".a/b")]
+        [TestCase(".a\\b")]
+        public void TestInvalidReplayExtensionRejected(string extension)
+        {
+            Assert.Throws<ArgumentException>(() => ScoreReplayFormat.Register(new TestReplayFormat(extension)));
+        }
+
+        private class TestReplayFormat : ScoreReplayFormat
+        {
+            public TestReplayFormat(string extension)
+            {
+                Extension = extension;
+            }
+
+            public override string Extension { get; }
+            public override bool CanEncode(Ruleset ruleset) => false;
+            public override void Encode(Score score, IBeatmap beatmap, Stream stream) => throw new NotSupportedException();
+            public override Score Decode(Stream stream, IRulesetStore rulesets, BeatmapManager beatmaps) => throw new NotSupportedException();
         }
 
         public class NativeTestRuleset : OsuRuleset

@@ -7,6 +7,10 @@ database replay loader and score exporter. Built-in codecs are `.osr` for legacy
 rulesets and `.g0r` for native frames. `Register()` can add another application-level codec
 without changing these consumers. Extensions are matched case-insensitively.
 
+When no registered codec can encode a ruleset, local score statistics are still saved,
+but no replay is stored or available for playback or export. Non-legacy rulesets must
+provide `CreateReplayFormat()` to persist their replay frames.
+
 A ruleset opts into native replay storage by implementing:
 
 ```csharp

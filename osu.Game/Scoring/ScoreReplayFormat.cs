@@ -35,7 +35,7 @@ namespace osu.Game.Scoring
         public static void Register(ScoreReplayFormat format)
         {
             ArgumentNullException.ThrowIfNull(format);
-            if (format.Extension.Length < 2 || !format.Extension.StartsWith('.') || format.Extension.Contains('/') || format.Extension.Contains('\\'))
+            if (format.Extension.Length < 2 || !format.Extension.StartsWith('.') || format.Extension.Contains('/') || format.Extension.Contains('\\') || format.Extension.IndexOf('.', 1) >= 0)
                 throw new ArgumentException("A replay extension must be a file suffix.", nameof(format));
 
             lock (formats)

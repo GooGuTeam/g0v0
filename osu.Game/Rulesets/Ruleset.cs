@@ -399,6 +399,8 @@ namespace osu.Game.Rulesets
         /// <summary>
         /// Creates the native replay format for rulesets whose inputs cannot be stored in legacy mouse/button frames.
         /// </summary>
+        /// <returns>The native frame codec, or null if unsupported. Without a compatible registered score codec,
+        /// local scores are saved without replay data.</returns>
         public virtual RulesetReplayFormat? CreateReplayFormat() => null;
 
         /// <summary>

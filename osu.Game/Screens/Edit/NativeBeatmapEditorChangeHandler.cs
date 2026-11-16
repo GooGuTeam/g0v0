@@ -12,7 +12,7 @@ namespace osu.Game.Screens.Edit
 {
     /// <summary>
     /// Undo/redo for beatmaps stored in a <see cref="RulesetBeatmapFormat"/>, which cannot go through legacy .osu diff patching.
-    /// States are the format's own serialisation; restoring a state replaces hit objects and timing wholesale.
+    /// States contain the format's own serialisation and editor bookmarks; restoring a state replaces hit objects and timing wholesale.
     /// </summary>
     public partial class NativeBeatmapEditorChangeHandler : EditorChangeHandler
     {
@@ -31,14 +31,21 @@ namespace osu.Game.Screens.Edit
 
         protected override void WriteCurrentStateToStream(MemoryStream stream)
         {
-            byte[] bytes = Encoding.UTF8.GetBytes(format.Encode(editorBeatmap.PlayableBeatmap).ToString(Newtonsoft.Json.Formatting.None));
+            var state = new JObject
+            {
+                ["data"] = format.Encode(editorBeatmap.PlayableBeatmap),
+                // Formats are not required to serialise bookmarks. Use the playable copy so BeginChange can capture the old values.
+                ["bookmarks"] = new JArray(editorBeatmap.PlayableBeatmap.Bookmarks),
+            };
+            byte[] bytes = Encoding.UTF8.GetBytes(state.ToString(Newtonsoft.Json.Formatting.None));
             stream.Write(bytes, 0, bytes.Length);
         }
 
         protected override void ApplyStateChange(byte[] previousState, byte[] newState)
         {
             var decoded = new Beatmap { BeatmapInfo = editorBeatmap.BeatmapInfo.Clone() };
-            format.Decode(JObject.Parse(Encoding.UTF8.GetString(newState)), decoded);
+            var state = JObject.Parse(Encoding.UTF8.GetString(newState));
+            format.Decode((JObject)state["data"]!, decoded);
 
             var ruleset = editorBeatmap.BeatmapInfo.Ruleset.CreateInstance();
             var converted = ruleset.CreateBeatmapConverter(decoded).Convert();
@@ -56,6 +63,9 @@ namespace osu.Game.Screens.Edit
                 foreach (var point in group.ControlPoints.ToArray())
                     editorBeatmap.ControlPointInfo.Add(group.Time, point);
             }
+
+            editorBeatmap.Bookmarks.Clear();
+            editorBeatmap.Bookmarks.AddRange(state["bookmarks"]!.Values<int>());
 
             editorBeatmap.EndChange();
         }

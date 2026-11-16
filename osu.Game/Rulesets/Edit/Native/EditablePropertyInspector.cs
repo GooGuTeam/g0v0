@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -33,6 +34,8 @@ namespace osu.Game.Rulesets.Edit.Native
         private FillFlowContainer controls = null!;
         private ScheduledDelegate? pendingRebuild;
         private bool applying;
+        private NotifyCollectionChangedEventHandler? selectionChanged;
+        private Action? transactionEnded;
 
         [BackgroundDependencyLoader]
         private void load()
@@ -64,14 +67,27 @@ namespace osu.Game.Rulesets.Edit.Native
         {
             base.LoadComplete();
 
-            editorBeatmap.SelectedHitObjects.CollectionChanged += (_, _) => scheduleRebuild();
-            editorBeatmap.TransactionEnded += () =>
+            editorBeatmap.SelectedHitObjects.CollectionChanged += selectionChanged = (_, _) => scheduleRebuild();
+            editorBeatmap.TransactionEnded += transactionEnded = () =>
             {
                 if (!applying)
                     scheduleRebuild();
             };
 
             rebuild();
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            pendingRebuild?.Cancel();
+
+            if (selectionChanged != null)
+                editorBeatmap.SelectedHitObjects.CollectionChanged -= selectionChanged;
+
+            if (transactionEnded != null)
+                editorBeatmap.TransactionEnded -= transactionEnded;
+
+            base.Dispose(isDisposing);
         }
 
         private void scheduleRebuild()
@@ -167,13 +183,15 @@ namespace osu.Game.Rulesets.Edit.Native
                 return null;
 
             double value = Convert.ToDouble(current, CultureInfo.InvariantCulture);
+            double min = Math.Max(attribute.Min, type == typeof(int) ? int.MinValue : type == typeof(float) ? -float.MaxValue : double.MinValue);
+            double max = Math.Min(attribute.Max, type == typeof(int) ? int.MaxValue : type == typeof(float) ? float.MaxValue : double.MaxValue);
 
             if (double.IsFinite(attribute.Min) && double.IsFinite(attribute.Max))
             {
                 var bindable = new BindableDouble(value)
                 {
-                    MinValue = attribute.Min,
-                    MaxValue = attribute.Max,
+                    MinValue = min,
+                    MaxValue = max,
                     Precision = type == typeof(int) ? 1 : attribute.Precision,
                 };
                 bindable.BindValueChanged(v => apply(objects, property, v.NewValue));
@@ -185,10 +203,10 @@ namespace osu.Game.Rulesets.Edit.Native
             box.OnCommit += (_, _) =>
             {
                 if (double.TryParse(text.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed)
-                    && double.IsFinite(parsed) && parsed >= attribute.Min && parsed <= attribute.Max)
+                    && double.IsFinite(parsed) && parsed >= min && parsed <= max)
                     apply(objects, property, parsed);
                 else
-                    text.Value = value.ToString(CultureInfo.InvariantCulture);
+                    text.Value = Convert.ToDouble(property.GetValue(objects[0]), CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture);
             };
             return box;
         }

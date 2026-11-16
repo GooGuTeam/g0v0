@@ -71,7 +71,6 @@ using osu.Game.Overlays.Volume;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
-using osu.Game.Scoring.Legacy;
 using osu.Game.Screens;
 using osu.Game.Screens.Edit;
 using osu.Game.Screens.Footer;
@@ -912,7 +911,7 @@ namespace osu.Game
             {
                 databasedScore = ScoreManager.GetScore(score);
             }
-            catch (LegacyScoreDecoder.BeatmapNotFoundException notFound)
+            catch (ReplayBeatmapNotFoundException notFound)
             {
                 Logger.Log("The replay cannot be played because the beatmap is missing.", LoggingTarget.Information);
 

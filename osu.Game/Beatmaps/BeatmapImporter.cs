@@ -37,7 +37,7 @@ namespace osu.Game.Beatmaps
         /// Archive extensions which belong to beatmaps outright (and are deleted after import).
         /// </summary>
         private static IEnumerable<string> ownedExtensions => beatmap_archive_extensions
-                                                              .Concat(RulesetBeatmapFormat.Registered.SelectMany(f => f.HandledExtensions));
+            .Concat(RulesetBeatmapFormat.Registered.SelectMany(f => f.HandledExtensions));
 
         /// <summary>
         /// Generic container extensions which are only imported when a ruleset format recognises their content.
@@ -199,7 +199,7 @@ namespace osu.Game.Beatmaps
                 string extension = Path.GetExtension(task.Path).ToLowerInvariant();
 
                 if (!beatmap_archive_extensions.Contains(extension) && !ownedExtensions.Contains(extension)
-                                                                   && !reader.Filenames.Any(f => f.EndsWith(@".osu", StringComparison.OrdinalIgnoreCase)))
+                                                                    && !reader.Filenames.Any(f => f.EndsWith(@".osu", StringComparison.OrdinalIgnoreCase)))
                     throw new InvalidDataException($"{Path.GetFileName(task.Path)} is not a recognised beatmap archive.");
 
                 return reader;
