@@ -38,7 +38,6 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         protected Container OverlayLayer { get; private set; } = null!;
 
         private SkinnableSpriteText hitCircleText = null!;
-        private Drawable flashingProxy = null!;
         private bool overlayAboveNumber;
         private readonly Container baseProxies = new Container { RelativeSizeAxes = Axes.Both, Depth = 1 };
         private readonly Container flashProxies = new Container { RelativeSizeAxes = Axes.Both, Depth = -1 };
@@ -112,7 +111,6 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                         Origin = Anchor.Centre,
                     },
                 },
-                flashingProxy = CircleSprite.FlashingDrawable.CreateProxy(),
             };
 
             if (hasNumber)
@@ -151,10 +149,15 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                 visualOrdering.Register(CircleSprite, owner, OsuVisualKind.CircleBase, () => baseProxies);
                 visualOrdering.Register(OverlaySprite, owner, OsuVisualKind.Overlay, () => OverlayLayer,
                     localDepth: OverlaySprite.Depth, overlayAboveNumber: overlayAboveNumber);
-                visualOrdering.Register(flashingProxy, owner, OsuVisualKind.Flash, () => flashProxies);
+                // Proxy the flash itself rather than an intermediate proxy of it. A proxy of a proxy is
+                // validated whenever the intermediate proxy is drawn, even on frames where the flash is
+                // not present, so it would redraw the flash's stale draw node as a phantom circle.
+                visualOrdering.Register(CircleSprite.FlashingDrawable, owner, OsuVisualKind.Flash, () => flashProxies);
                 if (hasNumber)
                     visualOrdering.Register(hitCircleText, owner, OsuVisualKind.Number, () => OverlayLayer, overlayAboveNumber: overlayAboveNumber);
             }
+            else
+                AddInternal(CircleSprite.FlashingDrawable.CreateProxy());
 
             accentColour.BindValueChanged(colour =>
             {
@@ -229,7 +232,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             {
                 if (CircleSprite != null) visualOrdering.Unregister(CircleSprite);
                 if (OverlaySprite != null) visualOrdering.Unregister(OverlaySprite);
-                if (flashingProxy != null) visualOrdering.Unregister(flashingProxy);
+                if (CircleSprite != null) visualOrdering.Unregister(CircleSprite.FlashingDrawable);
                 if (hitCircleText != null) visualOrdering.Unregister(hitCircleText);
             }
 
