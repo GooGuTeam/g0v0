@@ -82,94 +82,237 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         public static Viewport Prepare(IReadOnlyList<LegacySliderBallPath.Edge> source, double progressStart, double progressEnd,
                                        Vector2 origin, Vector2 offset, float ratio, float radius, double? expectedLength, List<Edge> lines)
         {
+            var prepared = new LineCache();
+            prepared.SetSource(source);
+            Viewport viewport = prepared.Prepare(progressStart, progressEnd, offset, ratio, radius, expectedLength);
             lines.Clear();
-            if (!(ratio > 0) || !float.IsFinite(ratio) || !(radius > 0) || !float.IsFinite(radius)
-                || !double.IsFinite(progressStart) || !double.IsFinite(progressEnd))
-                return default;
+            lines.AddRange(prepared.Lines);
+            return viewport;
+        }
 
-            progressStart = Math.Clamp(progressStart, 0, 1);
-            progressEnd = Math.Clamp(progressEnd, progressStart, 1);
-            double length = 0;
-            foreach (var edge in source)
-                length += (edge.To - edge.From).Length;
-            double spatialLength = expectedLength is > 0 ? expectedLength.Value : length;
-            double begin = spatialLength * progressStart;
-            double finish = progressEnd >= 1 ? length : spatialLength * progressEnd;
-            double cumulative = 0;
-            int first = 0, last = source.Count - 1;
-            double[] cumulativeLengths = new double[source.Count];
+        /// <summary>
+        /// Stable's merged line list for one ball path, kept between snaking frames.
+        /// </summary>
+        /// <remarks>
+        /// Stable rebuilds this list from scratch for every frame. The result only depends on the first visible edge,
+        /// so while that is unchanged (snaking in) every merged line that ends before the last two visible edges is
+        /// reused verbatim and merging resumes after it. Cumulative edge lengths are computed once per path.
+        /// </remarks>
+        internal sealed class LineCache
+        {
+            private readonly List<Edge> lines = new List<Edge>();
 
-            for (int i = 0; i < source.Count; i++)
+            // The last source edge of each line, and the display bounds of all lines up to and including it.
+            private readonly List<int> lineEnds = new List<int>();
+            private readonly List<Vector2> boundsMin = new List<Vector2>();
+            private readonly List<Vector2> boundsMax = new List<Vector2>();
+
+            private IReadOnlyList<LegacySliderBallPath.Edge> source = Array.Empty<LegacySliderBallPath.Edge>();
+            private double[] cumulativeLengths = Array.Empty<double>();
+            private double length;
+
+            private bool reusable;
+            private int previousFirst, previousLast;
+            private double previousBegin;
+            private Vector2 previousOffset;
+            private float previousRatio;
+
+            public List<Edge> Lines => lines;
+
+            /// <summary>
+            /// Replaces the ball path. Must be called whenever the contents of <paramref name="edges"/> change.
+            /// </summary>
+            public void SetSource(IReadOnlyList<LegacySliderBallPath.Edge> edges)
             {
-                cumulative += (source[i].To - source[i].From).Length;
-                cumulativeLengths[i] = cumulative;
-                if (cumulative < begin) first = i + 1;
-                if (cumulative > finish && last == source.Count - 1) last = i;
-            }
+                source = edges;
+                if (cumulativeLengths.Length < edges.Count)
+                    cumulativeLengths = new double[edges.Count];
 
-            bool pending = false;
-            int mergeStart = first;
+                double cumulative = 0;
 
-            for (int i = first; i <= last && i < source.Count; i++)
-            {
-                if (!pending) mergeStart = i;
-
-                if ((source[i].To - source[mergeStart].From).Length > (source[i].Straight ? 32 : 6) || i == last || source[i].ForceEnd || i == last - 1)
+                for (int i = 0; i < edges.Count; i++)
                 {
-                    Vector2 from = source[mergeStart].From, to = source[i].To;
-
-                    if (mergeStart == first && begin > 0)
-                    {
-                        double previous = first == 0 ? 0 : cumulativeLengths[first - 1];
-                        from += (source[first].To - from).Normalized() * (float)(begin - previous);
-                    }
-
-                    if (i == last && progressEnd < 1)
-                    {
-                        float remainder = (float)finish - (i == 0 ? 0 : (float)cumulativeLengths[i - 1]);
-                        if (remainder > 0) to = from + (to - from).Normalized() * remainder;
-                    }
-
-                    lines.Add(new Edge(display(from), display(to)));
-                    pending = false;
+                    cumulative += (edges[i].To - edges[i].From).Length;
+                    cumulativeLengths[i] = cumulative;
                 }
-                else pending = true;
+
+                length = cumulative;
+                reset();
             }
 
-            if (lines.Count == 0) return default;
-
-            Vector2 min = lines[0].From, max = min;
-
-            foreach (var edge in lines)
+            public Viewport Prepare(double progressStart, double progressEnd, Vector2 offset, float ratio, float radius, double? expectedLength)
             {
-                min = Vector2.ComponentMin(min, edge.To);
-                max = Vector2.ComponentMax(max, edge.To);
+                if (!(ratio > 0) || !float.IsFinite(ratio) || !(radius > 0) || !float.IsFinite(radius)
+                    || !double.IsFinite(progressStart) || !double.IsFinite(progressEnd))
+                {
+                    reset();
+                    return default;
+                }
+
+                progressStart = Math.Clamp(progressStart, 0, 1);
+                progressEnd = Math.Clamp(progressEnd, progressStart, 1);
+                double spatialLength = expectedLength is > 0 ? expectedLength.Value : length;
+                double begin = spatialLength * progressStart;
+                double finish = progressEnd >= 1 ? length : spatialLength * progressEnd;
+                int count = source.Count;
+                int first, last;
+
+                if (double.IsNaN(length))
+                    findRangeLinear(begin, finish, out first, out last);
+                else
+                {
+                    // Cumulative lengths never decrease, so the linear scans reduce to binary searches.
+                    first = 0;
+                    int high = count;
+
+                    while (first < high)
+                    {
+                        int mid = first + (high - first) / 2;
+                        if (cumulativeLengths[mid] < begin) first = mid + 1;
+                        else high = mid;
+                    }
+
+                    last = first;
+                    high = count;
+
+                    while (last < high)
+                    {
+                        int mid = last + (high - last) / 2;
+                        if (cumulativeLengths[mid] > finish) high = mid;
+                        else last = mid + 1;
+                    }
+
+                    if (last == count) last = count - 1;
+                }
+
+                int resume = first;
+
+                if (reusable && first == previousFirst && begin.Equals(previousBegin) && ratio == previousRatio && offset == previousOffset)
+                {
+                    // Lines ending at least two edges before both the old and new last edge did not see either end.
+                    int stableEnd = Math.Min(previousLast, last) - 2;
+                    int keep = lines.Count;
+                    while (keep > 0 && lineEnds[keep - 1] > stableEnd) keep--;
+                    truncate(keep);
+                    if (keep > 0) resume = lineEnds[keep - 1] + 1;
+                }
+                else
+                    truncate(0);
+
+                bool pending = false;
+                int mergeStart = resume;
+
+                for (int i = resume; i <= last && i < count; i++)
+                {
+                    if (!pending) mergeStart = i;
+
+                    if ((source[i].To - source[mergeStart].From).Length > (source[i].Straight ? 32 : 6) || i == last || source[i].ForceEnd || i == last - 1)
+                    {
+                        Vector2 from = source[mergeStart].From, to = source[i].To;
+
+                        if (mergeStart == first && begin > 0)
+                        {
+                            double previous = first == 0 ? 0 : cumulativeLengths[first - 1];
+                            from += (source[first].To - from).Normalized() * (float)(begin - previous);
+                        }
+
+                        if (i == last && progressEnd < 1)
+                        {
+                            float remainder = (float)finish - (i == 0 ? 0 : (float)cumulativeLengths[i - 1]);
+                            if (remainder > 0) to = from + (to - from).Normalized() * remainder;
+                        }
+
+                        add(new Edge(from * ratio + offset, to * ratio + offset), i);
+                        pending = false;
+                    }
+                    else pending = true;
+                }
+
+                reusable = true;
+                previousFirst = first;
+                previousLast = last;
+                previousBegin = begin;
+                previousRatio = ratio;
+                previousOffset = offset;
+
+                if (lines.Count == 0) return default;
+
+                Vector2 min = boundsMin[^1], max = boundsMax[^1];
+
+                if (!float.IsFinite(min.X) || !float.IsFinite(min.Y) || !float.IsFinite(max.X) || !float.IsFinite(max.Y)
+                    || (double)max.X - min.X + radius * 2.3 > int.MaxValue
+                    || (double)max.Y - min.Y + radius * 2.3 > int.MaxValue)
+                {
+                    reset();
+                    return default;
+                }
+
+                int x = (int)(min.X - radius * 1.15);
+                int y = (int)(min.Y - radius * 1.15);
+                // Stable subtracts the bounds as floats before widening.
+                int width = (int)((double)(max.X - min.X) + radius * 2.3);
+                int height = (int)((double)(max.Y - min.Y) + radius * 2.3);
+
+                return new Viewport(new Vector2(Math.Max(x, 0), Math.Max(y, 0)), new Vector2(width, (float)(height - Math.Max(-(double)y, 0))))
+                {
+                    // Clipping a negative left edge shifts the projection; clipping the top shortens it.
+                    OrthoLeft = Math.Max(x, 0),
+                    OrthoRight = (int)Math.Clamp((long)Math.Max(x, 0) + width, int.MinValue, int.MaxValue),
+                    OrthoBottom = Math.Max(y, 0),
+                    OrthoTop = (int)Math.Clamp((long)y + height, int.MinValue, int.MaxValue),
+                };
             }
 
-            if (!float.IsFinite(min.X) || !float.IsFinite(min.Y) || !float.IsFinite(max.X) || !float.IsFinite(max.Y)
-                || (double)max.X - min.X + radius * 2.3 > int.MaxValue
-                || (double)max.Y - min.Y + radius * 2.3 > int.MaxValue)
+            /// <summary>
+            /// Stable's scans, for paths whose lengths are not ordered (NaN).
+            /// </summary>
+            private void findRangeLinear(double begin, double finish, out int first, out int last)
             {
-                lines.Clear();
-                return default;
+                first = 0;
+                last = source.Count - 1;
+
+                for (int i = 0; i < source.Count; i++)
+                {
+                    if (cumulativeLengths[i] < begin) first = i + 1;
+                    if (cumulativeLengths[i] > finish && last == source.Count - 1) last = i;
+                }
             }
 
-            int x = (int)(min.X - radius * 1.15);
-            int y = (int)(min.Y - radius * 1.15);
-            // Stable subtracts the bounds as floats before widening.
-            int width = (int)((double)(max.X - min.X) + radius * 2.3);
-            int height = (int)((double)(max.Y - min.Y) + radius * 2.3);
-
-            return new Viewport(new Vector2(Math.Max(x, 0), Math.Max(y, 0)), new Vector2(width, (float)(height - Math.Max(-(double)y, 0))))
+            private void add(Edge line, int end)
             {
-                // Clipping a negative left edge shifts the projection; clipping the top shortens it.
-                OrthoLeft = Math.Max(x, 0),
-                OrthoRight = (int)Math.Clamp((long)Math.Max(x, 0) + width, int.MinValue, int.MaxValue),
-                OrthoBottom = Math.Max(y, 0),
-                OrthoTop = (int)Math.Clamp((long)y + height, int.MinValue, int.MaxValue),
-            };
+                Vector2 min, max;
 
-            Vector2 display(Vector2 point) => point * ratio + offset;
+                if (lines.Count == 0)
+                {
+                    min = max = line.From;
+                }
+                else
+                {
+                    min = boundsMin[^1];
+                    max = boundsMax[^1];
+                }
+
+                lines.Add(line);
+                lineEnds.Add(end);
+                boundsMin.Add(Vector2.ComponentMin(min, line.To));
+                boundsMax.Add(Vector2.ComponentMax(max, line.To));
+            }
+
+            private void truncate(int count)
+            {
+                if (count >= lines.Count) return;
+
+                lines.RemoveRange(count, lines.Count - count);
+                lineEnds.RemoveRange(count, lineEnds.Count - count);
+                boundsMin.RemoveRange(count, boundsMin.Count - count);
+                boundsMax.RemoveRange(count, boundsMax.Count - count);
+            }
+
+            private void reset()
+            {
+                truncate(0);
+                reusable = false;
+            }
         }
 
         public static void Build(IReadOnlyList<Edge> lines, float radius, List<TexturedVertex3D> quads, List<TexturedVertex3D> caps)
@@ -179,53 +322,116 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             Emit(lines, radius, quads.Add, caps.Add);
         }
 
-        // A bounded renderer batch consumes vertices directly; retaining 11M expanded
-        // cap vertices per drawable is unnecessary when the resulting FBO is cached.
         public static void Emit(IReadOnlyList<Edge> lines, float radius, Action<TexturedVertex3D>? quad, Action<TexturedVertex3D>? cap)
         {
-            for (int i = 0; i < lines.Count; i++)
+            Edge[] array = lines as Edge[] ?? new List<Edge>(lines).ToArray();
+            var frames = new LineFrame[array.Length];
+            ComputeFrames(array, frames);
+
+            if (quad != null)
             {
-                Edge line = lines[i];
-                float length = (line.To - line.From).Length;
-                float angle = theta(line);
-                float cos = (float)Math.Cos(angle), sin = (float)Math.Sin(angle);
+                var sink = new ActionSink(quad);
+                EmitQuads(array, frames, radius, ref sink);
+            }
 
-                if (quad != null)
-                {
-                    float m11 = length * cos, m12 = length * sin;
-                    float m21 = -radius * sin, m22 = radius * cos;
-                    quad(transformed(-0.0003f, -1, 0, m11, m12, m21, m22, line.From));
-                    quad(transformed(1.0003f, -1, 0, m11, m12, m21, m22, line.From));
-                    quad(transformed(1.0003f, 0.0001f, 1, m11, m12, m21, m22, line.From));
-                    quad(transformed(-0.0003f, 0.0001f, 1, m11, m12, m21, m22, line.From));
-                    quad(transformed(-0.0003f, 0.0001f, 1, m11, m12, m21, m22, line.From));
-                    quad(transformed(1.0003f, 0.0001f, 1, m11, m12, m21, m22, line.From));
-                    quad(transformed(1.0003f, 1, 0, m11, m12, m21, m22, line.From));
-                    quad(transformed(-0.0003f, 1, 0, m11, m12, m21, m22, line.From));
-                }
-
-                if (cap == null) continue;
-
-                float turn = i + 1 < lines.Count ? theta(lines[i + 1]) - angle : (float)Math.PI;
-                if (turn > Math.PI) turn -= (float)Math.PI * 2;
-                if (turn < -Math.PI) turn += (float)Math.PI * 2;
-                int count = Math.Min(24, (int)Math.Ceiling(Math.Abs(turn * 24f) / Math.PI));
-                emitCap(line.To, radius, turn < 0 ? -radius : radius, cos, sin, count, cap);
-                if (i == 0 || line.From != lines[i - 1].To)
-                    emitCap(line.From, -radius, -radius, cos, sin, 24, cap);
+            if (cap != null)
+            {
+                var sink = new ActionSink(cap);
+                EmitCaps(array, frames, radius, ref sink);
             }
         }
 
-        private static void emitCap(Vector2 centre, float sx, float sy, float cos, float sin, int triangles, Action<TexturedVertex3D> add)
+        /// <summary>
+        /// Receives mesh vertices. <see cref="Transform"/> must be a pure function of its input; vertices shared
+        /// between triangles are transformed once and then added repeatedly.
+        /// </summary>
+        internal interface IVertexSink
         {
+            TexturedVertex3D Transform(TexturedVertex3D vertex);
+
+            void Add(in TexturedVertex3D vertex);
+        }
+
+        /// <summary>
+        /// The direction of a line, as stable computes it.
+        /// </summary>
+        internal readonly record struct LineFrame(float Angle, float Cos, float Sin);
+
+        public static void ComputeFrames(ReadOnlySpan<Edge> lines, Span<LineFrame> frames)
+        {
+            for (int i = 0; i < lines.Length; i++)
+            {
+                float angle = theta(lines[i]);
+                frames[i] = new LineFrame(angle, (float)Math.Cos(angle), (float)Math.Sin(angle));
+            }
+        }
+
+        public static void EmitQuads<TSink>(ReadOnlySpan<Edge> lines, ReadOnlySpan<LineFrame> frames, float radius, ref TSink sink)
+            where TSink : struct, IVertexSink
+        {
+            for (int i = 0; i < lines.Length; i++)
+            {
+                Edge line = lines[i];
+                float length = (line.To - line.From).Length;
+                float cos = frames[i].Cos, sin = frames[i].Sin;
+                float m11 = length * cos, m12 = length * sin;
+                float m21 = -radius * sin, m22 = radius * cos;
+
+                var outerStart = sink.Transform(transformed(-0.0003f, -1, 0, m11, m12, m21, m22, line.From));
+                var outerEnd = sink.Transform(transformed(1.0003f, -1, 0, m11, m12, m21, m22, line.From));
+                var ridgeEnd = sink.Transform(transformed(1.0003f, 0.0001f, 1, m11, m12, m21, m22, line.From));
+                var ridgeStart = sink.Transform(transformed(-0.0003f, 0.0001f, 1, m11, m12, m21, m22, line.From));
+
+                sink.Add(outerStart);
+                sink.Add(outerEnd);
+                sink.Add(ridgeEnd);
+                sink.Add(ridgeStart);
+                sink.Add(ridgeStart);
+                sink.Add(ridgeEnd);
+                sink.Add(sink.Transform(transformed(1.0003f, 1, 0, m11, m12, m21, m22, line.From)));
+                sink.Add(sink.Transform(transformed(-0.0003f, 1, 0, m11, m12, m21, m22, line.From)));
+            }
+        }
+
+        public static void EmitCaps<TSink>(ReadOnlySpan<Edge> lines, ReadOnlySpan<LineFrame> frames, float radius, ref TSink sink)
+            where TSink : struct, IVertexSink
+        {
+            for (int i = 0; i < lines.Length; i++)
+            {
+                Edge line = lines[i];
+                float angle = frames[i].Angle, cos = frames[i].Cos, sin = frames[i].Sin;
+                float turn = i + 1 < lines.Length ? frames[i + 1].Angle - angle : (float)Math.PI;
+                if (turn > Math.PI) turn -= (float)Math.PI * 2;
+                if (turn < -Math.PI) turn += (float)Math.PI * 2;
+                int count = Math.Min(24, (int)Math.Ceiling(Math.Abs(turn * 24f) / Math.PI));
+                emitCap(line.To, radius, turn < 0 ? -radius : radius, cos, sin, count, ref sink);
+                if (i == 0 || line.From != lines[i - 1].To)
+                    emitCap(line.From, -radius, -radius, cos, sin, 24, ref sink);
+            }
+        }
+
+        private static void emitCap<TSink>(Vector2 centre, float sx, float sy, float cos, float sin, int triangles, ref TSink sink)
+            where TSink : struct, IVertexSink
+        {
+            if (triangles <= 0) return;
+
             float m11 = sx * cos, m12 = sx * sin, m21 = -sy * sin, m22 = sy * cos;
+            var middle = sink.Transform(vertex(new Vector3(centre.X, centre.Y, 1), 1));
+            var previous = sink.Transform(rim(0));
 
             for (int i = 0; i < triangles; i++)
             {
-                add(vertex(new Vector3(centre.X, centre.Y, 1), 1));
-                Vector2 a = capVertex(i), b = capVertex(i + 1);
-                add(transformed(a.X, a.Y, 0, m11, m12, m21, m22, centre));
-                add(transformed(b.X, b.Y, 0, m11, m12, m21, m22, centre));
+                var next = sink.Transform(rim(i + 1));
+                sink.Add(middle);
+                sink.Add(previous);
+                sink.Add(next);
+                previous = next;
+            }
+
+            TexturedVertex3D rim(int i)
+            {
+                Vector2 point = capVertex(i);
+                return transformed(point.X, point.Y, 0, m11, m12, m21, m22, centre);
             }
         }
 
@@ -251,6 +457,20 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                 Colour = Color4.White,
                 TexturePosition = new Vector2(gradient * (1f - 1f / 128), 0.5f),
             };
+        }
+
+        private readonly struct ActionSink : IVertexSink
+        {
+            private readonly Action<TexturedVertex3D> add;
+
+            public ActionSink(Action<TexturedVertex3D> add)
+            {
+                this.add = add;
+            }
+
+            public TexturedVertex3D Transform(TexturedVertex3D vertex) => vertex;
+
+            public void Add(in TexturedVertex3D vertex) => add(vertex);
         }
     }
 }

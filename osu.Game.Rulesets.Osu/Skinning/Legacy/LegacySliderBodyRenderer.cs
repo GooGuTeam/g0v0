@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Primitives;
@@ -26,7 +27,12 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             Math.Min(viewport.RequestedSize.X, viewportLimit.X), Math.Min(viewport.RequestedSize.Y, viewportLimit.Y));
 
         private readonly List<LegacySliderBallPath.Edge> edges = new List<LegacySliderBallPath.Edge>();
-        private readonly List<LegacySliderBodyMesh.Edge> lines = new List<LegacySliderBodyMesh.Edge>();
+        private readonly LegacySliderBodyMesh.LineCache lineCache = new LegacySliderBodyMesh.LineCache();
+
+        // Line lists handed to draw nodes. Snaking republishes the list every frame; recycling released
+        // snapshots avoids a (frequently large object heap) array per frame. Only touched on the update thread.
+        private readonly Stack<LineSnapshot> snapshotPool = new Stack<LineSnapshot>();
+        private LineSnapshot? lineSnapshot;
 
         // The ridge mesh uses D32. FBO attachment disposal is deferred by the framework;
         // colour rasterisation is compared against the original D16 oracle separately.
@@ -39,7 +45,6 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         private Texture? gradient;
         private LegacySliderBodyMesh.Viewport viewport;
         private Vector2 viewportLimit = new Vector2(32768);
-        private LegacySliderBodyMesh.Edge[] lineSnapshot = Array.Empty<LegacySliderBodyMesh.Edge>();
         private float radius;
         private int revision;
         private Color4 accent, border;
@@ -84,6 +89,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                 pathOrigin = origin;
                 originalPath = sliderPath.LegacyPath;
                 pathValid = LegacySliderBallPath.Build(sliderPath, origin, edges);
+                lineCache.SetSource(edges);
             }
 
             if (!pathValid || edges.Count == 0 || !IsLoaded || gradient == null) return false;
@@ -91,8 +97,8 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             if (changed || limitChanged || previousOffset != displayOrigin || previousRatio != ratio || previousRadius != fieldRadius || previousStart != start || previousEnd != end)
             {
                 radius = fieldRadius * ratio;
-                viewport = LegacySliderBodyMesh.Prepare(edges, start, end, origin, displayOrigin, ratio, radius, sliderPath.ExpectedDistance.Value, lines);
-                lineSnapshot = lines.ToArray();
+                viewport = lineCache.Prepare(start, end, displayOrigin, ratio, radius, sliderPath.ExpectedDistance.Value);
+                publishLines(lineCache.Lines);
                 previousOffset = displayOrigin;
                 previousRatio = ratio;
                 previousRadius = fieldRadius;
@@ -140,9 +146,55 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             return viewport.RequestedSize.X > 0 && viewport.RequestedSize.Y > 0;
         }
 
+        private void publishLines(List<LegacySliderBodyMesh.Edge> lines)
+        {
+            LineSnapshot? next = null;
+
+            while (snapshotPool.TryPop(out var pooled))
+            {
+                if (pooled.Lines.Length < lines.Count) continue;
+
+                next = pooled;
+                break;
+            }
+
+            // Snaking in grows the list; leave headroom so it is not reallocated for every new line.
+            next ??= new LineSnapshot(new LegacySliderBodyMesh.Edge[lines.Count + lines.Count / 2]);
+            CollectionsMarshal.AsSpan(lines).CopyTo(next.Lines);
+            next.Count = lines.Count;
+            next.References = 1;
+
+            releaseLines(lineSnapshot);
+            lineSnapshot = next;
+        }
+
+        private void releaseLines(LineSnapshot? snapshot)
+        {
+            if (snapshot == null || --snapshot.References > 0) return;
+
+            if (snapshotPool.Count < 4)
+                snapshotPool.Push(snapshot);
+        }
+
         protected override DrawNode CreateDrawNode()
         {
             return new BodyDrawNode(this);
+        }
+
+        /// <summary>
+        /// An immutable (while referenced) copy of the line list. Draw nodes hold references from
+        /// <see cref="DrawNode.ApplyState"/>, which runs on the update thread while the node is not being drawn.
+        /// </summary>
+        private sealed class LineSnapshot
+        {
+            public readonly LegacySliderBodyMesh.Edge[] Lines;
+            public int Count;
+            public int References;
+
+            public LineSnapshot(LegacySliderBodyMesh.Edge[] lines)
+            {
+                Lines = lines;
+            }
         }
 
         [BackgroundDependencyLoader]
@@ -191,7 +243,8 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             private readonly FrameState frameState;
             private IShader meshShader = null!, textureShader = null!;
             private Texture gradient = null!;
-            private LegacySliderBodyMesh.Edge[] lines = Array.Empty<LegacySliderBodyMesh.Edge>();
+            private LineSnapshot? lines;
+            private LegacySliderBodyMesh.LineFrame[] frames = Array.Empty<LegacySliderBodyMesh.LineFrame>();
             private float radius;
             private Vector2 viewportLimit;
             private IVertexBatch<TexturedVertex3D>? quadBatch, capBatch;
@@ -225,7 +278,13 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                 viewport = source.viewport;
                 if (revision == source.revision) return;
 
-                lines = source.lineSnapshot;
+                if (!ReferenceEquals(lines, source.lineSnapshot))
+                {
+                    source.releaseLines(lines);
+                    lines = source.lineSnapshot;
+                    if (lines != null) lines.References++;
+                }
+
                 radius = source.radius;
                 viewportLimit = source.viewportLimit;
                 revision = source.revision;
@@ -234,7 +293,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             protected override void Draw(IRenderer renderer)
             {
                 base.Draw(renderer);
-                if (lines.Length == 0) return;
+                if (lines == null || lines.Count == 0) return;
 
                 var screen = renderer.Viewport;
                 if (!sharedData.IsInitialised) sharedData.Initialise(renderer);
@@ -268,19 +327,18 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                             renderer.BindTexture(gradient);
                             quadBatch ??= renderer.CreateQuadBatch<TexturedVertex3D>(4096, 10);
                             capBatch ??= renderer.CreateLinearBatch<TexturedVertex3D>(7200, 10, PrimitiveTopology.Triangles);
-                            var quads = quadBatch;
-                            var caps = capBatch;
-                            LegacySliderBodyMesh.Emit(lines, radius, v => quads.Add(toWindow(v)), null);
-                            quadBatch.Draw();
-                            LegacySliderBodyMesh.Emit(lines, radius, null, v => caps.Add(toWindow(v)));
-                            capBatch.Draw();
+                            var lineSpan = new ReadOnlySpan<LegacySliderBodyMesh.Edge>(lines.Lines, 0, lines.Count);
+                            if (frames.Length < lineSpan.Length)
+                                frames = new LegacySliderBodyMesh.LineFrame[lineSpan.Length + lineSpan.Length / 2];
+                            var frameSpan = frames.AsSpan(0, lineSpan.Length);
+                            LegacySliderBodyMesh.ComputeFrames(lineSpan, frameSpan);
 
-                            TexturedVertex3D toWindow(TexturedVertex3D vertex)
-                            {
-                                Vector2 window = projection.ToWindow(vertex.Position);
-                                vertex.Position = new Vector3(window.X, windowHeight - window.Y, vertex.Position.Z);
-                                return vertex;
-                            }
+                            var quads = new WindowSink(quadBatch, projection, windowHeight);
+                            LegacySliderBodyMesh.EmitQuads(lineSpan, frameSpan, radius, ref quads);
+                            quadBatch.Draw();
+                            var caps = new WindowSink(capBatch, projection, windowHeight);
+                            LegacySliderBodyMesh.EmitCaps(lineSpan, frameSpan, radius, ref caps);
+                            capBatch.Draw();
                         }
                         finally { meshShader.Unbind(); }
                     }
@@ -305,6 +363,32 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                 renderer.DrawFrameBuffer(buffer, new Quad(new Vector2(topLeft.X, bottomRight.Y), bottomRight, topLeft, new Vector2(bottomRight.X, topLeft.Y)), DrawColourInfo.Colour);
                 textureShader.Unbind();
             }
+        }
+
+        /// <summary>
+        /// Projects mesh vertices into stable's (upside-down) window and feeds them to a batch.
+        /// </summary>
+        internal readonly struct WindowSink : LegacySliderBodyMesh.IVertexSink
+        {
+            private readonly IVertexBatch<TexturedVertex3D>? batch;
+            private readonly LegacySliderBodyMesh.WindowProjection projection;
+            private readonly float windowHeight;
+
+            public WindowSink(IVertexBatch<TexturedVertex3D>? batch, LegacySliderBodyMesh.WindowProjection projection, float windowHeight)
+            {
+                this.batch = batch;
+                this.projection = projection;
+                this.windowHeight = windowHeight;
+            }
+
+            public TexturedVertex3D Transform(TexturedVertex3D vertex)
+            {
+                Vector2 window = projection.ToWindow(vertex.Position);
+                vertex.Position = new Vector3(window.X, windowHeight - window.Y, vertex.Position.Z);
+                return vertex;
+            }
+
+            public void Add(in TexturedVertex3D vertex) => batch?.Add(vertex);
         }
     }
 }
