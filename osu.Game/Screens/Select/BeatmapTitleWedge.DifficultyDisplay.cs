@@ -12,6 +12,7 @@ using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Logging;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Drawables;
 using osu.Game.Configuration;
@@ -265,11 +266,41 @@ namespace osu.Game.Screens.Select
                     return;
                 }
 
+                var workingBeatmap = beatmap.Value;
+                var rulesetInfo = ruleset.Value;
+
                 Task.Run(() =>
                 {
                     // This can take time as it is a synchronous task.
                     // TODO: We're calling `GetPlayableBeatmap` multiple times every map load at song select.
-                    var playableBeatmap = beatmap.Value.GetPlayableBeatmap(ruleset.Value);
+                    IBeatmap playableBeatmap;
+
+                    try
+                    {
+                        // Cancel when the selection changes (so stale conversions don't keep running), and still cap a single conversion at 10s.
+                        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        timeoutSource.CancelAfter(10_000);
+
+                        playableBeatmap = workingBeatmap.GetPlayableBeatmap(rulesetInfo, Array.Empty<Mod>(), timeoutSource.Token);
+                    }
+                    catch (Exception e)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                            return;
+
+                        if (e is OperationCanceledException)
+                            Logger.Log($"Timed out computing object counts for {workingBeatmap.BeatmapInfo}; hiding count statistics.");
+                        else
+                            Logger.Log($"Failed to compute object counts for {workingBeatmap.BeatmapInfo}: {e.Message}");
+
+                        Schedule(() =>
+                        {
+                            if (!cancellationToken.IsCancellationRequested)
+                                countStatisticsDisplay.FadeOut(300, Easing.OutQuint);
+                        });
+                        return;
+                    }
+
                     var statistics = playableBeatmap.GetStatistics()
                                                     .Select(s => new StatisticDifficulty.Data(s.Name, s.BarDisplayLength ?? 0, s.BarDisplayLength ?? 0, 1, s.Content))
                                                     .ToList();
