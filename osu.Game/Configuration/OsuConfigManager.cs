@@ -150,6 +150,9 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ThemeMusicStartFromPreview, false);
             SetDefault(OsuSetting.ThemeMusicBeatmapSetId, string.Empty);
 
+            SetDefault(OsuSetting.UseDefaultModPresets, false);
+            SetDefault(OsuSetting.DefaultModPresets, string.Empty);
+
             SetDefault(OsuSetting.AudioOffset, 0, -500.0, 500.0, 1);
 
             SetDefault(OsuSetting.AutomaticallyAdjustBeatmapOffset, false);
@@ -586,5 +589,15 @@ namespace osu.Game.Configuration
         /// The <see cref="osu.Game.Beatmaps.BeatmapSetInfo.ID"/> of the beatmap set used as custom theme music, stored as a string.
         /// </summary>
         ThemeMusicBeatmapSetId,
+
+        /// <summary>
+        /// Automatically applies the configured per-ruleset <see cref="osu.Game.Rulesets.Mods.ModPreset"/> on startup and ruleset change.
+        /// </summary>
+        UseDefaultModPresets,
+
+        /// <summary>
+        /// JSON map of ruleset short name to default <see cref="osu.Game.Rulesets.Mods.ModPreset"/> GUID.
+        /// </summary>
+        DefaultModPresets,
     }
 }

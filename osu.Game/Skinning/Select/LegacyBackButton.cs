@@ -22,6 +22,12 @@ namespace osu.Game.Skinning.Select
         // return unhandled, so the click bubbles up here to fire the action.
         public Action? Action { get; init; }
 
+        /// <summary>
+        /// Whether to use the active skin's <c>menu-back</c> sprite/animation when available.
+        /// When <c>false</c>, always uses the default layered pink button (matching osu!stable's <c>skinnable: false</c> in Options).
+        /// </summary>
+        public bool AllowSkinning { get; init; } = true;
+
         [Resolved]
         private ISkinSource skin { get; set; } = null!;
 
@@ -42,15 +48,18 @@ namespace osu.Game.Skinning.Select
 
             rebuild();
 
-            // long-lived hosts (the options' back button) outlive skin changes.
-            skin.SourceChanged += onSkinChanged;
+            if (AllowSkinning)
+            {
+                // long-lived hosts outlive skin changes.
+                skin.SourceChanged += onSkinChanged;
+            }
         }
 
         private void onSkinChanged() => Schedule(rebuild);
 
         private void rebuild()
         {
-            bool old = skin.GetAnimation("menu-back", true, false) != null;
+            bool old = AllowSkinning && skin.GetAnimation("menu-back", true, false) != null;
 
             if (old)
             {

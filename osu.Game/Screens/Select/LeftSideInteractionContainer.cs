@@ -5,6 +5,7 @@ using System;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input;
 using osu.Framework.Input.Events;
+using osuTK.Input;
 
 namespace osu.Game.Screens.Select
 {
@@ -43,8 +44,8 @@ namespace osu.Game.Screens.Select
         // container, since nothing handled the press.
         protected override bool OnMouseDown(MouseDownEvent e) => false;
 
-        // Only claim the drag when forwarding is allowed (legacy mode); otherwise leave behaviour as-is.
-        protected override bool OnDragStart(DragStartEvent e) => canForwardDrag?.Invoke() == true;
+        // Only claim left-button drags when forwarding is allowed (legacy mode); right-click in empty space performs absolute scrolling.
+        protected override bool OnDragStart(DragStartEvent e) => e.Button == MouseButton.Left && canForwardDrag?.Invoke() == true;
 
         protected override void OnDrag(DragEvent e)
         {

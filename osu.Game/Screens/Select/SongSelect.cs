@@ -442,6 +442,11 @@ namespace osu.Game.Screens.Select
             LoadComponent(legacyModSelectOverlay = new LegacyModSelectOverlay
             {
                 IsValidMod = m => modSelectOverlay.IsValidMod(m),
+                RequestMoreMods = () =>
+                {
+                    legacyModSelectOverlay.Hide();
+                    modSelectOverlay.Show();
+                },
             });
             LoadComponent(legacyBeatmapOptions = new LegacyBeatmapOptionsOverlay());
             LoadComponent(legacyCollectionDialog = new LegacyCollectionDialog());
@@ -681,6 +686,8 @@ namespace osu.Game.Screens.Select
             legacyCollectionDialogRegistration = overlayManager?.RegisterBlockingOverlay(legacyCollectionDialog);
             if (overlayManager == null)
             {
+                if (modSelectOverlay.Parent == null)
+                    AddInternal(modSelectOverlay);
                 AddInternal(legacyModSelectOverlay);
                 AddInternal(legacyBeatmapOptions);
                 AddInternal(legacyCollectionDialog);
@@ -720,30 +727,26 @@ namespace osu.Game.Screens.Select
             legacyModSelectSetting.BindValueChanged(_ => hideMismatchedOverlays());
             legacyFooterStandalone.BindValueChanged(_ => hideMismatchedOverlays());
 
-            modSelectOverlay.State.BindValueChanged(v =>
-            {
-                updateHudLayer();
-
-                if (!this.IsCurrentScreen())
-                    return;
-
-                if (ShowOsuLogo)
-                    logo?.FadeTo(v.NewValue == Visibility.Visible ? 0f : 1f, 200, Easing.OutQuint);
-            });
-
-            legacyModSelectOverlay.State.BindValueChanged(v =>
-            {
-                updateHudLayer();
-
-                if (!this.IsCurrentScreen())
-                    return;
-
-                if (ShowOsuLogo)
-                    logo?.FadeTo(v.NewValue == Visibility.Visible ? 0f : 1f, 200, Easing.OutQuint);
-            });
+            modSelectOverlay.State.BindValueChanged(_ => updateModOverlayState());
+            legacyModSelectOverlay.State.BindValueChanged(_ => updateModOverlayState());
 
             legacyBeatmapOptions.State.BindValueChanged(_ => updateHudLayer());
             legacyCollectionDialog.State.BindValueChanged(_ => updateHudLayer());
+        }
+
+        private void updateModOverlayState()
+        {
+            updateHudLayer();
+
+            if (!this.IsCurrentScreen())
+                return;
+
+            if (ShowOsuLogo)
+            {
+                bool anyModOverlayVisible = modSelectOverlay.State.Value == Visibility.Visible
+                                            || legacyModSelectOverlay.State.Value == Visibility.Visible;
+                logo?.FadeTo(anyModOverlayVisible ? 0f : 1f, 200, Easing.OutQuint);
+            }
         }
 
         protected override void Update()
@@ -1846,16 +1849,31 @@ namespace osu.Game.Screens.Select
                 errorSample?.Play();
         }
 
+        public void OpenLegacyBeatmapOptions(BeatmapInfo? beatmapInfo = null)
+        {
+            performDebounceSelection();
+
+            var target = beatmapInfo ?? (Beatmap.IsDefault ? null : Beatmap.Value.BeatmapInfo);
+            if (target != null)
+                legacyBeatmapOptions.ShowFor(this, target);
+        }
+
         public void ToggleLegacyBeatmapOptions()
         {
             if (legacyBeatmapOptions.State.Value == Visibility.Visible)
                 legacyBeatmapOptions.Hide();
-            else if (!Beatmap.IsDefault)
-                legacyBeatmapOptions.ShowFor(this, Beatmap.Value.BeatmapInfo);
+            else
+                OpenLegacyBeatmapOptions();
         }
 
         public void ToggleModSelection()
         {
+            if (modSelectOverlay.State.Value == Visibility.Visible)
+            {
+                modSelectOverlay.Hide();
+                return;
+            }
+
             if (useLegacyModSelect)
             {
                 modSelectOverlay.Hide();
@@ -1875,7 +1893,7 @@ namespace osu.Game.Screens.Select
             else if (modSelectOverlay.State.Value == Visibility.Visible)
                 modSelectOverlay.DeselectAll();
             else if (!Mods.Disabled)
-                Mods.Value = Array.Empty<Mod>();
+                Mods.Value = DefaultModPresetHelper.ComputeResetMods(Mods.Value, config, realm, Ruleset.Value, m => modSelectOverlay.IsValidMod(m));
         }
     }
 }

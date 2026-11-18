@@ -296,8 +296,16 @@ namespace osu.Game.Rulesets.Osu.UI
             public OsuHitObjectLifetimeEntry(HitObject hitObject)
                 : base(hitObject)
             {
+                double endTime = HitObject.GetEndTime();
+
+                if (HitObject is HitCircle { LegacyHoldEndTime: double holdEndTime } && double.IsFinite(holdEndTime))
+                {
+                    int autoJudgeTime = unchecked(HitCircle.TruncateLegacyTime(holdEndTime) + (int)Math.Truncate(HitObject.HitWindows.WindowFor(HitResult.Meh)));
+                    endTime = Math.Max(endTime, autoJudgeTime);
+                }
+
                 // Prevent past objects in idles states from remaining alive as their end times are skipped in non-frame-stable contexts.
-                LifetimeEnd = HitObject.GetEndTime() + HitObject.HitWindows.WindowFor(HitResult.Miss);
+                LifetimeEnd = endTime + HitObject.HitWindows.WindowFor(HitResult.Miss);
             }
 
             protected override double InitialLifetimeOffset => ((OsuHitObject)HitObject).TimePreempt;

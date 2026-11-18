@@ -10,8 +10,8 @@ using osu.Game.Skinning.Select;
 namespace osu.Game.Overlays.Settings.Rendering.Stable
 {
     /// <summary>
-    /// osu!stable's back button (<c>BackButton</c>) in the bottom-left corner of the options. Stable uses one back button everywhere, so this
-    /// hosts song select's <see cref="LegacyBackButton"/>: the skin's <c>menu-back</c> when it has one, otherwise the layered pink button.
+    /// osu!stable's back button (<c>BackButton</c> with <c>skinnable: false</c>) in the bottom-left corner of the options.
+    /// Always renders the default layered pink button rather than the active skin's <c>menu-back</c>, matching <c>Options.cs</c>.
     /// </summary>
     public partial class StableBackButton : CompositeDrawable
     {
@@ -27,6 +27,7 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
             {
                 Anchor = Anchor.BottomLeft,
                 Origin = Anchor.BottomLeft,
+                AllowSkinning = false,
                 Action = () => Action?.Invoke(),
             };
         }

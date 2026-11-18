@@ -149,12 +149,13 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             }
 
             double angle = input.Angle;
-            double delta = angle - state.LastAngle;
+            double lastAngle = state.LastAngle ?? angle;
+            double delta = angle - lastAngle;
 
-            if (angle - state.LastAngle < -Math.PI)
-                delta = Math.PI * 2 + angle - state.LastAngle;
-            else if (state.LastAngle - angle < -Math.PI)
-                delta = Math.PI * -2 - state.LastAngle + angle;
+            if (angle - lastAngle < -Math.PI)
+                delta = Math.PI * 2 + angle - lastAngle;
+            else if (lastAngle - angle < -Math.PI)
+                delta = Math.PI * -2 - lastAngle + angle;
 
             if (delta == 0)
                 state.VelocityTheoretical = state.ZeroCount++ < 1 ? state.VelocityTheoretical / 3 : 0;
@@ -249,8 +250,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             public double? FrameTime;
             public double LastProcessedTime;
 
-            // Stable starts with a cursor angle of zero, so the first scorable frame can produce a velocity.
-            public double LastAngle;
+            // Stable initialises lastMouseAngle to the first sampled cursor angle, so the first scorable frame has zero delta.
+            public double? LastAngle;
             public double VelocityTheoretical;
             public double VelocityCurrent;
             public int ZeroCount;

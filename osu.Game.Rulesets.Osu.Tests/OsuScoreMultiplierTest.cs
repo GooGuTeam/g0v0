@@ -216,7 +216,8 @@ namespace osu.Game.Rulesets.Osu.Tests
             [new Mod[] { new OsuModScoreV2(), new OsuModHidden() }, 1.06],
             [new Mod[] { new OsuModScoreV2(), new OsuModHidden(), new OsuModHardRock() }, 1.06 * 1.10],
             [new Mod[] { new OsuModScoreV2(), new OsuModEasy() }, 0.5],
-            [new Mod[] { new OsuModScoreV2(), new OsuModHalfTime() }, 0.5],
+            [new Mod[] { new OsuModScoreV2(), new OsuModHalfTime() }, 0.3],
+            [new Mod[] { new OsuModScoreV2(), new OsuModHalfTime { SpeedChange = { Value = 0.50 } } }, 0.1],
             [new Mod[] { new OsuModScoreV2(), new OsuModFlashlight() }, 1.12],
             [new Mod[] { new OsuModScoreV2(), new OsuModSpunOut() }, 0.9],
 

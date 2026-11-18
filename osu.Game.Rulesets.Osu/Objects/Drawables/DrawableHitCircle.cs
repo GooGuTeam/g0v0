@@ -179,10 +179,15 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
             if (!userTriggered)
             {
-                if (legacyHoldHasEnded())
+                if (HitObject is HitCircle { LegacyHoldEndTime: double holdEndTime } && double.IsFinite(holdEndTime))
                 {
-                    // Stable judges a hold in an osu! beatmap as though it were hit at this moment.
-                    HitResult holdResult = ResultFor(timeOffset);
+                    if (!legacyHoldHasEnded(holdEndTime))
+                        return;
+
+                    int window = (int)Math.Truncate(HitObject.HitWindows.WindowFor(HitResult.Meh));
+
+                    // Stable judges a hold in an osu! beatmap as though it were hit at this moment (strictly inside HitWindow50).
+                    HitResult holdResult = Math.Abs(timeOffset) > window ? HitResult.None : ResultFor(timeOffset);
 
                     JudgedByLegacyHoldEnd = true;
                     ApplyResult<(HitResult result, Vector2? position)>((r, state) =>
@@ -216,6 +221,10 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (clickAction == ClickAction.Shake)
                 Shake();
 
+            // Player.cs only hits Normal or Slider objects; HitCircleHold ignores direct hit clicks.
+            if (HitObject is HitCircle { LegacyHoldEndTime: not null })
+                return;
+
             if (result == HitResult.None || clickAction != ClickAction.Hit)
                 return;
 
@@ -233,15 +242,25 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         /// The sum wraps as a 32-bit integer, as it does in stable: a hold ending at <see cref="int.MaxValue"/>
         /// is judged as soon as it becomes active.
         /// </summary>
-        private bool legacyHoldHasEnded()
+        private bool legacyHoldHasEnded(double endTime)
         {
-            if ((HitObject as HitCircle)?.LegacyHoldEndTime is not double endTime || !double.IsFinite(endTime))
-                return false;
-
-            int end = (int)Math.Clamp(endTime, int.MinValue, int.MaxValue);
-            int window = (int)HitObject.HitWindows.WindowFor(HitResult.Meh);
+            int end = HitCircle.TruncateLegacyTime(endTime);
+            int window = (int)Math.Truncate(HitObject.HitWindows.WindowFor(HitResult.Meh));
 
             return unchecked(end + window) < Time.Current;
+        }
+
+        public override void PlaySamples()
+        {
+            if (HitObject is HitCircle { LegacyHoldEndTime: double endTime } && double.IsFinite(endTime))
+            {
+                int legacyEnd = HitCircle.TruncateLegacyTime(endTime);
+
+                if (Math.Abs(Time.Current - legacyEnd) < Math.Abs(Time.Current - HitObject.StartTime))
+                    return;
+            }
+
+            base.PlaySamples();
         }
 
         private Vector2? computeHitPosition()
@@ -263,6 +282,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             base.UpdateInitialTransforms();
 
+            scaleContainer.FadeIn();
             CirclePiece.FadeInFromZero(HitObject.TimeFadeIn);
 
             ApproachCircle.FadeTo(0.9f, Math.Min(HitObject.TimeFadeIn * 2, HitObject.TimePreempt));
@@ -282,8 +302,29 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             Debug.Assert(HitObject.HitWindows != null);
 
+            double lifetimeDelay = 800;
+
+            if (HitObject is HitCircle { LegacyHoldEndTime: double holdEndTime } && double.IsFinite(holdEndTime))
+            {
+                if (state != ArmedState.Hit)
+                {
+                    using (BeginAbsoluteSequence(StateUpdateTime))
+                    {
+                        double okWindow = HitObject.HitWindows.WindowFor(HitResult.Ok);
+                        double lateMissFadeTime = HitObject.HitWindows.WindowFor(HitResult.Meh) - okWindow;
+                        scaleContainer.Delay(okWindow).FadeOut(lateMissFadeTime);
+                    }
+                }
+
+                if (state == ArmedState.Idle)
+                {
+                    int autoJudgeTime = unchecked(HitCircle.TruncateLegacyTime(holdEndTime) + (int)Math.Truncate(HitObject.HitWindows.WindowFor(HitResult.Meh)));
+                    lifetimeDelay = Math.Max(lifetimeDelay, autoJudgeTime - HitStateUpdateTime + 800);
+                }
+            }
+
             // todo: temporary / arbitrary, used for lifetime optimisation.
-            this.Delay(800).FadeOut();
+            this.Delay(lifetimeDelay).FadeOut();
 
             switch (state)
             {

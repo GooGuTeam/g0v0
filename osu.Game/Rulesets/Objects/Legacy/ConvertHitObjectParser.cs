@@ -189,7 +189,7 @@ namespace osu.Game.Rulesets.Objects.Legacy
                     readCustomSampleBanks(string.Join(':', ss.Skip(1)), bankInfo);
                 }
 
-                result = createHold(pos, combo, endTime - startTime, legacyEndTime);
+                result = createHold(pos, endTime - startTime, legacyEndTime);
             }
 
             if (result == null)
@@ -572,16 +572,16 @@ namespace osu.Game.Rulesets.Objects.Legacy
         /// Creates a legacy Hold-type hit object.
         /// </summary>
         /// <param name="position">The position of the hit object.</param>
-        /// <param name="newCombo">Whether the hit object creates a new combo.</param>
         /// <param name="duration">The hold duration.</param>
         /// <param name="legacyEndTime">The end time as written in the beatmap, which may precede the start time.</param>
-        private ConvertHitObject createHold(Vector2 position, bool newCombo, double duration, double legacyEndTime)
+        private ConvertHitObject createHold(Vector2 position, double duration, double legacyEndTime)
         {
             return lastObject = new ConvertHold
             {
                 Position = position,
-                // Stable gives holds in osu! beatmaps the same combo handling as circles, but no combo offset.
-                NewCombo = firstObject || lastObject is ConvertSpinner || newCombo,
+                // HitCircleHold overwrites Type with HitObjectType.Hold, stripping any explicit NewCombo flag;
+                // only the first object or an object immediately following a spinner starts a new combo.
+                NewCombo = firstObject || lastObject is ConvertSpinner,
                 Duration = duration,
                 LegacyEndTime = legacyEndTime
             };

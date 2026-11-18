@@ -136,6 +136,11 @@ namespace osu.Game.Graphics.Carousel
             /// </summary>
             public bool AbsoluteScrolling { get; private set; }
 
+            /// <summary>
+            /// Whether right-clicking while hovering an <see cref="ICarouselPanel"/> should be prevented from starting absolute scrolling.
+            /// </summary>
+            public bool DisallowPanelRightClickScroll { get; set; }
+
             protected override bool IsDragging => base.IsDragging || AbsoluteScrolling;
 
             /// <summary>
@@ -204,8 +209,11 @@ namespace osu.Game.Graphics.Carousel
             {
                 if (e.Button == MouseButton.Right)
                 {
-                    // To avoid conflicts with context menus, disallow absolute scroll if it looks like things will fall over.
-                    if (GetContainingInputManager()!.HoveredDrawables.OfType<IHasContextMenu>().Any(c => c.ContextMenuItems?.Length > 0))
+                    var hoveredDrawables = GetContainingInputManager()!.HoveredDrawables;
+
+                    // To avoid conflicts with context menus (or legacy panel right-click selection), disallow absolute scroll if it looks like things will fall over.
+                    if (hoveredDrawables.OfType<IHasContextMenu>().Any(c => c.ContextMenuItems?.Length > 0)
+                        || (DisallowPanelRightClickScroll && hoveredDrawables.OfType<ICarouselPanel>().Any()))
                         return false;
 
                     beginAbsoluteScrolling(e);

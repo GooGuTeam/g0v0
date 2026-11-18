@@ -124,6 +124,8 @@ namespace osu.Game.Screens.Menu
 
         private const int available_tips = 29;
 
+        internal LocalisableString GetNextTipText() => getRandomTip();
+
         private LocalisableString getRandomTip()
         {
             int tipIndex = RNG.Next(0, available_tips);

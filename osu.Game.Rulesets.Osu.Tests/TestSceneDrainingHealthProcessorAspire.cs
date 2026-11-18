@@ -42,11 +42,13 @@ namespace osu.Game.Rulesets.Osu.Tests
                 Child = processor;
             });
 
+            double activeDrainMultiplier = !slider && classic ? 0.25 : 1;
+
             setTime(2000);
             AddStep("remember health at last start", () => healthAtLastStart = processor.Health.Value);
             setTime(2500);
             AddAssert("drain continues during earlier long object", () => processor.Health.Value,
-                () => Is.EqualTo(healthAtLastStart - 500 * processor.DrainRate).Within(1e-8));
+                () => Is.EqualTo(healthAtLastStart - 500 * processor.DrainRate * activeDrainMultiplier).Within(1e-8));
             setTime(2000);
             AddAssert("rewind restores that drain", () => processor.Health.Value, () => Is.EqualTo(healthAtLastStart).Within(1e-8));
             setTime(5000);
@@ -55,7 +57,7 @@ namespace osu.Game.Rulesets.Osu.Tests
             AddAssert("no drain past maximum end", () => processor.Health.Value, () => Is.EqualTo(0.5));
             setTime(4900);
             AddAssert("rewind only restores in-range drain", () => processor.Health.Value,
-                () => Is.EqualTo(0.5 + 100 * processor.DrainRate).Within(1e-8));
+                () => Is.EqualTo(0.5 + 100 * processor.DrainRate * activeDrainMultiplier).Within(1e-8));
             AddStep("leave less health than next drain", () => processor.Health.Value = processor.DrainRate);
             setTime(5000);
             AddAssert("drained to zero", () => processor.Health.Value, () => Is.Zero);

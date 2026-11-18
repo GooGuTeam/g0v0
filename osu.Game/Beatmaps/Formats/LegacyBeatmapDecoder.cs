@@ -193,7 +193,10 @@ namespace osu.Game.Beatmaps.Formats
             }
             else
             {
-                SampleControlPoint sampleControlPoint = (beatmap.ControlPointInfo as LegacyControlPointInfo)?.SamplePointAt(hitObject.GetEndTime() + CONTROL_POINT_LENIENCY)
+                double sampleTime = beatmap.BeatmapInfo.Ruleset.OnlineID == 0 && hitObject is ConvertHold
+                    ? hitObject.StartTime
+                    : hitObject.GetEndTime();
+                SampleControlPoint sampleControlPoint = (beatmap.ControlPointInfo as LegacyControlPointInfo)?.SamplePointAt(sampleTime + CONTROL_POINT_LENIENCY)
                                                         ?? SampleControlPoint.DEFAULT;
                 hitObject.Samples = hitObject.Samples.Select(sampleControlPoint.ApplyTo).ToList();
             }

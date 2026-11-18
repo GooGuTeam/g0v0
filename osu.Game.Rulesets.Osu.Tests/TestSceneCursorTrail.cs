@@ -120,6 +120,24 @@ namespace osu.Game.Rulesets.Osu.Tests
 
                 return skinContainer;
             });
+
+            AddAssert("rotation enabled", () => this.ChildrenOfType<LegacyRotatingCursorTrail>().Single().AllowPartRotation, () => Is.True);
+        }
+
+        [Test]
+        public void TestDefaultRotationDisabledWhenConfigUnset()
+        {
+            createTest(() =>
+            {
+                var skinContainer = new LegacySkinContainer(renderer, provideMiddle: true, enableRotation: null);
+                var legacyCursorTrail = new LegacyRotatingCursorTrail(skinContainer);
+
+                skinContainer.Child = legacyCursorTrail;
+
+                return skinContainer;
+            });
+
+            AddAssert("rotation disabled by default", () => this.ChildrenOfType<LegacyRotatingCursorTrail>().Single().AllowPartRotation, () => Is.False);
         }
 
         private void createTest(Func<Drawable> createContent) => AddStep("create trail", () =>
@@ -140,9 +158,9 @@ namespace osu.Game.Rulesets.Osu.Tests
             private readonly IRenderer renderer;
             private readonly bool provideMiddle;
             private readonly bool provideCursor;
-            private readonly bool enableRotation;
+            private readonly bool? enableRotation;
 
-            public LegacySkinContainer(IRenderer renderer, bool provideMiddle, bool provideCursor = true, bool enableRotation = false)
+            public LegacySkinContainer(IRenderer renderer, bool provideMiddle, bool provideCursor = true, bool? enableRotation = false)
             {
                 this.renderer = renderer;
                 this.provideMiddle = provideMiddle;
@@ -178,8 +196,8 @@ namespace osu.Game.Rulesets.Osu.Tests
                 switch (lookup)
                 {
                     case OsuSkinConfiguration osuLookup:
-                        if (osuLookup == OsuSkinConfiguration.CursorTrailRotate)
-                            return SkinUtils.As<TValue>(new BindableBool(enableRotation));
+                        if (osuLookup == OsuSkinConfiguration.CursorTrailRotate && enableRotation is bool rotate)
+                            return SkinUtils.As<TValue>(new BindableBool(rotate));
 
                         break;
                 }
@@ -221,6 +239,8 @@ namespace osu.Game.Rulesets.Osu.Tests
 
         private partial class LegacyRotatingCursorTrail : LegacyCursorTrail
         {
+            public new bool AllowPartRotation => base.AllowPartRotation;
+
             public LegacyRotatingCursorTrail([NotNull] ISkin skin)
                 : base(skin)
             {

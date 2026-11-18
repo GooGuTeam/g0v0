@@ -23,6 +23,7 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Overlays;
 using osuTK;
 using osuTK.Graphics;
+using osuTK.Input;
 
 namespace osu.Game.Screens.Select
 {
@@ -100,6 +101,8 @@ namespace osu.Game.Screens.Select
 
         [Resolved]
         private BeatmapCarousel? carousel { get; set; }
+
+        protected BeatmapCarousel? Carousel => carousel;
 
         /// <summary>
         /// Torii: whether the legacy song select shows each beatmap set as one panel until it is expanded.
@@ -323,14 +326,57 @@ namespace osu.Game.Screens.Select
             this.FadeIn(DURATION, Easing.OutQuint);
         }
 
+        private const float right_click_drag_threshold = 10f;
+        private bool rightMouseDownOnPanel;
+
         protected override void FreeAfterUse()
         {
             base.FreeAfterUse();
 
             Hide();
 
+            rightMouseDownOnPanel = false;
+
             // Important to set this to null to handle reuse scenarios correctly, see `Item` implementation.
             item = null;
+        }
+
+        protected override bool OnMouseDown(MouseDownEvent e)
+        {
+            if (IsLegacySongSelect && e.Button == MouseButton.Right && item != null)
+            {
+                rightMouseDownOnPanel = true;
+                return true;
+            }
+
+            return base.OnMouseDown(e);
+        }
+
+        protected override void OnMouseUp(MouseUpEvent e)
+        {
+            if (e.Button == MouseButton.Right && rightMouseDownOnPanel)
+            {
+                rightMouseDownOnPanel = false;
+
+                if (IsLegacySongSelect
+                    && item != null
+                    && ReceivePositionalInputAt(e.ScreenSpaceMousePosition)
+                    && Vector2.DistanceSquared(e.ScreenSpaceMouseDownPosition, e.ScreenSpaceMousePosition) <= right_click_drag_threshold * right_click_drag_threshold)
+                {
+                    OnLegacyRightClick();
+                }
+            }
+
+            base.OnMouseUp(e);
+        }
+
+        /// <summary>
+        /// Torii: called when this panel is right-clicked without dragging in legacy song select.
+        /// </summary>
+        protected virtual void OnLegacyRightClick()
+        {
+            if (item != null)
+                carousel?.Activate(item);
         }
 
         protected override bool OnClick(ClickEvent e)
@@ -476,7 +522,7 @@ namespace osu.Game.Screens.Select
 
         public abstract MenuItem[]? ContextMenuItems { get; }
 
-        // Torii: stable's carousel has no context menu; right-click there scrolls the carousel instead, and a menu would ride along with the panel.
+        // Torii: stable's carousel has no floating context menu; right-click on a panel selects it and opens legacy beatmap options instead.
         MenuItem[]? IHasContextMenu.ContextMenuItems => legacySongSelect.Value ? null : ContextMenuItems;
 
         #region ICarouselPanel

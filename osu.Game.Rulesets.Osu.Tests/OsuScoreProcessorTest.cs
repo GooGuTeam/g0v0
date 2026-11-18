@@ -400,6 +400,28 @@ namespace osu.Game.Rulesets.Osu.Tests
             Assert.That(scoreProcessor.Combo.Value, Is.EqualTo(checkpoints + ticks));
         }
 
+        [TestCase(99, 0, 1, 0, ScoreRank.S)]
+        [TestCase(98, 0, 2, 0, ScoreRank.A)]
+        [TestCase(91, 8, 1, 0, ScoreRank.S)]
+        [TestCase(90, 9, 1, 0, ScoreRank.A)]
+        public void TestClassicSRankExactOnePercentMehBoundary(int count300, int count100, int count50, int countMiss, ScoreRank expectedRank)
+        {
+            var results = new Dictionary<HitResult, int>
+            {
+                [HitResult.Great] = count300,
+                [HitResult.Ok] = count100,
+                [HitResult.Meh] = count50,
+                [HitResult.Miss] = countMiss,
+            };
+            double accuracy = (count300 * 300.0 + count100 * 100.0 + count50 * 50.0) / ((count300 + count100 + count50 + countMiss) * 300.0);
+
+            scoreProcessor.Mods.Value = new Mod[] { new OsuModClassic() };
+            Assert.That(scoreProcessor.RankFromScore(accuracy, results), Is.EqualTo(expectedRank));
+
+            scoreProcessor.Mods.Value = new Mod[] { new OsuModScoreV1() };
+            Assert.That(scoreProcessor.RankFromScore(accuracy, results), Is.EqualTo(expectedRank));
+        }
+
         private class TestSlider : Slider
         {
             public TestSlider()

@@ -739,6 +739,17 @@ namespace osu.Game.Screens.Select
             base.Dispose(isDisposing);
         }
 
+        protected override void OnLegacyRightClick()
+        {
+            if (Item == null)
+                return;
+
+            if (!Selected.Value && (Item.Model is not GroupedBeatmap gb || Carousel?.CurrentGroupedBeatmap?.Equals(gb) != true))
+                Carousel?.Activate(Item);
+
+            (songSelect as SongSelect)?.OpenLegacyBeatmapOptions(Carousel?.CurrentBeatmap ?? beatmap);
+        }
+
         public override MenuItem[] ContextMenuItems
         {
             get

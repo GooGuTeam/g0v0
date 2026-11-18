@@ -65,11 +65,11 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
         }
 
-        [BackgroundDependencyLoader]
+        [BackgroundDependencyLoader(true)]
         private void load(OsuRulesetConfigManager config)
         {
-            config.BindWith(OsuRulesetSetting.LegacySliderTickFading, legacyTickFading);
-            config.BindWith(OsuRulesetSetting.LegacySliderTickVisibility, legacyTickVisibility);
+            config?.BindWith(OsuRulesetSetting.LegacySliderTickFading, legacyTickFading);
+            config?.BindWith(OsuRulesetSetting.LegacySliderTickVisibility, legacyTickVisibility);
             Size = OsuHitObject.OBJECT_DIMENSIONS;
             Origin = Anchor.Centre;
 

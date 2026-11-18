@@ -20,6 +20,7 @@ using osu.Framework.Utils;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
+using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Cursor;
@@ -127,6 +128,11 @@ namespace osu.Game.Overlays.Mods
         [Resolved]
         private ScreenFooter? footer { get; set; }
 
+        [Resolved]
+        private RealmAccess? realm { get; set; }
+
+        private OsuConfigManager? config;
+
         public ModSelectOverlay(OverlayColourScheme colourScheme = OverlayColourScheme.Green)
             : base(colourScheme)
         {
@@ -135,6 +141,7 @@ namespace osu.Game.Overlays.Mods
         [BackgroundDependencyLoader]
         private void load(OsuGameBase game, AudioManager audio, OsuConfigManager configManager)
         {
+            config = configManager;
             Header.Title = ModSelectOverlayStrings.ModSelectTitle;
             Header.Description = ModSelectOverlayStrings.ModSelectDescription;
 
@@ -313,6 +320,17 @@ namespace osu.Game.Overlays.Mods
         /// </summary>
         public void DeselectAll()
         {
+            if (ShowPresets && !SelectedMods.Disabled)
+            {
+                var presetMods = DefaultModPresetHelper.GetDefaultMods(config, realm, Ruleset.Value, IsValidMod);
+
+                if (presetMods != null && presetMods.Count > 0 && !DefaultModPresetHelper.MatchesMods(SelectedMods.Value, presetMods))
+                {
+                    SelectedMods.Value = presetMods;
+                    return;
+                }
+            }
+
             foreach (var column in columnFlow.Columns.OfType<ModColumn>())
                 column.DeselectAll();
         }

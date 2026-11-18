@@ -326,9 +326,9 @@ namespace osu.Game.Rulesets.Osu.Scoring
                 return scoreV2DoubleTimeMultiplier(speedChange);
 
             if (speedChange <= 0.75)
-                return Math.Round(Math.Max(0.1, speedChange - 0.25), 4);
+                return Math.Round(Math.Max(0.1, 0.30 - (0.75 - speedChange) * 0.8), 4);
 
-            return Math.Round(0.50 + (speedChange - 0.75) * 2.0, 4);
+            return Math.Round(0.30 + (speedChange - 0.75) * 2.8, 4);
         }
 
         private static double scoreV2TimeRampMultiplier(ModTimeRamp timeRamp)

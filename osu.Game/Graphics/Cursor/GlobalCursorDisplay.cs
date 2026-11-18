@@ -58,8 +58,11 @@ namespace osu.Game.Graphics.Cursor
         }
 
         [BackgroundDependencyLoader]
-        private void load(RulesetStore rulesets, ScreenshotManager? screenshotManager)
+        private void load(RulesetStore rulesets, ScreenshotManager? screenshotManager, ISkinSource? skinSource)
         {
+            if (skinSource == null)
+                return;
+
             var ruleset = rulesets.GetRuleset(0)?.CreateInstance();
             gameplayCursor = ruleset?.CreateMenuCursor();
             if (gameplayCursor == null || ruleset == null)

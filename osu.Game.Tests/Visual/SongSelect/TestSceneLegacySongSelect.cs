@@ -317,6 +317,100 @@ namespace osu.Game.Tests.Visual.SongSelect
             });
         }
 
+        [Test]
+        public void TestLegacyRightClickPanelAndEmptySpace()
+        {
+            AddStep("load user statistics", () =>
+            {
+                if (statisticsProvider.Parent == null)
+                    Add(statisticsProvider);
+            });
+            AddStep("enable legacy song select", () => Config.SetValue(OsuSetting.ToriiLegacyFooterUseSkin, true));
+            AddStep("no grouping", () => Config.SetValue(OsuSetting.SongSelectGroupMode, GroupMode.None));
+            SortBy(SortMode.Title);
+
+            for (int i = 0; i < 6; i++)
+                ImportBeatmapForRuleset(0);
+
+            LoadSongSelect();
+            AddUntilStep("a difficulty is selected", () => Carousel.CurrentBeatmap != null);
+            AddWaitStep("let panels settle", 10);
+
+            BeatmapSetInfo targetSet = null!;
+
+            AddStep("right-click a collapsed set panel", () =>
+            {
+                float middle = Carousel.ScreenSpaceDrawQuad.Centre.Y;
+                var panel = Carousel.ChildrenOfType<PanelBeatmapStandalone>()
+                                    .Where(p => p.Item != null && !p.Expanded.Value && !p.Selected.Value)
+                                    .OrderBy(p => Math.Abs(p.ScreenSpaceDrawQuad.Centre.Y - middle))
+                                    .First();
+                targetSet = ((GroupedBeatmap)panel.Item!.Model).Beatmap.BeatmapSet!;
+                InputManager.MoveMouseTo(new Vector2(panel.ScreenSpaceDrawQuad.TopLeft.X + 200, panel.ScreenSpaceDrawQuad.Centre.Y));
+                InputManager.Click(MouseButton.Right);
+            });
+            AddUntilStep("target set selected", () => Beatmap.Value.BeatmapSetInfo.Equals(targetSet));
+            AddUntilStep("legacy beatmap options opened", () => this.ChildrenOfType<LegacyBeatmapOptionsOverlay>().Single().State.Value == Visibility.Visible);
+            AddAssert("absolute scrolling did not activate", () => !Carousel.AbsoluteScrolling);
+
+            AddStep("close options with Escape", () => InputManager.Key(Key.Escape));
+            AddUntilStep("legacy beatmap options hidden", () => this.ChildrenOfType<LegacyBeatmapOptionsOverlay>().Single().State.Value == Visibility.Hidden);
+
+            AddStep("right-press in empty space", () =>
+            {
+                var quad = SongSelect.ScreenSpaceDrawQuad;
+                InputManager.MoveMouseTo(quad.TopLeft + new Vector2(quad.Width * 0.45f, quad.Height * 0.5f));
+                InputManager.PressButton(MouseButton.Right);
+            });
+            AddAssert("absolute scrolling activated", () => Carousel.AbsoluteScrolling);
+
+            AddStep("release right button", () => InputManager.ReleaseButton(MouseButton.Right));
+            AddAssert("absolute scrolling ended", () => !Carousel.AbsoluteScrolling);
+        }
+
+        [Test]
+        public void TestLegacyGroupHoverAndOverlapSpacing()
+        {
+            AddStep("load user statistics", () =>
+            {
+                if (statisticsProvider.Parent == null)
+                    Add(statisticsProvider);
+            });
+            AddStep("enable legacy song select", () => Config.SetValue(OsuSetting.ToriiLegacyFooterUseSkin, true));
+            SortBy(SortMode.Title);
+            GroupBy(GroupMode.RankedStatus);
+
+            ImportBeatmapForRuleset(s => s.Status = BeatmapOnlineStatus.Ranked, 2, 0);
+            ImportBeatmapForRuleset(s => s.Status = BeatmapOnlineStatus.Qualified, 2, 0);
+            ImportBeatmapForRuleset(s => s.Status = BeatmapOnlineStatus.Loved, 2, 0);
+
+            LoadSongSelect();
+            AddUntilStep("a difficulty is selected", () => Carousel.CurrentBeatmap != null);
+            AddStep("collapse all groups", () => Carousel.CollapseAllGroups());
+            AddWaitStep("let group panels settle", 15);
+
+            AddAssert("group headers overlap in legacy mode", () =>
+            {
+                var groups = Carousel.GetCarouselItems()!.Where(i => i.IsVisible && i.Model is GroupDefinition).ToArray();
+                return groups.Length >= 3 && groups[1].CarouselYPosition - groups[0].CarouselYPosition < PanelGroup.HEIGHT;
+            });
+
+            Panel hoveredGroup = null!;
+            float restingX = 0;
+
+            AddStep("hover a group header", () =>
+            {
+                float middle = Carousel.ScreenSpaceDrawQuad.Centre.Y;
+                hoveredGroup = Carousel.ChildrenOfType<Panel>()
+                                       .Where(p => p.Item?.Model is GroupDefinition && p.Alpha == 1)
+                                       .OrderBy(p => Math.Abs(p.ScreenSpaceDrawQuad.Centre.Y - middle))
+                                       .First();
+                restingX = hoveredGroup.X;
+                InputManager.MoveMouseTo(new Vector2(hoveredGroup.ScreenSpaceDrawQuad.TopLeft.X + 150, hoveredGroup.ScreenSpaceDrawQuad.Centre.Y));
+            });
+            AddUntilStep("hovered group moved left", () => hoveredGroup.X < restingX - 50);
+        }
+
         private partial class TestUserStatisticsProvider : LocalUserStatisticsProvider
         {
             public void SetStatistics(UserStatistics statistics, RulesetInfo ruleset) => UpdateStatistics(statistics, ruleset);

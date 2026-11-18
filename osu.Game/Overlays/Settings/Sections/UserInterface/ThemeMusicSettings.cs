@@ -9,9 +9,9 @@ using osu.Game.Audio;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Database;
-using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Dialog;
+using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.UserInterface
 {
@@ -39,33 +39,30 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
 
             Children = new Drawable[]
             {
-                new SettingsItemV2(new FormCheckBox
+                CreateItem(new CheckboxEntry
                 {
                     Caption = ThemeMusicStrings.UseCustomThemeMusic,
                     Current = config.GetBindable<bool>(OsuSetting.UseCustomThemeMusic),
                     HintText = ThemeMusicStrings.UseCustomThemeMusicDescription,
-                })
-                {
                     Keywords = [@"theme", @"music", @"startup", @"intro", @"menu", @"beatmap"],
-                },
-                new SettingsItemV2(new FormCheckBox
+                }),
+                CreateItem(new CheckboxEntry
                 {
                     Caption = ThemeMusicStrings.StartFromPreviewPoint,
                     Current = config.GetBindable<bool>(OsuSetting.ThemeMusicStartFromPreview),
                     HintText = ThemeMusicStrings.StartFromPreviewPointDescription,
-                })
-                {
                     Keywords = [@"theme", @"music", @"preview", @"startup", @"intro"],
                     Note = { BindTarget = note },
-                },
-                new SettingsButtonV2
+                }),
+                CreateItem(new ButtonEntry
                 {
-                    Text = ThemeMusicStrings.ResetThemeMusic,
+                    Caption = ThemeMusicStrings.ResetThemeMusic,
+                    Keywords = [@"theme", @"music", @"reset", @"clear"],
                     Action = () => dialogOverlay?.Push(new ConfirmDialog(ThemeMusicStrings.ResetThemeMusic, () => ThemeMusic.Clear(config))
                     {
                         BodyText = ThemeMusicStrings.ResetThemeMusicConfirmation,
                     }),
-                },
+                }),
             };
         }
 

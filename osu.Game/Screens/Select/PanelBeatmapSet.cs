@@ -226,6 +226,23 @@ namespace osu.Game.Screens.Select
         [Resolved]
         private ManageCollectionsDialog? manageCollectionsDialog { get; set; }
 
+        protected override void OnLegacyRightClick()
+        {
+            if (Item == null)
+                return;
+
+            var beatmapSet = groupedBeatmapSet.BeatmapSet;
+
+            if (!Expanded.Value || Carousel?.CurrentBeatmap?.BeatmapSet?.Equals(beatmapSet) != true)
+                Carousel?.Activate(Item);
+
+            var target = Carousel?.CurrentBeatmap?.BeatmapSet?.Equals(beatmapSet) == true
+                ? Carousel.CurrentBeatmap
+                : beatmapSet.Beatmaps.FirstOrDefault();
+
+            (songSelect as SongSelect)?.OpenLegacyBeatmapOptions(target);
+        }
+
         public override MenuItem[] ContextMenuItems
         {
             get

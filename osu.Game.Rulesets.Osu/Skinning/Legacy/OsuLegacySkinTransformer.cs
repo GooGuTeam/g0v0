@@ -76,6 +76,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                                 var combo = container.OfType<LegacyDefaultComboCounter>().FirstOrDefault();
                                 var spectatorList = container.OfType<SpectatorList>().FirstOrDefault();
                                 var leaderboard = container.OfType<DrawableGameplayLeaderboard>().FirstOrDefault();
+                                var legacyLeaderboard = container.OfType<LegacyGameplayLeaderboard>().FirstOrDefault();
                                 var hitError = container.OfType<HitErrorMeter>().FirstOrDefault();
 
                                 Vector2 pos = new Vector2();
@@ -106,6 +107,13 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                                     leaderboard.Position = pos;
                                 }
 
+                                if (legacyLeaderboard != null)
+                                {
+                                    legacyLeaderboard.Anchor = Anchor.TopLeft;
+                                    legacyLeaderboard.Origin = Anchor.TopLeft;
+                                    legacyLeaderboard.Position = new Vector2(0, LegacyGameplayLeaderboard.TopFor(containerLookup.Ruleset.ShortName));
+                                }
+
                                 if (hitError != null)
                                 {
                                     hitError.Anchor = Anchor.BottomCentre;
@@ -121,7 +129,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
                                     new LegacyDefaultComboCounter(),
                                     new LegacyKeyCounterDisplay(),
                                     new SpectatorList(),
-                                    new DrawableGameplayLeaderboard(),
+                                    new LegacyGameplayLeaderboard(),
                                     new LegacyBarHitErrorMeter(),
                                 }
                             };

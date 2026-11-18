@@ -75,11 +75,19 @@ namespace osu.Game.Screens.Select
 
         protected override float GetSpacingBetweenPanels(CarouselItem top, CarouselItem bottom)
         {
-            if (legacySongSelect.Value && top.Model is GroupedBeatmap && bottom.Model is GroupedBeatmap)
+            if (legacySongSelect?.Value == true
+                && (top.Model is GroupedBeatmap or GroupDefinition)
+                && (bottom.Model is GroupedBeatmap or GroupDefinition))
             {
-                // stable (BeatmapTreeManager.ComputeItemYDestinations) spaces items 48 units apart, and 10 more next to an expanded item.
-                bool nextToExpanded = top.IsExpanded || bottom.IsExpanded || top == CurrentSelectionItem || bottom == CurrentSelectionItem;
-                return (nextToExpanded ? 58 : 48) * legacy_unit - PanelBeatmapStandalone.LEGACY_HEIGHT;
+                // stable (BeatmapTreeManager.ComputeItemYDestinations) spaces items 48 units apart, and 10 more next to an expanded item
+                // or when transitioning from a beatmap item to a group header.
+                bool extraSpace = bottom.Model is GroupDefinition
+                    ? top.Model is not GroupDefinition
+                    : top.IsExpanded || bottom.IsExpanded || top == CurrentSelectionItem || bottom == CurrentSelectionItem;
+
+                float baseOverlap = (extraSpace ? 58 : 48) * legacy_unit - PanelBeatmapStandalone.LEGACY_HEIGHT;
+                float topHeight = top.Model is GroupDefinition ? PanelGroup.HEIGHT : PanelBeatmapStandalone.LEGACY_HEIGHT;
+                return baseOverlap * (topHeight / PanelBeatmapStandalone.LEGACY_HEIGHT);
             }
 
             // Group panels do not overlap with any other panel but should overlap with themselves.
@@ -144,11 +152,13 @@ namespace osu.Game.Screens.Select
             config.BindWith(OsuSetting.RandomSelectAlgorithm, randomAlgorithm);
 
             legacySongSelect = config.GetBindable<bool>(OsuSetting.ToriiLegacyFooterUseSkin);
-            legacySongSelect.BindValueChanged(_ =>
+            legacySongSelect.BindValueChanged(legacy =>
             {
+                Scroll.DisallowPanelRightClickScroll = legacy.NewValue;
+
                 if (Criteria != null)
                     FilterAsync(clearExistingPanels: true);
-            });
+            }, true);
         }
 
         protected override void LoadComplete()
@@ -880,6 +890,9 @@ namespace osu.Game.Screens.Select
 
             if (legacySongSelect.Value && panel is Panel legacyPanel)
             {
+                if (DrawWidth <= 0)
+                    return focusOffset;
+
                 // stable draws the panel texture at its own width from the item's position, past the right edge of the screen. Panels are
                 // anchored to the right of the list, so a wider panel moves right by the extra width to keep its left edge in place.
                 panel.Width = PanelBeatmapStandalone.LEGACY_WIDTH / DrawWidth;
@@ -905,7 +918,7 @@ namespace osu.Game.Screens.Select
 
         // stable draws later items in front, so each panel's top edge covers the one above.
         protected override float GetPanelDepth(CarouselItem item, double selectedYPos)
-            => legacySongSelect.Value ? -(float)(item.CarouselYPosition / DrawHeight) : base.GetPanelDepth(item, selectedYPos);
+            => legacySongSelect.Value && DrawHeight > 0 ? -(float)(item.CarouselYPosition / DrawHeight) : base.GetPanelDepth(item, selectedYPos);
 
         // stable moves the items above a hovered item up by 10 units and the items below it down by 10 (BeatmapTreeManager.ItemYDestination).
         protected override double GetPanelYTarget(CarouselItem item)
@@ -925,7 +938,7 @@ namespace osu.Game.Screens.Select
 
             foreach (var panel in Scroll.Panels)
             {
-                if (panel.IsHovered && panel.Alpha == 1 && ((ICarouselPanel)panel).Item is CarouselItem item && item.Model is GroupedBeatmap)
+                if (panel.IsHovered && panel.Alpha == 1 && ((ICarouselPanel)panel).Item is CarouselItem item && item.Model is GroupedBeatmap or GroupDefinition)
                     return item;
             }
 

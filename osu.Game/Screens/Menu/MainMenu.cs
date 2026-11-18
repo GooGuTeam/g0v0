@@ -16,6 +16,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Screens;
@@ -42,6 +43,7 @@ using osu.Game.Screens.OnlinePlay.Multiplayer;
 using osu.Game.Screens.OnlinePlay.Playlists;
 using osu.Game.Screens.Select;
 using osu.Game.Seasonal;
+using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
 
@@ -100,6 +102,7 @@ namespace osu.Game.Screens.Menu
         private Bindable<bool> legacyMenuEnabled;
         private LegacyButtonSystem legacyButtons;
         private LegacyMusicControl legacyMusicControl;
+        private LegacyMenuTip legacyMenuTip;
         private LegacyMenuSideFlashes legacySideFlashes;
 
         private HoldToExitGameOverlay holdToExitGameOverlay;
@@ -224,7 +227,11 @@ namespace osu.Game.Screens.Menu
                 new DrawSizePreservingFillContainer
                 {
                     TargetDrawSize = new Vector2(640, 480),
-                    Child = legacyMusicControl = new LegacyMusicControl(),
+                    Children = new Drawable[]
+                    {
+                        legacyMusicControl = new LegacyMusicControl(),
+                        legacyMenuTip = new LegacyMenuTip(() => menuTipDisplay.GetNextTipText()),
+                    },
                 },
                 legacySideFlashes = new LegacyMenuSideFlashes(),
                 logoTarget = new Container { RelativeSizeAxes = Axes.Both, },
@@ -339,6 +346,15 @@ namespace osu.Game.Screens.Menu
             legacyMusicControl.Alpha = legacy ? 1 : 0;
             legacySideFlashes.Alpha = legacy ? 1 : 0;
 
+            if (legacy)
+                legacyMenuTip.ShowNextTip();
+            else
+            {
+                legacyMenuTip.HideTip();
+                if (IsLoaded)
+                    menuTipDisplay.ShowNextTip();
+            }
+
             if (logoTarget != null)
                 logoTarget.Alpha = legacy ? 0 : 1;
 
@@ -384,7 +400,10 @@ namespace osu.Game.Screens.Menu
             if (!legacyMenuEnabled.Value)
                 Buttons.FadeInFromZero(500);
             else
+            {
                 legacyButtons.FadeInFromZero(500);
+                legacyMenuTip.ShowNextTip();
+            }
 
             if (e.Last is IntroScreen && musicController.TrackLoaded)
             {
@@ -542,6 +561,7 @@ namespace osu.Game.Screens.Menu
             {
                 legacyButtons.FadeOut(FADE_OUT_DURATION, Easing.InSine);
                 legacyButtons.MoveTo(new Vector2(-800, 0), FADE_OUT_DURATION, Easing.InSine);
+                legacyMenuTip.HideTip(200);
             }
 
             bottomElementsFlow
@@ -573,6 +593,7 @@ namespace osu.Game.Screens.Menu
                 legacyButtons.FadeIn(FADE_IN_DURATION, Easing.OutQuint);
                 legacyButtons.MoveTo(Vector2.Zero, FADE_IN_DURATION, Easing.OutQuint);
                 legacyButtons.SetIdle(true, instant: true);
+                legacyMenuTip.ShowNextTip();
             }
             else
             {
@@ -626,7 +647,10 @@ namespace osu.Game.Screens.Menu
             songTicker.Hide();
 
             if (legacyMenuEnabled.Value)
+            {
                 legacyButtons.BeginExit();
+                legacyMenuTip.HideTip(500);
+            }
 
             this.FadeOut(3000);
 
@@ -690,6 +714,106 @@ namespace osu.Game.Screens.Menu
                         Action = confirmed,
                     },
                 };
+            }
+        }
+
+        /// <summary>
+        /// Renders <see cref="MenuTipDisplay"/>'s tip texts in osu!stable's <c>MenuTip</c> layout and timing (<c>Menu.cs:405-412</c>):
+        /// centred shadowed white text at <c>Y = 52</c> from bottom in 640x480 space, fading in over 1000ms, holding for 11000ms,
+        /// and fading out over 500ms.
+        /// </summary>
+        private partial class LegacyMenuTip : CompositeDrawable
+        {
+            private readonly Func<LocalisableString> getNextTip;
+            private OsuTextFlowContainer textFlow;
+            private Bindable<bool> showMenuTips;
+            private Bindable<bool> legacyMenuEnabled;
+
+            public LegacyMenuTip(Func<LocalisableString> getNextTip)
+            {
+                this.getNextTip = getNextTip;
+
+                Anchor = Anchor.BottomCentre;
+                Origin = Anchor.TopCentre;
+                Y = -52f;
+                RelativeSizeAxes = Axes.X;
+                AutoSizeAxes = Axes.Y;
+                Padding = new MarginPadding { Horizontal = 16 };
+                Alpha = 0;
+                AlwaysPresent = true;
+            }
+
+            [BackgroundDependencyLoader]
+            private void load(OsuConfigManager config)
+            {
+                showMenuTips = config.GetBindable<bool>(OsuSetting.MenuTips);
+                legacyMenuEnabled = config.GetBindable<bool>(OsuSetting.ToriiLegacyMainMenu);
+
+                InternalChild = textFlow = new OsuTextFlowContainer(s =>
+                {
+                    s.Font = LegacyFonts.Get(16 * 4 / 3f / LegacySkin.STABLE_MAGIC_SCALE_FACTOR);
+                    s.Colour = Color4.White;
+                    s.Shadow = true;
+                })
+                {
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
+                    TextAnchor = Anchor.TopCentre,
+                };
+            }
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+
+                showMenuTips.BindValueChanged(_ =>
+                {
+                    if (!legacyMenuEnabled.Value)
+                        return;
+
+                    if (showMenuTips.Value)
+                        ShowNextTip();
+                    else
+                        HideTip(100);
+                });
+
+                if (legacyMenuEnabled.Value && showMenuTips.Value)
+                    ShowNextTip();
+            }
+
+            public void ShowNextTip()
+            {
+                if (!IsLoaded)
+                    return;
+
+                ClearTransforms();
+
+                if (!legacyMenuEnabled.Value || !showMenuTips.Value)
+                {
+                    Alpha = 0;
+                    return;
+                }
+
+                LocalisableString tip = getNextTip();
+                if (LocalisableString.IsNullOrEmpty(tip))
+                {
+                    Alpha = 0;
+                    return;
+                }
+
+                textFlow.Text = tip;
+
+                Alpha = 0;
+                this.FadeInFromZero(1000)
+                    .Then()
+                    .Delay(11000)
+                    .FadeOutFromOne(500);
+            }
+
+            public void HideTip(double duration = 0)
+            {
+                ClearTransforms();
+                this.FadeOut(duration, Easing.OutQuint);
             }
         }
     }

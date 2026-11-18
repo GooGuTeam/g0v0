@@ -103,7 +103,7 @@ namespace osu.Game.Rulesets.Osu.Scoring
                 double ratio300 = (double)count300 / total;
                 double ratio50 = (double)count50 / total;
 
-                if (ratio300 > 0.9 && ratio50 < 0.01 && countMiss == 0)
+                if (ratio300 > 0.9 && ratio50 <= 0.01 && countMiss == 0)
                     return ScoreRank.S;
 
                 if ((ratio300 > 0.8 && countMiss == 0) || ratio300 > 0.9)

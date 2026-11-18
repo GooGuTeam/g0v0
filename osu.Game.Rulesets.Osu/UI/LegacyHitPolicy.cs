@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
+using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Scoring;
 using osu.Game.Rulesets.Scoring;
@@ -94,7 +95,11 @@ namespace osu.Game.Rulesets.Osu.UI
 
                 // for all other objects, we check for validity and block the hit if any are still valid.
                 // 3ms of extra leniency to account for slightly unsnapped objects.
-                if (testObject.HitObject.GetEndTime() + 3 < hitObject.HitObject.StartTime)
+                double blockingEndTime = testObject.HitObject is HitCircle { LegacyHoldEndTime: double holdEndTime } && double.IsFinite(holdEndTime)
+                    ? unchecked(HitCircle.TruncateLegacyTime(holdEndTime) + 3)
+                    : testObject.HitObject.GetEndTime() + 3;
+
+                if (blockingEndTime < hitObject.HitObject.StartTime)
                     return ClickAction.Shake;
             }
 

@@ -2,7 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
@@ -11,10 +10,11 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mania.Mods;
 using osu.Game.Rulesets.Mods;
-using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Screens.Select;
 using osu.Game.Skinning;
@@ -26,18 +26,27 @@ namespace osu.Game.Tests.Visual.SongSelect
     public partial class TestSceneLegacyModSelectOverlay : OsuManualInputManagerTestScene
     {
         private LegacyModSelectOverlay overlay = null!;
+        private RealmRulesetStore rulesets = null!;
+        private OsuConfigManager localConfig = null!;
+
+        protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
+        {
+            var dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
+            dependencies.Cache(rulesets = new RealmRulesetStore(Realm));
+            dependencies.Cache(Realm);
+            dependencies.Cache(localConfig = new OsuConfigManager(LocalStorage));
+            return dependencies;
+        }
 
         [BackgroundDependencyLoader]
-        private void load(RulesetStore rulesets)
+        private void load()
         {
-            var osuRuleset = rulesets.GetRuleset(0)!.CreateInstance();
-
             Child = overlay = new LegacyModSelectOverlay
             {
                 RelativeSizeAxes = Axes.Both,
             };
 
-            overlay.Ruleset.Value = osuRuleset.RulesetInfo;
+            overlay.Ruleset.Value = rulesets.GetRuleset(0)!;
             overlay.Beatmap.Value = new DummyWorkingBeatmap(Audio, null);
         }
 
@@ -46,8 +55,14 @@ namespace osu.Game.Tests.Visual.SongSelect
         {
             AddStep("reset state", () =>
             {
+                localConfig.SetValue(OsuSetting.UseDefaultModPresets, false);
+                localConfig.SetValue(OsuSetting.DefaultModPresets, string.Empty);
+                Realm.Write(r => r.RemoveAll<ModPreset>());
+
+                overlay.RequestMoreMods = null;
+                overlay.Ruleset.Value = rulesets.GetRuleset(0)!;
                 overlay.Hide();
-                overlay.ResetAllMods();
+                overlay.SelectedMods.Value = Array.Empty<Mod>();
             });
         }
 
@@ -136,6 +151,121 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("press 2 (Close option)", () => InputManager.Key(Key.Number2));
             AddUntilStep("overlay hidden", () => overlay.State.Value == Visibility.Hidden);
+        }
+
+        [Test]
+        public void TestMoreModsButtonAndHotkeys()
+        {
+            int moreModsCount = 0;
+
+            AddStep("wire RequestMoreMods", () =>
+            {
+                moreModsCount = 0;
+                overlay.RequestMoreMods = () => moreModsCount++;
+            });
+
+            AddStep("show overlay", () => overlay.Show());
+            AddUntilStep("overlay is visible", () => overlay.State.Value == Visibility.Visible);
+
+            AddStep("click More Mods button", () =>
+            {
+                InputManager.MoveMouseTo(overlay.MoreModsButton);
+                InputManager.Click(MouseButton.Left);
+            });
+            AddAssert("callback invoked once", () => moreModsCount == 1);
+
+            AddStep("press M", () => InputManager.Key(Key.M));
+            AddAssert("callback invoked twice", () => moreModsCount == 2);
+
+            AddStep("press 3 in osu! ruleset", () => InputManager.Key(Key.Number3));
+            AddAssert("callback invoked three times", () => moreModsCount == 3);
+        }
+
+        [Test]
+        public void TestTwoStageDefaultModPresetReset()
+        {
+            AddStep("configure SV1 default preset", () =>
+            {
+                Guid presetId = Guid.Empty;
+
+                Realm.Write(r =>
+                {
+                    var preset = new ModPreset
+                    {
+                        Name = "SV1 Default",
+                        Ruleset = r.Find<RulesetInfo>("osu")!,
+                        Mods = new Mod[] { new OsuModScoreV1() },
+                    };
+                    r.Add(preset);
+                    presetId = preset.ID;
+                });
+
+                localConfig.SetValue(OsuSetting.UseDefaultModPresets, true);
+                DefaultModPresetHelper.SetPresetId(localConfig, overlay.Ruleset.Value, presetId);
+            });
+
+            AddStep("select HR + SV1", () => overlay.SelectedMods.Value = new Mod[] { new OsuModScoreV1(), new OsuModHardRock() });
+            AddStep("show overlay", () => overlay.Show());
+            AddUntilStep("overlay is visible", () => overlay.State.Value == Visibility.Visible);
+
+            AddStep("press 1 (first reset -> default preset)", () => InputManager.Key(Key.Number1));
+            AddAssert("reset to SV1 preset", () => overlay.SelectedMods.Value.Count == 1 && overlay.SelectedMods.Value.Single() is OsuModScoreV1);
+
+            AddStep("press 1 again (second reset -> empty)", () => InputManager.Key(Key.Number1));
+            AddAssert("all mods cleared", () => overlay.SelectedMods.Value.Count == 0);
+        }
+
+        [Test]
+        public void TestManiaMirrorAndHotkeys()
+        {
+            int moreModsCount = 0;
+
+            AddStep("switch to mania ruleset", () =>
+            {
+                moreModsCount = 0;
+                overlay.RequestMoreMods = () => moreModsCount++;
+                overlay.Ruleset.Value = rulesets.GetRuleset(3)!;
+            });
+
+            AddStep("show overlay", () => overlay.Show());
+            AddUntilStep("overlay is visible", () => overlay.State.Value == Visibility.Visible);
+
+            AddAssert("Mirror button is present in row 2", () =>
+                overlay.ChildrenOfType<LegacyModButton>().Any(b => b.AvailableMods.Any(m => m is ManiaModMirror)));
+
+            AddStep("click Mirror button", () =>
+            {
+                var mirrorButton = overlay.ChildrenOfType<LegacyModButton>().Single(b => b.AvailableMods.Any(m => m is ManiaModMirror));
+                InputManager.MoveMouseTo(mirrorButton);
+                InputManager.Click(MouseButton.Left);
+            });
+            AddAssert("Mirror mod selected", () => overlay.SelectedMods.Value.Any(m => m is ManiaModMirror));
+
+            AddStep("press 7 (7K)", () => InputManager.Key(Key.Number7));
+            AddAssert("7K selected", () => overlay.SelectedMods.Value.Any(m => m is ManiaModKey7));
+
+            AddStep("press 0 (clear key-count mod)", () => InputManager.Key(Key.Number0));
+            AddAssert("key-count mod cleared while Mirror remains", () =>
+                !overlay.SelectedMods.Value.Any(m => m is ManiaKeyMod) &&
+                overlay.SelectedMods.Value.Any(m => m is ManiaModMirror));
+
+            AddStep("press 3 in mania (3K, not More Mods)", () => InputManager.Key(Key.Number3));
+            AddAssert("3K selected and More Mods not triggered", () =>
+                overlay.SelectedMods.Value.Any(m => m is ManiaModKey3) && moreModsCount == 0);
+
+            AddStep("press Keypad0 (clear key-count mod)", () => InputManager.Key(Key.Keypad0));
+            AddAssert("3K cleared", () => !overlay.SelectedMods.Value.Any(m => m is ManiaKeyMod));
+
+            AddStep("press X (Random in mania)", () => InputManager.Key(Key.X));
+            AddAssert("Random selected", () => overlay.SelectedMods.Value.Any(m => m is ManiaModRandom));
+
+            AddStep("press X again (clear Random)", () => InputManager.Key(Key.X));
+            AddAssert("Random cleared", () => !overlay.SelectedMods.Value.Any(m => m is ManiaModRandom));
+
+            AddStep("press C (no-op in mania)", () => InputManager.Key(Key.C));
+            AddAssert("Random and DualStages not selected by C", () =>
+                !overlay.SelectedMods.Value.Any(m => m is ManiaModRandom) &&
+                !overlay.SelectedMods.Value.Any(m => m is ManiaModDualStages));
         }
 
         [Test]

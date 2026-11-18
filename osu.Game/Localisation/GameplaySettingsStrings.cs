@@ -160,6 +160,26 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString ClassicScoreDisplay => new TranslatableString(getKey(@"classic_score_display"), @"Classic");
 
+        /// <summary>
+        /// "Apply default mod presets automatically"
+        /// </summary>
+        public static LocalisableString ApplyDefaultModPresets => new TranslatableString(getKey(@"apply_default_mod_presets"), @"Apply default mod presets automatically");
+
+        /// <summary>
+        /// "Automatically activate the selected mod preset for each ruleset on startup and when switching rulesets."
+        /// </summary>
+        public static LocalisableString ApplyDefaultModPresetsDescription => new TranslatableString(getKey(@"apply_default_mod_presets_description"), @"Automatically activate the selected mod preset for each ruleset on startup and when switching rulesets.");
+
+        /// <summary>
+        /// "Default preset ({0})"
+        /// </summary>
+        public static LocalisableString DefaultModPresetForRuleset(LocalisableString ruleset) => new TranslatableString(getKey(@"default_mod_preset_for_ruleset"), @"Default preset ({0})", ruleset);
+
+        /// <summary>
+        /// "Create mod presets in the modern mod select screen (for example ScoreV1 or Classic + ScoreV1) to select them here."
+        /// </summary>
+        public static LocalisableString NoModPresetsHint => new TranslatableString(getKey(@"no_mod_presets_hint"), @"Create mod presets in the modern mod select screen (for example ScoreV1 or Classic + ScoreV1) to select them here.");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

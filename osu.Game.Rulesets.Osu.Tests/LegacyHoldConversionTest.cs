@@ -6,13 +6,16 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using NUnit.Framework;
+using osu.Game.Audio;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.IO;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Objects.Legacy;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Screens.Play;
+using osu.Game.Skinning;
 using Decoder = osu.Game.Beatmaps.Formats.Decoder;
 
 namespace osu.Game.Rulesets.Osu.Tests
@@ -54,6 +57,57 @@ SliderTickRate:1
             Assert.That(objects.Take(4).Select(h => h.StartTime), Is.EqualTo(new double[] { 1000, 2000, 3000, 4000 }));
             Assert.That(objects[0].NewCombo, Is.True);
             Assert.That(objects[1].NewCombo, Is.False);
+        }
+
+        [Test]
+        public void TestHoldStripsExplicitNewComboUnlessFirstOrAfterSpinner()
+        {
+            const string combo_text = @"osu file format v14
+
+[General]
+Mode: 0
+
+[TimingPoints]
+0,500,4,1,0,100,1,0
+
+[HitObjects]
+100,100,1000,132,0,1500:0:0:0:0:
+200,100,2000,132,0,2500:0:0:0:0:
+256,192,3000,12,0,4000,0:0:0:0:
+300,100,4500,128,0,5000:0:0:0:0:
+";
+            var objects = convert(combo_text);
+
+            Assert.That(objects[0].NewCombo, Is.True);
+            Assert.That(objects[1].NewCombo, Is.False);
+            Assert.That(objects[3].NewCombo, Is.True);
+        }
+
+        [Test]
+        public void TestOsuHoldUsesStartTimeSampleControlPoint()
+        {
+            const string sample_text = @"osu file format v14
+
+[General]
+Mode: 0
+
+[TimingPoints]
+0,500,4,2,0,35,1,0
+1500,-100,4,3,0,85,0,0
+
+[HitObjects]
+100,100,1000,128,0,2000:0:0:0:0:
+256,192,1000,12,0,2000,0:0:0:0:
+";
+            var converted = convert(sample_text);
+            var osuHold = (HitCircle)converted[0];
+            var osuSpinner = (Spinner)converted[1];
+
+            Assert.That(osuHold.Samples[0].Bank, Is.EqualTo(HitSampleInfo.BANK_SOFT));
+            Assert.That(osuHold.Samples[0].Volume, Is.EqualTo(35));
+
+            Assert.That(osuSpinner.Samples[0].Bank, Is.EqualTo(HitSampleInfo.BANK_DRUM));
+            Assert.That(osuSpinner.Samples[0].Volume, Is.EqualTo(85));
         }
 
         [Test]
@@ -230,6 +284,24 @@ Mode: 0
 
             Assert.That(modernSpinner.SpinsRequired, Is.GreaterThan(0));
             Assert.That(modernSpinner.NestedHitObjects.Count, Is.LessThanOrEqualTo(5000));
+        }
+
+        [TestCase(HitSampleInfo.HIT_NORMAL, false, 0.8)]
+        [TestCase(HitSampleInfo.HIT_WHISTLE, false, 0.85)]
+        [TestCase(HitSampleInfo.HIT_CLAP, false, 0.85)]
+        [TestCase(HitSampleInfo.HIT_FINISH, false, 1.0)]
+        [TestCase(HitSampleInfo.HIT_NORMAL, true, 1.0)]
+        public void TestHitSampleVolumeWeights(string sampleName, bool fileSample, double expectedWeight)
+        {
+            ISampleInfo info = fileSample
+                ? new ConvertHitObjectParser.FileHitSampleInfo("custom.wav", 50)
+                : new HitSampleInfo(sampleName, volume: 50);
+
+            var sample = new PoolableSkinnableSample(info);
+            Assert.That(sample.AggregateVolume.Value, Is.EqualTo(0.5 * expectedWeight).Within(1e-12));
+
+            var uiSample = new PoolableSkinnableSample(new SampleInfo("menuhit"));
+            Assert.That(uiSample.AggregateVolume.Value, Is.EqualTo(1.0).Within(1e-12));
         }
 
         private static OsuHitObject[] convert(string text = beatmap_text)

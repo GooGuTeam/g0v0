@@ -13,6 +13,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Audio;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Audio;
+using osu.Game.Rulesets.Objects.Legacy;
 
 namespace osu.Game.Skinning
 {
@@ -28,6 +29,7 @@ namespace osu.Game.Skinning
         public DrawableSample Sample { get; private set; }
 
         private readonly AudioContainer<DrawableSample> sampleContainer;
+        private readonly BindableDouble hitSampleWeight = new BindableDouble(1);
         private ISampleInfo sampleInfo;
         private SampleChannel activeChannel;
 
@@ -38,6 +40,7 @@ namespace osu.Game.Skinning
         public PoolableSkinnableSample()
         {
             InternalChild = sampleContainer = new AudioContainer<DrawableSample> { RelativeSizeAxes = Axes.Both };
+            sampleContainer.AddAdjustment(AdjustableProperty.Volume, hitSampleWeight);
         }
 
         /// <summary>
@@ -63,10 +66,25 @@ namespace osu.Game.Skinning
 
             this.sampleInfo = sampleInfo;
 
+            hitSampleWeight.Value = getHitSampleWeight(sampleInfo);
             Volume.Value = sampleInfo.Volume / 100.0;
 
             if (LoadState >= LoadState.Ready)
                 updateSample();
+        }
+
+        private static double getHitSampleWeight(ISampleInfo sampleInfo)
+        {
+            if (sampleInfo is not HitSampleInfo hitSample || sampleInfo is ConvertHitObjectParser.FileHitSampleInfo)
+                return 1;
+
+            return hitSample.Name switch
+            {
+                HitSampleInfo.HIT_NORMAL => 0.8,
+                HitSampleInfo.HIT_WHISTLE => 0.85,
+                HitSampleInfo.HIT_CLAP => 0.85,
+                _ => 1,
+            };
         }
 
         protected override void SkinChanged(ISkinSource skin)

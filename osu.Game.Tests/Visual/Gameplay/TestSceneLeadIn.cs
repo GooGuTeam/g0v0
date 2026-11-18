@@ -21,12 +21,12 @@ namespace osu.Game.Tests.Visual.Gameplay
 
         private const double lenience_ms = 100;
 
-        private const double first_hit_object = 2170;
-
-        [TestCase(1000, 0)]
-        [TestCase(2000, 0)]
-        [TestCase(3000, first_hit_object - 3000)]
-        [TestCase(10000, first_hit_object - 10000)]
+        [TestCase(0, 0)]
+        [TestCase(500, -500)]
+        [TestCase(1000, -1000)]
+        [TestCase(2000, -2000)]
+        [TestCase(3000, -3000)]
+        [TestCase(10000, -10000)]
         [FlakyTest]
         public void TestLeadInProducesCorrectStartTime(double leadIn, double expectedStartTime)
         {
@@ -53,7 +53,10 @@ namespace osu.Game.Tests.Visual.Gameplay
 
             storyboard.GetLayer("Background").Add(sprite);
 
-            loadPlayerWithBeatmap(new TestBeatmap(new OsuRuleset().RulesetInfo), storyboard);
+            loadPlayerWithBeatmap(new TestBeatmap(new OsuRuleset().RulesetInfo)
+            {
+                AudioLeadIn = 0
+            }, storyboard);
 
             checkFirstFrameTime(expectedStartTime);
         }
@@ -90,7 +93,10 @@ namespace osu.Game.Tests.Visual.Gameplay
 
             storyboard.GetLayer("Background").Add(sprite);
 
-            loadPlayerWithBeatmap(new TestBeatmap(new OsuRuleset().RulesetInfo), storyboard);
+            loadPlayerWithBeatmap(new TestBeatmap(new OsuRuleset().RulesetInfo)
+            {
+                AudioLeadIn = 0
+            }, storyboard);
 
             checkFirstFrameTime(expectedStartTime);
         }

@@ -84,9 +84,9 @@ namespace osu.Game.Screens.Select
         private RulesetInfo? rulesetInstanceSource;
         private ModSettingChangeTracker? modSettingChangeTracker;
 
-        // valor subido por mods = mas dificil = calido; bajado = mas facil = frio.
-        private static readonly Color4 harder_colour = new Color4(255, 102, 102, 255);
-        private static readonly Color4 easier_colour = new Color4(130, 220, 130, 255);
+        // osu!stable's stat tint colours (SongSelection.UpdateDetails): warm pink when harder, LightBlue when easier.
+        private static readonly Color4 harder_colour = new Color4(246, 154, 161, 255);
+        private static readonly Color4 easier_colour = Color4.LightBlue;
 
         private static string formatCounts(WorkingBeatmap working)
         {
@@ -375,6 +375,17 @@ namespace osu.Game.Screens.Select
                                                 return i < 0 ? int.MaxValue : i;
                                             });
 
+            double rate = ModUtils.CalculateRateWithMods(mods.Value);
+            IReadOnlyList<Mod> nonRateMods = mods.Value.Any(m => m is IApplicableToRate)
+                ? mods.Value.Where(m => m is not IApplicableToRate).ToArray()
+                : mods.Value;
+
+            Dictionary<string, float>? nonRateLookup = ReferenceEquals(nonRateMods, mods.Value)
+                ? null
+                : rulesetInstance.GetBeatmapAttributesForDisplay(info, nonRateMods)
+                                 .GroupBy(a => a.Acronym)
+                                 .ToDictionary(g => g.Key, g => g.First().AdjustedValue);
+
             bool first = true;
 
             foreach (var attribute in attributes)
@@ -383,7 +394,22 @@ namespace osu.Game.Screens.Select
                     : attribute.AdjustedValue < attribute.OriginalValue - 0.005f ? easier_colour
                     : Color4.White;
 
-                segments.Add(($"{(first ? string.Empty : @" ")}{attribute.Acronym}:{attribute.AdjustedValue:0.##}", colour));
+                string arrow = string.Empty;
+
+                if (nonRateLookup != null && (attribute.Acronym == @"AR" || attribute.Acronym == @"OD" || attribute.Acronym == @"HP"))
+                {
+                    if (nonRateLookup.TryGetValue(attribute.Acronym, out float nonRateValue))
+                    {
+                        if (attribute.AdjustedValue > nonRateValue + 0.005f)
+                            arrow = @"▴";
+                        else if (attribute.AdjustedValue < nonRateValue - 0.005f)
+                            arrow = @"▾";
+                        else if (attribute.Acronym == @"HP" && attribute.AdjustedValue > 0)
+                            arrow = rate > 1.0005 ? @"▴" : rate < 0.9995 ? @"▾" : string.Empty;
+                    }
+                }
+
+                segments.Add(($"{(first ? string.Empty : @" ")}{attribute.Acronym}:{attribute.AdjustedValue:0.##}{arrow}", colour));
                 first = false;
             }
 

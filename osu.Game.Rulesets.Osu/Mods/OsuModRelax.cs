@@ -127,6 +127,9 @@ namespace osu.Game.Rulesets.Osu.Mods
                 if (!circle.HitArea.IsHovered)
                     return;
 
+                if (circle.HitObject is HitCircle { LegacyHoldEndTime: not null })
+                    return;
+
                 Debug.Assert(circle.HitObject.HitWindows != null);
                 requiresHit |= circle.HitObject.HitWindows.CanBeHit(time - circle.HitObject.StartTime);
             }

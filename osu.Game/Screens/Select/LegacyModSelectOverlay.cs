@@ -16,6 +16,7 @@ using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
+using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
@@ -37,6 +38,8 @@ namespace osu.Game.Screens.Select
         public readonly Bindable<RulesetInfo> Ruleset = new Bindable<RulesetInfo>();
         public readonly Bindable<WorkingBeatmap> Beatmap = new Bindable<WorkingBeatmap>();
         public readonly Bindable<IReadOnlyList<Mod>> SelectedMods = new Bindable<IReadOnlyList<Mod>>(Array.Empty<Mod>());
+
+        public Action? RequestMoreMods { get; set; }
 
         private Func<Mod, bool> isValidMod = _ => true;
 
@@ -60,11 +63,21 @@ namespace osu.Game.Screens.Select
         private Container buttonsContainer = null!;
         private LegacyDialogButton resetButton = null!;
         private LegacyDialogButton closeButton = null!;
+        private LegacyDialogButton moreModsButton = null!;
+
+        internal LegacyDialogButton MoreModsButton => moreModsButton;
 
         private readonly List<LegacyModButton> buttons = new List<LegacyModButton>();
         private ModSettingChangeTracker? modSettingChangeTracker;
 
+        private Sample? checkOnSample;
         private Sample? checkOffSample;
+
+        [Resolved]
+        private OsuConfigManager? config { get; set; }
+
+        [Resolved]
+        private RealmAccess? realm { get; set; }
 
         public LegacyModSelectOverlay()
         {
@@ -74,6 +87,7 @@ namespace osu.Game.Screens.Select
         [BackgroundDependencyLoader]
         private void load(AudioManager audio)
         {
+            checkOnSample = audio.Samples.Get(@"UI/check-on");
             checkOffSample = audio.Samples.Get(@"UI/check-off");
 
             InternalChildren = new Drawable[]
@@ -153,13 +167,19 @@ namespace osu.Game.Screens.Select
                             {
                                 Anchor = Anchor.TopCentre,
                                 Origin = Anchor.TopCentre,
-                                Y = 320,
+                                Y = 314,
                             },
                             closeButton = new LegacyDialogButton(UserInterfaceStrings.CloseDialog, Color4.Gray, () => Hide())
                             {
                                 Anchor = Anchor.TopCentre,
                                 Origin = Anchor.TopCentre,
-                                Y = 370,
+                                Y = 362,
+                            },
+                            moreModsButton = new LegacyDialogButton(UserInterfaceStrings.MoreMods, new Color4(34, 153, 187, 255), () => RequestMoreMods?.Invoke())
+                            {
+                                Anchor = Anchor.TopCentre,
+                                Origin = Anchor.TopCentre,
+                                Y = 410,
                             }
                         }
                     }
@@ -301,9 +321,10 @@ namespace osu.Game.Screens.Select
                     ("selection-mod-key2", "2K"),
                     ("selection-mod-key3", "3K"));
                 addSingle(2, 1, "selection-mod-keycoop", "DS");
-                addSingle(2, 2, "selection-mod-random", "RD");
-                addMulti(2, 3, ("selection-mod-autoplay", "AT"), ("selection-mod-cinema", "CN"));
-                addSingle(2, 4, "selection-mod-scorev2", "SV2");
+                addSingle(2, 2, "selection-mod-mirror", "MR");
+                addSingle(2, 3, "selection-mod-random", "RD");
+                addMulti(2, 4, ("selection-mod-autoplay", "AT"), ("selection-mod-cinema", "CN"));
+                addSingle(2, 5, "selection-mod-scorev2", "SV2");
             }
             else
             {
@@ -436,15 +457,40 @@ namespace osu.Game.Screens.Select
                 onButtonCycled(button, false);
         }
 
+        private void clearModButtonByAcronym(string acronym)
+        {
+            if (SelectedMods.Disabled)
+                return;
+
+            var button = buttons.FirstOrDefault(b => b.AvailableMods.Any(m => string.Equals(m.Acronym, acronym, StringComparison.OrdinalIgnoreCase)));
+            if (button == null)
+                return;
+
+            var currentList = SelectedMods.Value.ToList();
+            int removed = currentList.RemoveAll(m => button.AvailableMods.Any(am => am.GetType() == m.GetType()));
+
+            if (removed > 0)
+            {
+                button.UpdateState(null, playSound: true);
+                applyModSelection(currentList, null);
+            }
+        }
+
         public void ResetAllMods()
         {
             if (SelectedMods.Disabled)
                 return;
 
-            if (SelectedMods.Value.Count > 0)
+            var resetMods = DefaultModPresetHelper.ComputeResetMods(SelectedMods.Value, config, realm, Ruleset.Value, IsValidMod);
+
+            if (!DefaultModPresetHelper.MatchesMods(SelectedMods.Value, resetMods))
             {
-                checkOffSample?.Play();
-                SelectedMods.Value = Array.Empty<Mod>();
+                if (resetMods.Count > 0)
+                    checkOnSample?.Play();
+                else
+                    checkOffSample?.Play();
+
+                SelectedMods.Value = resetMods;
             }
         }
 
@@ -470,10 +516,26 @@ namespace osu.Game.Screens.Select
                 return base.OnKeyDown(e);
 
             bool mania = string.Equals(Ruleset.Value?.ShortName, "mania", StringComparison.OrdinalIgnoreCase);
-            if (mania && e.Key >= Key.Number3 && e.Key <= Key.Number9)
+
+            if (mania)
             {
-                setModByAcronym($"{(int)e.Key - (int)Key.Number3 + 3}K");
-                return true;
+                if (e.Key == Key.Number0 || e.Key == Key.Keypad0)
+                {
+                    clearModButtonByAcronym("4K");
+                    return true;
+                }
+
+                if (e.Key >= Key.Number3 && e.Key <= Key.Number9)
+                {
+                    setModByAcronym($"{(int)e.Key - (int)Key.Number3 + 3}K");
+                    return true;
+                }
+
+                if (e.Key >= Key.Keypad3 && e.Key <= Key.Keypad9)
+                {
+                    setModByAcronym($"{(int)e.Key - (int)Key.Keypad3 + 3}K");
+                    return true;
+                }
             }
 
             switch (e.Key)
@@ -509,7 +571,7 @@ namespace osu.Game.Screens.Select
                     return true;
 
                 case Key.F:
-                    if (string.Equals(Ruleset.Value?.ShortName, "mania", StringComparison.OrdinalIgnoreCase) && !e.ShiftPressed)
+                    if (mania && !e.ShiftPressed)
                         setModByAcronym("FI");
                     else
                         setModByAcronym("HD");
@@ -527,11 +589,11 @@ namespace osu.Game.Screens.Select
                     return true;
 
                 case Key.X:
-                    setModByAcronym(mania ? "DS" : "AP");
+                    setModByAcronym(mania ? "RD" : "AP");
                     return true;
 
                 case Key.C:
-                    setModByAcronym(mania ? "RD" : "SO");
+                    setModByAcronym("SO");
                     return true;
 
                 case Key.V:
@@ -545,6 +607,10 @@ namespace osu.Game.Screens.Select
                     setModByAcronym("SV2");
                     return true;
 
+                case Key.M:
+                    RequestMoreMods?.Invoke();
+                    return true;
+
                 case Key.Number1:
                 case Key.Keypad1:
                     ResetAllMods();
@@ -554,6 +620,16 @@ namespace osu.Game.Screens.Select
                 case Key.Keypad2:
                     Hide();
                     return true;
+
+                case Key.Number3:
+                case Key.Keypad3:
+                    if (!mania)
+                    {
+                        RequestMoreMods?.Invoke();
+                        return true;
+                    }
+
+                    break;
 
                 case Key.BackSpace:
                 case Key.Delete:
@@ -577,6 +653,7 @@ namespace osu.Game.Screens.Select
 
             resetButton.MoveToX(-30).MoveToX(0, 300, Easing.OutQuint);
             closeButton.MoveToX(30).MoveToX(0, 300, Easing.OutQuint);
+            moreModsButton.MoveToX(-30).MoveToX(0, 300, Easing.OutQuint);
         }
 
         protected override void PopOut()

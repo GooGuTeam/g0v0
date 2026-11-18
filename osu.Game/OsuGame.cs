@@ -281,6 +281,9 @@ namespace osu.Game
         private bool exitingAfterCapture;
 
         private Bindable<string> configSkin;
+        private Bindable<bool> useDefaultModPresets;
+        private Bindable<string> defaultModPresets;
+        private RealmAccess realmAccess;
 
         private RealmDetachedBeatmapStore detachedBeatmapStore;
 
@@ -1098,6 +1101,63 @@ namespace osu.Game
             }
         }
 
+        private void initialiseDefaultModPresets()
+        {
+            realmAccess = Dependencies.Get<RealmAccess>();
+            useDefaultModPresets = LocalConfig.GetBindable<bool>(OsuSetting.UseDefaultModPresets);
+            defaultModPresets = LocalConfig.GetBindable<string>(OsuSetting.DefaultModPresets);
+
+            if (useDefaultModPresets.Value && !SelectedMods.Disabled)
+            {
+                var startupPresetMods = DefaultModPresetHelper.GetDefaultMods(LocalConfig, realmAccess, Ruleset.Value);
+                if (startupPresetMods != null && startupPresetMods.Count > 0)
+                    SelectedMods.Value = startupPresetMods;
+            }
+
+            Ruleset.BindValueChanged(r =>
+            {
+                if (SelectedMods.Disabled || !useDefaultModPresets.Value)
+                    return;
+
+                var presetMods = DefaultModPresetHelper.GetDefaultMods(LocalConfig, realmAccess, r.NewValue);
+                if (presetMods != null)
+                    SelectedMods.Value = presetMods;
+            });
+
+            useDefaultModPresets.BindValueChanged(e =>
+            {
+                if (!e.NewValue || SelectedMods.Disabled || ScreenStack.CurrentScreen is Player or PlayerLoader)
+                    return;
+
+                var presetMods = DefaultModPresetHelper.GetDefaultMods(LocalConfig, realmAccess, Ruleset.Value);
+                if (presetMods != null)
+                    SelectedMods.Value = presetMods;
+            });
+
+            defaultModPresets.BindValueChanged(e =>
+            {
+                if (!useDefaultModPresets.Value || SelectedMods.Disabled || ScreenStack.CurrentScreen is Player or PlayerLoader)
+                    return;
+
+                string shortName = Ruleset.Value?.ShortName;
+                if (string.IsNullOrEmpty(shortName))
+                    return;
+
+                var oldMap = DefaultModPresetHelper.ParseMap(e.OldValue);
+                var newMap = DefaultModPresetHelper.ParseMap(e.NewValue);
+
+                Guid? oldId = oldMap.TryGetValue(shortName, out Guid o) ? o : null;
+                Guid? newId = newMap.TryGetValue(shortName, out Guid n) ? n : null;
+
+                if (oldId == newId)
+                    return;
+
+                var presetMods = DefaultModPresetHelper.GetDefaultMods(LocalConfig, realmAccess, Ruleset.Value);
+                if (presetMods != null)
+                    SelectedMods.Value = presetMods;
+            });
+        }
+
         #endregion
 
         private PerformFromMenuRunner performFromMainMenuTask;
@@ -1508,6 +1568,8 @@ namespace osu.Game
             // this MUST happen after `applyConfigMigrations()` call, as it relies on comparing the previous version.
             // debug / local compilations will reset to a non-release string.
             LocalConfig.SetValue(OsuSetting.Version, version);
+
+            initialiseDefaultModPresets();
 
             var webSocketProvider = Dependencies.Get<IWebSocketProvider>();
 

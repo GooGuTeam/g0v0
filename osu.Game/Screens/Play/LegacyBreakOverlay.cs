@@ -15,6 +15,7 @@ using osu.Framework.Utils;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Timing;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Skinning;
 using osu.Game.Utils;
@@ -62,6 +63,9 @@ namespace osu.Game.Screens.Play
 
         [Resolved]
         private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
+        [Resolved]
+        private IBindable<IReadOnlyList<Mod>>? mods { get; set; }
 
         private ISkin? classicFallback => skins?.DefaultClassicSkin ?? defaultClassicSkin;
 
@@ -136,7 +140,22 @@ namespace osu.Game.Screens.Play
 
             if (allowWarningArrows)
             {
-                double preempt = IBeatmapDifficultyInfo.DifficultyRange(gameplayState.Beatmap.Difficulty.ApproachRate, 1800, 1200, 450);
+                var activeMods = gameplayState.Mods.Count > 0 ? gameplayState.Mods : (mods?.Value ?? Array.Empty<Mod>());
+                BeatmapDifficulty difficulty;
+
+                if (activeMods.Any(m => m is IApplicableToDifficulty))
+                {
+                    difficulty = gameplayState.Beatmap.BeatmapInfo.Difficulty.Clone();
+
+                    foreach (var mod in activeMods.OfType<IApplicableToDifficulty>())
+                        mod.ApplyToDifficulty(difficulty);
+                }
+                else
+                {
+                    difficulty = gameplayState.Beatmap.Difficulty;
+                }
+
+                int preempt = (int)IBeatmapDifficultyInfo.DifficultyRange(difficulty.ApproachRate, 1800, 1200, 450);
 
                 foreach (var b in breaks)
                     applyArrowBlinks(b, preempt);
@@ -177,9 +196,9 @@ namespace osu.Game.Screens.Play
         /// <summary>
         /// stable blinks the arrows on for 100ms every 200ms up to the break's end, carrying on into the following objects' approach.
         /// </summary>
-        private void applyArrowBlinks(BreakPeriod b, double preempt)
+        private void applyArrowBlinks(BreakPeriod b, int preempt)
         {
-            int intoApproach = Math.Min(2, (int)preempt / 200);
+            int intoApproach = Math.Min(2, preempt / 200);
             int blinks = Math.Min(5, ((int)b.Duration + 200) / 200) + intoApproach;
             double start = b.EndTime - 200 * (blinks - intoApproach);
 

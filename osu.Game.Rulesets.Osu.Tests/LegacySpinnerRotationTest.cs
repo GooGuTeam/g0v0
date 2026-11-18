@@ -18,14 +18,19 @@ namespace osu.Game.Rulesets.Osu.Tests
         private const double start_time = 1000;
         private const double end_time = 4000;
 
-        // Later stable behaviour: zero-required spinners receive 300 even without input.
+        // Live stable (b20260924.1) behaviour: zero-required spinners receive 300 even without input;
+        // otherwise < required / 4 => Miss, < required - 1 => Meh, <= required => Ok, > required => Great.
         [TestCase(0, 0, HitResult.Great)]
         [TestCase(1, 0, HitResult.Great)]
         [TestCase(2, 0, HitResult.Great)]
-        [TestCase(9, 10, HitResult.Miss)]
-        [TestCase(3, 10, HitResult.Miss)]
-        [TestCase(10, 10, HitResult.Meh)]
-        [TestCase(11, 10, HitResult.Ok)]
+        [TestCase(0, 10, HitResult.Miss)]
+        [TestCase(1, 10, HitResult.Miss)]
+        [TestCase(2, 10, HitResult.Meh)]
+        [TestCase(3, 10, HitResult.Meh)]
+        [TestCase(8, 10, HitResult.Meh)]
+        [TestCase(9, 10, HitResult.Ok)]
+        [TestCase(10, 10, HitResult.Ok)]
+        [TestCase(11, 10, HitResult.Great)]
         [TestCase(12, 10, HitResult.Great)]
         [TestCase(40, 10, HitResult.Great)]
         public void TestClassicResult(int halfSpins, int required, HitResult expected)
@@ -41,9 +46,24 @@ namespace osu.Game.Rulesets.Osu.Tests
         }
 
         [Test]
+        public void TestInitialNonZeroStationaryAngleProducesNoRotation()
+        {
+            var rotation = new LegacySpinnerRotation(start_time, end_time);
+            var stationarySample = new LegacySpinnerRotation.InputSample(Math.PI / 2, true, false);
+
+            foreach (double time in range(start_time, end_time + 100, 1))
+                rotation.Advance(time, 1, stationarySample);
+
+            Assert.That(rotation.ScoringHalfRotations, Is.Zero);
+            Assert.That(rotation.Velocity, Is.Zero);
+            Assert.That(rotation.VisualRotation, Is.Zero);
+        }
+
+        [Test]
         public void TestVelocityIsCapped()
         {
-            var atCap = run(0.05, true, range(start_time - 500, end_time + 100, 1));
+            // 1 ms sample steps span 16 ms on every third 60 Hz frame, so 0.06 rad/ms ensures every frame's theoretical velocity reaches MAX_VELOCITY.
+            var atCap = run(0.06, true, range(start_time - 500, end_time + 100, 1));
             var faster = run(0.15, true, range(start_time - 500, end_time + 100, 1));
 
             Assert.That(atCap.Velocity, Is.EqualTo(LegacySpinnerRotation.MAX_VELOCITY).Within(1e-9));

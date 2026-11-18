@@ -108,11 +108,10 @@ namespace osu.Game.Screens.Play
 
             // some beatmaps specify a current lead-in time which should be used instead of the ruleset-provided value when available.
             // this is not available as an option in the live editor but can still be applied via .osu editing.
-            if (beatmap.AudioLeadIn > 0 && firstHitObjectTime.HasValue)
+            if (beatmap.AudioLeadIn > 0)
             {
-                // Stable only ever consults the first hit object. Where its lead-in overflows, nothing but
-                // the beatmap's own lead-in (counted back from zero) and the storyboard delay the start.
-                time = Math.Min(time, overflowsLeadIn ? -beatmap.AudioLeadIn : firstHitObjectTime.Value - beatmap.AudioLeadIn);
+                // osu!stable counts AudioLeadIn back from zero (-beatmap.AudioLeadIn), not from the first hit object.
+                time = Math.Min(time, -beatmap.AudioLeadIn);
             }
 
             return time;

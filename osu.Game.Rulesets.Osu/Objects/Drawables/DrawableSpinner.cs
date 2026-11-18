@@ -359,20 +359,9 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             {
                 var spinner = (DrawableSpinner)hitObject;
 
-                if (spinner.HitObject.ClassicSpinnerBehaviour)
+                if (spinner.HitObject.ClassicSpinnerBehaviour || spinner.HitObject.LegacySpinnerScoring)
                 {
                     r.Type = GetClassicResult((int)(spinner.Result.TotalRotation / 180), spinner.HitObject.LegacyHalfSpinsRequired);
-                    return;
-                }
-
-                if (spinner.HitObject.LegacySpinnerScoring)
-                {
-                    int halfSpins = (int)(spinner.Result.TotalRotation / 180);
-                    int required = spinner.HitObject.LegacyHalfSpinsRequired;
-                    r.Type = required == 0 || halfSpins > required ? HitResult.Great
-                        : halfSpins >= required - 1 ? HitResult.Ok
-                        : halfSpins >= Math.Max(0, required / 4) ? HitResult.Meh
-                        : HitResult.Miss;
                     return;
                 }
 
@@ -388,22 +377,23 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         }
 
         /// <summary>
-        /// The result of a Classic spinner, matching stable's <c>SpinnerOsu.ScoreIncrease</c>:
-        /// fewer half rotations than required is a miss, exactly the requirement is a 50, one more is a 100, and two or more is a 300.
-        /// Spinners requiring no rotation receive a 300, including when not spun.
+        /// The result of a Classic spinner, matching live stable's (<c>b20260924.1</c>) <c>SpinnerOsu.ScoreIncrease</c>:
+        /// spinners requiring no rotation receive a 300 even without input; otherwise fewer than <c>required / 4</c> half rotations is a miss,
+        /// at least <c>required / 4</c> up to <c>required - 2</c> is a 50, <c>required - 1</c> or <c>required</c> is a 100,
+        /// and more than <c>required</c> is a 300.
         /// </summary>
         public static HitResult GetClassicResult(int halfSpins, int requiredHalfSpins)
         {
             if (requiredHalfSpins == 0)
                 return HitResult.Great;
 
-            if (halfSpins < requiredHalfSpins)
+            if (halfSpins < Math.Max(0, requiredHalfSpins / 4))
                 return HitResult.Miss;
 
-            if (halfSpins == requiredHalfSpins)
-                return HitResult.Meh;
+            if (halfSpins > requiredHalfSpins)
+                return HitResult.Great;
 
-            return halfSpins == requiredHalfSpins + 1 ? HitResult.Ok : HitResult.Great;
+            return halfSpins > requiredHalfSpins - 2 ? HitResult.Ok : HitResult.Meh;
         }
 
         protected override void Update()

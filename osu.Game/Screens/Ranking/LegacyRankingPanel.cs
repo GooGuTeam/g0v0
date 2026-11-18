@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using osu.Framework.Allocation;
@@ -22,6 +23,7 @@ using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Utils;
+using osu.Game.Configuration;
 using osu.Game.Graphics.Containers;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
@@ -30,6 +32,7 @@ using osu.Game.Recording.Export;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
+using osu.Game.Scoring.Legacy;
 using osu.Game.Screens.Play;
 using osu.Game.Screens.Select;
 using osu.Game.Skinning;
@@ -63,6 +66,7 @@ namespace osu.Game.Screens.Ranking
         private Box? whiteFlash;
         private double gradeTime;
         private LegacySpriteText? scoreText;
+        private Bindable<ScoringMode> scoringMode = null!;
         private string totalScoreString = string.Empty;
         private double scoreRevealStartTime;
         private bool animationFinished;
@@ -80,9 +84,10 @@ namespace osu.Game.Screens.Ranking
         }
 
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin)
+        private void load(ISkinSource skin, OsuConfigManager config)
         {
             RelativeSizeAxes = Axes.Both;
+            scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
 
             // stable's TextureManager.LoadFirst: the plain name, then the first animation frame.
             Texture? tex(string name) => skin.GetStableTexture(name)
@@ -145,7 +150,7 @@ namespace osu.Game.Screens.Ranking
             }
 
             // LoadScore: the total score rolls its digits from the start, centred at (220, 94).
-            totalScoreString = score.TotalScore <= 9999999 ? $"{score.TotalScore:0000000}" : $"{score.TotalScore:00000000}";
+            totalScoreString = formatTotalScore();
 
             scoreText = new LegacySpriteText(LegacyFont.Score)
             {
@@ -383,6 +388,16 @@ namespace osu.Game.Screens.Ranking
         {
             base.LoadComplete();
 
+            scoringMode.BindValueChanged(_ =>
+            {
+                totalScoreString = formatTotalScore();
+
+                if (IsAnimating)
+                    animationEndTime = Math.Max(animationEndTime, scoreRevealStartTime + totalScoreString.Length * 500);
+                else if (scoreText != null)
+                    scoreText.Text = totalScoreString;
+            });
+
             if (!animate)
                 return;
 
@@ -502,6 +517,16 @@ namespace osu.Game.Screens.Ranking
                 int settled = (int)((Time.Current - scoreRevealStartTime) / 500);
                 scoreText.Text = settled >= totalScoreString.Length ? totalScoreString : randomDigits(settled);
             }
+        }
+
+        private string formatTotalScore()
+        {
+            long displayScore = score.GetDisplayScore(scoringMode.Value);
+            bool isSevenDigit = score.Ruleset.ShortName == @"mania"
+                                || score.Mods.Any(m => m is ModScoreV2)
+                                || (scoringMode.Value == ScoringMode.Standardised && !score.Mods.Any(m => m is ModScoreV1));
+
+            return displayScore.ToString(isSevenDigit ? @"0000000" : @"00000000", CultureInfo.InvariantCulture);
         }
 
         private string randomDigits(int settled)
