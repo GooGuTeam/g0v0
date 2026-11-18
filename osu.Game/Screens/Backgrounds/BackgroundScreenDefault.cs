@@ -30,6 +30,8 @@ namespace osu.Game.Screens.Backgrounds
         private IBindable<APIUser> user;
         private Bindable<Skin> skin;
         private Bindable<BackgroundSource> source;
+        private Bindable<bool> pinnedSeasonalBackground;
+        private Bindable<int> pinnedSeasonalBackgroundIndex;
         private readonly SeasonalBackgroundLoader seasonalBackgroundLoader = new SeasonalBackgroundLoader();
 
         [Resolved]
@@ -48,6 +50,8 @@ namespace osu.Game.Screens.Backgrounds
             user = api.LocalUser.GetBoundCopy();
             skin = skinManager.CurrentSkin.GetBoundCopy();
             source = config.GetBindable<BackgroundSource>(OsuSetting.MenuBackgroundSource);
+            pinnedSeasonalBackground = config.GetBindable<bool>(OsuSetting.PinnedSeasonalBackground);
+            pinnedSeasonalBackgroundIndex = config.GetBindable<int>(OsuSetting.PinnedSeasonalBackgroundIndex);
 
             AddInternal(seasonalBackgroundLoader);
         }
@@ -60,6 +64,8 @@ namespace osu.Game.Screens.Backgrounds
             skin.ValueChanged += _ => Scheduler.AddOnce(next);
             source.ValueChanged += _ => Scheduler.AddOnce(next);
             beatmap.ValueChanged += _ => Scheduler.AddOnce(next);
+            pinnedSeasonalBackground.ValueChanged += _ => Scheduler.AddOnce(next);
+            pinnedSeasonalBackgroundIndex.ValueChanged += _ => Scheduler.AddOnce(next);
             seasonalBackgroundLoader.SeasonalBackgroundChanged += () => Scheduler.AddOnce(next);
 
             currentDisplay = RNG.Next(0, background_count);
@@ -135,8 +141,15 @@ namespace osu.Game.Screens.Backgrounds
 
         private Background createBackground()
         {
+            // A pinned seasonal background gets highest priority, even over the user's seasonal background mode setting.
+            // This is an explicit choice made from the background editor, so it should always be honored while valid.
+            Background newBackground = null;
+
+            if (pinnedSeasonalBackground.Value)
+                newBackground = seasonalBackgroundLoader.LoadPinnedBackground(pinnedSeasonalBackgroundIndex.Value);
+
             // seasonal background loading gets highest priority.
-            Background newBackground = seasonalBackgroundLoader.LoadNextBackground();
+            newBackground ??= seasonalBackgroundLoader.LoadNextBackground();
 
             if (newBackground == null && user.Value?.IsSupporter == true)
             {
