@@ -30,9 +30,9 @@ namespace osu.Game.Recording.Export
         private readonly List<Bindable<StarDifficulty>> issued = new List<Bindable<StarDifficulty>>();
         private bool published;
 
-        public ReplayExportDifficultyCache(WorkingBeatmap beatmap, Ruleset ruleset, Mod[] mods, ScoreProcessor scoreProcessor)
+        public ReplayExportDifficultyCache(WorkingBeatmap beatmap, Ruleset ruleset, Mod[] mods, ScoreProcessor scoreProcessor, bool useModSpecific = true)
         {
-            var calculator = ruleset.CreateDifficultyCalculator(beatmap);
+            var calculator = ModSpecificCalculation.CreateDifficultyCalculator(ruleset, beatmap, useModSpecific);
             attributes = calculator.CalculateTimed(mods);
             var difficultyAttributes = calculator.Calculate(mods);
             var perfectScore = new ScoreInfo(beatmap.BeatmapInfo, ruleset.RulesetInfo)
@@ -46,7 +46,8 @@ namespace osu.Game.Recording.Export
                 Statistics = scoreProcessor.MaximumStatistics,
                 MaximumStatistics = scoreProcessor.MaximumStatistics,
             };
-            var performance = ruleset.CreatePerformanceCalculator()?.Calculate(perfectScore, difficultyAttributes) ?? new PerformanceAttributes();
+            var performanceCalculator = useModSpecific ? ruleset.CreateModSpecificPerformanceCalculator() : ruleset.CreatePerformanceCalculator();
+            var performance = performanceCalculator?.Calculate(perfectScore, difficultyAttributes) ?? new PerformanceAttributes();
             difficulty = new StarDifficulty(difficultyAttributes, performance);
         }
 

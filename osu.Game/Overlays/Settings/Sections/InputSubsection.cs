@@ -8,6 +8,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Events;
 using osu.Framework.Input.Handlers;
 using osu.Framework.Localisation;
+using osu.Framework.Threading;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
@@ -32,6 +33,7 @@ namespace osu.Game.Overlays.Settings.Sections
         private readonly BindableBool handlerEnabled = new BindableBool();
 
         private Drawable header = null!;
+        private ScheduledDelegate? unmaskDelegate;
 
         public InputSubsection(InputHandler handler)
         {
@@ -60,9 +62,6 @@ namespace osu.Game.Overlays.Settings.Sections
 
             handlerEnabled.BindTo(handler.Enabled);
             handlerEnabled.BindValueChanged(updateEnabledState, true);
-
-            // We use masking to hide the content of these sections.
-            FlowContent.Masking = true;
         }
 
         private void updateEnabledState(ValueChangedEvent<bool> state)
@@ -71,28 +70,37 @@ namespace osu.Game.Overlays.Settings.Sections
             bool negativeBottomMargin = !handlerEnabled.Value || FlowContent.Count == 0;
             header.TransformTo(nameof(Margin), new MarginPadding { Top = header.Margin.Top, Bottom = negativeBottomMargin ? -VERTICAL_PADDING : 0 }, 300, Easing.OutQuint);
 
+            unmaskDelegate?.Cancel();
+
             // Avoid crashes from toggling `AutoSizeAxes` while active `AutoSizeDuration` transforms are still running.
             // This is probably a framework bug.
             FlowContent.ClearTransforms();
 
+            bool animate = state.NewValue != state.OldValue;
+
             if (!handlerEnabled.Value)
             {
+                FlowContent.Masking = true;
                 FlowContent.AutoSizeAxes = Axes.None;
-                FlowContent.ResizeHeightTo(0, 300, Easing.OutQuint)
-                           .FadeOut(300, Easing.OutQuint);
+                FlowContent.ResizeHeightTo(0, animate ? 300 : 0, Easing.OutQuint)
+                           .FadeOut(animate ? 300 : 0, Easing.OutQuint);
             }
             else
             {
                 // enable auto size transform momentarily for smooth pop in animation, and disable it right after the transform is added.
                 // we don't want this specification to apply when a dropdown in the input settings is being open, it causes too slow animation.
                 // (try removing the schedule below then watch a settings dropdown menu opening animation).
-                FlowContent.AutoSizeDuration = state.NewValue == state.OldValue ? 0 : 300;
+                FlowContent.Masking = animate;
+                FlowContent.AutoSizeDuration = animate ? 300 : 0;
                 FlowContent.AutoSizeEasing = Easing.OutQuint;
                 FlowContent.AutoSizeAxes = Axes.Y;
 
-                FlowContent.FadeIn(300, Easing.OutQuint);
+                FlowContent.FadeIn(animate ? 300 : 0, Easing.OutQuint);
 
                 ScheduleAfterChildren(() => FlowContent.AutoSizeDuration = 0);
+
+                if (animate)
+                    unmaskDelegate = Scheduler.AddDelayed(() => FlowContent.Masking = false, 300);
             }
         }
 

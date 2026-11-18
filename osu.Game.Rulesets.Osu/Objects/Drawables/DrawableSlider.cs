@@ -149,7 +149,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         protected override void LoadComplete()
         {
             base.LoadComplete();
-            if (visualOrdering?.IsActive == true)
+            if (visualOrdering != null)
             {
                 visualOrdering.Register(Body, this, OsuVisualKind.Body, () => shakeContainer, localDepth: 1);
                 visualOrdering.Register(Ball, this, OsuVisualKind.Ball, () => ballProxies);
@@ -159,6 +159,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         protected override void OnApply()
         {
             base.OnApply();
+
+            Ball.Reset();
 
             // Ensure that the version will change after the upcoming BindTo().
             pathVersion.Value = int.MaxValue;

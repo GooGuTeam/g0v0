@@ -56,6 +56,8 @@ namespace osu.Game.Graphics.Containers
 
         private float? fixedAspectRatio;
 
+        private bool initialUpdateComplete;
+
         private ITabletHandler? tabletHandler;
 
         private readonly LayoutValue aspectLayout = new LayoutValue(Invalidation.DrawSize);
@@ -102,7 +104,6 @@ namespace osu.Game.Graphics.Containers
             {
                 RelativeSizeAxes = Axes.Both,
                 RelativePositionAxes = Axes.Both,
-                CornerRadius = corner_radius,
                 Child = content = new ScalingDrawSizePreservingFillContainer(targetMode != ScalingMode.Gameplay)
             };
         }
@@ -113,11 +114,13 @@ namespace osu.Game.Graphics.Containers
 
             if (!aspectLayout.IsValid)
             {
-                if (fixedAspectRatio != null)
+                if (fixedAspectRatio != null && customRect == null)
                     updateSize();
 
                 aspectLayout.Validate();
             }
+
+            initialUpdateComplete = true;
         }
 
         public partial class ScalingDrawSizePreservingFillContainer : DrawSizePreservingFillContainer
@@ -125,6 +128,8 @@ namespace osu.Game.Graphics.Containers
             private readonly bool applyUIScale;
 
             private Bindable<float>? uiScale;
+
+            private bool initialUpdateComplete;
 
             protected float CurrentScale { get; private set; } = 1;
 
@@ -144,7 +149,17 @@ namespace osu.Game.Graphics.Containers
                 if (applyUIScale)
                 {
                     uiScale = osuConfig.GetBindable<float>(OsuSetting.UIScale);
-                    uiScale.BindValueChanged(args => this.TransformTo(nameof(CurrentScale), args.NewValue, TRANSITION_DURATION, Easing.OutQuart), true);
+                    uiScale.BindValueChanged(args =>
+                    {
+                        if (!initialUpdateComplete)
+                        {
+                            ClearTransforms();
+                            CurrentScale = args.NewValue;
+                            return;
+                        }
+
+                        this.TransformTo(nameof(CurrentScale), args.NewValue, TRANSITION_DURATION, Easing.OutQuart);
+                    }, true);
                 }
             }
 
@@ -156,6 +171,8 @@ namespace osu.Game.Graphics.Containers
                 Size = new Vector2(1 / CurrentScale);
 
                 base.Update();
+
+                initialUpdateComplete = true;
             }
         }
 
@@ -203,6 +220,8 @@ namespace osu.Game.Graphics.Containers
 
         private void updateSize()
         {
+            double duration = initialUpdateComplete ? TRANSITION_DURATION : 0;
+
             if (targetMode == ScalingMode.Everything)
             {
                 // the top level scaling container manages the background to be displayed while scaling.
@@ -220,28 +239,30 @@ namespace osu.Game.Graphics.Containers
                         backgroundStack.Push(new ScalingBackgroundScreen());
                     }
 
-                    backgroundStack.FadeIn(TRANSITION_DURATION);
-                    backgroundStack.FadeColour(OsuColour.Gray(1.0f - scalingMenuBackgroundDim.Value), TRANSITION_DURATION, Easing.OutQuint);
+                    backgroundStack.FadeIn(duration);
+                    backgroundStack.FadeColour(OsuColour.Gray(1.0f - scalingMenuBackgroundDim.Value), duration, Easing.OutQuint);
                 }
                 else
-                    backgroundStack?.FadeOut(TRANSITION_DURATION);
+                    backgroundStack?.FadeOut(duration);
             }
 
             RectangleF targetRect = new RectangleF(Vector2.Zero, Vector2.One);
+            bool applyFixedAspectRatio = false;
 
-            if (fixedAspectRatio is float aspect && aspect > 0 && DrawWidth > 0 && DrawHeight > 0)
+            if (customRect != null)
+            {
+                sizableContainer.RelativePositionAxes = customRectIsRelativePosition ? Axes.Both : Axes.None;
+
+                targetRect = customRect.Value;
+            }
+            else if (fixedAspectRatio is float aspect && aspect > 0 && DrawWidth > 0 && DrawHeight > 0)
             {
                 sizableContainer.RelativePositionAxes = Axes.Both;
 
                 float areaAspect = DrawWidth / DrawHeight;
                 var size = new Vector2(Math.Min(aspect / areaAspect, 1), Math.Min(areaAspect / aspect, 1));
                 targetRect = new RectangleF((Vector2.One - size) / 2, size);
-            }
-            else if (customRect != null)
-            {
-                sizableContainer.RelativePositionAxes = customRectIsRelativePosition ? Axes.Both : Axes.None;
-
-                targetRect = customRect.Value;
+                applyFixedAspectRatio = true;
             }
             else if (targetMode == null || scalingMode.Value == targetMode)
             {
@@ -253,22 +274,32 @@ namespace osu.Game.Graphics.Containers
                 targetRect = new RectangleF(pos, scale);
             }
 
-            bool requiresMasking = targetRect.Size != Vector2.One
+            bool requiresMasking = applyFixedAspectRatio
+                                   || targetRect.Size != Vector2.One
                                    // For the top level scaling container, for now we apply masking if safe areas are in use.
                                    // In the future this can likely be removed as more of the actual UI supports overflowing into the safe areas.
                                    || (targetMode == ScalingMode.Everything && (applySafeAreaPadding.Value && safeAreaPadding.Value.Total != Vector2.Zero));
 
+            bool requiresCornerRadius = requiresMasking && !applyFixedAspectRatio;
+
             if (requiresMasking)
                 sizableContainer.Masking = true;
 
-            sizableContainer.MoveTo(targetRect.Location, TRANSITION_DURATION, Easing.OutQuart);
-            sizableContainer.ResizeTo(targetRect.Size, TRANSITION_DURATION, Easing.OutQuart);
+            sizableContainer.MoveTo(targetRect.Location, duration, Easing.OutQuart);
+            sizableContainer.ResizeTo(targetRect.Size, duration, Easing.OutQuart);
 
             // Of note, this will not work great in the case of nested ScalingContainers where multiple are applying corner radius.
             // Masking and corner radius should likely only be applied at one point in the full game stack to fix this.
             // An example of how this can occur is when the skin editor is visible and the game screen scaling is set to "Everything".
-            sizableContainer.TransformTo(nameof(CornerRadius), requiresMasking ? corner_radius : 0, TRANSITION_DURATION, requiresMasking ? Easing.OutQuart : Easing.None)
+            double cornerDuration = applyFixedAspectRatio ? 0 : duration;
+            sizableContainer.TransformTo(nameof(CornerRadius), requiresCornerRadius ? corner_radius : 0f, cornerDuration, requiresCornerRadius ? Easing.OutQuart : Easing.None)
                             .OnComplete(_ => { sizableContainer.Masking = requiresMasking; });
+
+            if (!initialUpdateComplete)
+            {
+                sizableContainer.FinishTransforms();
+                backgroundStack?.FinishTransforms();
+            }
 
             // when "everything" scaling mode is active, tablets are expected to constrain output area to the scaled size of the game
             if (tabletHandler != null)

@@ -117,7 +117,7 @@ namespace osu.Game.Screens.Play
                 modernContent = new Container
                 {
                     RelativeSizeAxes = Axes.Both,
-                    Alpha = legacyEnabled.Value ? 0 : 1,
+                    Alpha = 0,
                     Children = new Drawable[]
                     {
                         new Box
@@ -194,7 +194,7 @@ namespace osu.Game.Screens.Play
                 OnQuit == null ? null : () => actAndHide(OnQuit),
                 LegacySaveReplay)
             {
-                Alpha = legacyEnabled.Value ? 1 : 0,
+                Alpha = 0,
             });
 
             if (OnResume != null)
@@ -232,13 +232,22 @@ namespace osu.Game.Screens.Play
 
         protected override void PopIn()
         {
+            this.ClearTransforms();
+
             if (LegacyMenu != null)
             {
+                modernContent.FadeOut();
+                LegacyMenu.FadeIn();
                 this.FadeIn();
                 LegacyMenu.Appear();
             }
             else
+            {
+                legacyMenu?.Disappear();
+                legacyMenu?.FadeOut();
+                modernContent.FadeIn();
                 this.FadeIn(TRANSITION_DURATION, Easing.In);
+            }
 
             updateInfoText();
 
@@ -247,14 +256,24 @@ namespace osu.Game.Screens.Play
 
         protected override void PopOut()
         {
+            this.ClearTransforms();
+
             if (LegacyMenu != null)
             {
                 // stable fades its dim and overlay out over 800ms, while gameplay resumes beneath them.
+                modernContent.FadeOut();
                 LegacyMenu.Disappear();
                 this.Delay(800).FadeOut();
             }
             else
-                this.FadeOut(TRANSITION_DURATION, Easing.In);
+            {
+                this.FadeOut(TRANSITION_DURATION, Easing.In)
+                    .Finally(_ =>
+                    {
+                        if (State.Value == Visibility.Hidden)
+                            modernContent.FadeOut();
+                    });
+            }
 
             stopPauseLoop();
         }
@@ -415,16 +434,28 @@ namespace osu.Game.Screens.Play
 
             legacyEnabled.BindValueChanged(_ =>
             {
-                modernContent.FadeTo(legacyEnabled.Value ? 0 : 1);
-                legacyMenu!.FadeTo(legacyEnabled.Value ? 1 : 0);
                 InternalButtons.Deselect();
 
                 if (State.Value == Visibility.Visible)
                 {
+                    this.ClearTransforms();
+                    modernContent.FadeTo(legacyEnabled.Value ? 0 : 1);
+                    legacyMenu!.FadeTo(legacyEnabled.Value ? 1 : 0);
+
                     // Cancel a pending dismissal from the previous presentation without changing pause state.
                     this.FadeIn();
                     if (legacyEnabled.Value)
-                        legacyMenu!.Appear();
+                        legacyMenu?.Appear();
+                    else
+                        legacyMenu?.Disappear();
+                }
+                else
+                {
+                    modernContent.FadeOut();
+                    legacyMenu!.Disappear();
+                    legacyMenu.FadeOut();
+                    this.ClearTransforms();
+                    this.FadeOut();
                 }
             });
 

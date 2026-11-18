@@ -1,10 +1,15 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.UserInterface;
+using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osuTK;
 using osuTK.Graphics;
@@ -16,92 +21,137 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
     /// osu!stable's options search (<c>pSearchBox(18, .., TextAlignment.Centre)</c>): no box, just the centred text
     /// (or the "type to search" placeholder) with a search icon to its left.
     /// </summary>
-    /// <remarks>
-    /// The real <see cref="SettingsSearchTextBox"/> stays in place, invisible but present, so focus, typing, IME and filtering behave as before;
-    /// this drawable only mirrors its text.
-    /// </remarks>
     public partial class StableSearchBar : CompositeDrawable
     {
-        private const double caret_blink_period = 500;
+        private static readonly float icon_gap = M.SEARCH_FONT_SIZE * 0.25f;
 
-        private readonly SettingsSearchTextBox textBox;
-
-        private readonly OsuSpriteText text;
-        private readonly Box caret;
+        private readonly StableSearchTextBox searchTextBox;
+        private readonly SpriteIcon searchIcon;
 
         public StableSearchBar(SettingsSearchTextBox textBox)
         {
-            this.textBox = textBox;
-
             RelativeSizeAxes = Axes.X;
             Height = M.SEARCH_BAR_HEIGHT;
 
-            textBox.RelativeSizeAxes = Axes.Both;
-            textBox.Size = Vector2.One;
-            textBox.Anchor = Anchor.Centre;
-            textBox.Origin = Anchor.Centre;
-            textBox.Alpha = 0;
-            textBox.AlwaysPresent = true;
-
-            InternalChildren = new Drawable[]
+            if (textBox is StableSearchTextBox stableBox)
             {
-                textBox,
-                new FillFlowContainer
+                searchTextBox = stableBox;
+            }
+            else
+            {
+                searchTextBox = new StableSearchTextBox
                 {
-                    Anchor = Anchor.Centre,
-                    Origin = Anchor.Centre,
-                    AutoSizeAxes = Axes.Both,
-                    Direction = FillDirection.Horizontal,
-                    Spacing = new Vector2(M.SEARCH_FONT_SIZE * 0.25f, 0),
-                    Children = new Drawable[]
-                    {
-                        new SpriteIcon
-                        {
-                            Anchor = Anchor.CentreLeft,
-                            Origin = Anchor.CentreLeft,
-                            Icon = FontAwesome.Solid.Search,
-                            Size = new Vector2(M.SEARCH_ICON_SIZE),
-                            Shadow = true,
-                        },
-                        new Container
-                        {
-                            Anchor = Anchor.CentreLeft,
-                            Origin = Anchor.CentreLeft,
-                            AutoSizeAxes = Axes.Both,
-                            Children = new Drawable[]
-                            {
-                                text = new OsuSpriteText
-                                {
-                                    Font = M.Font(M.SEARCH_FONT_SIZE),
-                                    Shadow = true,
-                                },
-                                caret = new Box
-                                {
-                                    Anchor = Anchor.CentreRight,
-                                    Origin = Anchor.CentreLeft,
-                                    Width = 2,
-                                    Height = M.SEARCH_FONT_SIZE,
-                                    Colour = Color4.White,
-                                    Alpha = 0,
-                                },
-                            },
-                        },
-                    },
-                },
-            };
+                    PlaceholderText = textBox.PlaceholderText,
+                    Current = textBox.Current,
+                };
+            }
+
+            searchTextBox.RelativeSizeAxes = Axes.Both;
+            searchTextBox.Size = Vector2.One;
+            searchTextBox.Anchor = Anchor.Centre;
+            searchTextBox.Origin = Anchor.Centre;
+
+            var children = new List<Drawable>();
+
+            if (!ReferenceEquals(textBox, searchTextBox))
+            {
+                textBox.Alpha = 0;
+                textBox.AlwaysPresent = true;
+                children.Add(textBox);
+            }
+
+            children.Add(searchTextBox);
+            children.Add(searchIcon = new SpriteIcon
+            {
+                Anchor = Anchor.CentreLeft,
+                Origin = Anchor.CentreLeft,
+                Icon = FontAwesome.Solid.Search,
+                Size = new Vector2(M.SEARCH_ICON_SIZE),
+                Shadow = true,
+            });
+
+            InternalChildren = children;
         }
 
-        protected override void Update()
+        protected override void UpdateAfterChildren()
         {
-            base.Update();
+            base.UpdateAfterChildren();
 
-            bool empty = string.IsNullOrEmpty(textBox.Current.Value);
+            float textLeft = ToLocalSpace(searchTextBox.VisibleTextScreenSpaceTopLeft).X;
+            searchIcon.X = Math.Max(StableSettingsItem.CONTENT_RIGHT, textLeft - icon_gap - M.SEARCH_ICON_SIZE);
+        }
 
-            text.Text = empty ? textBox.PlaceholderText : textBox.Current.Value;
+        public partial class StableSearchTextBox : SettingsSearchTextBox
+        {
+            private Caret? caret;
 
-            // pTextBox shows its cursor only while focused, and not over the default text.
-            bool showCaret = textBox.HasFocus && !empty && Time.Current % (caret_blink_period * 2) < caret_blink_period;
-            caret.Alpha = showCaret ? 1 : 0;
+            protected override float LeftRightPadding => StableSettingsItem.CONTENT_RIGHT + M.SEARCH_ICON_SIZE + icon_gap;
+
+            protected override FontUsage Font => M.Font(M.SEARCH_FONT_SIZE);
+
+            public Vector2 VisibleTextScreenSpaceTopLeft
+                => TextContainer.DrawWidth > 0 ? TextContainer.ScreenSpaceDrawQuad.TopLeft : Placeholder.ScreenSpaceDrawQuad.TopLeft;
+
+            public StableSearchTextBox()
+            {
+                DrawBorder = false;
+
+                foreach (var icon in Children.OfType<SpriteIcon>().ToArray())
+                    Remove(icon, true);
+
+                TextFlow.Padding = new MarginPadding();
+                TextContainer.Anchor = Anchor.Centre;
+                TextContainer.Origin = Anchor.Centre;
+                TextContainer.Height = M.SEARCH_FONT_SIZE / M.SEARCH_BAR_HEIGHT;
+            }
+
+            [BackgroundDependencyLoader]
+            private void load()
+            {
+                BackgroundUnfocused = Color4.Transparent;
+                BackgroundFocused = Color4.Transparent;
+                BackgroundCommit = Color4.Transparent;
+                BorderThickness = 0;
+                CornerRadius = 0;
+                Placeholder.Colour = Color4.White;
+            }
+
+            protected override SpriteText CreatePlaceholder() => new OsuSpriteText
+            {
+                Font = Font,
+                Shadow = true,
+                Colour = Color4.White,
+            };
+
+            protected override Drawable GetDrawableCharacter(char c) => new FallingDownContainer
+            {
+                AutoSizeAxes = Axes.Both,
+                Child = new OsuSpriteText
+                {
+                    Text = c.ToString(),
+                    Font = Font,
+                    Shadow = true,
+                },
+            };
+
+            protected override Caret CreateCaret() => caret = base.CreateCaret();
+
+            protected override void UpdateAfterChildren()
+            {
+                base.UpdateAfterChildren();
+
+                if (caret != null && HasFocus)
+                {
+                    // pTextBox shows its cursor only when text or IME composition is active, not over the centred placeholder.
+                    if (string.IsNullOrEmpty(Text) && !ImeCompositionActive)
+                        caret.Alpha = 0;
+                    else
+                    {
+                        caret.ClearTransforms(false, nameof(Alpha));
+                        caret.Alpha = 1;
+                    }
+                }
+            }
         }
     }
 }

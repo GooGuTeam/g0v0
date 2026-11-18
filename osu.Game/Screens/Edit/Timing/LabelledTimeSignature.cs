@@ -2,11 +2,13 @@
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
+using System.Globalization;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.UserInterface;
+using osu.Framework.Input.Events;
 using osu.Game.Beatmaps.Timing;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
@@ -45,7 +47,10 @@ namespace osu.Game.Screens.Edit.Timing
 
             public Action<TimeSignature>? OnCommit;
 
-            private OsuNumberBox numeratorBox = null!;
+            private TimeSignatureNumberBox numeratorBox = null!;
+            private string lastDisplayedText = string.Empty;
+            private bool updatingFromCurrent;
+            private bool textChangedSinceDisplay;
 
             [BackgroundDependencyLoader]
             private void load()
@@ -57,7 +62,7 @@ namespace osu.Game.Screens.Edit.Timing
                     Direction = FillDirection.Horizontal,
                     Children = new Drawable[]
                     {
-                        numeratorBox = new OsuNumberBox
+                        numeratorBox = new TimeSignatureNumberBox
                         {
                             Width = 40,
                             Anchor = Anchor.CentreLeft,
@@ -85,26 +90,77 @@ namespace osu.Game.Screens.Edit.Timing
             {
                 base.LoadComplete();
 
+                numeratorBox.Current.BindValueChanged(_ =>
+                {
+                    if (!updatingFromCurrent)
+                        textChangedSinceDisplay = true;
+                });
                 Current.BindValueChanged(_ => updateFromCurrent(), true);
                 numeratorBox.OnCommit += (_, _) => updateFromNumeratorBox();
             }
 
             private void updateFromCurrent()
             {
-                numeratorBox.Current.Value = Current.Value.Numerator.ToString();
+                updatingFromCurrent = true;
+                lastDisplayedText = Current.Value.Numerator.ToString(CultureInfo.InvariantCulture);
+                numeratorBox.Current.Value = lastDisplayedText;
+                textChangedSinceDisplay = false;
+                updatingFromCurrent = false;
             }
 
             private void updateFromNumeratorBox()
             {
+                if (numeratorBox.CommittingFromFocusLoss && !textChangedSinceDisplay && numeratorBox.Current.Value == lastDisplayedText)
+                    return;
+
                 if (int.TryParse(numeratorBox.Current.Value, out int numerator) && numerator > 0)
                 {
                     Current.Value = new TimeSignature(numerator);
+                    updateFromCurrent();
                     OnCommit?.Invoke(Current.Value);
                 }
                 else
                 {
                     // trigger `Current` change to restore the numerator box's text to a valid value.
                     Current.TriggerChange();
+                }
+            }
+
+            private partial class TimeSignatureNumberBox : OsuNumberBox
+            {
+                public bool CommittingFromFocusLoss { get; private set; }
+                private bool insideExplicitCommit;
+
+                protected override void Commit()
+                {
+                    bool wasFocusLoss = CommittingFromFocusLoss && !insideExplicitCommit;
+                    insideExplicitCommit = true;
+                    CommittingFromFocusLoss = wasFocusLoss;
+
+                    try
+                    {
+                        base.Commit();
+                    }
+                    finally
+                    {
+                        insideExplicitCommit = false;
+                        CommittingFromFocusLoss = false;
+                    }
+                }
+
+                protected override void OnFocusLost(FocusLostEvent e)
+                {
+                    if (!insideExplicitCommit)
+                        CommittingFromFocusLoss = true;
+
+                    try
+                    {
+                        base.OnFocusLost(e);
+                    }
+                    finally
+                    {
+                        CommittingFromFocusLoss = false;
+                    }
                 }
             }
         }

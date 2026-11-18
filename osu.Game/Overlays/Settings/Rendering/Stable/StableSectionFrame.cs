@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Linq;
 using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -21,11 +22,14 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
         private static readonly Color4 highlighted_colour = lighten(StableSettingsColours.SECONDARY, 0.4f);
 
         private readonly OsuSpriteText header;
+        private readonly Drawable content;
 
         public bool RequiresSelectionForInput => false;
 
         public StableSectionFrame(LocalisableString header, Drawable content)
         {
+            this.content = content;
+
             RelativeSizeAxes = Axes.X;
             AutoSizeAxes = Axes.Y;
 
@@ -47,6 +51,23 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
                 },
                 content,
             };
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+
+            // When the first visible child has no subsection header (e.g. SkinSection, RulesetSettingsSubsection, LocalRulesetsSection),
+            // reserve the subsection top padding here so the 24pt category header never overlaps the first control.
+            bool firstChildHasHeader = content is Container<Drawable> flow
+                                       && flow.FirstOrDefault(c => c.IsPresent) is SettingsSubsection and not RulesetSettingsSubsection;
+
+            float topMargin = firstChildHasHeader
+                ? M.CATEGORY_HEIGHT
+                : Math.Max(header.DrawHeight + M.ELEMENT_GAP / 2, M.CATEGORY_HEIGHT + M.SECTION_PADDING_BEFORE);
+
+            if (content.Margin.Top != topMargin)
+                content.Margin = new MarginPadding { Top = topMargin };
         }
 
         public void UpdateState(bool isCurrent, bool isHovered)

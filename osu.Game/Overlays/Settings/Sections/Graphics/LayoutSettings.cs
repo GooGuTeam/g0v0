@@ -15,6 +15,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Framework.Platform.Windows;
+using osu.Framework.Threading;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Containers;
 using osu.Game.Localisation;
@@ -29,6 +30,7 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
         protected override LocalisableString Header => GraphicsSettingsStrings.LayoutHeader;
 
         private FillFlowContainer scalingSettings = null!;
+        private ScheduledDelegate? scalingUnmaskDelegate;
 
         private SliderEntry<float>[] scalingEntries = null!;
 
@@ -172,7 +174,6 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
                     Direction = FillDirection.Vertical,
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
-                    Masking = true,
                     Spacing = new Vector2(0, SettingsSection.ITEM_SPACING_V2),
                 },
             };
@@ -294,20 +295,38 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
 
             scalingMode.BindValueChanged(_ =>
             {
+                scalingUnmaskDelegate?.Cancel();
                 scalingSettings.ClearTransforms();
                 scalingSettings.AutoSizeDuration = transition_duration;
                 scalingSettings.AutoSizeEasing = Easing.OutQuint;
 
-                updateScalingModeVisibility();
+                updateScalingModeVisibility(true);
             });
-            updateScalingModeVisibility();
+            updateScalingModeVisibility(false);
 
-            void updateScalingModeVisibility()
+            void updateScalingModeVisibility(bool animate)
             {
                 if (scalingMode.Value == ScalingMode.Off)
-                    scalingSettings.ResizeHeightTo(0, transition_duration, Easing.OutQuint);
+                {
+                    scalingSettings.Masking = true;
+                    scalingSettings.AutoSizeAxes = Axes.None;
 
-                scalingSettings.AutoSizeAxes = scalingMode.Value != ScalingMode.Off ? Axes.Y : Axes.None;
+                    if (animate)
+                        scalingSettings.ResizeHeightTo(0, transition_duration, Easing.OutQuint);
+                    else
+                        scalingSettings.Height = 0;
+                }
+                else
+                {
+                    scalingSettings.Masking = animate;
+                    scalingSettings.AutoSizeAxes = Axes.Y;
+
+                    if (animate)
+                    {
+                        ScheduleAfterChildren(() => scalingSettings.AutoSizeDuration = 0);
+                        scalingUnmaskDelegate = Scheduler.AddDelayed(() => scalingSettings.Masking = false, transition_duration);
+                    }
+                }
 
                 foreach (var slider in scalingEntries)
                 {

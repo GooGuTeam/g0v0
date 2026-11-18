@@ -13,11 +13,14 @@ using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Objects.Legacy;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Skinning;
 using osu.Game.Utils;
@@ -79,6 +82,7 @@ namespace osu.Game.Screens.Select
 
         private Ruleset? rulesetInstance;
         private RulesetInfo? rulesetInstanceSource;
+        private ModSettingChangeTracker? modSettingChangeTracker;
 
         // valor subido por mods = mas dificil = calido; bajado = mas facil = frio.
         private static readonly Color4 harder_colour = new Color4(255, 102, 102, 255);
@@ -95,6 +99,8 @@ namespace osu.Game.Screens.Select
                     switch (hitObject)
                     {
                         case IHasPath:
+                        case ConvertHold:
+                        case IHasDuration and IHasColumn:
                             sliders++;
                             break;
 
@@ -194,7 +200,19 @@ namespace osu.Game.Screens.Select
             beatmap.BindValueChanged(_ => updateDisplay(), true);
             // mods y ruleset afectan la linea de length/BPM y la de stats; el bindable de star
             // rating de abajo ya trackea los cambios de mod/ruleset por su cuenta.
-            mods.BindValueChanged(_ => Scheduler.AddOnce(refreshModSensitiveLines));
+            mods.BindValueChanged(m =>
+            {
+                modSettingChangeTracker?.Dispose();
+                modSettingChangeTracker = null;
+
+                if (m.NewValue.Count > 0)
+                {
+                    modSettingChangeTracker = new ModSettingChangeTracker(m.NewValue);
+                    modSettingChangeTracker.SettingChanged += _ => Scheduler.AddOnce(refreshModSensitiveLines);
+                }
+
+                Scheduler.AddOnce(refreshModSensitiveLines);
+            }, true);
             ruleset.BindValueChanged(_ =>
             {
                 // el baseline sin mods depende del ruleset (convertidos cambian de SR).
@@ -206,13 +224,18 @@ namespace osu.Game.Screens.Select
         private void refreshBaselineStars()
         {
             baselineCancellation?.Cancel();
+            baselineCancellation?.Dispose();
             baselineStars = null;
 
             var info = beatmap.Value.BeatmapInfo;
-            var token = (baselineCancellation = new CancellationTokenSource()).Token;
+            var cts = baselineCancellation = new CancellationTokenSource();
+            var token = cts.Token;
 
             difficultyCache.GetDifficultyAsync(info, ruleset.Value, null, token).ContinueWith(task =>
             {
+                if (task.Exception != null || !task.IsCompletedSuccessfully || token.IsCancellationRequested)
+                    return;
+
                 if (task.GetResultSafely() is StarDifficulty diff)
                 {
                     Schedule(() =>
@@ -224,7 +247,7 @@ namespace osu.Game.Screens.Select
                         Scheduler.AddOnce(refreshStatsLine);
                     });
                 }
-            }, token);
+            });
         }
 
         private void updateDisplay()
@@ -233,12 +256,17 @@ namespace osu.Game.Screens.Select
             var info = working.BeatmapInfo;
             var metadata = info.Metadata;
 
-            titleText.Text = $"{metadata.Artist} - {metadata.Title} [{info.DifficultyName}]";
+            var artist = new RomanisableString(metadata.ArtistUnicode, metadata.Artist);
+            var title = new RomanisableString(metadata.TitleUnicode, metadata.Title);
+            string difficultySuffix = string.IsNullOrEmpty(info.DifficultyName) ? string.Empty : $" [{info.DifficultyName}]";
+
+            titleText.Text = LocalisableString.Interpolate($"{artist} - {title}{difficultySuffix}");
             mapperText.Text = $"Mapped by {metadata.Author.Username}";
 
             // star rating con los mods actuales aplicados; el bindable ademas se actualiza solo
             // con los cambios de mod/ruleset.
             starCancellation?.Cancel();
+            starCancellation?.Dispose();
             starDifficulty?.UnbindAll();
             starDifficulty = difficultyCache.GetBindableDifficulty(info, (starCancellation = new CancellationTokenSource()).Token);
             starDifficulty.BindValueChanged(_ => Scheduler.AddOnce(refreshStatsLine));
@@ -253,6 +281,8 @@ namespace osu.Game.Screens.Select
             // esta decodeado en memoria lo usamos directo; si no, decodeamos en un task de fondo
             // (los mapas grandes tardan unas decenas de ms) y llenamos la linea cuando termina.
             countsCancellation?.Cancel();
+            countsCancellation?.Dispose();
+            countsCancellation = null;
 
             if (working.BeatmapLoaded)
                 countsText.Text = formatCounts(working);
@@ -261,17 +291,21 @@ namespace osu.Game.Screens.Select
                 countsText.Text = string.Empty;
 
                 var cts = countsCancellation = new CancellationTokenSource();
+                var token = cts.Token;
 
                 Task.Run(() =>
                 {
+                    if (token.IsCancellationRequested)
+                        return;
+
                     string text = formatCounts(working);
 
                     Schedule(() =>
                     {
-                        if (!cts.IsCancellationRequested)
+                        if (!token.IsCancellationRequested)
                             countsText.Text = text;
                     });
-                }, cts.Token);
+                }, token);
             }
 
             var status = info.BeatmapSet?.Status ?? info.Status;
@@ -305,7 +339,10 @@ namespace osu.Game.Screens.Select
             int total = info.TotalObjectCount >= 0 ? info.TotalObjectCount : 0;
 
             double rate = ModUtils.CalculateRateWithMods(mods.Value);
-            int lengthSeconds = (int)(info.Length / rate / 1000);
+            double rawSeconds = rate > 0 ? info.Length / rate / 1000 : 0;
+            long lengthSeconds = double.IsNaN(rawSeconds) || rawSeconds <= 0
+                ? 0
+                : (long)Math.Round(Math.Min(rawSeconds, TimeSpan.MaxValue.TotalSeconds));
             int bpm = FormatUtils.RoundBPM(info.BPM, rate);
 
             var rateColour = rate > 1.0005 ? harder_colour : rate < 0.9995 ? easier_colour : Color4.White;
@@ -370,8 +407,20 @@ namespace osu.Game.Screens.Select
         protected override void Dispose(bool isDisposing)
         {
             countsCancellation?.Cancel();
+            countsCancellation?.Dispose();
+            countsCancellation = null;
+
             starCancellation?.Cancel();
+            starCancellation?.Dispose();
+            starCancellation = null;
+
             baselineCancellation?.Cancel();
+            baselineCancellation?.Dispose();
+            baselineCancellation = null;
+
+            modSettingChangeTracker?.Dispose();
+            modSettingChangeTracker = null;
+
             base.Dispose(isDisposing);
         }
 

@@ -2,8 +2,11 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics.Containers;
@@ -110,24 +113,7 @@ namespace osu.Game.Overlays.Settings.Rendering
             return button;
         }
 
-        public Drawable CreateNote(NoteEntry entry)
-        {
-            var note = new SettingsNote
-            {
-                RelativeSizeAxes = Axes.X,
-                // the note has its own top spacing; cancel it to sit right below the item it describes.
-                Margin = new MarginPadding { Top = entry.AttachedToPrevious ? -SettingsSection.ITEM_SPACING_V2 : 0 },
-            };
-            note.Current.BindTo(entry.Note);
-
-            return new Container
-            {
-                RelativeSizeAxes = Axes.X,
-                AutoSizeAxes = Axes.Y,
-                Padding = SettingsPanel.CONTENT_PADDING,
-                Child = note,
-            };
-        }
+        public Drawable CreateNote(NoteEntry entry) => new LazerNoteItem(entry);
 
         public Drawable CreateButton(ButtonEntry entry)
         {
@@ -176,6 +162,8 @@ namespace osu.Game.Overlays.Settings.Rendering
             RelativeSizeAxes = Axes.Both,
         };
 
+        public SettingsSearchTextBox CreateSearchTextBox() => new SettingsSearchTextBox();
+
         public Drawable CreateSearchBar(SettingsSearchTextBox textBox)
         {
             textBox.RelativeSizeAxes = Axes.X;
@@ -208,6 +196,67 @@ namespace osu.Game.Overlays.Settings.Rendering
             Section = section,
             Action = action,
         };
+
+        public ISettingsSidebarButton? SelectSidebarButton(IEnumerable<ISettingsSidebarButton> buttons, SettingsSection? section)
+            => buttons.FirstOrDefault(b => b.Section == section);
+
+        private partial class LazerNoteItem : Container, IConditionalFilterable
+        {
+            private readonly NoteEntry entry;
+
+            public LazerNoteItem(NoteEntry entry)
+            {
+                this.entry = entry;
+
+                RelativeSizeAxes = Axes.X;
+                AutoSizeAxes = Axes.Y;
+                Padding = SettingsPanel.CONTENT_PADDING;
+
+                var note = new SettingsNote
+                {
+                    RelativeSizeAxes = Axes.X,
+                    // the note has its own top spacing; cancel it to sit right below the item it describes.
+                    Margin = new MarginPadding { Top = entry.AttachedToPrevious ? -SettingsSection.ITEM_SPACING_V2 : 0 },
+                };
+                note.Current.BindTo(entry.Note);
+
+                Child = note;
+            }
+
+            public IEnumerable<LocalisableString> FilterTerms
+            {
+                get
+                {
+                    foreach (var term in entry.FilterTerms)
+                        yield return term;
+
+                    if (entry.Note.Value is SettingsNote.Data data && data.Text != default)
+                        yield return data.Text;
+                }
+            }
+
+            private bool matchingFilter = true;
+
+            public bool MatchingFilter
+            {
+                get => matchingFilter;
+                set
+                {
+                    bool wasPresent = IsPresent;
+
+                    matchingFilter = value;
+
+                    if (IsPresent != wasPresent)
+                        Invalidate(Invalidation.Presence);
+                }
+            }
+
+            public override bool IsPresent => base.IsPresent && MatchingFilter;
+
+            public bool FilteringActive { get; set; }
+
+            public IBindable<bool> CanBeShown => entry.CanBeShown;
+        }
 
         private static SettingsItemV2 createItem(SettingsEntry entry, IFormControl control)
         {

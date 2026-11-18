@@ -166,6 +166,8 @@ namespace osu.Game.Screens.Select
 
         internal void ClearLocalScores(BeatmapInfo beatmap) => dialogOverlay?.Push(new BeatmapClearScoresDialog(beatmap));
 
+        internal void ExportAutoplayVideo(BeatmapInfo beatmap) => videoExporter?.ExportAutoplay(beatmap, Ruleset.Value, Mods.Value);
+
         public void Edit(BeatmapInfo beatmap)
         {
             if (!this.IsCurrentScreen())

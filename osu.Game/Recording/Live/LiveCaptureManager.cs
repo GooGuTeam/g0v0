@@ -47,17 +47,21 @@ namespace osu.Game.Recording.Live
         private volatile ILiveCapture? capture;
         private volatile bool busy;
         private volatile bool streaming;
+        private volatile bool startupCancelled;
+        private volatile bool isDisposed;
         private CancellationTokenSource? startup;
 
-        public bool IsRecording => capture != null || busy;
+        public bool IsCapturing => capture != null || busy;
 
-        public bool IsStreaming => streaming;
+        public bool IsRecording => IsCapturing && !streaming;
+
+        public bool IsStreaming => IsCapturing && streaming;
 
         public void ToggleStreaming()
         {
             if (IsStreaming)
                 _ = StopAsync();
-            else if (IsRecording)
+            else if (IsCapturing)
                 notify(VideoRecordingStrings.CaptureBusy);
             else
             {
@@ -74,11 +78,26 @@ namespace osu.Game.Recording.Live
             }
         }
 
-        public Task ToggleAsync() => IsRecording ? StopAsync() : startAsync(null);
+        public Task ToggleAsync()
+        {
+            if (IsRecording)
+                return StopAsync();
+
+            if (IsCapturing)
+            {
+                notify(VideoRecordingStrings.CaptureBusy);
+                return Task.CompletedTask;
+            }
+
+            return startAsync(null);
+        }
 
         /// <param name="destination">The publishing address, or <c>null</c> to record into a file.</param>
         private async Task startAsync(string? destination)
         {
+            if (isDisposed)
+                return;
+
             bool stream = destination != null;
             VideoRecordingOptions options;
             RecordingBackend backend;
@@ -102,6 +121,9 @@ namespace osu.Game.Recording.Live
 
             try
             {
+                if (isDisposed)
+                    return;
+
                 if (capture != null)
                 {
                     notify(VideoRecordingStrings.CaptureBusy);
@@ -110,6 +132,7 @@ namespace osu.Game.Recording.Live
 
                 busy = true;
                 streaming = stream;
+                startupCancelled = false;
 
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(stream ? 30 : 20));
                 startup = timeout;
@@ -130,10 +153,14 @@ namespace osu.Game.Recording.Live
                         : await FfmpegLiveCapture.RecordAsync(host, audio, path!, options, ffmpegPath, timeout.Token).ConfigureAwait(false);
 
                 capture = started;
-                _ = observeAsync(started, path);
 
                 await started.Started.WaitAsync(timeout.Token).ConfigureAwait(false);
+                _ = observeAsync(started, path);
                 notify(stream ? VideoRecordingStrings.StreamStarted : VideoRecordingStrings.Started);
+            }
+            catch (OperationCanceledException) when (startupCancelled)
+            {
+                await stopInternalAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -152,6 +179,8 @@ namespace osu.Game.Recording.Live
 
         public async Task StopAsync()
         {
+            startupCancelled = true;
+
             try { startup?.Cancel(); }
             catch (ObjectDisposedException) { }
 
@@ -195,6 +224,9 @@ namespace osu.Game.Recording.Live
                 await current.Completion.ConfigureAwait(false);
                 notify(stream ? VideoRecordingStrings.StreamStopped : VideoRecordingStrings.Saved(path!));
             }
+            catch (OperationCanceledException)
+            {
+            }
             catch (Exception ex)
             {
                 notify(stream ? VideoRecordingStrings.StreamFailed : VideoRecordingStrings.Failed(ex.Message));
@@ -219,6 +251,26 @@ namespace osu.Game.Recording.Live
             }
         }
 
-        private void notify(LocalisableString text) => Schedule(() => notifications.Post(new SimpleNotification { Text = text }));
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (isDisposed)
+                return;
+
+            isDisposed = true;
+            startupCancelled = true;
+
+            try { startup?.Cancel(); }
+            catch (ObjectDisposedException) { }
+
+            _ = StopAsync();
+        }
+
+        private void notify(LocalisableString text)
+        {
+            if (!isDisposed)
+                Schedule(() => notifications.Post(new SimpleNotification { Text = text }));
+        }
     }
 }

@@ -63,6 +63,22 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             return true;
         }
 
+        public void Reset()
+        {
+            Revision++;
+            currentPath = null;
+            legacyPath = null;
+            valid = false;
+            HasActiveMovement = false;
+            Direction = Vector2.Zero;
+            EndTime = 0;
+            cachedSpan = -1;
+            lastClock = null;
+            lastPosition = Vector2.Zero;
+            edges.Clear();
+            spanStarts.Clear();
+        }
+
         private void refresh(SliderPath path, double start, double speed, int spans, Vector2 origin)
         {
             Revision++;
@@ -75,6 +91,11 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             legacyPath = path.LegacyPath;
             cachedSpan = -1;
             lastClock = null;
+            lastPosition = Vector2.Zero;
+            Direction = Vector2.Zero;
+            HasActiveMovement = false;
+            EndTime = 0;
+            edges.Clear();
             spanStarts.Clear();
             valid = false;
 

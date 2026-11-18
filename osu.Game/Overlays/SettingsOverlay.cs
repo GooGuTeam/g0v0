@@ -15,6 +15,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Cursor;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Settings;
+using osu.Game.Overlays.Settings.Rendering.Stable;
 using osu.Game.Overlays.Settings.Sections;
 using osu.Game.Overlays.Settings.Sections.Input;
 using osu.Game.Overlays.Settings.Sections.RulesetGeneric;
@@ -66,7 +67,9 @@ namespace osu.Game.Overlays
             SectionsContainer.ScrollTo(SectionsContainer.ChildrenOfType<T>().Single());
         }
 
-        protected override float ExpandedPosition => lastOpenedSubPanel?.State.Value == Visibility.Visible ? -PANEL_WIDTH : base.ExpandedPosition;
+        private float subPanelOffset => Renderer.UseStableLayouts ? -PANEL_WIDTH - (Sidebar?.ContentOffset ?? 0) : -PANEL_WIDTH;
+
+        protected override float ExpandedPosition => lastOpenedSubPanel?.State.Value == Visibility.Visible ? subPanelOffset : base.ExpandedPosition;
 
         [BackgroundDependencyLoader]
         private void load(RulesetStore rulesets)
@@ -145,18 +148,36 @@ namespace osu.Game.Overlays
             {
                 case Visibility.Visible:
                     Sidebar.Expanded.Value = false;
-                    Sidebar.FadeColour(Color4.DarkGray, 300, Easing.OutQuint);
+
+                    if (Sidebar is StableSettingsSidebar stableSidebar)
+                    {
+                        stableSidebar.Interactive = false;
+                        stableSidebar.FadeOut(300, Easing.OutQuint);
+                    }
+                    else
+                    {
+                        Sidebar.FadeColour(Color4.DarkGray, 300, Easing.OutQuint);
+                    }
 
                     SectionsContainer.FadeOut(300, Easing.OutQuint);
-                    ContentContainer.MoveToX(-PANEL_WIDTH, 500, Easing.OutQuint);
+                    ContentContainer.MoveToX(subPanelOffset, 500, Easing.OutQuint);
 
                     lastOpenedSubPanel = panel;
 
                     break;
 
                 case Visibility.Hidden:
-                    Sidebar.Expanded.Value = true;
-                    Sidebar.FadeColour(Color4.White, 300, Easing.OutQuint);
+                    if (Sidebar is StableSettingsSidebar hiddenStableSidebar)
+                    {
+                        hiddenStableSidebar.Interactive = true;
+                        hiddenStableSidebar.Expanded.Value = false;
+                        hiddenStableSidebar.FadeIn(300, Easing.OutQuint);
+                    }
+                    else
+                    {
+                        Sidebar.Expanded.Value = true;
+                        Sidebar.FadeColour(Color4.White, 300, Easing.OutQuint);
+                    }
 
                     SectionsContainer.FadeIn(500, Easing.OutQuint);
                     ContentContainer.MoveToX(0, 500, Easing.OutQuint);

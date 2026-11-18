@@ -25,14 +25,36 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
         // stable only reacts to the tabs themselves, not the rest of the column (e.g. the back button drawn over its bottom).
         protected override bool ExpandOnHover => false;
 
+        /// <summary>
+        /// Whether this sidebar currently accepts hover and click input (disabled while a sub-panel is covering the root panel).
+        /// </summary>
+        public bool Interactive { get; set; } = true;
+
+        public override bool PropagatePositionalInputSubTree => base.PropagatePositionalInputSubTree && Interactive;
+
         private ScheduledDelegate? pendingChange;
         private bool targetExpanded;
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            Expanded.BindValueChanged(e =>
+            {
+                if (targetExpanded != e.NewValue)
+                {
+                    pendingChange?.Cancel();
+                    pendingChange = null;
+                    targetExpanded = e.NewValue;
+                }
+            });
+        }
 
         protected override void Update()
         {
             base.Update();
 
-            bool hoveringTab = FillFlow.Any(tab => tab.IsHovered);
+            bool hoveringTab = Interactive && FillFlow.Any(tab => tab.IsHovered);
 
             if (hoveringTab == targetExpanded)
                 return;

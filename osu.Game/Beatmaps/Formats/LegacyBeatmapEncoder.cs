@@ -214,7 +214,7 @@ namespace osu.Game.Beatmaps.Formats
                 }
             }
 
-            LegacyControlPointProperties lastControlPointProperties = new LegacyControlPointProperties();
+            LegacyControlPointProperties lastControlPointProperties = new LegacyControlPointProperties { GenerateTicks = true };
 
             foreach (var group in legacyControlPoints.Groups)
             {
@@ -241,6 +241,7 @@ namespace osu.Game.Beatmaps.Formats
                     timingPointProperties.SliderVelocity = onlineRulesetID != 0 && beatLength < 0
                         ? Math.Clamp(100 / -beatLength, velocityBounds.MinValue, velocityBounds.MaxValue)
                         : 1;
+                    timingPointProperties.GenerateTicks = !double.IsNaN(beatLength);
 
                     // Kiai flag cannot be specified on the first timing point in the beatmap:
                     // https://github.com/peppy/osu-stable-reference/blob/0b8b19af621dbb282773c22b36cc0453942b98d8/osu!/GameModes/Edit/Forms/TimingEntry.cs#L492-L495
@@ -266,7 +267,7 @@ namespace osu.Game.Beatmaps.Formats
 
                 // Output any remaining effects as secondary non-timing control point.
                 writer.Write(FormattableString.Invariant($"{group.Time},"));
-                double inheritedBeatLength = legacyControlPoints.DifficultyPointAt(group.Time).GenerateTicks
+                double inheritedBeatLength = controlPointProperties.GenerateTicks
                     ? -100 / controlPointProperties.SliderVelocity
                     : double.NaN;
                 writer.Write(FormattableString.Invariant($"{inheritedBeatLength},"));
@@ -292,9 +293,14 @@ namespace osu.Game.Beatmaps.Formats
                 if (timingPoint.OmitFirstBarLine)
                     effectFlags |= LegacyEffectFlags.OmitFirstBarLine;
 
+                bool generateTicks = ReferenceEquals(difficultyPoint, DifficultyControlPoint.DEFAULT)
+                    ? !double.IsNaN(timingPoint.LegacyBeatLength ?? timingPoint.BeatLength)
+                    : difficultyPoint.GenerateTicks;
+
                 return new LegacyControlPointProperties
                 {
                     SliderVelocity = difficultyPoint.SliderVelocity,
+                    GenerateTicks = generateTicks,
                     TimingSignature = timingPoint.LegacyTimeSignature ?? timingPoint.TimeSignature.Numerator,
                     SampleBank = updateSampleBank ? (int)toLegacySampleBank(tempHitSample.Bank) : lastControlPointProperties.SampleBank,
                     // Inherit the previous custom sample bank if the current custom sample bank is not set
@@ -323,7 +329,14 @@ namespace osu.Game.Beatmaps.Formats
                 foreach (var hitObject in hitObjects)
                 {
                     if (hitObject is IHasSliderVelocity hasSliderVelocity)
-                        yield return new DifficultyControlPoint { Time = hitObject.StartTime, SliderVelocity = hasSliderVelocity.SliderVelocityMultiplier };
+                    {
+                        yield return new DifficultyControlPoint
+                        {
+                            Time = hitObject.StartTime,
+                            SliderVelocity = hasSliderVelocity.SliderVelocityMultiplier,
+                            GenerateTicks = (hitObject as IHasGenerateTicks)?.GenerateTicks ?? true,
+                        };
+                    }
                 }
             }
 
@@ -360,7 +373,10 @@ namespace osu.Game.Beatmaps.Formats
                     }
                     else if (hitObject.Samples.Count > 0)
                     {
-                        yield return createSampleControlPointFor(hitObject.GetEndTime(), hitObject.Samples);
+                        double sampleTime = tryGetLegacyHoldEndTime(hitObject, out double holdEndTime)
+                            ? Math.Max(hitObject.StartTime, holdEndTime)
+                            : hitObject.GetEndTime();
+                        yield return createSampleControlPointFor(sampleTime, hitObject.Samples);
                     }
 
                     foreach (var nested in collectSampleControlPoints(hitObject.NestedHitObjects))
@@ -484,7 +500,9 @@ namespace osu.Game.Beatmaps.Formats
             }
             else
             {
-                if (hitObject is IHasDuration)
+                if (tryGetLegacyHoldEndTime(hitObject, out double legacyHoldEndTime))
+                    writer.Write(FormattableString.Invariant($"{legacyHoldEndTime}:"));
+                else if (hitObject is IHasDuration)
                     addEndTimeData(writer, hitObject);
 
                 writer.Write(getSampleBank(hitObject.Samples));
@@ -499,7 +517,8 @@ namespace osu.Game.Beatmaps.Formats
 
             if (hitObject is IHasCombo combo)
             {
-                type = (LegacyHitObjectType)(combo.ComboOffset << 4);
+                if (!tryGetLegacyHoldEndTime(hitObject, out _))
+                    type = (LegacyHitObjectType)(combo.ComboOffset << 4);
 
                 if (combo.NewCombo)
                     type |= LegacyHitObjectType.NewCombo;
@@ -509,6 +528,10 @@ namespace osu.Game.Beatmaps.Formats
             {
                 case IHasPath:
                     type |= LegacyHitObjectType.Slider;
+                    break;
+
+                case var _ when tryGetLegacyHoldEndTime(hitObject, out _):
+                    type |= LegacyHitObjectType.Hold;
                     break;
 
                 case IHasDuration:
@@ -524,6 +547,18 @@ namespace osu.Game.Beatmaps.Formats
             }
 
             return type;
+        }
+
+        private static bool tryGetLegacyHoldEndTime(HitObject hitObject, out double endTime)
+        {
+            if (hitObject is IHasLegacyHoldEndTime legacyHold && !double.IsNaN(legacyHold.LegacyEndTime))
+            {
+                endTime = legacyHold.LegacyEndTime;
+                return true;
+            }
+
+            endTime = 0;
+            return false;
         }
 
         private void addPathData(TextWriter writer, IHasPath pathData, Vector2 position)
@@ -594,7 +629,7 @@ namespace osu.Game.Beatmaps.Formats
             char suffix = ',';
 
             // Holds write the end time as if it's part of sample data.
-            if (type == LegacyHitObjectType.Hold)
+            if (type.HasFlag(LegacyHitObjectType.Hold))
                 suffix = ':';
 
             writer.Write(FormattableString.Invariant($"{endTimeData.EndTime}{suffix}"));
@@ -687,6 +722,7 @@ namespace osu.Game.Beatmaps.Formats
         private struct LegacyControlPointProperties
         {
             internal double SliderVelocity { get; set; }
+            internal bool GenerateTicks { get; set; }
             internal int TimingSignature { get; init; }
             internal int SampleBank { get; init; }
             internal int CustomSampleBank { get; init; }
@@ -695,6 +731,7 @@ namespace osu.Game.Beatmaps.Formats
 
             internal bool IsRedundant(LegacyControlPointProperties other) =>
                 SliderVelocity == other.SliderVelocity &&
+                GenerateTicks == other.GenerateTicks &&
                 TimingSignature == other.TimingSignature &&
                 SampleBank == other.SampleBank &&
                 CustomSampleBank == other.CustomSampleBank &&

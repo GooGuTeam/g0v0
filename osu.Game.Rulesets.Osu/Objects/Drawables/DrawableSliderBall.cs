@@ -84,6 +84,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         private void load(DrawableHitObject drawableSlider)
         {
             this.drawableSlider = (DrawableSlider)drawableSlider;
+            this.drawableSlider.HitObjectApplied += onHitObjectApplied;
 
             Origin = Anchor.Centre;
 
@@ -103,6 +104,27 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                     Origin = Anchor.Centre
                 }
             };
+        }
+
+        internal void Reset()
+        {
+            LegacyRotation = 0;
+            GameplayPosition = Vector2.Zero;
+            Position = Vector2.Zero;
+            LegacyPosition.Reset();
+
+            if (ball != null)
+                ball.Rotation = 0;
+        }
+
+        private void onHitObjectApplied(DrawableHitObject _) => Reset();
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (drawableSlider != null)
+                drawableSlider.HitObjectApplied -= onHitObjectApplied;
         }
     }
 }

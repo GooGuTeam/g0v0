@@ -29,6 +29,7 @@ namespace osu.Game.Screens.Backgrounds
         private const int background_count = 8;
         private IBindable<APIUser> user;
         private Bindable<Skin> skin;
+        private ISkinSource skinSource;
         private Bindable<BackgroundSource> source;
         private Bindable<bool> legacyMainMenu;
 
@@ -45,11 +46,20 @@ namespace osu.Game.Screens.Backgrounds
 
         protected virtual string SkinBackgroundLookupName => @"menu-background";
 
+        public override bool Equals(BackgroundScreen other)
+        {
+            if (!base.Equals(other))
+                return false;
+
+            return UseLegacyMainMenuBackground == ((BackgroundScreenDefault)other).UseLegacyMainMenuBackground;
+        }
+
         [BackgroundDependencyLoader]
         private void load(IAPIProvider api, SkinManager skinManager, OsuConfigManager config)
         {
             user = api.LocalUser.GetBoundCopy();
             skin = skinManager.CurrentSkin.GetBoundCopy();
+            skinSource = skinManager;
             source = config.GetBindable<BackgroundSource>(OsuSetting.MenuBackgroundSource);
             legacyMainMenu = config.GetBindable<bool>(OsuSetting.ToriiLegacyMainMenu);
 
@@ -62,6 +72,7 @@ namespace osu.Game.Screens.Backgrounds
 
             user.ValueChanged += _ => Scheduler.AddOnce(next);
             skin.ValueChanged += _ => Scheduler.AddOnce(next);
+            skinSource.SourceChanged += onSkinSourceChanged;
             source.ValueChanged += _ => Scheduler.AddOnce(next);
             legacyMainMenu.ValueChanged += _ => Scheduler.AddOnce(next);
             beatmap.ValueChanged += _ => Scheduler.AddOnce(next);
@@ -73,6 +84,8 @@ namespace osu.Game.Screens.Backgrounds
             // helper function required for AddOnce usage.
             void next() => Next();
         }
+
+        private void onSkinSourceChanged() => Scheduler.AddOnce(() => Next());
 
         private ScheduledDelegate storyboardUnloadDelegate;
 
@@ -101,6 +114,7 @@ namespace osu.Game.Screens.Backgrounds
 
         private ScheduledDelegate nextTask;
         private CancellationTokenSource cancellationTokenSource;
+        private Background queuedBackground;
 
         /// <summary>
         /// Request loading the next background.
@@ -112,9 +126,23 @@ namespace osu.Game.Screens.Backgrounds
 
             // in the case that the background hasn't changed, we want to avoid cancelling any tasks that could still be loading.
             if (nextBackground == background)
+            {
+                if (queuedBackground != null && !queuedBackground.Equals(background))
+                {
+                    cancellationTokenSource?.Cancel();
+                    nextTask?.Cancel();
+                    queuedBackground = null;
+                }
+
+                return false;
+            }
+
+            if (queuedBackground != null && nextBackground.Equals(queuedBackground))
                 return false;
 
             Logger.Log(@"🌅 Global background change queued");
+
+            queuedBackground = nextBackground;
 
             cancellationTokenSource?.Cancel();
             cancellationTokenSource = new CancellationTokenSource();
@@ -131,6 +159,8 @@ namespace osu.Game.Screens.Backgrounds
 
         private void displayNext(Background newBackground)
         {
+            queuedBackground = null;
+
             background?.FadeOut(800, Easing.OutQuint);
             background?.Expire();
 
@@ -142,7 +172,7 @@ namespace osu.Game.Screens.Backgrounds
         {
             // Keep the legacy menu backdrop in the background stack, not in the sliding button foreground.
             Background newBackground = null;
-            if (UseLegacyMainMenuBackground && legacyMainMenu.Value && skin.Value is LegacySkin and not DefaultLegacySkin)
+            if (UseLegacyMainMenuBackground && legacyMainMenu.Value && skinProvidesMenuBackground(skin.Value))
                 newBackground = new SkinBackground(skin.Value, getBackgroundTextureName(), SkinBackgroundLookupName);
 
             newBackground ??= seasonalBackgroundLoader.LoadNextBackground();
@@ -190,6 +220,19 @@ namespace osu.Game.Screens.Backgrounds
             return newBackground;
         }
 
+        private bool skinProvidesMenuBackground(Skin currentSkin)
+            => currentSkin is not (TrianglesSkin or ArgonSkin or DefaultLegacySkin)
+               && (currentSkin?.GetTexture(SkinBackgroundLookupName) != null
+                   || (SkinBackgroundLookupName != @"menu-background" && currentSkin?.GetTexture(@"menu-background") != null));
+
         private string getBackgroundTextureName() => $@"Menu/menu-background-{currentDisplay % background_count + 1}";
+
+        protected override void Dispose(bool isDisposing)
+        {
+            if (skinSource != null)
+                skinSource.SourceChanged -= onSkinSourceChanged;
+
+            base.Dispose(isDisposing);
+        }
     }
 }

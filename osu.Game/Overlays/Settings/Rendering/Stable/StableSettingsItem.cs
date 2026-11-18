@@ -241,6 +241,9 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
                 foreach (var term in Entry.FilterTerms)
                     yield return term;
 
+                if (Entry.Note.Value is SettingsNote.Data note && note.Text != default)
+                    yield return note.Text;
+
                 if (HasClassicDefault)
                     yield return SettingsItemV2.CLASSIC_DEFAULT_SEARCH_TERM;
             }
@@ -255,11 +258,19 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
             {
                 bool wasPresent = IsPresent;
 
-                matchingFilter = value;
+                if (matchingFilter != value)
+                {
+                    matchingFilter = value;
+                    OnMatchingFilterChanged(value);
+                }
 
                 if (IsPresent != wasPresent)
                     Invalidate(Invalidation.Presence);
             }
+        }
+
+        protected virtual void OnMatchingFilterChanged(bool matching)
+        {
         }
 
         public override bool IsPresent => base.IsPresent && MatchingFilter;

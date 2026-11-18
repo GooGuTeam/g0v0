@@ -24,6 +24,7 @@ using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
 using osu.Game.Overlays;
+using osu.Game.Recording.Export;
 using osu.Game.Rulesets.UI;
 using osu.Game.Screens.Select;
 using osu.Game.Scoring;
@@ -78,6 +79,9 @@ namespace osu.Game.Online.Leaderboards
 
         [Resolved(canBeNull: true)]
         private OsuGame game { get; set; }
+
+        [Resolved(canBeNull: true)]
+        private ReplayVideoExporter videoExporter { get; set; }
 
         [Resolved]
         private IAPIProvider api { get; set; }
@@ -464,6 +468,8 @@ namespace osu.Game.Online.Leaderboards
 
                 if (Score.Files.Count > 0)
                 {
+                    if (videoExporter != null)
+                        items.Add(new OsuMenuItem(VideoRecordingStrings.ExportReplay, MenuItemType.Standard, () => videoExporter.Export(Score)));
                     items.Add(new OsuMenuItem(CommonStrings.Export, MenuItemType.Standard, () => scoreManager.Export(Score)));
                     items.Add(new OsuMenuItem(WebCommonStrings.ButtonsDelete, MenuItemType.Destructive, () => dialogOverlay?.Push(new LocalScoreDeleteDialog(Score))));
                 }

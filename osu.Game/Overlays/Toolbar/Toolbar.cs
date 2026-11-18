@@ -26,6 +26,9 @@ using osu.Framework.Input.Bindings;
 using osu.Game.Graphics.Containers;
 using osu.Game.Input.Bindings;
 using osu.Game.Screens;
+using osu.Game.Screens.Menu;
+using osu.Game.Screens.Play;
+using osu.Game.Screens.Ranking;
 using osu.Game.Screens.Select;
 using osuTK.Input;
 
@@ -636,19 +639,19 @@ namespace osu.Game.Overlays.Toolbar
             config.BindWith(OsuSetting.ToriiStableResults, legacyResultsEnabled);
             legacyGameplayScreensEnabled.BindValueChanged(_ =>
             {
-                if (stack.CurrentScreen is osu.Game.Screens.Play.PlayerLoader)
+                if (stack.CurrentScreen is PlayerLoader)
                     updateScreenVisibility(stack.CurrentScreen);
             });
             legacyResultsEnabled.BindValueChanged(_ =>
             {
-                if (stack.CurrentScreen is osu.Game.Screens.Ranking.ResultsScreen)
+                if (stack.CurrentScreen is SoloResultsScreen)
                     updateScreenVisibility(stack.CurrentScreen);
             });
             config.BindWith(OsuSetting.ToriiLegacyFooterUseSkin, legacySongSelectEnabled);
             config.BindWith(OsuSetting.ToriiLegacyMainMenu, legacyMainMenuEnabled);
             legacyMainMenuEnabled.BindValueChanged(_ =>
             {
-                if (stack.CurrentScreen is osu.Game.Screens.Menu.MainMenu)
+                if (stack.CurrentScreen is MainMenu)
                     updateScreenVisibility(stack.CurrentScreen);
             });
             legacySongSelectEnabled.BindValueChanged(_ =>
@@ -666,11 +669,11 @@ namespace osu.Game.Overlays.Toolbar
         {
             // ScreenPushed may precede dependency loading. Do not infer presentation from child drawables
             // which do not exist yet: doing so briefly shows the toolbar while the loader is loading.
-            bool legacyLoader = screen is osu.Game.Screens.Play.PlayerLoader
+            bool legacyLoader = screen is PlayerLoader
                                 && legacyGameplayScreensEnabled.Value;
-            bool legacyResults = screen is osu.Game.Screens.Ranking.ResultsScreen
+            bool legacyResults = screen is SoloResultsScreen
                                  && legacyResultsEnabled.Value;
-            bool legacyMenu = screen is osu.Game.Screens.Menu.MainMenu && legacyMainMenuEnabled.Value;
+            bool legacyMenu = screen is MainMenu && legacyMainMenuEnabled.Value;
             suppressedByScreen = screen is SongSelect && legacySongSelectEnabled.Value || legacyLoader || legacyResults || legacyMenu;
 
             if (screen is not IOsuScreen osuScreen)

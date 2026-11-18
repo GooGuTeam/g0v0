@@ -8,15 +8,20 @@ using osu.Framework.Allocation;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.UserInterface;
+using osu.Framework.Input.Bindings;
+using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Input.Bindings;
 using osu.Game.Overlays.Settings.Entries;
 using osuTK;
 using osuTK.Graphics;
+using osuTK.Input;
 using FrameworkMenu = osu.Framework.Graphics.UserInterface.Menu;
 using M = osu.Game.Overlays.Settings.Rendering.Stable.StableOptionsMetrics;
 
@@ -137,10 +142,17 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
                     break;
                 }
 
-                // only flows place later siblings after this row. Subsections are flows whose Content is an inner flow, which this
-                // loop reaches on its own.
-                if (child.Parent is FlowContainer<Drawable> container and not SettingsSubsection)
+                // move in front of siblings, and lift plain clipping masks on ancestor flows/containers so the open menu can receive clicks.
+                if (child.Parent is Container<Drawable> container and not SettingsSubsection)
+                {
                     raise(container, child);
+
+                    if (container.Masking && container.BorderThickness == 0 && container.EdgeEffect.Type == EdgeEffectType.None)
+                    {
+                        container.Masking = false;
+                        depthRestores.Add(() => container.Masking = true);
+                    }
+                }
 
                 child = child.Parent;
             }
@@ -174,6 +186,14 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
             depthRestores.Clear();
         }
 
+        protected override void OnMatchingFilterChanged(bool matching)
+        {
+            base.OnMatchingFilterChanged(matching);
+
+            if (!matching)
+                dropdown?.CloseMenu();
+        }
+
         protected override void Dispose(bool isDisposing)
         {
             if (menuProxy != null)
@@ -182,13 +202,15 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
             base.Dispose(isDisposing);
         }
 
-        private partial class OptionsDropdown : Dropdown<T>
+        private partial class OptionsDropdown : Dropdown<T>, IKeyBindingHandler<GlobalAction>
         {
             private readonly DropdownEntry<T> entry;
 
             public float HeaderHeight => Header.DrawHeight;
 
             public Drawable CreateMenuProxy() => Menu.CreateProxy();
+
+            public void CloseMenu() => Menu.Close();
 
             public event Action<MenuState> MenuStateChanged
             {
@@ -199,6 +221,24 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
             public OptionsDropdown(DropdownEntry<T> entry)
             {
                 this.entry = entry;
+            }
+
+            public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
+            {
+                if (e.Repeat)
+                    return false;
+
+                if (e.Action == GlobalAction.Back && Menu.State == MenuState.Open)
+                {
+                    Menu.Close();
+                    return true;
+                }
+
+                return false;
+            }
+
+            public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
+            {
             }
 
             protected override void UpdateAfterChildren()
@@ -276,7 +316,39 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
                     };
                 }
 
-                protected override DropdownSearchBar CreateSearchBar() => new OptionsDropdownSearchBar();
+                protected override void LoadComplete()
+                {
+                    base.LoadComplete();
+
+                    SearchBar.State.BindValueChanged(_ => updateSearchState(), true);
+                }
+
+                protected override bool OnHover(HoverEvent e)
+                {
+                    bool result = base.OnHover(e);
+                    updateSearchState();
+                    return result;
+                }
+
+                protected override void OnHoverLost(HoverLostEvent e)
+                {
+                    base.OnHoverLost(e);
+                    updateSearchState();
+                }
+
+                private void updateSearchState()
+                {
+                    bool searching = SearchBar.State.Value == Visibility.Visible;
+                    label.Alpha = searching ? 0 : 1;
+                    BackgroundColour = searching ? M.DROPDOWN_OPTION_BACKGROUND : M.DROPDOWN_BACKGROUND;
+                    BackgroundColourHover = searching ? M.DROPDOWN_OPTION_BACKGROUND : M.DROPDOWN_HIGHLIGHT;
+                    Background.Colour = IsHovered ? BackgroundColourHover : BackgroundColour;
+                }
+
+                protected override DropdownSearchBar CreateSearchBar() => new OptionsDropdownSearchBar
+                {
+                    Padding = new MarginPadding { Right = 22 },
+                };
 
                 private partial class OptionsDropdownSearchBar : DropdownSearchBar
                 {
@@ -295,13 +367,23 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
                     /// </summary>
                     private partial class OptionsDropdownSearchTextBox : BasicTextBox
                     {
+                        protected override float LeftRightPadding => 3;
+
                         public OptionsDropdownSearchTextBox()
                         {
-                            BackgroundFocused = M.DROPDOWN_OPTION_BACKGROUND;
-                            BackgroundUnfocused = M.DROPDOWN_OPTION_BACKGROUND;
-                            BackgroundCommit = M.DROPDOWN_OPTION_BACKGROUND;
+                            BackgroundFocused = Color4.Transparent;
+                            BackgroundUnfocused = Color4.Transparent;
+                            BackgroundCommit = Color4.Transparent;
                             CornerRadius = 5;
                             TextContainer.Height = 0.8f;
+                        }
+
+                        protected override bool OnKeyDown(KeyDownEvent e)
+                        {
+                            if (e.Key == Key.Escape)
+                                return false;
+
+                            return base.OnKeyDown(e);
                         }
 
                         protected override SpriteText CreatePlaceholder() => new OsuSpriteText
@@ -310,7 +392,6 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
                             Origin = Anchor.CentreLeft,
                             Font = M.Font(M.DROPDOWN_FONT_SIZE),
                             Colour = Color4.White.Opacity(0.5f),
-                            X = 3,
                         };
 
                         protected override Drawable GetDrawableCharacter(char c) => new OsuSpriteText

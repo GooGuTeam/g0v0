@@ -15,6 +15,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Screens;
@@ -25,8 +26,11 @@ using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
+using osu.Game.Online;
 using osu.Game.Online.Placeholders;
 using osu.Game.Overlays;
+using osu.Game.Recording.Export;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Screens.Footer;
 using osu.Game.Screens.Play;
@@ -86,6 +90,7 @@ namespace osu.Game.Screens.Ranking
         private Task lastFetchTask = Task.CompletedTask;
 
         private readonly Bindable<bool> useV2ResultsScreen = new Bindable<bool>();
+        private readonly Bindable<bool> toriiStableResults = new Bindable<bool>();
         private Container v2PanelContainer = null!;
         private ShearedButton layoutButton = null!;
         private ShearedButton backButton = null!;
@@ -95,7 +100,7 @@ namespace osu.Game.Screens.Ranking
 
         internal bool LegacyStableDirectMode;
         private LegacyRankingOverlay? legacyOverlay;
-        private bool useLegacyResults;
+        private bool useLegacyResults => toriiStableResults.Value && this is SoloResultsScreen;
 
         private bool v2LayoutEnabled => !useLegacyResults && useV2ResultsScreen.Value && this is SoloResultsScreen && Score?.BeatmapInfo != null;
         private bool showingV2Layout => v2LayoutEnabled && !showingOriginalLayout;
@@ -104,7 +109,7 @@ namespace osu.Game.Screens.Ranking
         /// Whether the current score should play the full flair sequence (sound + animation),
         /// matching the original expanded result screen behaviour.
         /// </summary>
-        private bool shouldFlairForCurrentScore => player != null && Score?.User.IsBot == false && !(useLegacyResults && this is SoloResultsScreen);
+        private bool shouldFlairForCurrentScore => player != null && Score?.User.IsBot == false && !useLegacyResults;
 
         public bool IsV2Overview => showingV2Layout;
 
@@ -139,11 +144,11 @@ namespace osu.Game.Screens.Ranking
         }
 
         [BackgroundDependencyLoader]
-        private void load(AudioManager audio, OsuConfigManager config)
+        private void load(AudioManager audio, OsuConfigManager config, ReplayVideoExporter? replayVideoExporter)
         {
             // Bind directly: a temporary GetBindable() copy may be collected and break live setting updates.
             config.BindWith(OsuSetting.UseV2ResultsScreen, useV2ResultsScreen);
-            useLegacyResults = config.Get<bool>(OsuSetting.ToriiStableResults);
+            config.BindWith(OsuSetting.ToriiStableResults, toriiStableResults);
 
             popInSample = audio.Samples.Get(@"UI/overlay-pop-in");
 
@@ -230,7 +235,7 @@ namespace osu.Game.Screens.Ranking
             ((Container)bottomPanel).Add(v2Footer = new V2ResultsFooter
             {
                 Alpha = 0,
-                Score = Score,
+                SelectedScore = { BindTarget = SelectedScore },
                 AllowWatchingReplay = AllowWatchingReplay,
                 BackAction = () =>
                 {
@@ -265,7 +270,7 @@ namespace osu.Game.Screens.Ranking
                 // this is mostly for medal display.
                 // we don't want the medal animation to trample on the results screen animation, so we (ab)use `OverlayActivationMode`
                 // to give the results screen enough time to play the animation out before the medals can be shown.
-                Scheduler.AddDelayed(() => OverlayActivationMode.Value = OverlayActivation.All, shouldFlair ? AccuracyCircle.TOTAL_DURATION + 1000 : useLegacyResults && this is SoloResultsScreen ? 4000 : 0);
+                Scheduler.AddDelayed(() => OverlayActivationMode.Value = OverlayActivation.All, shouldFlair ? AccuracyCircle.TOTAL_DURATION + 1000 : useLegacyResults && player != null ? 4000 : 0);
             }
 
             buttons.Add(backButton = new ShearedButton
@@ -308,6 +313,14 @@ namespace osu.Game.Screens.Ranking
                 allowHotkeyRetry = player is ReplayPlayer;
             }
 
+            if (replayVideoExporter != null)
+            {
+                buttons.Add(new ReplayVideoExportButton(AllowWatchingReplay, Score)
+                {
+                    Score = { BindTarget = SelectedScore },
+                });
+            }
+
             if (player != null && AllowRetry)
             {
                 buttons.Add(new RetryButton { Width = 300 });
@@ -341,7 +354,7 @@ namespace osu.Game.Screens.Ranking
                 buttons.Add(new FavouriteButton(Score.BeatmapInfo.BeatmapSet));
 
             if (useLegacyResults)
-                AddInternal(legacyOverlay = new LegacyRankingOverlay(this, StatisticsPanel, VerticalScrollContent, bottomPanel, autoShowDetails: this is SoloResultsScreen) { Depth = float.MinValue });
+                AddInternal(legacyOverlay = new LegacyRankingOverlay(this, StatisticsPanel, VerticalScrollContent, bottomPanel, autoShowDetails: true, animateEntrance: player != null) { Depth = float.MinValue });
         }
 
         protected override void LoadComplete()
@@ -349,6 +362,7 @@ namespace osu.Game.Screens.Ranking
             base.LoadComplete();
 
             StatisticsPanel.State.BindValueChanged(onStatisticsStateChanged, true);
+            toriiStableResults.BindValueChanged(_ => updateResultsLayout());
             useV2ResultsScreen.BindValueChanged(_ =>
             {
                 showingOriginalLayout = false;
@@ -408,6 +422,47 @@ namespace osu.Game.Screens.Ranking
 
         private void updateResultsLayout()
         {
+            if (useLegacyResults)
+            {
+                V2LeaderboardVisible.Value = false;
+                V2DetailsVisible.Value = false;
+
+                foreach (var panel in v2PanelContainer.Children.OfType<V2ResultsPanel>())
+                {
+                    panel.CloseLeaderboard();
+                    panel.CloseDetails();
+                }
+
+                if (legacyOverlay == null)
+                {
+                    AddInternal(legacyOverlay = new LegacyRankingOverlay(this, StatisticsPanel, VerticalScrollContent, bottomPanel, autoShowDetails: true, animateEntrance: false)
+                    {
+                        Depth = float.MinValue,
+                    });
+                }
+                else
+                {
+                    legacyOverlay.SetActive(true);
+                }
+
+                FooterContent.Value = ScreenFooterContent.Legacy(showBackButton: false);
+                VerticalScrollContent.FitToViewport = false;
+                v2Footer.Alpha = 0;
+                bottomPanel.Height = 0;
+                bottomPanel.Alpha = 0;
+                ScorePanelList.Alpha = 0;
+                ScorePanelList.HandleInput = false;
+                detachedPanelContainer.Alpha = 0;
+                v2PanelContainer.Alpha = 0;
+
+                if (hasEntered && this.IsCurrentScreen())
+                    ApplyToBackground(b => b.BlurAmount.Value = BACKGROUND_BLUR);
+
+                return;
+            }
+
+            legacyOverlay?.SetActive(false);
+
             if (showingV2Layout)
             {
                 VerticalScrollContent.ScrollToStart(false);
@@ -426,12 +481,14 @@ namespace osu.Game.Screens.Ranking
                 }
             }
 
-            FooterContent.Value = ScreenFooterContent.Legacy(showBackButton: !showingV2Layout && !useLegacyResults);
+            FooterContent.Value = ScreenFooterContent.Legacy(showBackButton: !showingV2Layout);
             VerticalScrollContent.FitToViewport = showingV2Layout;
             v2Footer.Alpha = showingV2Layout ? 1 : 0;
             classicFooterBackground.Alpha = showingV2Layout ? 0 : 1;
             buttons.Alpha = showingV2Layout ? 0 : 1;
-            bottomPanel.Height = useLegacyResults ? 0 : showingV2Layout ? DrawWidth * V2ResultsFooter.DESIGN_HEIGHT / 1280 : TwoLayerButton.SIZE_EXTENDED.Y;
+            bottomPanel.Height = showingV2Layout ? V2ResultsFooter.DESIGN_HEIGHT : TwoLayerButton.SIZE_EXTENDED.Y;
+            if (hasEntered)
+                bottomPanel.Alpha = 1;
 
             ScorePanelList.Alpha = showingV2Layout ? 0 : 1;
             ScorePanelList.HandleInput = !showingV2Layout;
@@ -464,9 +521,6 @@ namespace osu.Game.Screens.Ranking
         protected override void Update()
         {
             base.Update();
-
-            if (showingV2Layout)
-                bottomPanel.Height = DrawWidth * V2ResultsFooter.DESIGN_HEIGHT / 1280;
 
             if (ScorePanelList.IsScrolledToStart)
                 fetchScores(-1);
@@ -625,7 +679,8 @@ namespace osu.Game.Screens.Ranking
                 b.FadeColour(OsuColour.Gray(0.5f), 250);
             });
 
-            bottomPanel.FadeTo(1, 250);
+            if (!useLegacyResults)
+                bottomPanel.FadeTo(1, 250);
 
             popInSample?.Play();
         }
@@ -789,6 +844,112 @@ namespace osu.Game.Screens.Ranking
             {
                 base.Update();
                 content.Height = FitToViewport ? DrawHeight : Math.Max(screen_height, DrawHeight);
+            }
+        }
+
+        private partial class ReplayVideoExportButton : GrayButton
+        {
+            public readonly Bindable<ScoreInfo?> Score = new Bindable<ScoreInfo?>();
+
+            private readonly bool allowWatchingReplay;
+            private readonly ScoreInfo? initialScore;
+            private readonly Bindable<DownloadState> replayState = new Bindable<DownloadState>();
+            private ScoreDownloadTracker? downloadTracker;
+            private bool exportWhenDownloaded;
+
+            [Resolved]
+            private ReplayVideoExporter? videoExporter { get; set; }
+
+            [Resolved]
+            private ScoreModelDownloader scoreDownloader { get; set; } = null!;
+
+            public ReplayVideoExportButton(bool allowWatchingReplay, ScoreInfo? initialScore)
+                : base(FontAwesome.Solid.Video)
+            {
+                this.allowWatchingReplay = allowWatchingReplay;
+                this.initialScore = initialScore;
+
+                Size = new Vector2(75, 30);
+            }
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+
+                Action = exportVideo;
+                replayState.BindValueChanged(_ => updateState());
+                Score.BindValueChanged(onScoreChanged, true);
+            }
+
+            private void onScoreChanged(ValueChangedEvent<ScoreInfo?> scoreChanged)
+            {
+                exportWhenDownloaded = false;
+
+                if (downloadTracker != null)
+                {
+                    replayState.UnbindFrom(downloadTracker.State);
+                    RemoveInternal(downloadTracker, true);
+                    downloadTracker = null;
+                }
+
+                replayState.Value = DownloadState.Unknown;
+
+                bool canWatch = allowWatchingReplay || (initialScore != null && scoreChanged.NewValue != null && !scoreChanged.NewValue.Equals(initialScore));
+
+                if (scoreChanged.NewValue != null && canWatch)
+                {
+                    AddInternal(downloadTracker = new ScoreDownloadTracker(scoreChanged.NewValue));
+                    ((IBindable<DownloadState>)replayState).BindTo(downloadTracker.State);
+                }
+
+                updateState();
+            }
+
+            private bool isAutoplay => Score.Value?.BeatmapInfo != null && Score.Value.Mods.OfType<ModAutoplay>().Any();
+
+            private void updateState()
+            {
+                var current = Score.Value;
+                bool canWatch = allowWatchingReplay || (initialScore != null && current != null && !current.Equals(initialScore));
+                bool local = replayState.Value == DownloadState.LocallyAvailable;
+                bool busy = replayState.Value is DownloadState.Downloading or DownloadState.Importing;
+                bool replayAvailable = canWatch && current != null && (local || current.HasOnlineReplay);
+                bool videoAvailable = isAutoplay || replayAvailable;
+
+                if (replayState.Value == DownloadState.NotDownloaded)
+                    exportWhenDownloaded = false;
+
+                Enabled.Value = videoAvailable && !busy && videoExporter != null;
+                TooltipText = busy
+                    ? ResultsScreenStrings.DownloadingReplay
+                    : isAutoplay
+                        ? VideoRecordingStrings.ExportAutoplay
+                        : videoAvailable
+                            ? VideoRecordingStrings.ExportReplay
+                            : ResultsScreenStrings.ReplayUnavailable;
+
+                if (local && exportWhenDownloaded && current != null)
+                {
+                    exportWhenDownloaded = false;
+                    videoExporter?.Export(current);
+                }
+            }
+
+            private void exportVideo()
+            {
+                var current = Score.Value;
+                if (!Enabled.Value || current == null || videoExporter == null)
+                    return;
+
+                if (isAutoplay)
+                    videoExporter.ExportAutoplay(current.BeatmapInfo!, current.Ruleset, current.Mods);
+                else if (replayState.Value == DownloadState.LocallyAvailable)
+                    videoExporter.Export(current);
+                else if (current.HasOnlineReplay)
+                {
+                    exportWhenDownloaded = true;
+                    scoreDownloader.Download(current);
+                }
             }
         }
     }

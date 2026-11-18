@@ -21,7 +21,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
         public bool CanBePlaced(IEnumerable<ISerialisableDrawable> components) => components.All(c => c is not ArgonResultsFooter && c is not LegacyOnlineRankingButton);
         public bool CanBeScaled(Axes _) => false;
 
-        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => true;
+        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => base.ReceivePositionalInputAt(screenSpacePos);
 
         [BackgroundDependencyLoader]
         private void load(IBindable<IScoreInfo> _)

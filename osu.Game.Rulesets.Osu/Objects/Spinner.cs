@@ -51,6 +51,9 @@ namespace osu.Game.Rulesets.Osu.Objects
         /// </summary>
         private const int bonus_spins_gap = 2;
 
+        private const int max_spin_count = int.MaxValue / 4;
+        private const int max_half_spins = 10_000;
+
         /// <summary>
         /// Number of spins available to give bonus, beyond <see cref="SpinsRequired"/>.
         /// </summary>
@@ -111,9 +114,12 @@ namespace osu.Game.Rulesets.Osu.Objects
             // Allow a 0.1ms floating point precision error in the calculation of the duration.
             const double duration_error = 0.0001;
 
-            LegacyHalfSpinsRequired = (int)(minRps * secondsDuration * 2);
-            SpinsRequired = (int)(minRps * secondsDuration + duration_error);
-            MaximumBonusSpins = Math.Max(0, (int)(maxRps * secondsDuration + duration_error) - SpinsRequired - bonus_spins_gap);
+            LegacyHalfSpinsRequired = clampSpinCount(minRps * secondsDuration * 2);
+            SpinsRequired = clampSpinCount(minRps * secondsDuration + duration_error);
+            int maxTotalSpins = clampSpinCount(maxRps * secondsDuration + duration_error);
+            MaximumBonusSpins = Math.Max(0, maxTotalSpins - SpinsRequired - bonus_spins_gap);
+
+            static int clampSpinCount(double value) => double.IsNaN(value) ? 0 : (int)Math.Clamp(value, 0, max_spin_count);
         }
 
         protected override void CreateNestedHitObjects(CancellationToken cancellationToken)
@@ -124,8 +130,9 @@ namespace osu.Game.Rulesets.Osu.Objects
             {
                 // Both stable scoring versions award normal spin score on whole turns,
                 // and bonus score on alternating half turns after a 1.5-turn gap.
-                int bonusThreshold = LegacyHalfSpinsRequired + 3;
-                int halfSpins = (int)(Duration * 0.05 / Math.PI);
+                long bonusThreshold = (long)LegacyHalfSpinsRequired + 3;
+                double rawHalfSpins = Duration * 0.05 / Math.PI;
+                int halfSpins = double.IsNaN(rawHalfSpins) ? 0 : (int)Math.Clamp(rawHalfSpins, 0, max_half_spins);
 
                 for (int i = 1; i <= halfSpins; i++)
                 {
@@ -147,7 +154,8 @@ namespace osu.Game.Rulesets.Osu.Objects
                 return;
             }
 
-            int totalSpins = MaximumBonusSpins + SpinsRequired + bonus_spins_gap;
+            const int max_total_spins = max_half_spins / 2;
+            int totalSpins = (int)Math.Clamp((long)MaximumBonusSpins + SpinsRequired + bonus_spins_gap, 0, max_total_spins);
 
             for (int i = 0; i < totalSpins; i++)
             {

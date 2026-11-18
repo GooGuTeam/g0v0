@@ -5,12 +5,14 @@
 using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Game.Configuration;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Framework.Screens;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
@@ -39,6 +41,8 @@ namespace osu.Game.Screens.Ranking
         private readonly Drawable scrollContent;
         private readonly Drawable stockBottomPanel;
         private readonly bool autoShowDetails;
+        private readonly bool animateEntrance;
+        private bool isActive = true;
 
         private BlockingLayer panelLayer = null!;
         private DrawSizePreservingFillContainer panelSpace = null!;
@@ -81,16 +85,19 @@ namespace osu.Game.Screens.Ranking
 
         private OsuGame? game;
         private Bindable<LegacySongSelectAspectRatio> aspectRatio = null!;
+        private readonly IBindable<Skin> currentSkin = new Bindable<Skin>();
+        private ISkinSource? currentSkinContainer;
 
-        public LegacyRankingOverlay(ResultsScreen screen, StatisticsPanel statisticsPanel, Drawable scrollContent, Drawable stockBottomPanel, bool autoShowDetails)
+        public LegacyRankingOverlay(ResultsScreen screen, StatisticsPanel statisticsPanel, Drawable scrollContent, Drawable stockBottomPanel, bool autoShowDetails, bool animateEntrance = false)
         {
             this.screen = screen;
             this.statisticsPanel = statisticsPanel;
             this.scrollContent = scrollContent;
             this.stockBottomPanel = stockBottomPanel;
             this.autoShowDetails = autoShowDetails;
+            this.animateEntrance = animateEntrance;
 
-            pendingEntrance = autoShowDetails;
+            pendingEntrance = animateEntrance;
         }
 
         [BackgroundDependencyLoader(true)]
@@ -178,6 +185,9 @@ namespace osu.Game.Screens.Ranking
         {
             base.Update();
 
+            if (!isActive)
+                return;
+
             // la animacion de entrada del screen vuelve a fadear la barra stock, que en modo legacy no se ve.
             if (stockBottomPanel.Alpha > 0)
                 stockBottomPanel.Alpha = 0;
@@ -245,13 +255,69 @@ namespace osu.Game.Screens.Ranking
             return false;
         }
 
+        public void SetActive(bool active)
+        {
+            if (isActive == active)
+                return;
+
+            isActive = active;
+            Alpha = active ? 1 : 0;
+
+            if (active)
+            {
+                screen.SetFooterBackButtonVisible(false);
+                stockBottomPanel.Height = 0;
+                stockBottomPanel.Alpha = 0;
+
+                if (autoShowDetails)
+                {
+                    var score = screen.SelectedScore.Value ?? screen.Score;
+
+                    if (score != null)
+                    {
+                        directModeActive = true;
+                        screen.LegacyStableDirectMode = true;
+                        show();
+                    }
+                }
+                else if (statisticsPanel.State.Value == Visibility.Visible)
+                {
+                    show();
+                }
+            }
+            else
+            {
+                bool wasDirectMode = directModeActive;
+                directModeActive = false;
+                screen.LegacyStableDirectMode = false;
+
+                panelLayer.ClearTransforms();
+                panelLayer.Alpha = 0;
+
+                scrollContent.ClearTransforms();
+                scrollContent.Alpha = 1;
+
+                if (wasDirectMode && statisticsPanel.State.Value == Visibility.Visible)
+                    statisticsPanel.Hide();
+
+                if (toolbarHidden)
+                {
+                    game?.Toolbar.Show();
+                    toolbarHidden = false;
+                }
+            }
+        }
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
+            currentSkin.BindTo(skins.CurrentSkin);
+            currentSkin.BindValueChanged(_ => onSkinChanged());
+
             aspectRatio.BindValueChanged(_ =>
             {
-                if (builtScore == null)
+                if (!isActive || builtScore == null)
                     return;
 
                 var score = builtScore;
@@ -264,8 +330,11 @@ namespace osu.Game.Screens.Ranking
             // load(): tocar el estado del footer global desde el loader thread async es una
             // mutacion ilegal (InvalidThreadForMutationException). LoadComplete corre siempre en
             // el update thread.
-            screen.SetFooterBackButtonVisible(false);
-            stockBottomPanel.Height = 0;
+            if (isActive)
+            {
+                screen.SetFooterBackButtonVisible(false);
+                stockBottomPanel.Height = 0;
+            }
 
             if (directModeActive)
             {
@@ -277,8 +346,13 @@ namespace osu.Game.Screens.Ranking
                 // screen (LegacyStableDirectMode) hace que back salga directo y Select no togglee.
                 statisticsPanel.State.BindValueChanged(v =>
                 {
+                    if (!isActive)
+                        return;
+
                     if (v.NewValue == Visibility.Visible)
                         show();
+                    else if (!directModeActive)
+                        hide();
                 });
 
                 screen.LegacyStableDirectMode = true;
@@ -288,21 +362,27 @@ namespace osu.Game.Screens.Ranking
                 // estetico). como todo pasa tapado por el panel legacy, la demora no se ve.
                 Scheduler.AddDelayed(() =>
                 {
-                    if (statisticsPanel.State.Value != Visibility.Visible && (screen.SelectedScore.Value ?? screen.Score) != null)
+                    if (isActive && directModeActive && statisticsPanel.State.Value != Visibility.Visible && (screen.SelectedScore.Value ?? screen.Score) != null)
                         statisticsPanel.ToggleVisibility();
                 }, 250);
 
-                // stable toca el aplauso al entrar al ranking. el flair stock (accuracy circle,
+                // stable toca el aplauso al entrar al ranking post-gameplay. el flair stock (accuracy circle,
                 // que era quien lo disparaba al final de su animacion) se suprime en este modo,
                 // asi que lo tocamos nosotros. Schedule: PlayApplause exige IsCurrentScreen.
-                var score = screen.SelectedScore.Value ?? screen.Score;
-                if (score != null)
-                    Schedule(() => screen.PlayApplause(score.Rank));
+                if (animateEntrance)
+                {
+                    var score = screen.SelectedScore.Value ?? screen.Score;
+                    if (score != null)
+                        Schedule(() => screen.PlayApplause(score.Rank));
+                }
             }
             else
             {
                 statisticsPanel.State.BindValueChanged(v =>
                 {
+                    if (!isActive)
+                        return;
+
                     if (v.NewValue == Visibility.Visible)
                         show();
                     else
@@ -313,9 +393,28 @@ namespace osu.Game.Screens.Ranking
             // cambio de score (flechas izq/der) con la vista de detalles abierta.
             screen.SelectedScore.BindValueChanged(_ =>
             {
+                if (!isActive)
+                    return;
+
                 if (directModeActive || statisticsPanel.State.Value == Visibility.Visible)
                     show();
             });
+        }
+
+        private void onSkinChanged() => Scheduler.AddOnce(refreshForSkinChange);
+
+        private void refreshForSkinChange()
+        {
+            if (!isActive || builtScore == null)
+                return;
+
+            double scrollOffset = currentScroll?.Current ?? 0;
+            var score = builtScore;
+            builtScore = null;
+            rebuildPanel(score);
+
+            if (scrollOffset > 0 && currentScroll != null)
+                Schedule(() => currentScroll?.ScrollTo(scrollOffset, false));
         }
 
         private void show()
@@ -376,10 +475,15 @@ namespace osu.Game.Screens.Ranking
             // el ranking panel es la primera "pagina", scrollear para abajo revela la seccion de
             // extras (pp, heatmap de accuracy, tags del mapa). el header (barra negra + titulo +
             // ranking-title) queda FIJO por encima del scroll, como los ViewOffsetImmune de stable.
+            if (currentSkinContainer.IsNotNull())
+                currentSkinContainer.SourceChanged -= onSkinChanged;
+
+            SkinProvidingContainer activeSkinContainer;
+
             panelContainer.Child = new SkinProvidingContainer(skins.DefaultClassicSkin)
             {
                 RelativeSizeAxes = Axes.Both,
-                Child = new SkinProvidingContainer(skins.CurrentSkin.Value)
+                Child = activeSkinContainer = new SkinProvidingContainer(skins.CurrentSkin.Value)
                 {
                     RelativeSizeAxes = Axes.Both,
                     Children = new[]
@@ -424,9 +528,20 @@ namespace osu.Game.Screens.Ranking
                 },
             };
 
-            hasBelowFold = score.UserID == apiProvider.LocalUser.Value?.OnlineID;
+            currentSkinContainer = activeSkinContainer;
+            currentSkinContainer.SourceChanged += onSkinChanged;
+
+            hasBelowFold = LegacyOnlineRanking.ShouldShowFor(score, screen, apiProvider);
             detailsHint.Alpha = hasBelowFold ? 1 : 0;
             hintVisible = hasBelowFold;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (currentSkinContainer.IsNotNull())
+                currentSkinContainer.SourceChanged -= onSkinChanged;
         }
 
         /// <summary>
@@ -502,6 +617,10 @@ namespace osu.Game.Screens.Ranking
                 Height = HEIGHT;
                 newLayout = (skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value ?? SkinConfiguration.LATEST_VERSION) > 1;
 
+                var metadata = score.BeatmapInfo?.BeatmapSet?.Metadata ?? score.BeatmapInfo?.Metadata;
+                var artist = metadata != null ? new RomanisableString(metadata.ArtistUnicode, metadata.Artist) : default;
+                var titleText = metadata != null ? new RomanisableString(metadata.TitleUnicode, metadata.Title) : default;
+
                 InternalChildren = new Drawable[]
                 {
                     // the bar spans the window; the text and title sit in the skin's design area.
@@ -520,13 +639,13 @@ namespace osu.Game.Screens.Ranking
                             {
                                 Position = new Vector2(0, 0),
                                 Font = LegacyFonts.Get(22 * 1.6f),
-                                Text = $"{score.BeatmapInfo?.Metadata.Artist} - {score.BeatmapInfo?.Metadata.Title} [{score.BeatmapInfo?.DifficultyName}]",
+                                Text = LocalisableString.Interpolate($"{artist} - {titleText} [{score.BeatmapInfo?.DifficultyName}]"),
                             },
                             new OsuSpriteText
                             {
                                 Position = new Vector2(1.6f, 20 * 1.6f),
                                 Font = LegacyFonts.Get(16 * 1.6f),
-                                Text = $"Beatmap by {score.BeatmapInfo?.Metadata.Author.Username}",
+                                Text = $"Beatmap by {metadata?.Author.Username}",
                             },
                             new OsuSpriteText
                             {

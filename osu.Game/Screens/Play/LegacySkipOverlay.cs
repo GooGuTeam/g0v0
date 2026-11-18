@@ -1,10 +1,12 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.Textures;
+using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Events;
 using osu.Game.Audio;
 using osu.Game.Graphics.Containers;
@@ -45,6 +47,7 @@ namespace osu.Game.Screens.Play
         protected override OsuClickableContainer CreateButton(IBindable<bool> inSkipPeriod) => button = new LegacySkipButton
         {
             Enabled = { BindTarget = inSkipPeriod },
+            SizeChanged = newSize => Size = newSize,
         };
 
         protected override void LoadComplete()
@@ -62,7 +65,12 @@ namespace osu.Game.Screens.Play
 
             private const float idle_alpha = 153 / 255f;
 
-            private Drawable content = null!;
+            public Action<Vector2>? SizeChanged { get; init; }
+
+            [Resolved]
+            private ISkinSource skin { get; set; } = null!;
+
+            private Container visualContainer = null!;
             private SkinnableSound confirmSample = null!;
 
             // stable's skip button makes no sound until it's clicked.
@@ -75,9 +83,33 @@ namespace osu.Game.Screens.Play
             }
 
             [BackgroundDependencyLoader]
-            private void load(ISkinSource skin)
+            private void load()
+            {
+                Children = new Drawable[]
+                {
+                    visualContainer = new Container
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                        Alpha = idle_alpha,
+                    },
+                    confirmSample = new SkinnableSound(new SampleInfo(@"menuhit")),
+                };
+
+                updateSkin();
+            }
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+                skin.SourceChanged += onSkinChanged;
+            }
+
+            private void onSkinChanged() => Scheduler.AddOnce(updateSkin);
+
+            private void updateSkin()
             {
                 var frames = skin.GetTextures(@"play-skip", default, default, true, @"-", null, out _);
+                Drawable content;
 
                 if (frames.Length > 0)
                 {
@@ -94,25 +126,20 @@ namespace osu.Game.Screens.Play
                     content = new LegacyMissingTexture(@"play-skip", UserInterfaceStrings.LegacySkip, new Color4(255, 165, 0, 255), default_size);
                 }
 
-                content.Alpha = idle_alpha;
-
-                Children = new[]
-                {
-                    content,
-                    confirmSample = new SkinnableSound(new SampleInfo(@"menuhit")),
-                };
+                visualContainer.Child = content;
+                SizeChanged?.Invoke(Size);
             }
 
             // stable's hover effect fades between 60% and full opacity over 300ms.
             protected override bool OnHover(HoverEvent e)
             {
-                content.FadeTo(1, 300);
+                visualContainer.FadeTo(1, 300);
                 return base.OnHover(e);
             }
 
             protected override void OnHoverLost(HoverLostEvent e)
             {
-                content.FadeTo(idle_alpha, 300);
+                visualContainer.FadeTo(idle_alpha, 300);
                 base.OnHoverLost(e);
             }
 
@@ -125,6 +152,14 @@ namespace osu.Game.Screens.Play
                 confirmSample.Play();
 
                 return base.OnClick(e);
+            }
+
+            protected override void Dispose(bool isDisposing)
+            {
+                base.Dispose(isDisposing);
+
+                if (skin.IsNotNull())
+                    skin.SourceChanged -= onSkinChanged;
             }
         }
     }

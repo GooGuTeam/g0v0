@@ -49,6 +49,26 @@ namespace osu.Game.Screens.Footer
         // The height being set as it is is required for transition purposes.
         public override bool UpdateSubTreeMasking() => false;
 
+        public override bool PropagatePositionalInputSubTree => base.PropagatePositionalInputSubTree && (DefaultChromeVisible || HasActiveOverlay);
+
+        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos)
+        {
+            if (!DefaultChromeVisible && !HasActiveOverlay)
+                return false;
+
+            return base.ReceivePositionalInputAt(screenSpacePos);
+        }
+
+        protected override bool OnHover(HoverEvent e) => (DefaultChromeVisible || HasActiveOverlay) && base.OnHover(e);
+
+        protected override bool OnMouseDown(MouseDownEvent e) => (DefaultChromeVisible || HasActiveOverlay) && base.OnMouseDown(e);
+
+        protected override bool OnClick(ClickEvent e) => (DefaultChromeVisible || HasActiveOverlay) && base.OnClick(e);
+
+        protected override bool OnScroll(ScrollEvent e) => (DefaultChromeVisible || HasActiveOverlay) && base.OnScroll(e);
+
+        protected override bool OnDragStart(DragStartEvent e) => (DefaultChromeVisible || HasActiveOverlay) && base.OnDragStart(e);
+
         private readonly List<OverlayContainer> overlays = new List<OverlayContainer>();
 
         private Box background = null!;

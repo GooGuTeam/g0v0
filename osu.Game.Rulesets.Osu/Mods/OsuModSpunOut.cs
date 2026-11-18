@@ -29,6 +29,8 @@ namespace osu.Game.Rulesets.Osu.Mods
             if (hitObject is DrawableSpinner spinner)
             {
                 spinner.HandleUserInput = false;
+                spinner.SpunOut = true;
+                spinner.OnUpdate -= onSpinnerUpdate;
                 spinner.OnUpdate += onSpinnerUpdate;
             }
         }
@@ -46,19 +48,26 @@ namespace osu.Game.Rulesets.Osu.Mods
                 return;
             }
 
-            // early-return if we were paused to avoid division-by-zero in the subsequent calculations.
-            if (Precision.AlmostEquals(spinner.Clock.Rate, 0))
+            // early-return if we were paused, rewinding, or zero-duration to avoid division-by-zero or adding forward spin during rewind.
+            if (Precision.AlmostEquals(spinner.Clock.Rate, 0) || spinner.Clock.ElapsedFrameTime <= 0 || spinner.HitObject.Duration <= 0)
                 return;
 
             // because the spinner is under the gameplay clock, it is affected by rate adjustments on the track;
             // for that reason using ElapsedFrameTime directly leads to fewer SPM with Half Time and more SPM with Double Time.
             // for spinners we want the real (wall clock) elapsed time; to achieve that, unapply the clock rate locally here.
-            double rateIndependentElapsedTime = spinner.Clock.ElapsedFrameTime / spinner.Clock.Rate;
+            double rateIndependentElapsedTime = spinner.Clock.ElapsedFrameTime / Math.Abs(spinner.Clock.Rate);
 
             // multiply the SPM by 1.01 to ensure that the spinner is completed. if the calculation is left exact,
             // some spinners may not complete due to very minor decimal loss during calculation
             float rotationSpeed = (float)(1.01 * spinner.HitObject.SpinsRequired / spinner.HitObject.Duration);
-            spinner.RotationTracker.AddRotation(float.RadiansToDegrees((float)rateIndependentElapsedTime * rotationSpeed * MathF.PI * 2.0f));
+            float totalDegrees = float.RadiansToDegrees((float)rateIndependentElapsedTime * rotationSpeed * MathF.PI * 2.0f);
+
+            while (totalDegrees > 0)
+            {
+                float step = Math.Min(totalDegrees, 180f);
+                spinner.RotationTracker.AddRotation(step);
+                totalDegrees -= step;
+            }
         }
     }
 }

@@ -1,7 +1,9 @@
 // Copyright (c) GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Numerics;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
@@ -18,25 +20,92 @@ namespace osu.Game.Overlays.Settings.Rendering.Stable
         where T : struct, INumber<T>, IMinMaxValue<T>
     {
         private readonly SliderEntry<T> entry;
+        private readonly BindableNumber<T> barCurrent = new BindableNumber<T>();
         private readonly StableSliderBar<T> bar;
+
+        private bool updatingFromEntry;
 
         public StableSlider(SliderEntry<T> entry)
             : base(entry)
         {
             this.entry = entry;
 
+            // Populate numeric bounds, value, and default before applying Disabled so SliderBar<T>.Current
+            // never attempts to set CurrentNumber.Default or clamp CurrentNumber.Value while Disabled is true.
+            barCurrent.Precision = entry.CurrentNumber.Precision;
+            barCurrent.MinValue = entry.CurrentNumber.MinValue;
+            barCurrent.MaxValue = entry.CurrentNumber.MaxValue;
+            barCurrent.Value = entry.CurrentNumber.Value;
+            barCurrent.Default = entry.CurrentNumber.Default;
+
             // like FormSliderBar, the framework slider is created and bound in the constructor so that range changes
             // always reach it, even if this item is unloaded before LoadComplete.
             bar = new StableSliderBar<T>(entry.FormatTooltip)
             {
                 RelativeSizeAxes = Axes.Both,
-                Current = entry.Current,
+                Current = barCurrent,
+            };
+
+            barCurrent.Disabled = entry.CurrentNumber.Disabled;
+
+            barCurrent.ValueChanged += e =>
+            {
+                if (!updatingFromEntry)
+                    entry.CurrentNumber.Value = e.NewValue;
+            };
+
+            entry.CurrentNumber.ValueChanged += e => applyFromEntry(() => barCurrent.Value = e.NewValue);
+            entry.CurrentNumber.MinValueChanged += v => applyFromEntry(() =>
+            {
+                barCurrent.MinValue = v;
+                barCurrent.Value = entry.CurrentNumber.Value;
+            });
+            entry.CurrentNumber.MaxValueChanged += v => applyFromEntry(() =>
+            {
+                barCurrent.MaxValue = v;
+                barCurrent.Value = entry.CurrentNumber.Value;
+            });
+            entry.CurrentNumber.PrecisionChanged += v => applyFromEntry(() =>
+            {
+                barCurrent.Precision = v;
+                barCurrent.Value = entry.CurrentNumber.Value;
+            });
+            entry.CurrentNumber.DefaultChanged += e => applyFromEntry(() => barCurrent.Default = e.NewValue);
+            entry.CurrentNumber.DisabledChanged += disabled =>
+            {
+                if (disabled)
+                    applyFromEntry(() => barCurrent.Value = entry.CurrentNumber.Value);
+
+                barCurrent.Disabled = disabled;
             };
 
             entry.TransferValueOnCommitBindable.BindValueChanged(v => bar.TransferValueOnCommit = v.NewValue, true);
 
             if (entry.KeyboardStep != null)
                 bar.KeyboardStep = entry.KeyboardStep.Value;
+        }
+
+        private void applyFromEntry(Action action)
+        {
+            updatingFromEntry = true;
+            bool wasDisabled = barCurrent.Disabled;
+            barCurrent.Disabled = false;
+
+            try
+            {
+                action();
+            }
+            finally
+            {
+                barCurrent.Disabled = wasDisabled;
+                updatingFromEntry = false;
+            }
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            barCurrent.UnbindAll();
+            base.Dispose(isDisposing);
         }
 
         protected override Drawable CreateContent() => new GridContainer

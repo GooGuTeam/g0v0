@@ -91,6 +91,9 @@ namespace osu.Game.Tests.Visual.Editing
             AddStep("drop focus", () => ((IFocusManager)InputManager).ChangeFocus(null));
             AddAssert("invalid commit preserves legacy meter", () => point.LegacyTimeSignature == -4);
             AddAssert("native display restored", () => numeratorTextBox.Current.Value == "4");
+            AddStep("focus text box without editing", () => ((IFocusManager)InputManager).ChangeFocus(numeratorTextBox));
+            AddStep("drop focus without editing", () => ((IFocusManager)InputManager).ChangeFocus(null));
+            AddAssert("focus loss without editing preserves legacy meter", () => point.LegacyTimeSignature == -4);
             AddStep("focus text box", () => ((IFocusManager)InputManager).ChangeFocus(numeratorTextBox));
             AddStep("commit displayed meter", () => InputManager.Key(Key.Enter));
             AddAssert("valid same-value commit clears legacy meter", () => point.LegacyTimeSignature == null);

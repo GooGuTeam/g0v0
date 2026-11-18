@@ -4,31 +4,30 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using osu.Game.Beatmaps;
-using osu.Game.Localisation;
-using osu.Game.Online.API;
-using osu.Game.Overlays;
 using osu.Framework.Allocation;
-using osu.Framework.Audio;
-using osu.Framework.Audio.Sample;
 using osu.Framework.Audio.Track;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
-using osu.Framework.Graphics.Shapes;
-using osu.Game.Graphics;
-using osu.Game.Graphics.Sprites;
-using osuTK.Graphics;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
+using osu.Game.Audio;
+using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
+using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
+using osu.Game.Graphics.Sprites;
 using osu.Game.Input.Bindings;
+using osu.Game.Localisation;
+using osu.Game.Online.API;
 using osu.Game.Online.Rooms;
 using osu.Game.Skinning;
 using osu.Game.Skinning.Select;
 using osuTK;
+using osuTK.Graphics;
 using osuTK.Input;
 
 namespace osu.Game.Screens.Menu
@@ -59,14 +58,22 @@ namespace osu.Game.Screens.Menu
         public Action? OnRankedPlay;
         public Action? OnPlaylists;
         public Action<Room>? OnDailyChallenge;
+        public Action? OnWake;
 
         public bool IsIdle { get; private set; } = true;
         public MenuTier CurrentTier { get; private set; } = MenuTier.Main;
 
+        [Resolved]
+        private ISkinSource skin { get; set; } = null!;
+
+        [Resolved]
+        private SkinManager skins { get; set; } = null!;
+
         private Container contentContainer = null!;
         private LegacyCookie cookie = null!;
         private LegacyMenuVisualisation visualisation = null!;
-        private Sample? cookieHitSample;
+        private SkinnableSound cookieHitSound = null!;
+        private SkinnableSound menuBackSound = null!;
         private Box backgroundDim = null!;
         private Container libraryStatus = null!;
 
@@ -83,6 +90,8 @@ namespace osu.Game.Screens.Menu
         private LegacyMenuButton buttonBack = null!;
 
         private ClickableContainer directButton = null!;
+        private Sprite directSprite = null!;
+        private Sprite directOverSprite = null!;
 
         private double lastActivityTime;
         private const double idle_timeout = 6000;
@@ -92,13 +101,11 @@ namespace osu.Game.Screens.Menu
             RelativeSizeAxes = Axes.Both;
         }
 
+        private Texture? getStableTexture(string name) => skin.GetStableTexture(name) ?? skins.DefaultClassicSkin.GetStableTexture(name);
+
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin, SkinManager skins, AudioManager audio, IAPIProvider api, BeatmapManager beatmaps)
+        private void load(IAPIProvider api, BeatmapManager beatmaps)
         {
-            Texture? getTex(string name) => skin.GetStableTexture(name) ?? skins.DefaultClassicSkin.GetStableTexture(name);
-
-            cookieHitSample = audio.Samples.Get(@"menuhit");
-
             InternalChild = new DrawSizePreservingFillContainer
             {
                 TargetDrawSize = new Vector2(640, 480),
@@ -110,6 +117,8 @@ namespace osu.Game.Screens.Menu
                     RelativeSizeAxes = Axes.Both,
                     Children = new Drawable[]
                     {
+                        cookieHitSound = new SkinnableSound(new SampleInfo(@"menuhit")),
+                        menuBackSound = new SkinnableSound(new SampleInfo(@"menuback")),
                         backgroundDim = new Box
                         {
                             RelativeSizeAxes = Axes.Both,
@@ -172,15 +181,15 @@ namespace osu.Game.Screens.Menu
                             },
                             Children = new Drawable[]
                             {
-                                new Sprite
+                                directSprite = new Sprite
                                 {
-                                    Texture = getTex(@"menu-osudirect"),
+                                    Texture = getStableTexture(@"menu-osudirect"),
                                     Anchor = Anchor.CentreRight,
                                     Origin = Anchor.CentreRight,
                                 },
-                                new Sprite
+                                directOverSprite = new Sprite
                                 {
-                                    Texture = getTex(@"menu-osudirect-over"),
+                                    Texture = getStableTexture(@"menu-osudirect-over"),
                                     Anchor = Anchor.CentreRight,
                                     Origin = Anchor.CentreRight,
                                     Blending = BlendingParameters.Additive,
@@ -271,6 +280,16 @@ namespace osu.Game.Screens.Menu
         {
             base.LoadComplete();
             recordActivity();
+            skin.SourceChanged += onSkinChanged;
+        }
+
+        private void onSkinChanged() => Scheduler.AddOnce(updateSkin);
+
+        private void updateSkin()
+        {
+            directSprite.Texture = getStableTexture(@"menu-osudirect");
+            directOverSprite.Texture = getStableTexture(@"menu-osudirect-over");
+            cookie.UpdateSkin();
         }
 
         private void onCookieClicked()
@@ -280,7 +299,7 @@ namespace osu.Game.Screens.Menu
             if (IsIdle)
             {
                 // stable's CheckIdle plays the cookie's hit sound when waking the menu; otherwise the triggered button plays its own.
-                cookieHitSample?.Play();
+                cookieHitSound.Play();
                 SetIdle(false, instant: false);
             }
             else
@@ -329,7 +348,17 @@ namespace osu.Game.Screens.Menu
         /// </summary>
         public void SetIdle(bool idle, bool instant = false)
         {
+            bool wasIdle = IsIdle;
             IsIdle = idle;
+
+            if (!idle)
+            {
+                recordActivity();
+
+                if (wasIdle)
+                    OnWake?.Invoke();
+            }
+
             backgroundDim.FadeTo(idle ? 0 : 0.6f, instant ? 0 : 500);
             libraryStatus.FadeTo(idle ? 0 : 1, instant ? 0 : 500);
 
@@ -372,7 +401,8 @@ namespace osu.Game.Screens.Menu
 
         private void recordActivity()
         {
-            lastActivityTime = Time.Current;
+            if (Clock != null)
+                lastActivityTime = Time.Current;
         }
 
         protected override void Update()
@@ -391,7 +421,13 @@ namespace osu.Game.Screens.Menu
 
         protected override bool OnKeyDown(KeyDownEvent e)
         {
+            if (e.Repeat)
+                return false;
+
             recordActivity();
+
+            if (e.ControlPressed || e.AltPressed || e.SuperPressed)
+                return false;
 
             if (e.Key == Key.P)
             {
@@ -425,6 +461,9 @@ namespace osu.Game.Screens.Menu
 
         public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
         {
+            if (e.Repeat)
+                return false;
+
             recordActivity();
 
             switch (e.Action)
@@ -432,18 +471,20 @@ namespace osu.Game.Screens.Menu
                 case GlobalAction.Back:
                     if (CurrentTier == MenuTier.Play)
                     {
+                        menuBackSound.Play();
                         ChangeTier(MenuTier.Main);
                         return true;
                     }
 
                     if (!IsIdle)
                     {
+                        menuBackSound.Play();
                         SetIdle(true);
                         return true;
                     }
 
-                    OnExit?.Invoke(e);
-                    return true;
+                    // Delegate exit from the idle state to HoldToExitGameOverlay (desktop) or MainMenu.OnPressed (mobile).
+                    return false;
 
                 case GlobalAction.Select:
                     cookie.TriggerClick();
@@ -455,6 +496,14 @@ namespace osu.Game.Screens.Menu
 
         public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
         {
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinChanged;
+
+            base.Dispose(isDisposing);
         }
 
         /// <summary>
@@ -491,11 +540,21 @@ namespace osu.Game.Screens.Menu
 
             private readonly LegacyMenuVisualisation visualisation;
 
+            [Resolved]
+            private ISkinSource skin { get; set; } = null!;
+
+            [Resolved]
+            private SkinManager skins { get; set; } = null!;
+
+            [Resolved]
+            private TextureStore textures { get; set; } = null!;
+
             private Sprite baseCookie = null!;
             private Sprite glowCookie = null!;
+            private Drawable fallbackCookie = null!;
             private Container ripples = null!;
             private Texture? shockwaveTexture;
-            private Sample? heartbeatSample;
+            private SkinnableSound heartbeatSound = null!;
 
             private float hoverBonus;
             private float progress;
@@ -520,17 +579,11 @@ namespace osu.Game.Screens.Menu
             }
 
             [BackgroundDependencyLoader]
-            private void load(ISkinSource skin, SkinManager skins, AudioManager audio, TextureStore textures)
+            private void load()
             {
-                Texture? cookieTex = skin.GetStableTexture(@"menu-osu")
-                                  ?? skins.DefaultClassicSkin.GetStableTexture(@"menu-osu")
-                                  ?? textures.Get(@"Menu/logo");
-
-                shockwaveTexture = skin.GetStableTexture(@"menu-osu-shockwave") ?? skins.DefaultClassicSkin.GetStableTexture(@"menu-osu-shockwave");
-                heartbeatSample = audio.Samples.Get(@"heartbeat");
-
                 Children = new Drawable[]
                 {
+                    heartbeatSound = new SkinnableSound(new SampleInfo(@"heartbeat")),
                     ripples = new Container
                     {
                         Anchor = Anchor.Centre,
@@ -542,7 +595,6 @@ namespace osu.Game.Screens.Menu
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
                         RelativeSizeAxes = Axes.Both,
-                        Texture = cookieTex,
                     },
                     // stable's s_Osu2 is a second copy of menu-osu, not the shockwave.
                     glowCookie = new Sprite
@@ -550,19 +602,15 @@ namespace osu.Game.Screens.Menu
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
                         RelativeSizeAxes = Axes.Both,
-                        Texture = cookieTex,
                         Alpha = 0,
                     },
-                };
-
-                if (cookieTex == null)
-                {
-                    AddInternal(new CircularContainer
+                    fallbackCookie = new CircularContainer
                     {
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
                         RelativeSizeAxes = Axes.Both,
                         Masking = true,
+                        Alpha = 0,
                         Children = new Drawable[]
                         {
                             new Box
@@ -578,8 +626,23 @@ namespace osu.Game.Screens.Menu
                                 Font = OsuFont.GetFont(size: 80, weight: FontWeight.Bold),
                             }
                         }
-                    });
-                }
+                    },
+                };
+
+                UpdateSkin();
+            }
+
+            public void UpdateSkin()
+            {
+                Texture? cookieTex = skin.GetStableTexture(@"menu-osu")
+                                  ?? skins.DefaultClassicSkin.GetStableTexture(@"menu-osu")
+                                  ?? textures.Get(@"Menu/logo");
+
+                shockwaveTexture = skin.GetStableTexture(@"menu-osu-shockwave") ?? skins.DefaultClassicSkin.GetStableTexture(@"menu-osu-shockwave");
+
+                baseCookie.Texture = cookieTex;
+                glowCookie.Texture = cookieTex;
+                fallbackCookie.Alpha = cookieTex == null ? 1 : 0;
             }
 
             protected override void Update()
@@ -656,7 +719,7 @@ namespace osu.Game.Screens.Menu
                 savedProgressMultiplier = menuAlpha;
 
                 if (IsHovered && !Exiting)
-                    heartbeatSample?.Play();
+                    heartbeatSound.Play();
 
                 generateRipple();
             }

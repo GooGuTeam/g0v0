@@ -2,6 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Shapes;
@@ -66,6 +68,8 @@ namespace osu.Game.Overlays.Settings.Rendering
             Colour = StableOptionsMetrics.PINNED_HEADER_BACKGROUND,
         };
 
+        public SettingsSearchTextBox CreateSearchTextBox() => new StableSearchBar.StableSearchTextBox();
+
         public Drawable CreateSearchBar(SettingsSearchTextBox textBox) => new StableSearchBar(textBox);
 
         // stable has a single back button that steps back one level, so sub-panels' sidebars get none.
@@ -80,5 +84,10 @@ namespace osu.Game.Overlays.Settings.Rendering
             {
                 Action = action,
             };
+
+        public ISettingsSidebarButton? SelectSidebarButton(IEnumerable<ISettingsSidebarButton> buttons, SettingsSection? section)
+            => section is RulesetSection
+                ? buttons.FirstOrDefault(b => b.Section is RulesetGenericSection)
+                : buttons.FirstOrDefault(b => b.Section == section);
     }
 }

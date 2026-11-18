@@ -31,15 +31,15 @@ namespace osu.Game.Users.Drawables
             Origin = Anchor.Centre;
         }
 
-        [BackgroundDependencyLoader]
+        [BackgroundDependencyLoader(permitNulls: true)]
         private void load(LargeTextureStore textures, OnlineAssetCachingStore onlineTextures)
         {
-            if (user != null && user.OnlineID > 1)
+            if (onlineTextures != null && user != null && user.OnlineID > 1)
                 // TODO: The fallback here should not need to exist. Users should be looked up and populated via UserLookupCache or otherwise
                 // in remaining cases where this is required (chat tabs, local leaderboard), at which point this should be removed.
                 Texture = onlineTextures.Get((user as APIUser)?.AvatarUrl ?? $@"https://a.ppy.sh/{user.OnlineID}");
 
-            Texture ??= textures.Get(@"Online/avatar-guest");
+            Texture ??= textures?.Get(@"Online/avatar-guest");
         }
 
         protected override void LoadComplete()

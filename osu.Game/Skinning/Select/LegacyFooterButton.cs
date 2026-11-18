@@ -27,6 +27,8 @@ namespace osu.Game.Skinning.Select
 
         public Action? RightClickAction { get; init; }
 
+        public Action? ShiftClickAction { get; init; }
+
         /// <summary>
         /// cuando el glyph base de este boton es en realidad la decoracion skinnable-top gigante del skin
         /// (tipico de selection-mode), no lo dibujamos como glyph del boton: clampeado al slot saldria una
@@ -138,9 +140,14 @@ namespace osu.Game.Skinning.Select
 
         protected override bool OnMouseDown(MouseDownEvent e)
         {
-            if (e.Button == osuTK.Input.MouseButton.Right && RightClickAction != null)
+            if (e.Button == osuTK.Input.MouseButton.Right)
             {
-                RightClickAction.Invoke();
+                if (RightClickAction != null)
+                {
+                    clickSound.Play();
+                    RightClickAction.Invoke();
+                }
+
                 return true;
             }
 
@@ -149,6 +156,13 @@ namespace osu.Game.Skinning.Select
 
         protected override bool OnClick(ClickEvent e)
         {
+            if (e.ShiftPressed && ShiftClickAction != null)
+            {
+                clickSound.Play();
+                ShiftClickAction.Invoke();
+                return true;
+            }
+
             clickSound.Play();
             return base.OnClick(e);
         }

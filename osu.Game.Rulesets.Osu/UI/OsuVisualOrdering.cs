@@ -27,15 +27,14 @@ namespace osu.Game.Rulesets.Osu.UI
         private readonly List<VisualEntry> entries = new List<VisualEntry>();
         private readonly Dictionary<Drawable, VisualEntry> sources = new Dictionary<Drawable, VisualEntry>();
         private readonly Dictionary<HitObject, int> declarationOrder = new Dictionary<HitObject, int>();
-        private readonly Bindable<bool> showHiddenSliders = new Bindable<bool>();
+        private readonly Bindable<bool> keepOverlapCirclesVisible = new Bindable<bool>();
+        private readonly Bindable<bool> showHiddenSliders = new Bindable<bool>(true);
         private IBeatmap? beatmap;
         private bool orderDirty;
         private ConcurrentQueue<Drawable>? removals = new ConcurrentQueue<Drawable>();
 
-        // Proxy registration happens once during drawable loading and cannot be undone (CreateProxy() is single-use).
-        // Keep the mode fixed for this playfield so a live settings change cannot leave pooled objects partially proxied.
-        public bool IsActive { get; private set; }
-        public bool IsStableRendering => IsActive;
+        public bool IsActive => keepOverlapCirclesVisible.Value;
+        public bool IsStableRendering => keepOverlapCirclesVisible.Value;
 
         /// <summary>
         /// Whether each proxy's visibility is checked against the lifetimes of its owner and parent object every frame (see <see cref="LifetimeViolations"/>).
@@ -71,8 +70,11 @@ namespace osu.Game.Rulesets.Osu.UI
         [BackgroundDependencyLoader]
         private void load(OsuRulesetConfigManager? config, IBeatmap? beatmap)
         {
-            IsActive = config?.Get<bool>(OsuRulesetSetting.KeepOverlapCirclesVisible) == true;
+            config?.BindWith(OsuRulesetSetting.KeepOverlapCirclesVisible, keepOverlapCirclesVisible);
             config?.BindWith(OsuRulesetSetting.ShowHiddenSliders, showHiddenSliders);
+            keepOverlapCirclesVisible.BindValueChanged(_ => orderDirty = true);
+            showHiddenSliders.BindValueChanged(_ => orderDirty = true);
+
             this.beatmap = beatmap;
             RefreshBeatmap();
         }
@@ -94,9 +96,6 @@ namespace osu.Game.Rulesets.Osu.UI
                              Action<Drawable>? addFallback = null, Action<Drawable>? removeFallback = null,
                              Action<Drawable, float>? changeFallbackDepth = null)
         {
-            if (!IsActive)
-                return;
-
             ObjectDisposedException.ThrowIf(Volatile.Read(ref removals) == null, this);
             ObjectDisposedException.ThrowIf(owner.IsVisualSourceDisposed, owner);
 
@@ -123,9 +122,6 @@ namespace osu.Game.Rulesets.Osu.UI
         {
             base.Update();
 
-            if (!IsActive)
-                return;
-
             bool sortRequired = drainRemovals();
             sortRequired |= cleanDeadEntries();
             sortRequired |= orderDirty;
@@ -141,9 +137,6 @@ namespace osu.Game.Rulesets.Osu.UI
         protected override void UpdateAfterChildren()
         {
             base.UpdateAfterChildren();
-
-            if (!IsActive)
-                return;
 
             if (drainRemovals())
                 ordered.RefreshOrder();
@@ -212,7 +205,7 @@ namespace osu.Game.Rulesets.Osu.UI
 
             if (owner is DrawableSliderRepeat repeat && repeat.AllJudged)
             {
-                double animDuration = Math.Min(300, repeat.HitObject.SpanDuration);
+                double animDuration = Math.Max(0, Math.Min(300, repeat.HitObject.SpanDuration));
                 repeatFinished = Time.Current >= repeat.HitStateUpdateTime + animDuration;
             }
 
@@ -235,17 +228,18 @@ namespace osu.Game.Rulesets.Osu.UI
             }
 
             int declaration = declarationOrder.GetValueOrDefault(parentModel!);
+            int approachDepth = keepOverlapCirclesVisible.Value ? declaration : 0;
 
-            if (entry.Kind == OsuVisualKind.Approach && entry.Gate.Depth != declaration)
+            if (entry.Kind == OsuVisualKind.Approach && entry.Gate.Depth != approachDepth)
             {
                 if (entry.Gate.Parent == null)
-                    entry.Gate.Depth = declaration;
+                    entry.Gate.Depth = approachDepth;
                 else if (entry.ChangeFallbackDepth != null && entry.InFallback)
-                    entry.ChangeFallbackDepth(entry.Gate, declaration);
+                    entry.ChangeFallbackDepth(entry.Gate, approachDepth);
                 else if (entry.Gate.Parent is Container container)
-                    container.ChangeChildDepth(entry.Gate, declaration);
+                    container.ChangeChildDepth(entry.Gate, approachDepth);
                 else
-                    entry.Gate.Depth = declaration;
+                    entry.Gate.Depth = approachDepth;
             }
 
             bool tail = owner is DrawableSliderTail;
@@ -292,11 +286,13 @@ namespace osu.Game.Rulesets.Osu.UI
                 }
             }
 
+            int keyDeclaration = !keepOverlapCirclesVisible.Value || tail ? -declaration : declaration;
+
             var key = new VisualKey(
                 entry.Kind == OsuVisualKind.Ball ? 1 : 0,
                 double.IsFinite(time) ? time : 0,
                 phase,
-                tail ? -declaration : declaration,
+                keyDeclaration,
                 role,
                 entry.EventOrdinal,
                 (int)entry.Kind);
@@ -309,7 +305,7 @@ namespace osu.Game.Rulesets.Osu.UI
                 ordered.InvalidateOrder();
             }
 
-            bool global = entry.Kind != OsuVisualKind.Approach;
+            bool global = entry.Kind == OsuVisualKind.Object || (keepOverlapCirclesVisible.Value && entry.Kind != OsuVisualKind.Approach);
             bool moved = false;
 
             if (!global && entry.AddFallback != null)

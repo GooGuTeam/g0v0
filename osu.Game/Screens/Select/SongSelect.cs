@@ -115,6 +115,7 @@ namespace osu.Game.Screens.Select
         private IDisposable? legacyCollectionDialogRegistration;
         private IDisposable? legacyBeatmapOptionsRegistration;
         private Bindable<bool> legacyModSelectSetting = null!;
+        private Bindable<bool> legacyFooterStandalone = null!;
         private IDisposable? legacyModSelectOverlayRegistration;
 
         private bool useLegacyModSelect => legacyModSelectSetting.Value || legacyUi.Value;
@@ -143,6 +144,7 @@ namespace osu.Game.Screens.Select
         // torii: guard de re-entrancy del rebuild del chrome legacy (si un toggle y un cambio de skin
         // caen en el mismo frame).
         private bool rebuildingLegacyChrome;
+        private bool legacyChromeDirty;
 
         // Torii: watches the grouping config so a legacy-tab group change flags the carousel to collapse
         // all groups once the re-group completes (consumed in BeatmapCarousel.HandleFilterCompleted).
@@ -150,6 +152,8 @@ namespace osu.Game.Screens.Select
         private Drawable legacyTopContainer = null!;
         private Drawable legacyLeaderboardContainer = null!;
         private Drawable legacyModsContainer = null!;
+        private LegacySongSelectTop legacySongSelectTop = null!;
+        private LegacyLeaderboard legacyLeaderboard = null!;
         private Box rightGradientBackground = null!;
         private Container mainContent = null!;
         private SkinnableContainer skinnableContent = null!;
@@ -158,11 +162,10 @@ namespace osu.Game.Screens.Select
         // Elsewhere the proxy stays here, at the HUD's own place.
         private Container hudProxyHome = null!;
         private Drawable? hudProxy;
+        private Drawable? legacyTopProxy;
 
         [Resolved(CanBeNull = true)]
         private ScreenFrontLayer? screenFrontLayer { get; set; }
-
-        private ScreenFrontLayer.ProxySet? legacyTopProxies;
 
         private GridContainer mainGridContainer = null!;
 
@@ -377,19 +380,19 @@ namespace osu.Game.Screens.Select
                 // Torii: stable-style song-select top panel for the legacy UI (songselect-top skin
                 // texture + beatmap info). Scale by height on viewports at least 4:3, matching the legacy footer.
                 // Hidden by default; shown in legacy mode via updateLegacyChrome.
-                hudProxyHome = new Container { RelativeSizeAxes = Axes.Both },
                 legacyTopContainer = new DrawSizePreservingFillContainer
                 {
                     RelativeSizeAxes = Axes.Both,
                     TargetDrawSize = new Vector2(1024, 768),
                     Strategy = DrawSizePreservationStrategy.Minimum,
                     Alpha = 0,
-                    Child = new LegacySongSelectTop
+                    Child = legacySongSelectTop = new LegacySongSelectTop
                     {
                         Anchor = Anchor.TopLeft,
                         Origin = Anchor.TopLeft,
                         RelativeSizeAxes = Axes.Both,
                         FilterControl = FilterControl,
+                        HoldInFrontLayer = false,
                     },
                 },
                 // Torii: stable-style bottom-left ranking panel (Local Ranking dropdown + scores)
@@ -407,11 +410,12 @@ namespace osu.Game.Screens.Select
                     Child = new OsuContextMenuContainer
                     {
                         RelativeSizeAxes = Axes.Both,
-                        Child = new LegacyLeaderboard
+                        Child = legacyLeaderboard = new LegacyLeaderboard
                         {
                             Anchor = Anchor.TopLeft,
                             Origin = Anchor.TopLeft,
                             RelativeSizeAxes = Axes.Both,
+                            HoldInFrontLayer = false,
                             // hoverear la leaderboard vuelve el carousel a la seleccion (como el modo normal).
                             HoverScrollRequested = () => carousel.ScrollToSelection(),
                         },
@@ -426,11 +430,19 @@ namespace osu.Game.Screens.Select
                     Alpha = 0,
                     Child = new LegacyModsList { RelativeSizeAxes = Axes.Both },
                 },
+                hudProxyHome = new Container
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Depth = -10,
+                },
                 modSpeedHotkeyHandler = new ModSpeedHotkeyHandler()
             });
 
             LoadComponent(modSelectOverlay = CreateModSelectOverlay());
-            LoadComponent(legacyModSelectOverlay = new LegacyModSelectOverlay());
+            LoadComponent(legacyModSelectOverlay = new LegacyModSelectOverlay
+            {
+                IsValidMod = m => modSelectOverlay.IsValidMod(m),
+            });
             LoadComponent(legacyBeatmapOptions = new LegacyBeatmapOptionsOverlay());
             LoadComponent(legacyCollectionDialog = new LegacyCollectionDialog());
 
@@ -447,17 +459,7 @@ namespace osu.Game.Screens.Select
 
             legacyUi = config.GetBindable<bool>(OsuSetting.ToriiLegacyFooterUseSkin);
             legacyModSelectSetting = config.GetBindable<bool>(OsuSetting.ToriiLegacyModSelect);
-            legacyUi.BindValueChanged(e =>
-            {
-                // al PRENDER el stable estando ya en la pantalla, reconstruimos el chrome para que las
-                // texturas de skin se resuelvan frescas (sino quedan stale hasta salir y volver). el
-                // invoke inicial (,true) corre durante el load -todavia no somos current- asi que cae al
-                // else y solo hace el fade, como antes.
-                if (e.NewValue && this.IsCurrentScreen())
-                    rebuildLegacyChrome();
-                else
-                    updateLegacyChrome();
-            }, true);
+            legacyFooterStandalone = config.GetBindable<bool>(OsuSetting.ToriiLegacySongSelectFooter);
 
             // Torii: when the user picks a grouping via the legacy tabs, collapse all groups after the
             // re-group so they see every group closed (stable's "group then Shift+Enter"), instead of
@@ -469,6 +471,43 @@ namespace osu.Game.Screens.Select
                 if (legacyUi.Value)
                     carousel.CollapseGroupsOnNextFilter = true;
             });
+        }
+
+        private void showFilterControl()
+        {
+            if (FilterControl.State.Value == Visibility.Visible)
+            {
+                FilterControl.ClearTransforms(targetMember: nameof(Alpha));
+                FilterControl.FadeIn(200, Easing.OutQuint);
+            }
+            else
+                FilterControl.Show();
+        }
+
+        private void hideFilterControl()
+        {
+            FilterControl.ReleaseSearchFocus();
+            FilterControl.Hide();
+        }
+
+        private void hideMismatchedOverlays()
+        {
+            if (useLegacyModSelect)
+                modSelectOverlay.Hide();
+            else
+                legacyModSelectOverlay.Hide();
+
+            if (!legacyUi.Value)
+            {
+                legacyCollectionDialog.Hide();
+
+                if (!legacyFooterStandalone.Value)
+                    legacyBeatmapOptions.Hide();
+            }
+            else
+            {
+                screenFooter?.HidePopover();
+            }
         }
 
         /// <summary>
@@ -483,7 +522,11 @@ namespace osu.Game.Screens.Select
 
             bool legacy = legacyUi.Value;
 
-            FilterControl.FadeTo(legacy ? 0 : 1, 200, Easing.OutQuint);
+            if (legacy)
+                hideFilterControl();
+            else if (!carousel.VisuallyFocusSelected && (CarouselItemsPresented || checkBeatmapValidForSelection(Beatmap.Value.BeatmapInfo)))
+                showFilterControl();
+
             wedgesContainer.FadeTo(legacy ? 0 : 1, 200, Easing.OutQuint);
             legacyTopContainer.FadeTo(legacy ? 1 : 0, 200, Easing.OutQuint);
             legacyLeaderboardContainer.FadeTo(legacy ? 1 : 0, 200, Easing.OutQuint);
@@ -494,8 +537,14 @@ namespace osu.Game.Screens.Select
         // (SourceChanged es un callback de manager de larga vida; no debe tocar una screen ya disposeada).
         private void onSkinChangedWhileLegacy()
         {
-            if (!legacyUi.Value || !this.IsCurrentScreen())
+            if (!legacyUi.Value)
                 return;
+
+            if (!this.IsCurrentScreen())
+            {
+                legacyChromeDirty = true;
+                return;
+            }
 
             // diferimos un frame: en este momento SourceChanged esta iterando SU lista de handlers, que
             // incluye los de los componentes legacy actuales. si los disposeamos ya, esos handlers (que
@@ -514,32 +563,48 @@ namespace osu.Game.Screens.Select
         /// </summary>
         private void rebuildLegacyChrome()
         {
-            if (rebuildingLegacyChrome || !this.IsCurrentScreen())
+            if (rebuildingLegacyChrome)
                 return;
+
+            if (!this.IsCurrentScreen())
+            {
+                legacyChromeDirty = true;
+                return;
+            }
 
             if (legacyTopContainer is not Container topContainer || legacyLeaderboardContainer is not Container leaderboardContainer)
                 return;
 
             rebuildingLegacyChrome = true;
+            legacyChromeDirty = false;
+
+            var preservedScope = legacyLeaderboard.IsLoaded
+                ? legacyLeaderboard.PreferredScope
+                : legacyLeaderboard.InitialPreferredScope;
+
+            bool inFront = isLegacyHudInFront();
 
             try
             {
-                topContainer.Child = new LegacySongSelectTop
+                topContainer.Child = legacySongSelectTop = new LegacySongSelectTop
                 {
                     Anchor = Anchor.TopLeft,
                     Origin = Anchor.TopLeft,
                     RelativeSizeAxes = Axes.Both,
                     FilterControl = FilterControl,
+                    HoldInFrontLayer = inFront,
                 };
 
                 leaderboardContainer.Child = new OsuContextMenuContainer
                 {
                     RelativeSizeAxes = Axes.Both,
-                    Child = new LegacyLeaderboard
+                    Child = legacyLeaderboard = new LegacyLeaderboard
                     {
                         Anchor = Anchor.TopLeft,
                         Origin = Anchor.TopLeft,
                         RelativeSizeAxes = Axes.Both,
+                        InitialPreferredScope = preservedScope,
+                        HoldInFrontLayer = inFront,
                         HoverScrollRequested = () => carousel.ScrollToSelection(),
                     },
                 };
@@ -551,6 +616,7 @@ namespace osu.Game.Screens.Select
 
             // Restore the visibility of the rebuilt containers.
             updateLegacyChrome();
+            updateHudLayer();
         }
 
         // Colour scheme for mod overlay is left as default (green) to match mods button.
@@ -585,16 +651,8 @@ namespace osu.Game.Screens.Select
             },
             new FooterButtonRandom
             {
-                NextRandom = () =>
-                {
-                    if (!carousel.NextRandom())
-                        errorSample?.Play();
-                },
-                PreviousRandom = () =>
-                {
-                    if (!carousel.PreviousRandom())
-                        errorSample?.Play();
-                }
+                NextRandom = NextRandom,
+                PreviousRandom = PreviousRandom
             },
             new FooterButtonOptions
             {
@@ -609,7 +667,9 @@ namespace osu.Game.Screens.Select
             skinSource.SourceChanged += onSkinChangedWhileLegacy;
 
             // the legacy top bar and beatmap details draw above the legacy mode menu, as stable's spriteManagerHigh does over its spriteManagerLow.
-            legacyTopProxies = new ScreenFrontLayer.ProxySet((legacyTopContainer, ScreenFrontLayer.Depths.SONG_SELECT_TOP));
+            legacyTopProxy = legacyTopContainer.CreateProxy();
+            legacyTopProxy.Depth = ScreenFrontLayer.Depths.SONG_SELECT_TOP;
+            hudProxyHome.Add(legacyTopProxy);
 
             hudProxy = skinnableContent.CreateProxy();
             hudProxy.Depth = ScreenFrontLayer.Depths.HUD;
@@ -630,8 +690,40 @@ namespace osu.Game.Screens.Select
 
             FilterControl.CriteriaChanged += criteriaChanged;
 
+            updateLegacyChrome();
+
+            legacyUi.BindValueChanged(e =>
+            {
+                hideMismatchedOverlays();
+
+                if (e.NewValue)
+                {
+                    unscopeBeatmapSet(restorePreviousSelection: false);
+
+                    if (this.IsCurrentScreen())
+                        rebuildLegacyChrome();
+                    else
+                    {
+                        legacyChromeDirty = true;
+                        updateLegacyChrome();
+                    }
+                }
+                else
+                {
+                    legacyChromeDirty = false;
+                    updateLegacyChrome();
+                }
+
+                updateHudLayer();
+            });
+
+            legacyModSelectSetting.BindValueChanged(_ => hideMismatchedOverlays());
+            legacyFooterStandalone.BindValueChanged(_ => hideMismatchedOverlays());
+
             modSelectOverlay.State.BindValueChanged(v =>
             {
+                updateHudLayer();
+
                 if (!this.IsCurrentScreen())
                     return;
 
@@ -641,12 +733,17 @@ namespace osu.Game.Screens.Select
 
             legacyModSelectOverlay.State.BindValueChanged(v =>
             {
+                updateHudLayer();
+
                 if (!this.IsCurrentScreen())
                     return;
 
                 if (ShowOsuLogo)
                     logo?.FadeTo(v.NewValue == Visibility.Visible ? 0f : 1f, 200, Easing.OutQuint);
             });
+
+            legacyBeatmapOptions.State.BindValueChanged(_ => updateHudLayer());
+            legacyCollectionDialog.State.BindValueChanged(_ => updateHudLayer());
         }
 
         protected override void Update()
@@ -654,7 +751,6 @@ namespace osu.Game.Screens.Select
             base.Update();
 
             updateHudLayer();
-            legacyTopProxies?.Update(screenFrontLayer);
 
             detailsArea.Height = wedgesContainer.ChildSize.Y - titleWedge.LayoutSize.Y - 4;
 
@@ -974,36 +1070,64 @@ namespace osu.Game.Screens.Select
             return base.OnExiting(e);
         }
 
+        private bool isLegacyHudInFront() =>
+            this.IsCurrentScreen()
+            && legacyUi.Value
+            && modSelectOverlay.State.Value != Visibility.Visible
+            && legacyModSelectOverlay.State.Value != Visibility.Visible
+            && legacyBeatmapOptions.State.Value != Visibility.Visible
+            && legacyCollectionDialog.State.Value != Visibility.Visible;
+
         /// <summary>
         /// Keeps user-placed skin components above the legacy chrome and logo during normal song selection.
         /// The hovered logo and song select's blocking overlays draw above the HUD.
         /// </summary>
         private void updateHudLayer()
         {
-            if (screenFrontLayer == null || hudProxy == null || !this.IsCurrentScreen())
+            if (!this.IsCurrentScreen())
                 return;
 
-            bool inFront = legacyUi.Value
-                           && modSelectOverlay.State.Value != Visibility.Visible
-                           && legacyModSelectOverlay.State.Value != Visibility.Visible
-                           && legacyBeatmapOptions.State.Value != Visibility.Visible
-                           && legacyCollectionDialog.State.Value != Visibility.Visible;
+            bool inFront = isLegacyHudInFront();
 
-            screenFrontLayer.Hold(hudProxy, inFront, hudProxyHome);
+            legacySongSelectTop.HoldInFrontLayer = inFront;
+            legacyLeaderboard.HoldInFrontLayer = inFront;
+
+            if (screenFrontLayer == null)
+                return;
+
+            if (legacyTopProxy != null)
+                screenFrontLayer.Hold(legacyTopProxy, inFront, hudProxyHome);
+            if (hudProxy != null)
+                screenFrontLayer.Hold(hudProxy, inFront, hudProxyHome);
+
             screenFrontLayer.HoldLogoBelow.Value = inFront && logo?.IsHovered != true;
         }
 
         private void releaseHudLayer()
         {
-            if (screenFrontLayer == null || hudProxy == null)
+            legacySongSelectTop.HoldInFrontLayer = false;
+            legacyLeaderboard.HoldInFrontLayer = false;
+
+            if (screenFrontLayer == null)
                 return;
 
-            screenFrontLayer.Hold(hudProxy, false, hudProxyHome);
+            if (legacyTopProxy != null)
+                screenFrontLayer.Hold(legacyTopProxy, false, hudProxyHome);
+            if (hudProxy != null)
+                screenFrontLayer.Hold(hudProxy, false, hudProxyHome);
+
             screenFrontLayer.HoldLogoBelow.Value = false;
         }
 
         private void onArrivingAtScreen()
         {
+            if (legacyChromeDirty)
+            {
+                if (legacyUi.Value)
+                    rebuildLegacyChrome();
+                else
+                    legacyChromeDirty = false;
+            }
             modSelectOverlay.Beatmap.BindTo(Beatmap);
             modSelectOverlay.Ruleset.BindTo(Ruleset);
             // required due to https://github.com/ppy/osu-framework/issues/3218
@@ -1135,14 +1259,16 @@ namespace osu.Game.Screens.Select
             {
                 titleWedge.Hide();
                 detailsArea.Hide();
-                FilterControl.Hide();
+                hideFilterControl();
             }
             else
             {
                 titleWedge.Show();
                 detailsArea.Show();
-                if (!legacyUi.Value)
-                    FilterControl.Show();
+                if (legacyUi.Value)
+                    hideFilterControl();
+                else
+                    showFilterControl();
             }
         }
 
@@ -1408,13 +1534,11 @@ namespace osu.Game.Screens.Select
                         return true;
 
                     case GlobalAction.SelectNextRandom:
-                        screenFooter.TriggerFooterButton(1);
+                        NextRandom();
                         return true;
 
                     case GlobalAction.SelectPreviousRandom:
-                        // index 1 only does NextRandom; rewind has to call the carousel directly.
-                        if (!carousel.PreviousRandom())
-                            errorSample?.Play();
+                        PreviousRandom();
                         return true;
 
                     case GlobalAction.ToggleBeatmapOptions:
@@ -1645,7 +1769,12 @@ namespace osu.Game.Screens.Select
         {
             // Torii: legacy song select uses osu!stable's collection dialog, acting on the selected beatmap.
             if (legacyUi.Value && this.IsCurrentScreen())
+            {
+                if (Beatmap.IsDefault)
+                    return;
+
                 legacyCollectionDialog.ShowFor(Beatmap.Value.BeatmapInfo);
+            }
             else
                 collectionsDialog?.Show();
         }
@@ -1691,14 +1820,30 @@ namespace osu.Game.Screens.Select
 
             if (hudProxy != null)
                 screenFrontLayer?.Release(hudProxy);
+            if (legacyTopProxy != null)
+                screenFrontLayer?.Release(legacyTopProxy);
 
-            legacyTopProxies?.Release(screenFrontLayer);
+            onlineLookupCancellation?.Cancel();
+            onlineLookupCancellation?.Dispose();
+            onlineLookupCancellation = null;
 
             base.Dispose(isDisposing);
             modSelectOverlayRegistration?.Dispose();
             legacyModSelectOverlayRegistration?.Dispose();
             legacyBeatmapOptionsRegistration?.Dispose();
             legacyCollectionDialogRegistration?.Dispose();
+        }
+
+        public void NextRandom()
+        {
+            if (!carousel.NextRandom())
+                errorSample?.Play();
+        }
+
+        public void PreviousRandom()
+        {
+            if (!carousel.PreviousRandom())
+                errorSample?.Play();
         }
 
         public void ToggleLegacyBeatmapOptions()
@@ -1725,11 +1870,11 @@ namespace osu.Game.Screens.Select
 
         public void ResetAllMods()
         {
-            if (legacyModSelectOverlay.State.Value == osu.Framework.Graphics.Containers.Visibility.Visible)
+            if (legacyModSelectOverlay.State.Value == Visibility.Visible)
                 legacyModSelectOverlay.ResetAllMods();
-            else if (modSelectOverlay.State.Value == osu.Framework.Graphics.Containers.Visibility.Visible)
+            else if (modSelectOverlay.State.Value == Visibility.Visible)
                 modSelectOverlay.DeselectAll();
-            else
+            else if (!Mods.Disabled)
                 Mods.Value = Array.Empty<Mod>();
         }
     }

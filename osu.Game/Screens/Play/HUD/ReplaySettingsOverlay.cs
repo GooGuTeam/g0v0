@@ -92,6 +92,14 @@ namespace osu.Game.Screens.Play.HUD
             base.LoadComplete();
 
             inputManager = GetContainingInputManager()!;
+
+            Expanded.BindValueChanged(expanded =>
+            {
+                // Release focus when collapsed (via mouse move, cog button, or HUD hide).
+                // Without doing this, UI controls may still accept keyboard input even after collapsing down.
+                if (!expanded.NewValue && inputManager.FocusedDrawable?.IsRootedAt(this) == true)
+                    GetContainingFocusManager()?.ChangeFocus(null);
+            });
         }
 
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) =>

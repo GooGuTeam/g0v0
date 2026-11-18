@@ -528,7 +528,10 @@ namespace osu.Game.Beatmaps.Formats
 
             int timeSignature = 4;
             if (split.Length >= 3)
-                timeSignature = split[2][0] == '0' ? 4 : Parsing.ParseInt(split[2]);
+            {
+                int rawTimeSignature = Parsing.ParseInt(split[2]);
+                timeSignature = rawTimeSignature == 0 ? 4 : rawTimeSignature;
+            }
 
             LegacySampleBank sampleSet = defaultSampleBank;
             if (split.Length >= 4)
@@ -578,7 +581,7 @@ namespace osu.Game.Beatmaps.Formats
                 // positive native/editor signature rather than dropping the entire timing line.
                 if (timeSignature > 0)
                     controlPoint.TimeSignature = new TimeSignature(timeSignature);
-                else
+                else if (timeSignature < 0)
                     controlPoint.LegacyTimeSignature = timeSignature;
                 controlPoint.OmitFirstBarLine = omitFirstBarSignature;
 

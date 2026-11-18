@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -88,6 +89,11 @@ namespace osu.Game.Overlays.Settings.Rendering
         Drawable CreatePinnedHeaderBackground();
 
         /// <summary>
+        /// Creates the search text box hosted by <see cref="CreateSearchBar"/>.
+        /// </summary>
+        SettingsSearchTextBox CreateSearchTextBox();
+
+        /// <summary>
         /// Creates the pinned search bar around <paramref name="textBox"/>, which must stay focusable and receive the typed text.
         /// </summary>
         Drawable CreateSearchBar(SettingsSearchTextBox textBox);
@@ -108,6 +114,11 @@ namespace osu.Game.Overlays.Settings.Rendering
         /// or <c>null</c> if the section should not be listed in the sidebar.
         /// </summary>
         ISettingsSidebarButton? CreateSidebarButton(SettingsSection section, Action action);
+
+        /// <summary>
+        /// Selects the sidebar button corresponding to the currently visible <paramref name="section"/>.
+        /// </summary>
+        ISettingsSidebarButton? SelectSidebarButton(IEnumerable<ISettingsSidebarButton> buttons, SettingsSection? section);
 
         #endregion
     }

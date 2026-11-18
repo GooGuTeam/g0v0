@@ -52,6 +52,8 @@ namespace osu.Game.Screens.Select
         protected Container Content { get; private set; } = null!;
         private IBindable<bool> legacySongSelect = null!;
 
+        protected bool IsLegacySongSelect => legacySongSelect.Value;
+
         protected bool IsLegacySongSelectAppearance => legacySongSelect.Value && (this is PanelBeatmap || this is PanelBeatmapStandalone);
 
         public Drawable Background
@@ -395,8 +397,8 @@ namespace osu.Game.Screens.Select
 
         private void updateXOffset(bool animated = true)
         {
-            // Torii: the legacy song select carousel places its panels itself, as stable's tree does.
-            if (IsLegacySongSelectAppearance)
+            // Torii: the legacy song select carousel places its panels (including group headers) itself, as stable's tree does.
+            if (legacySongSelect.Value)
             {
                 TopLevelContent.MoveToX(0, animated ? DURATION : 0, Easing.OutQuint);
                 return;

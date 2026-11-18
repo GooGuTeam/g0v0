@@ -53,7 +53,7 @@ namespace osu.Game.Screens.Menu
 
         public const float FADE_OUT_DURATION = 400;
 
-        public override bool HideOverlaysOnEnter => Buttons == null || Buttons.State == ButtonSystemState.Initial;
+        public override bool HideOverlaysOnEnter => legacyMenuEnabled?.Value == true ? legacyButtons?.IsIdle != false : (Buttons == null || Buttons.State == ButtonSystemState.Initial);
 
         public override bool AllowUserExit => false;
 
@@ -113,6 +113,10 @@ namespace osu.Game.Screens.Menu
         private OnlineMenuBanner onlineMenuBanner;
         private MenuTipDisplay menuTipDisplay;
         private FillFlowContainer bottomElementsFlow;
+        private Drawable seasonalLighting;
+        private Drawable kiaiFountains;
+
+        private bool backgroundReady;
 
         private Sample reappearSampleSwoosh;
 
@@ -150,7 +154,7 @@ namespace osu.Game.Screens.Menu
 
             AddRangeInternal(new[]
             {
-                SeasonalUIConfig.ENABLED ? new MainMenuSeasonalLighting() : Empty(),
+                seasonalLighting = SeasonalUIConfig.ENABLED ? new MainMenuSeasonalLighting() : Empty(),
                 new ScrollAdjustsVolume(),
                 buttonsContainer = new ParallaxContainer
                 {
@@ -215,6 +219,7 @@ namespace osu.Game.Screens.Menu
                     },
                     OnSettings = () => settings?.ToggleVisibility(),
                     OnBeatmapListing = () => beatmapListing?.ToggleVisibility(),
+                    OnWake = triggerFirstInteractionOverlays,
                 },
                 new DrawSizePreservingFillContainer
                 {
@@ -231,7 +236,7 @@ namespace osu.Game.Screens.Menu
                     Margin = new MarginPadding { Right = 15, Top = 5 }
                 },
                 // For now, this is too much alongside the seasonal lighting.
-                SeasonalUIConfig.ENABLED ? Empty() : new KiaiMenuFountains(),
+                kiaiFountains = SeasonalUIConfig.ENABLED ? Empty() : new KiaiMenuFountains(),
                 bottomElementsFlow = new FillFlowContainer
                 {
                     AutoSizeAxes = Axes.Both,
@@ -258,48 +263,51 @@ namespace osu.Game.Screens.Menu
                 holdToExitGameOverlay?.CreateProxy() ?? Empty()
             });
 
-            float baseDim = SeasonalUIConfig.ENABLED ? 0.84f : 1;
-
-            Buttons.StateChanged += state =>
+            Buttons.StateChanged += _ =>
             {
-                switch (state)
-                {
-                    case ButtonSystemState.Initial:
-                    case ButtonSystemState.Exit:
-                        ApplyToBackground(b => b.FadeColour(OsuColour.Gray(baseDim), 500, Easing.OutSine));
-                        onlineMenuBanner.State.Value = Visibility.Hidden;
-                        break;
-
-                    default:
-                        ApplyToBackground(b => b.FadeColour(OsuColour.Gray(baseDim * 0.8f), 500, Easing.OutSine));
-                        onlineMenuBanner.State.Value = Visibility.Visible;
-                        break;
-                }
+                if (!legacyMenuEnabled.Value && backgroundReady)
+                    updateBackgroundState();
             };
 
             Buttons.OnSettings = () => settings?.ToggleVisibility();
             Buttons.OnBeatmapListing = () => beatmapListing?.ToggleVisibility();
 
-            legacyButtons.StateChanged += state =>
+            legacyButtons.StateChanged += _ =>
             {
-                switch (state)
-                {
-                    case ButtonSystemState.Initial:
-                    case ButtonSystemState.Exit:
-                        ApplyToBackground(b => b.FadeColour(OsuColour.Gray(baseDim), 500, Easing.OutSine));
-                        onlineMenuBanner.State.Value = Visibility.Hidden;
-                        break;
-
-                    default:
-                        ApplyToBackground(b => b.FadeColour(OsuColour.Gray(baseDim * 0.8f), 500, Easing.OutSine));
-                        onlineMenuBanner.State.Value = Visibility.Visible;
-                        break;
-                }
+                if (legacyMenuEnabled.Value && backgroundReady)
+                    updateBackgroundState();
             };
 
             legacyMenuEnabled.BindValueChanged(onLegacyMenuChanged, true);
 
             reappearSampleSwoosh = audio.Samples.Get(@"Menu/reappear-swoosh");
+        }
+
+        private void updateBackgroundState()
+        {
+            float baseDim = SeasonalUIConfig.ENABLED ? 0.84f : 1;
+
+            if (legacyMenuEnabled.Value)
+            {
+                // LegacyButtonSystem applies its own 60% black dim overlay when active, matching stable's 40% brightness.
+                ApplyToBackground(b => b.FadeColour(Color4.White, 500, Easing.OutSine));
+                onlineMenuBanner.State.Value = Visibility.Hidden;
+                return;
+            }
+
+            switch (Buttons.State)
+            {
+                case ButtonSystemState.Initial:
+                case ButtonSystemState.Exit:
+                    ApplyToBackground(b => b.FadeColour(OsuColour.Gray(baseDim), 500, Easing.OutSine));
+                    onlineMenuBanner.State.Value = Visibility.Hidden;
+                    break;
+
+                default:
+                    ApplyToBackground(b => b.FadeColour(OsuColour.Gray(baseDim * 0.8f), 500, Easing.OutSine));
+                    onlineMenuBanner.State.Value = Visibility.Visible;
+                    break;
+            }
         }
 
         protected override void LoadComplete()
@@ -312,15 +320,21 @@ namespace osu.Game.Screens.Menu
         {
             bool legacy = e.NewValue;
 
+            Buttons.ReturnToTopOnIdle = !legacy;
+
+            buttonsContainer.ClearTransforms();
+            buttonsContainer.Position = Vector2.Zero;
             buttonsContainer.Alpha = legacy ? 0 : 1;
+
             bottomElementsFlow.Alpha = legacy ? 0 : 1;
             Buttons.Alpha = legacy ? 0 : 1;
 
-            songTicker.ClearTransforms();
-            songTicker.Alpha = legacy ? 0 : 1;
-
             sideFlashes.Alpha = legacy ? 0 : 1;
+            seasonalLighting.Alpha = legacy ? 0 : 1;
+            kiaiFountains.Alpha = legacy ? 0 : 1;
 
+            legacyButtons.ClearTransforms();
+            legacyButtons.Position = Vector2.Zero;
             legacyButtons.Alpha = legacy ? 1 : 0;
             legacyMusicControl.Alpha = legacy ? 1 : 0;
             legacySideFlashes.Alpha = legacy ? 1 : 0;
@@ -334,13 +348,23 @@ namespace osu.Game.Screens.Menu
                 logoProxy = null;
                 ownedLogo.ClearTransforms();
                 ownedLogo.Alpha = legacy ? 0 : 1;
-                Buttons.SetOsuLogo(legacy ? null : ownedLogo);
-                if (!legacy)
+
+                if (legacy)
                 {
+                    Buttons.SetOsuLogo(null);
+                    Buttons.State = ButtonSystemState.Initial;
+                    legacyButtons.SetIdle(false);
+                }
+                else
+                {
+                    attachLogoToButtons(ownedLogo);
                     logoProxy = ownedLogo.ProxyToContainer(logoTarget);
                     Buttons.State = ButtonSystemState.TopLevel;
                 }
             }
+
+            if (backgroundReady)
+                updateBackgroundState();
         }
 
         public void ReturnToOsuLogo()
@@ -354,6 +378,9 @@ namespace osu.Game.Screens.Menu
         public override void OnEntering(ScreenTransitionEvent e)
         {
             base.OnEntering(e);
+            backgroundReady = true;
+            updateBackgroundState();
+
             if (!legacyMenuEnabled.Value)
                 Buttons.FadeInFromZero(500);
             else
@@ -385,6 +412,19 @@ namespace osu.Game.Screens.Menu
         [CanBeNull]
         private ScheduledDelegate mobileDisclaimerSchedule;
 
+        private void attachLogoToButtons(OsuLogo logo)
+        {
+            Buttons.SetOsuLogo(logo);
+
+            // copy out old action to avoid accidentally capturing logo.Action in closure, causing a self-reference loop.
+            var previousAction = logo.Action;
+
+            // we want to hook into logo.Action to display certain overlays, but also preserve the return value of the old action.
+            // therefore pass the old action to onLogoClick, so that it can return that value.
+            // this ensures that the OsuLogo sample does not play when it is not desired.
+            logo.Action = () => legacyMenuEnabled.Value ? false : onLogoClick(previousAction);
+        }
+
         protected override void LogoArriving(OsuLogo logo, bool resuming)
         {
             base.LogoArriving(logo, resuming);
@@ -396,18 +436,19 @@ namespace osu.Game.Screens.Menu
                 logo.Alpha = 0;
                 logoTarget.Alpha = 0;
                 Buttons.SetOsuLogo(null);
+                logo.Action = () => false;
 
                 if (resuming)
                 {
                     legacyButtons.SetIdle(false);
                     this.FadeIn(FADE_IN_DURATION, Easing.OutQuint);
-                    buttonsContainer.MoveTo(new Vector2(0, 0), FADE_IN_DURATION, Easing.OutQuint);
-                    legacyButtons.MoveTo(new Vector2(0, 0), FADE_IN_DURATION, Easing.OutQuint);
+                    buttonsContainer.MoveTo(Vector2.Zero, FADE_IN_DURATION, Easing.OutQuint);
+                    legacyButtons.MoveTo(Vector2.Zero, FADE_IN_DURATION, Easing.OutQuint);
                 }
             }
             else
             {
-                Buttons.SetOsuLogo(logo);
+                attachLogoToButtons(logo);
 
                 logo.FadeColour(Color4.White, 100, Easing.OutQuint);
                 logo.FadeIn(100, Easing.OutQuint);
@@ -419,31 +460,29 @@ namespace osu.Game.Screens.Menu
                     Buttons.State = ButtonSystemState.TopLevel;
 
                     this.FadeIn(FADE_IN_DURATION, Easing.OutQuint);
-                    buttonsContainer.MoveTo(new Vector2(0, 0), FADE_IN_DURATION, Easing.OutQuint);
+                    buttonsContainer.MoveTo(Vector2.Zero, FADE_IN_DURATION, Easing.OutQuint);
+                    legacyButtons.ClearTransforms();
+                    legacyButtons.Position = Vector2.Zero;
 
                     sideFlashes.Delay(FADE_IN_DURATION).FadeIn(64, Easing.InQuint);
-                }
-                else
-                {
-                    // copy out old action to avoid accidentally capturing logo.Action in closure, causing a self-reference loop.
-                    var previousAction = logo.Action;
-
-                    // we want to hook into logo.Action to display certain overlays, but also preserve the return value of the old action.
-                    // therefore pass the old action to displayLogin, so that it can return that value.
-                    // this ensures that the OsuLogo sample does not play when it is not desired.
-                    logo.Action = () => onLogoClick(previousAction);
                 }
             }
         }
 
         private bool onLogoClick(Func<bool> originalAction)
         {
+            triggerFirstInteractionOverlays();
+            return originalAction?.Invoke() ?? false;
+        }
+
+        private void triggerFirstInteractionOverlays()
+        {
             if (showMobileDisclaimer.Value)
             {
                 mobileDisclaimerSchedule?.Cancel();
                 mobileDisclaimerSchedule = Scheduler.AddDelayed(() =>
                 {
-                    dialogOverlay.Push(new MobileDisclaimerDialog(() =>
+                    dialogOverlay?.Push(new MobileDisclaimerDialog(() =>
                     {
                         showMobileDisclaimer.Value = false;
                         displayLoginIfApplicable();
@@ -452,8 +491,6 @@ namespace osu.Game.Screens.Menu
             }
             else
                 displayLoginIfApplicable();
-
-            return originalAction.Invoke();
         }
 
         private void displayLoginIfApplicable()
@@ -539,9 +576,13 @@ namespace osu.Game.Screens.Menu
             }
             else
             {
+                legacyButtons.ClearTransforms();
+                legacyButtons.Position = Vector2.Zero;
                 menuTipDisplay.ShowNextTip();
                 bottomElementsFlow.FadeIn(1000, Easing.OutQuint);
             }
+
+            updateBackgroundState();
         }
 
         public override bool OnExiting(ScreenExitEvent e)
@@ -571,7 +612,7 @@ namespace osu.Game.Screens.Menu
                         this.Exit();
                     }, () =>
                     {
-                        holdToExitGameOverlay.Abort();
+                        holdToExitGameOverlay?.Abort();
                         Game.CancelRestartOnExit();
                     }));
                 }

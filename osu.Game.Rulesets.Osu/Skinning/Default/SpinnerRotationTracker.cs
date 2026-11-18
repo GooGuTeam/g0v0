@@ -68,6 +68,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
         private LegacySpinnerRotation? legacyRotation;
         private LegacySpinnerRotation.InputSample? legacySample;
         private float legacyRotationOrigin;
+        private double lastRotationTime = double.NegativeInfinity;
 
         protected override void Update()
         {
@@ -82,17 +83,24 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
             Rotation = (float)Interpolation.Damp(Rotation, currentRotation, 0.99, Math.Abs(Time.Elapsed));
         }
 
-        private void updateLegacyRotation()
+        internal void ProcessLegacyRotation(double? targetTime = null) => updateLegacyRotation(targetTime);
+
+        private void updateLegacyRotation(double? targetTime = null)
         {
             var spinner = drawableSpinner.HitObject;
 
             if (legacyRotation == null)
             {
-                legacyRotation = new LegacySpinnerRotation(spinner.StartTime, spinner.EndTime);
-                legacyRotationOrigin = Rotation;
+                legacyRotation = drawableSpinner.Result.LegacyRotation ??= new LegacySpinnerRotation(spinner.StartTime, spinner.EndTime);
+                legacyRotationOrigin = Rotation - (float)double.RadiansToDegrees(legacyRotation.VisualRotation);
             }
 
-            double time = Time.Current;
+            double time = targetTime ?? Time.Current;
+            bool isPaused = gameplayClock?.IsPaused.Value == true;
+            bool spunOut = LegacySpunOut || drawableSpinner.SpunOut;
+            LegacySpinnerRotation.InputSample? currentSample = mousePosition.HasValue || spunOut
+                ? new LegacySpinnerRotation.InputSample(legacyAngle(mousePosition), (Tracking && !isPaused) || spunOut, spunOut)
+                : null;
 
             if (time < legacyRotation.LastProcessedTime)
             {
@@ -102,15 +110,14 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
             }
             else
             {
-                double rate = gameplayClock?.GetTrueGameplayRate() ?? Clock.Rate;
+                double rate = gameplayClock?.GetTrueGameplayRate() ?? (Precision.AlmostEquals(Clock.Rate, 0) ? 1 : Clock.Rate);
+                LegacySpinnerRotation.InputSample? sampleForAdvance = legacySample == null || spunOut ? currentSample : legacySample;
 
                 // Each scorable frame uses the sample taken by the previous update, the latest one at or before that frame.
-                legacyRotation.Advance(time, rate, legacySample, frameTime => drawableSpinner.Result.History.ReportDelta(frameTime, 180));
+                legacyRotation.Advance(time, rate, sampleForAdvance, frameTime => drawableSpinner.Result.History.ReportDelta(frameTime, 180));
             }
 
-            legacySample = mousePosition.HasValue || LegacySpunOut
-                ? new LegacySpinnerRotation.InputSample(legacyAngle(mousePosition), Tracking, LegacySpunOut)
-                : null;
+            legacySample = currentSample;
 
             currentRotation = legacyRotationOrigin + (float)double.RadiansToDegrees(legacyRotation.VisualRotation);
         }
@@ -128,6 +135,36 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
 
         private void updateRotation()
         {
+            var spinner = drawableSpinner.HitObject;
+            var history = drawableSpinner.Result.History;
+            double time = Time.Current;
+            bool rewinding = gameplayClock?.IsRewinding == true || time < lastRotationTime || time < history.LastReportTime;
+
+            if (rewinding)
+            {
+                float previousAccumulated = history.TotalAccumulatedRotation;
+                history.RewindTo(time);
+                currentRotation += history.TotalAccumulatedRotation - previousAccumulated;
+
+                if (time <= spinner.StartTime)
+                {
+                    currentRotation = 0;
+                    rotationTransferred = false;
+                    lastAngle = null;
+                }
+                else if (mousePosition is Vector2 rewindPos)
+                {
+                    lastAngle = -float.RadiansToDegrees(MathF.Atan2(rewindPos.X - DrawSize.X / 2, rewindPos.Y - DrawSize.Y / 2));
+                }
+                else
+                {
+                    lastAngle = null;
+                }
+
+                lastRotationTime = time;
+                return;
+            }
+
             if (mousePosition is Vector2 pos)
             {
                 float thisAngle = -float.RadiansToDegrees(MathF.Atan2(pos.X - DrawSize.X / 2, pos.Y - DrawSize.Y / 2));
@@ -142,10 +179,12 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
 
                 // Stable initializes the angle on the first input at or after the spinner's start.
                 // The cursor approach during fade-in must not contribute a scoring delta.
-                lastAngle = drawableSpinner.HitObject.LegacySpinnerScoring && Time.Current < drawableSpinner.HitObject.StartTime
+                lastAngle = spinner.LegacySpinnerScoring && time < spinner.StartTime
                     ? null
                     : thisAngle;
             }
+
+            lastRotationTime = time;
         }
 
         /// <summary>
@@ -181,13 +220,17 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
             IsSpinning.Value = false;
             mousePosition = null;
             lastAngle = null;
-            currentRotation = 0;
-            Rotation = 0;
-            rotationTransferred = false;
-            LegacySpunOut = false;
+
+            float existingRotation = drawableSpinner.Result?.History.TotalAccumulatedRotation ?? 0;
+            currentRotation = existingRotation;
+            Rotation = existingRotation;
+            rotationTransferred = existingRotation != 0;
+
+            LegacySpunOut = drawableSpinner.SpunOut && drawableSpinner.HitObject?.ClassicSpinnerBehaviour == true;
             legacyRotation = null;
             legacySample = null;
             legacyRotationOrigin = 0;
+            lastRotationTime = double.NegativeInfinity;
         }
 
         protected override void Dispose(bool isDisposing)

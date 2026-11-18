@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
@@ -57,11 +58,16 @@ namespace osu.Game.Screens.Play
         private ISkinSource skin { get; set; } = null!;
 
         [Resolved]
-        private SkinManager skins { get; set; } = null!;
+        private SkinManager? skins { get; set; }
+
+        [Resolved]
+        private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
+        private ISkin? classicFallback => skins?.DefaultClassicSkin ?? defaultClassicSkin;
 
         private readonly IBindable<Period?> currentPeriod = new Bindable<Period?>();
 
-        private Container arrows = null!;
+        private Container<Sprite> arrows = null!;
         private Sprite? sectionPass;
         private Sprite? sectionFail;
         private SkinnableSound sectionPassSample = null!;
@@ -93,7 +99,7 @@ namespace osu.Game.Screens.Play
 
             InternalChildren = new Drawable[]
             {
-                arrows = new Container
+                arrows = new Container<Sprite>
                 {
                     RelativeSizeAxes = Axes.Both,
                     Alpha = 0,
@@ -105,25 +111,12 @@ namespace osu.Game.Screens.Play
             if (!allowWarningArrows)
                 return;
 
-            // stable only tints the old play-warningarrow, and only for skins made for its 2.0 layout.
-            var arrowTexture = skin.GetStableTexture(@"arrow-warning");
-            var arrowColour = Color4.White;
-
-            if (arrowTexture == null)
+            arrows.Children = new[]
             {
-                arrowTexture = skin.GetStableTexture(@"play-warningarrow") ?? skins.DefaultClassicSkin.GetStableTexture(@"play-warningarrow");
-
-                decimal? version = skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value;
-                if (version is not decimal v || v > 1)
-                    arrowColour = Color4.Red;
-            }
-
-            arrows.Children = new Drawable[]
-            {
-                createArrow(Anchor.TopLeft, arrowTexture, arrowColour, false),
-                createArrow(Anchor.BottomLeft, arrowTexture, arrowColour, false),
-                createArrow(Anchor.TopRight, arrowTexture, arrowColour, true),
-                createArrow(Anchor.BottomRight, arrowTexture, arrowColour, true),
+                createArrow(Anchor.TopLeft, null, Color4.White, false),
+                createArrow(Anchor.BottomLeft, null, Color4.White, false),
+                createArrow(Anchor.TopRight, null, Color4.White, true),
+                createArrow(Anchor.BottomRight, null, Color4.White, true),
             };
 
             AddRangeInternal(new Drawable[]
@@ -131,11 +124,15 @@ namespace osu.Game.Screens.Play
                 sectionPass = createSectionSprite(@"section-pass"),
                 sectionFail = createSectionSprite(@"section-fail"),
             });
+
+            updateSkin();
         }
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
+
+            skin.SourceChanged += onSkinChanged;
 
             if (allowWarningArrows)
             {
@@ -241,13 +238,54 @@ namespace osu.Game.Screens.Play
             }
         }
 
+        private void onSkinChanged() => Scheduler.AddOnce(updateSkin);
+
+        private void updateSkin()
+        {
+            if (!allowWarningArrows)
+                return;
+
+            // stable only tints the old play-warningarrow, and only for skins made for its 2.0 layout.
+            var arrowTexture = skin.GetStableTexture(@"arrow-warning");
+            var arrowColour = Color4.White;
+
+            if (arrowTexture == null)
+            {
+                arrowTexture = skin.GetStableTexture(@"play-warningarrow") ?? classicFallback?.GetStableTexture(@"play-warningarrow");
+
+                decimal? version = skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value;
+                if (version is not decimal v || v > 1)
+                    arrowColour = Color4.Red;
+            }
+
+            foreach (var arrow in arrows)
+            {
+                arrow.Texture = arrowTexture;
+                arrow.Colour = arrowColour;
+            }
+
+            if (sectionPass != null)
+                sectionPass.Texture = skin.GetStableTexture(@"section-pass") ?? classicFallback?.GetStableTexture(@"section-pass");
+
+            if (sectionFail != null)
+                sectionFail.Texture = skin.GetStableTexture(@"section-fail") ?? classicFallback?.GetStableTexture(@"section-fail");
+        }
+
         private Sprite createSectionSprite(string name) => new Sprite
         {
             Anchor = Anchor.Centre,
             Origin = Anchor.Centre,
-            Texture = skin.GetStableTexture(name) ?? skins.DefaultClassicSkin.GetStableTexture(name),
+            Texture = skin.GetStableTexture(name) ?? classicFallback?.GetStableTexture(name),
             Alpha = 0,
         };
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinChanged;
+        }
 
         private static Sprite createArrow(Anchor corner, Texture? texture, Color4 colour, bool flipped) => new Sprite
         {

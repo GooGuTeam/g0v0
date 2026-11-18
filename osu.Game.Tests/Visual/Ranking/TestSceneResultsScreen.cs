@@ -92,7 +92,11 @@ namespace osu.Game.Tests.Visual.Ranking
         [SetUpSteps]
         public void SetUpSteps()
         {
-            AddStep("use original results layout", () => config.SetValue(OsuSetting.UseV2ResultsScreen, false));
+            AddStep("use original results layout", () =>
+            {
+                config.SetValue(OsuSetting.UseV2ResultsScreen, false);
+                config.SetValue(OsuSetting.ToriiStableResults, false);
+            });
             AddToggleStep("toggle legacy classic skin", v =>
             {
                 skins?.CurrentSkinInfo.Value = v ? skins.DefaultClassicSkin.SkinInfo : skins.CurrentSkinInfo.Default;
@@ -109,6 +113,27 @@ namespace osu.Game.Tests.Visual.Ranking
             AddAssert("modern overview disabled", () => !screen.IsV2Overview);
             AddAssert("legacy back exits at top", () => !screen.OnBackButton());
             AddStep("reset legacy setting", () => config.SetValue(OsuSetting.ToriiStableResults, false));
+        }
+
+        [Test]
+        public void TestLiveLegacyResultsToggle()
+        {
+            TestResultsScreen screen = null;
+            loadResultsScreen(() => screen = createResultsScreen());
+
+            AddStep("enable legacy results live", () => config.SetValue(OsuSetting.ToriiStableResults, true));
+            AddUntilStep("legacy panel loaded", () => screen.ChildrenOfType<LegacyRankingPanel>().Any(p => p.IsLoaded && p.IsPresent));
+            AddAssert("original panels hidden", () => !screen.ChildrenOfType<ScorePanelList>().Single().IsPresent);
+
+            AddStep("enable v2 while legacy enabled", () => config.SetValue(OsuSetting.UseV2ResultsScreen, true));
+            AddAssert("legacy takes precedence over v2", () => screen.ChildrenOfType<LegacyRankingOverlay>().Single().IsPresent);
+
+            AddStep("disable legacy results live", () => config.SetValue(OsuSetting.ToriiStableResults, false));
+            AddUntilStep("v2 panel shown", () => screen.ChildrenOfType<V2ResultsPanel>().Any(p => p.IsLoaded && p.IsPresent && p.Parent?.IsPresent == true));
+            AddAssert("legacy overlay hidden", () => !screen.ChildrenOfType<LegacyRankingOverlay>().Single().IsPresent);
+
+            AddStep("disable v2 results live", () => config.SetValue(OsuSetting.UseV2ResultsScreen, false));
+            AddAssert("original panels restored", () => screen.ChildrenOfType<ScorePanelList>().Single().IsPresent);
         }
 
         /// <summary>
@@ -137,6 +162,7 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("legacy panel loaded", () => this.ChildrenOfType<LegacyRankingPanel>().Any(p => p.IsLoaded));
             AddStep("note time", () => loadedTime = Time.Current);
             AddUntilStep("let the entrance play out", () => Time.Current - loadedTime > 7500);
+            AddStep("reset legacy setting", () => config.SetValue(OsuSetting.ToriiStableResults, false));
         }
 
         /// <summary>
@@ -171,6 +197,7 @@ namespace osu.Game.Tests.Visual.Ranking
             double shownTime = 0;
             AddStep("note time", () => shownTime = Time.Current);
             AddUntilStep("let the chart sweep in", () => Time.Current - shownTime > 2500);
+            AddStep("reset legacy setting", () => config.SetValue(OsuSetting.ToriiStableResults, false));
         }
 
         [Test]

@@ -8,11 +8,13 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Input.Bindings;
 using osu.Game.Rulesets;
 using osu.Game.Screens.Select;
 using osuTK;
@@ -26,6 +28,26 @@ namespace osu.Game.Skinning.Select
         private const float menu_width = 448;
 
         protected override bool DimMainContent => false;
+
+        protected override bool BlockNonPositionalInput => false;
+
+        public override bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
+        {
+            if (e.Repeat)
+                return false;
+
+            switch (e.Action)
+            {
+                case GlobalAction.ToggleModSelection:
+                case GlobalAction.SelectNextRandom:
+                case GlobalAction.SelectPreviousRandom:
+                case GlobalAction.ToggleBeatmapOptions:
+                    Hide();
+                    return false;
+            }
+
+            return base.OnPressed(e);
+        }
 
         [BackgroundDependencyLoader]
         private void load(RulesetStore rulesets, Bindable<RulesetInfo> ruleset, ISkinSource skin, SkinManager skins)

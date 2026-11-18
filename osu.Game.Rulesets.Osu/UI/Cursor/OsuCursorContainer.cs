@@ -58,7 +58,18 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
         {
             base.LoadComplete();
 
-            showTrail.BindValueChanged(v => cursorTrail.FadeTo(v.NewValue ? 1 : 0, 200), true);
+            showTrail.BindValueChanged(v =>
+            {
+                if (v.NewValue)
+                {
+                    (cursorTrail.Drawable as CursorTrail)?.ResetTime();
+                    cursorTrail.FadeTo(1, 200);
+                }
+                else
+                {
+                    cursorTrail.FadeTo(0, 200).OnComplete(_ => (cursorTrail.Drawable as CursorTrail)?.ResetTime());
+                }
+            }, true);
 
             ActiveCursor.CursorScale.BindValueChanged(e =>
             {

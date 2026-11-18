@@ -157,8 +157,9 @@ namespace osu.Game.Screens.Select
         {
             base.UpdateAfterChildren();
 
-            // Move the count pill in the opposite direction to keep it pinned to the screen regardless of the X position of TopLevelContent.
-            countPill.X = -TopLevelContent.X;
+            // Move the count pill in the opposite direction to keep it pinned to the screen regardless of the X position of TopLevelContent
+            // (and in legacy song select, compensate for the 699px panel width extending past the right edge of the carousel).
+            countPill.X = IsLegacySongSelect ? -Math.Max(0, X) - TopLevelContent.X : -TopLevelContent.X;
         }
 
         public override MenuItem[] ContextMenuItems

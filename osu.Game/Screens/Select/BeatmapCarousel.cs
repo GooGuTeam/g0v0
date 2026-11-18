@@ -979,7 +979,10 @@ namespace osu.Game.Screens.Select
 
         public void Filter(FilterCriteria criteria, bool showLoadingImmediately = false)
         {
-            bool resetDisplay = grouping.BeatmapSetsGroupedTogether != BeatmapCarouselFilterGrouping.ShouldGroupBeatmapsTogether(criteria);
+            bool legacy = legacySongSelect?.Value == true;
+            bool shouldGroup = BeatmapCarouselFilterGrouping.ShouldGroupBeatmapsTogether(criteria);
+            bool resetDisplay = grouping.BeatmapSetsGroupedTogether != (!legacy && shouldGroup)
+                                || grouping.LegacySetsCollapsed != (legacy && shouldGroup);
 
             Criteria = criteria;
 
@@ -992,14 +995,19 @@ namespace osu.Game.Screens.Select
                 loading.Show();
             }, showLoadingImmediately ? 0 : 250);
 
-            FilterAsync(resetDisplay).ContinueWith(_ => Schedule(() =>
+            FilterAsync(resetDisplay).ContinueWith(t =>
             {
-                loadingDebounce?.Cancel();
-                loadingDebounce = null;
+                _ = t.Exception;
 
-                Scroll.FadeColour(OsuColour.Gray(1f), 500, Easing.OutQuint);
-                loading.Hide();
-            }));
+                Schedule(() =>
+                {
+                    loadingDebounce?.Cancel();
+                    loadingDebounce = null;
+
+                    Scroll.FadeColour(OsuColour.Gray(1f), 500, Easing.OutQuint);
+                    loading.Hide();
+                });
+            });
         }
 
         protected override Task<IEnumerable<CarouselItem>> FilterAsync(bool clearExistingPanels = false)
@@ -1194,7 +1202,7 @@ namespace osu.Game.Screens.Select
                 previouslyVisitedRandomBeatmaps.Add(beatmapBefore.Beatmap);
             }
 
-            if (grouping.BeatmapSetsGroupedTogether)
+            if (grouping.BeatmapSetsGroupedTogether || grouping.LegacySetsCollapsed)
                 success = nextRandomSet();
             else
                 success = nextRandomBeatmap();
@@ -1252,6 +1260,9 @@ namespace osu.Game.Screens.Select
                 }
 
                 case RandomSelectAlgorithm.Random:
+                    if (visibleBeatmaps.Count == 0)
+                        return false;
+
                     beatmap = visibleBeatmaps.ElementAt(RNG.Next(visibleBeatmaps.Count));
                     break;
 
@@ -1271,7 +1282,9 @@ namespace osu.Game.Screens.Select
                 //
                 // If this becomes an issue, we could either store a mapping, or run the random algorithm many times
                 // using the `SetItems` method until we get a group HIT.
-                ? groupItems.Select(i => i.Model).OfType<GroupedBeatmapSet>().ToArray()
+                ? (grouping.BeatmapSetsGroupedTogether
+                    ? groupItems.Select(i => i.Model).OfType<GroupedBeatmapSet>().ToArray()
+                    : grouping.SetItems.Keys.Where(s => EqualityComparer<GroupDefinition?>.Default.Equals(s.Group, ExpandedGroup)).ToArray())
                 // This is the fastest way to retrieve sets for randomisation.
                 : grouping.SetItems.Keys;
 
@@ -1300,6 +1313,9 @@ namespace osu.Game.Screens.Select
                 }
 
                 case RandomSelectAlgorithm.Random:
+                    if (visibleGroupedSets.Count == 0)
+                        return false;
+
                     set = visibleGroupedSets.ElementAt(RNG.Next(visibleGroupedSets.Count));
                     break;
 

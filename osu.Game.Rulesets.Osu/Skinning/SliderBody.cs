@@ -93,7 +93,7 @@ namespace osu.Game.Rulesets.Osu.Skinning
         {
             InternalChild = path = CreateSliderPath().With(p =>
             {
-                p.Position = path?.Position ?? Vector2.Zero;
+                p.Position = Vector2.Zero;
                 p.PathRadius = path?.PathRadius ?? 10;
                 p.AccentColour = path?.AccentColour ?? Color4.White;
                 p.BorderColour = path?.BorderColour ?? Color4.White;

@@ -30,7 +30,15 @@ namespace osu.Game.Screens.Ranking
         public Action? RankingAction { get; init; }
         public Action? DetailsAction { get; init; }
         public Action? RetryAction { get; init; }
-        public ScoreInfo? Score { get; init; }
+
+        public readonly Bindable<ScoreInfo?> SelectedScore = new Bindable<ScoreInfo?>();
+
+        public ScoreInfo? Score
+        {
+            get => SelectedScore.Value;
+            init => SelectedScore.Value = value;
+        }
+
         public bool AllowWatchingReplay { get; init; }
 
         public readonly BindableBool DetailsVisible = new BindableBool();
@@ -60,7 +68,7 @@ namespace osu.Game.Screens.Ranking
         private const int padding = 60;
         private const float delay_per_button = 30;
 
-        // ���� ScreenFooter���ر����ֲü�����Ϊ��ťԲ�ǺͶ����ᳬ�� 50px �ĵ����߶�
+        // Match ScreenFooter: disable subtree masking so button rounded corners and animations can extend past the 50px bar height.
         public override bool UpdateSubTreeMasking() => false;
 
         private FillFlowContainer<ScreenFooterButton> buttonsFlow = null!;
@@ -68,6 +76,8 @@ namespace osu.Game.Screens.Ranking
         private bool screenshotUploadMode;
 
         private readonly Bindable<DownloadState> replayState = new Bindable<DownloadState>();
+        private ScoreDownloadTracker? downloadTracker;
+        private ScoreInfo? initialScore;
         private bool exportWhenDownloaded;
         private ScreenFooterButton videoButton = null!;
         private bool exportVideoWhenDownloaded;
@@ -85,7 +95,7 @@ namespace osu.Game.Screens.Ranking
         private ReplayVideoExporter? videoExporter { get; set; }
 
         // Autoplay scores keep no replay, so their video is generated again by the autoplay mod.
-        private bool isAutoplay => Score?.Mods.OfType<ModAutoplay>().Any() == true;
+        private bool isAutoplay => Score?.BeatmapInfo != null && Score.Mods.OfType<ModAutoplay>().Any();
 
         [Resolved]
         private OverlayColourProvider? colourProvider { get; set; }
@@ -174,13 +184,13 @@ namespace osu.Game.Screens.Ranking
 
             InternalChildren = new Drawable[]
             {
-                // 1. ������ɫ�ĵף����� ScreenFooter��
+                // 1. Dark footer background (matching ScreenFooter)
                 new Box
                 {
                     RelativeSizeAxes = Axes.Both,
                     Colour = colourProvider?.Background5 ?? Colour4.FromHex("#1C2125"),
                 },
-                // 2. ��ť��������λ�á������ȫ���� ScreenFooter��
+                // 2. Button container (position and spacing matching ScreenFooter)
                 new Container
                 {
                     Anchor = Anchor.BottomLeft,
@@ -198,7 +208,7 @@ namespace osu.Game.Screens.Ranking
                         AutoSizeAxes = Axes.Both,
                     }
                 },
-                // 3. ���ذ�ť����ȫ���� ScreenFooter��
+                // 3. Back button (matching ScreenFooter)
                 BackButton = new ScreenBackButton
                 {
                     Margin = new MarginPadding { Bottom = OsuGame.SCREEN_EDGE_MARGIN, Left = OsuGame.SCREEN_EDGE_MARGIN },
@@ -206,14 +216,14 @@ namespace osu.Game.Screens.Ranking
                     Origin = Anchor.BottomLeft,
                     Action = () => BackAction?.Invoke(),
                 },
-                // 4. ȫ�� ESC ���ؼ�����������ȫ���� ScreenFooter��
+                // 4. Global Escape back receptor (matching ScreenFooter)
                 new ScreenFooter.BackReceptor
                 {
                     OnBackPressed = () => BackButton.TriggerClick(),
                 }
             };
 
-            // ���Ӱ�ť������ ScreenFooter һģһ������������볡����
+            // Add buttons with the same staggered entrance animation as ScreenFooter
             for (int i = 0; i < buttons.Length; i++)
             {
                 var button = buttons[i];
@@ -227,14 +237,14 @@ namespace osu.Game.Screens.Ranking
                 button.OnLoadComplete += _ => button.AppearFromBottom(index * delay_per_button);
             }
 
-            if (Score != null && AllowWatchingReplay)
-                AddInternal(new ScoreDownloadTracker(Score) { State = { BindTarget = replayState } });
+            initialScore = Score;
         }
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
-            replayState.BindValueChanged(_ => updateReplayState(), true);
+            replayState.BindValueChanged(_ => updateReplayState());
+            SelectedScore.BindValueChanged(onSelectedScoreChanged, true);
             DetailsVisible.BindValueChanged(visible =>
             {
                 DetailsButton.Text = visible.NewValue ? ResultsScreenStrings.ScoreOverview : ResultsScreenStrings.MoreInfo;
@@ -247,11 +257,38 @@ namespace osu.Game.Screens.Ranking
             }, true);
         }
 
+        private void onSelectedScoreChanged(ValueChangedEvent<ScoreInfo?> scoreChanged)
+        {
+            initialScore ??= scoreChanged.NewValue;
+            exportWhenDownloaded = false;
+            exportVideoWhenDownloaded = false;
+
+            if (downloadTracker != null)
+            {
+                replayState.UnbindFrom(downloadTracker.State);
+                RemoveInternal(downloadTracker, true);
+                downloadTracker = null;
+            }
+
+            replayState.Value = DownloadState.Unknown;
+
+            bool canWatchSelected = AllowWatchingReplay || (initialScore != null && scoreChanged.NewValue != null && !scoreChanged.NewValue.Equals(initialScore));
+
+            if (scoreChanged.NewValue != null && canWatchSelected)
+            {
+                AddInternal(downloadTracker = new ScoreDownloadTracker(scoreChanged.NewValue));
+                ((IBindable<DownloadState>)replayState).BindTo(downloadTracker.State);
+            }
+
+            updateReplayState();
+        }
+
         private void updateReplayState()
         {
+            bool canWatchSelected = AllowWatchingReplay || (initialScore != null && Score != null && !Score.Equals(initialScore));
             bool local = replayState.Value == DownloadState.LocallyAvailable;
             bool busy = replayState.Value is DownloadState.Downloading or DownloadState.Importing;
-            bool available = AllowWatchingReplay && Score != null && (local || Score.HasOnlineReplay);
+            bool available = canWatchSelected && Score != null && (local || Score.HasOnlineReplay);
 
             if (replayState.Value == DownloadState.NotDownloaded)
             {

@@ -67,7 +67,22 @@ namespace osu.Game.Screens.Select
         // dropdowns (0.98) and small stat lines (1) above that, so these are drawn through proxies in the game's front layer.
         private LegacyTopDecoration decoration = null!;
         private LegacyBeatmapInfoPanel infoPanel = null!;
-        private ScreenFrontLayer.ProxySet frontProxies = null!;
+        private Container proxyHome = null!;
+        private Drawable[]? frontProxies;
+        private bool holdInFrontLayer = true;
+
+        public bool HoldInFrontLayer
+        {
+            get => holdInFrontLayer;
+            set
+            {
+                if (holdInFrontLayer == value)
+                    return;
+
+                holdInFrontLayer = value;
+                updateFrontLayer();
+            }
+        }
 
         [Resolved(CanBeNull = true)]
         private ScreenFrontLayer? frontLayer { get; set; }
@@ -176,17 +191,32 @@ namespace osu.Game.Screens.Select
                     Position = new Vector2(-220, 54) * 1.6f,
                     Current = { BindTarget = FilterControl.SearchQuery },
                 },
+                proxyHome = new Container
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Depth = -10,
+                },
             };
 
             rebuildTopLayers();
 
-            frontProxies = new ScreenFrontLayer.ProxySet(
-                (decoration, ScreenFrontLayer.Depths.SELECTION_MODE),
-                (groupDropdown, ScreenFrontLayer.Depths.TOP_CONTROLS),
-                (sortDropdown, ScreenFrontLayer.Depths.TOP_CONTROLS),
-                (infoPanel.StatsLine, ScreenFrontLayer.Depths.TOP_CONTROLS));
+            frontProxies = new[]
+            {
+                createProxy(decoration, ScreenFrontLayer.Depths.SELECTION_MODE),
+                createProxy(groupDropdown, ScreenFrontLayer.Depths.TOP_CONTROLS),
+                createProxy(sortDropdown, ScreenFrontLayer.Depths.TOP_CONTROLS),
+                createProxy(infoPanel.StatsLine, ScreenFrontLayer.Depths.TOP_CONTROLS),
+            };
+            proxyHome.AddRange(frontProxies);
 
             searchBackground.Texture = skins.DefaultClassicSkin.GetStableTexture(@"menu-button-background");
+
+            static Drawable createProxy(Drawable original, float depth)
+            {
+                var proxy = original.CreateProxy();
+                proxy.Depth = depth;
+                return proxy;
+            }
         }
 
         protected override void LoadComplete()
@@ -195,7 +225,7 @@ namespace osu.Game.Screens.Select
 
             // rearmar las capas songselect-top cuando cambia el skin asi un cambio en vivo actualiza el
             // panel al toque (la decoracion se refresca sola con su propio handler de SourceChanged).
-            skin.SourceChanged += rebuildTopLayers;
+            skin.SourceChanged += onSkinChanged;
 
             // SongSelection.ShowSearch / the search reset: 300ms (fade) and 200ms (move) while searching, 200ms back.
             searchQuery = FilterControl.SearchQuery.GetBoundCopy();
@@ -208,6 +238,8 @@ namespace osu.Game.Screens.Select
             }, true);
             searchBackground.FinishTransforms();
         }
+
+        private void onSkinChanged() => Scheduler.AddOnce(rebuildTopLayers);
 
         /// <summary>
         /// rearma las dos capas apiladas del songselect-top, como stable:
@@ -237,18 +269,31 @@ namespace osu.Game.Screens.Select
             AddRangeInternal(topLayers);
         }
 
+        private void updateFrontLayer()
+        {
+            if (frontLayer == null || frontProxies == null)
+                return;
+
+            foreach (var proxy in frontProxies)
+                frontLayer.Hold(proxy, holdInFrontLayer, proxyHome);
+        }
+
         protected override void Update()
         {
             base.Update();
-            frontProxies.Update(frontLayer);
+            updateFrontLayer();
         }
 
         protected override void Dispose(bool isDisposing)
         {
-            frontProxies?.Release(frontLayer);
+            if (frontProxies != null && frontLayer != null)
+            {
+                foreach (var proxy in frontProxies)
+                    frontLayer.Release(proxy);
+            }
 
             if (skin.IsNotNull())
-                skin.SourceChanged -= rebuildTopLayers;
+                skin.SourceChanged -= onSkinChanged;
 
             base.Dispose(isDisposing);
         }

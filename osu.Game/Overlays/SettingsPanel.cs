@@ -140,7 +140,7 @@ namespace osu.Game.Overlays
                     RelativeSizeAxes = Axes.Both,
                     ExpandableHeader = CreateHeader(),
                     SelectedSection = { BindTarget = CurrentSection },
-                    FixedHeader = Renderer.CreateSearchBar((SettingsSearchTextBox)(SearchTextBox = new SettingsSearchTextBox())),
+                    FixedHeader = Renderer.CreateSearchBar((SettingsSearchTextBox)(SearchTextBox = Renderer.CreateSearchTextBox())),
                     Footer = CreateFooter().With(f => f.Alpha = 0)
                 }
             });
@@ -270,7 +270,7 @@ namespace osu.Game.Overlays
                 {
                     selectedSidebarButton?.Selected = false;
 
-                    selectedSidebarButton = Sidebar.Children.OfType<ISettingsSidebarButton>().FirstOrDefault(b => b.Section == section.NewValue);
+                    selectedSidebarButton = Renderer.SelectSidebarButton(Sidebar.Children.OfType<ISettingsSidebarButton>(), section.NewValue);
 
                     selectedSidebarButton?.Selected = true;
                 }, true);
@@ -312,6 +312,8 @@ namespace osu.Game.Overlays
 
             public SettingsSectionsContainer(SettingsFlyoutLayer flyoutLayer)
             {
+                flyoutLayer.RelativeSizeAxes = Axes.X;
+                flyoutLayer.Masking = true;
                 AddInternal(FlyoutLayer = flyoutLayer);
             }
 
@@ -343,6 +345,10 @@ namespace osu.Game.Overlays
 
                 // no null check because the usage of this class is strict
                 HeaderBackground!.Alpha = -ExpandableHeader!.Y / ExpandableHeader.LayoutSize.Y;
+
+                float flyoutTop = FixedHeader != null ? Math.Max(0, FixedHeader.Y + FixedHeader.LayoutSize.Y) : 0;
+                FlyoutLayer.Y = flyoutTop;
+                FlyoutLayer.Height = Math.Max(0, DrawHeight - flyoutTop);
             }
         }
     }

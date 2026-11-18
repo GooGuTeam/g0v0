@@ -345,6 +345,18 @@ namespace osu.Game.Screens.Select
                 difficultyStatisticsDisplay.AccentColour = col;
             }
 
+            protected override void Dispose(bool isDisposing)
+            {
+                base.Dispose(isDisposing);
+
+                cancellationSource?.Cancel();
+                cancellationSource?.Dispose();
+                cancellationSource = null;
+
+                settingChangeTracker?.Dispose();
+                settingChangeTracker = null;
+            }
+
             private partial class MapperLinkContainer : OsuHoverContainer
             {
                 [BackgroundDependencyLoader]

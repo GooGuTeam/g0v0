@@ -104,7 +104,12 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
                 oversizedRenderer.Alpha = rendered ? 1 : 0;
                 Path.Alpha = rendered ? 0 : 1;
 
-                if (rendered) return;
+                if (rendered)
+                {
+                    Path.Scale = Vector2.One;
+                    Path.Position = Vector2.Zero;
+                    return;
+                }
             }
             else
             {

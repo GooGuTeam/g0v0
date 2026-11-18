@@ -43,7 +43,10 @@ namespace osu.Game.Rulesets.Osu.Mods
             {
                 // Sliders retain their default TimeFadeIn to match Stable
                 if (osuObject is not Slider)
-                    osuObject.TimeFadeIn = osuObject.TimePreempt * FADE_IN_DURATION_MULTIPLIER;
+                {
+                    double fadeIn = osuObject.TimePreempt * FADE_IN_DURATION_MULTIPLIER;
+                    osuObject.TimeFadeIn = double.IsNaN(fadeIn) ? 0 : Math.Max(0, fadeIn);
+                }
 
                 foreach (var nested in osuObject.NestedHitObjects.OfType<OsuHitObject>())
                     applyFadeInAdjustment(nested);
@@ -166,10 +169,12 @@ namespace osu.Game.Rulesets.Osu.Mods
             static (double fadeStartTime, double fadeDuration) getParameters(OsuHitObject hitObject)
             {
                 double fadeOutStartTime = hitObject.StartTime - hitObject.TimePreempt + hitObject.TimeFadeIn;
-                double fadeOutDuration = hitObject.TimePreempt * FADE_OUT_DURATION_MULTIPLIER;
+                double rawFadeOutDuration = hitObject.TimePreempt * FADE_OUT_DURATION_MULTIPLIER;
+                double fadeOutDuration = double.IsNaN(rawFadeOutDuration) ? 0 : Math.Max(0, rawFadeOutDuration);
 
                 // new duration from completed fade in to end (before fading out)
-                double longFadeDuration = hitObject.GetEndTime() - fadeOutStartTime;
+                double rawLongFadeDuration = hitObject.GetEndTime() - fadeOutStartTime;
+                double longFadeDuration = double.IsNaN(rawLongFadeDuration) ? 0 : Math.Max(0, rawLongFadeDuration);
 
                 switch (hitObject)
                 {
@@ -188,7 +193,8 @@ namespace osu.Game.Rulesets.Osu.Mods
         internal static (double StartTime, double Duration) GetTickFadeOutParameters(SliderTick tick, double fadeInDuration)
         {
             // Match the end of the span-specific fade-in, capped to the final second before the tick.
-            double duration = Math.Min(tick.TimePreempt - fadeInDuration, 1000);
+            double rawDuration = tick.TimePreempt - fadeInDuration;
+            double duration = double.IsNaN(rawDuration) ? 0 : Math.Clamp(rawDuration, 0, 1000);
             return (tick.StartTime - duration, duration);
         }
 

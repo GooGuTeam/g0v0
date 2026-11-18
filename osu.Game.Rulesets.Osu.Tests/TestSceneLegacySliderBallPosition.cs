@@ -79,9 +79,9 @@ namespace osu.Game.Rulesets.Osu.Tests
             AddStep("show corrected real position", () => showPreviousFmSample = false);
             AddWaitStep("settle corrected position", 2);
             AddAssert("real field position matches stable", () => this.ChildrenOfType<DrawableSlider>().All(s =>
-                (s.Ball.Position + s.HitObject.Position - new Vector2(216, 104)).Length < 0.001f));
+                (s.Ball.Position + s.HitObject.Position - new Vector2(255, 193)).Length < 0.001f));
             AddAssert("screen centre matches field position", () => this.ChildrenOfType<DrawableSlider>().All(s =>
-                (s.Ball.ScreenSpaceDrawQuad.Centre - s.Parent!.ToScreenSpace(new Vector2(216, 104))).Length < 0.01f));
+                (s.Ball.ScreenSpaceDrawQuad.Centre - s.Parent!.ToScreenSpace(new Vector2(255, 193))).Length < 0.01f));
         }
 
         [Test]

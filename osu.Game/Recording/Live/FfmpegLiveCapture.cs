@@ -67,7 +67,8 @@ namespace osu.Game.Recording.Live
         private readonly TaskCompletionSource drawThreadReleased = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly CancellationTokenSource stopping = new CancellationTokenSource();
         private readonly CancellationTokenSource outputReading = new CancellationTokenSource();
-        private readonly long startTimestamp = Stopwatch.GetTimestamp();
+        private long startTimestamp;
+        private long writtenFrames;
 
         // Draw thread only.
         private GpuFrameCaptureSession? session;
@@ -380,9 +381,7 @@ namespace osu.Game.Recording.Live
                     RedirectStandardOutput = streaming,
                 };
 
-                string filter = $@"scale={options.Width}:{options.Height}:force_original_aspect_ratio=decrease,pad={options.Width}:{options.Height}:(ow-iw)/2:(oh-ih)/2,format=yuv420p";
-                if (flip)
-                    filter = @"vflip," + filter;
+                string filter = BuildVideoFilter(options, flip);
 
                 add(info, @"-nostdin", @"-hide_banner", @"-loglevel", @"error", @"-n");
 
@@ -408,23 +407,40 @@ namespace osu.Game.Recording.Live
                     add(info, @"-movflags", @"+frag_keyframe+empty_moov+default_base_moof", @"-f", @"mp4", output);
 
                 encoder = Process.Start(info) ?? throw new InvalidOperationException(@"Unable to start FFmpeg.");
-                stderrTail = ReadTailAsync(encoder.StandardError, outputReading.Token);
+                startTimestamp = Stopwatch.GetTimestamp();
+                var audioCapture = audio.BeginCapture(startTimestamp);
 
-                if (streaming)
+                try
                 {
-                    progressReader = ReadProgressAsync(encoder.StandardOutput, () =>
-                    {
-                        if (!stopping.IsCancellationRequested)
-                            started.TrySetResult();
-                    }, outputReading.Token);
-                }
+                    stderrTail = ReadTailAsync(encoder.StandardError, outputReading.Token);
 
-                var pipe = encoder.StandardInput.BaseStream;
-                new Thread(() => writeVideo(pipe)) { IsBackground = true, Name = @"FFmpeg live video" }.Start();
-                new Thread(writeAudio) { IsBackground = true, Name = @"FFmpeg live audio" }.Start();
+                    if (streaming)
+                    {
+                        progressReader = ReadProgressAsync(encoder.StandardOutput, () =>
+                        {
+                            if (!stopping.IsCancellationRequested)
+                                started.TrySetResult();
+                        }, outputReading.Token);
+                    }
+
+                    var pipe = encoder.StandardInput.BaseStream;
+                    new Thread(() => writeVideo(pipe)) { IsBackground = true, Name = @"FFmpeg live video" }.Start();
+                    new Thread(() => writeAudio(audioCapture)) { IsBackground = true, Name = @"FFmpeg live audio" }.Start();
+                }
+                catch
+                {
+                    audioCapture.Dispose();
+                    throw;
+                }
             }
 
             _ = finishAsync();
+        }
+
+        internal static string BuildVideoFilter(VideoRecordingOptions options, bool flip)
+        {
+            string filter = $@"scale={options.Width}:{options.Height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={options.Width}:{options.Height}:(ow-iw)/2:(oh-ih)/2,format=yuv420p";
+            return flip ? @"vflip," + filter : filter;
         }
 
         private void writeVideo(Stream pipe)
@@ -472,6 +488,7 @@ namespace osu.Game.Recording.Live
 
                     pipe.Write(frame);
                     written++;
+                    Interlocked.Increment(ref writtenFrames);
 
                     if (!streaming)
                         started.TrySetResult();
@@ -492,9 +509,8 @@ namespace osu.Game.Recording.Live
             }
         }
 
-        private void writeAudio()
+        private void writeAudio(MixerAudioCapture capture)
         {
-            MixerAudioCapture? capture = null;
             Socket? socket = null;
 
             try
@@ -508,10 +524,14 @@ namespace osu.Game.Recording.Live
                 audioListener.Stop();
                 socket.NoDelay = true;
 
-                capture = audio.BeginCapture(startTimestamp);
-
                 float[] buffer = new float[2048 * MixerAudioCapture.CHANNELS];
                 byte[] bytes = new byte[buffer.Length * sizeof(float)];
+
+                while (capture.Position < 0 && !stopping.IsCancellationRequested)
+                {
+                    int discard = (int)Math.Min(buffer.Length / MixerAudioCapture.CHANNELS, -capture.Position);
+                    capture.Read(buffer, discard);
+                }
 
                 while (!stopping.IsCancellationRequested)
                 {
@@ -550,7 +570,7 @@ namespace osu.Game.Recording.Live
             }
             finally
             {
-                capture?.Dispose();
+                capture.Dispose();
 
                 try
                 {
@@ -579,6 +599,7 @@ namespace osu.Game.Recording.Live
 
                     // FFmpeg exits by itself when it fails (a refused stream, a missing codec), or after both inputs close.
                     await Task.WhenAny(exited, waitForStop()).ConfigureAwait(false);
+                    bool cancelledBeforeStart = stopping.IsCancellationRequested && failure == null && !started.Task.IsCompletedSuccessfully;
                     requestStop();
 
                     if (await Task.WhenAny(exited, Task.Delay(exit_timeout)).ConfigureAwait(false) != exited)
@@ -591,7 +612,7 @@ namespace osu.Game.Recording.Live
 
                     string tail = await DrainOutputAsync(stderrTail, progressReader, outputReading, exit_timeout).ConfigureAwait(false);
 
-                    if (encoder.ExitCode != 0 && failure == null)
+                    if (encoder.ExitCode != 0 && failure == null && !cancelledBeforeStart)
                         failure = new InvalidOperationException($@"FFmpeg exited with code {encoder.ExitCode}: {redact(tail.Trim())}");
                 }
 
@@ -610,6 +631,12 @@ namespace osu.Game.Recording.Live
                 try { audioListener?.Stop(); }
                 catch (Exception) { }
 
+                if (!streaming && Interlocked.Read(ref writtenFrames) == 0 && File.Exists(output))
+                {
+                    try { File.Delete(output); }
+                    catch (Exception) { }
+                }
+
                 Logger.Log($@"FFmpeg capture finished: {DroppedFrames} frames dropped, {RepeatedFrames} repeated.");
 
                 if (failure != null)
@@ -617,9 +644,13 @@ namespace osu.Game.Recording.Live
                     started.TrySetException(failure);
                     completion.TrySetException(failure);
                 }
+                else if (!started.Task.IsCompletedSuccessfully)
+                {
+                    started.TrySetCanceled(stopping.Token);
+                    completion.TrySetCanceled(stopping.Token);
+                }
                 else
                 {
-                    started.TrySetCanceled();
                     completion.TrySetResult();
                 }
             }

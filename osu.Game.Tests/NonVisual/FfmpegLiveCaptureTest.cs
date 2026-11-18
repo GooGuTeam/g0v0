@@ -7,6 +7,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using osu.Framework.Configuration;
+using osu.Framework.Graphics.Video;
+using osu.Game.Graphics.UserInterface;
 using osu.Game.Recording.Live;
 
 namespace osu.Game.Tests.NonVisual
@@ -103,6 +106,37 @@ namespace osu.Game.Tests.NonVisual
             string tail = await FfmpegLiveCapture.ReadTailAsync(reader, CancellationToken.None).WaitAsync(timeout, CancellationToken.None);
 
             Assert.That(tail, Is.EqualTo(output[^2048..]));
+        }
+
+        [TestCase(false, "scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,format=yuv420p")]
+        [TestCase(true, "vflip,scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,format=yuv420p")]
+        public void TestVideoFilterForcesEvenScaledDimensions(bool flip, string expected)
+        {
+            var options = new VideoRecordingOptions(60, width: 1920, height: 1080);
+
+            Assert.That(FfmpegLiveCapture.BuildVideoFilter(options, flip), Is.EqualTo(expected));
+        }
+
+        [TestCase("")]
+        [TestCase("relative/path")]
+        [TestCase("http://example.com/live")]
+        public void TestStreamRejectsNonRtmpDestination(string destination)
+        {
+            var options = new VideoRecordingOptions(60, width: 1280, height: 720);
+
+            Assert.ThrowsAsync<ArgumentException>(async () => await FfmpegLiveCapture.StreamAsync(null!, null!, destination, options, @"ffmpeg", CancellationToken.None));
+        }
+
+        [TestCase(1152, FrameSync.Limit8x, false)]
+        [TestCase(1920, FrameSync.Limit8x, false)]
+        [TestCase(int.MaxValue, FrameSync.VSync, true)]
+        [TestCase(int.MaxValue, FrameSync.Unlimited, true)]
+        [TestCase(1000, FrameSync.Unlimited, true)]
+        [TestCase(0, FrameSync.Unlimited, true)]
+        [TestCase(60, FrameSync.Unlimited, false)]
+        public void TestFrameRateTargetUnlimitedClassification(double target, FrameSync frameSync, bool expected)
+        {
+            Assert.That(FrameRateTarget.IsUnlimited(target, frameSync), Is.EqualTo(expected));
         }
 
         private static StreamReader createReader(string content) => new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(content)));

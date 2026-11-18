@@ -30,7 +30,9 @@ using osu.Game.Localisation;
 using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
+using osu.Game.Recording.Export;
 using osu.Game.Rulesets.Difficulty;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Screens.Select;
 using osu.Game.Skinning;
@@ -85,6 +87,26 @@ namespace osu.Game.Screens.Ranking
         /// </summary>
         public bool IsShown { get; private set; }
 
+        internal static bool ShouldShowFor(ScoreInfo score, ResultsScreen? resultsScreen, IAPIProvider api)
+        {
+            if (resultsScreen?.IsLocalPlay == true)
+                return true;
+
+            var localUser = api.LocalUser.Value;
+            if (localUser == null)
+                return false;
+
+            if (api.IsLoggedIn)
+                return score.UserID == localUser.OnlineID;
+
+            return score.UserID == localUser.OnlineID
+                   && !string.IsNullOrEmpty(localUser.Username)
+                   && string.Equals(score.User.Username, localUser.Username, StringComparison.Ordinal);
+        }
+
+        [Resolved]
+        private ResultsScreen? resultsScreen { get; set; }
+
         [Resolved]
         private IAPIProvider api { get; set; } = null!;
 
@@ -98,12 +120,20 @@ namespace osu.Game.Screens.Ranking
         private ScoreManager scoreManager { get; set; } = null!;
 
         [Resolved]
+        private ScoreModelDownloader scoreDownloader { get; set; } = null!;
+
+        [Resolved]
+        private ReplayVideoExporter? replayVideoExporter { get; set; }
+
+        [Resolved]
         private UserStatisticsWatcher? statisticsWatcher { get; set; }
 
         [Resolved]
         private BeatmapDifficultyCache difficultyCache { get; set; } = null!;
 
         private readonly IBindable<ScoreBasedUserStatisticsUpdate?> latestUpdate = new Bindable<ScoreBasedUserStatisticsUpdate?>();
+        private readonly Bindable<DownloadState> replayState = new Bindable<DownloadState>();
+        private readonly IBindableList<int> favouriteBeatmapSets = new BindableList<int>();
 
         private bool onlineRetrieval;
         private bool statisticsWaitExpired;
@@ -111,6 +141,10 @@ namespace osu.Game.Screens.Ranking
 
         private OsuSpriteText localRankText = null!;
         private OsuSpriteText? loadingText;
+        private LegacyCheckbox? saveReplayCheckbox;
+        private LegacyCheckbox? exportVideoCheckbox;
+        private LegacyCheckbox? favouriteCheckbox;
+        private PostBeatmapFavouriteRequest? favouriteRequest;
         private Container chart = null!;
         private Sprite? modeIcon;
         private ScoreBasedUserStatisticsUpdate? pendingUpdate;
@@ -133,7 +167,7 @@ namespace osu.Game.Screens.Ranking
         {
             RelativeSizeAxes = Axes.X;
 
-            if (api.LocalUser.Value == null || score.UserID != api.LocalUser.Value.OnlineID)
+            if (!ShouldShowFor(score, resultsScreen, api))
             {
                 Height = 0;
                 return;
@@ -142,11 +176,22 @@ namespace osu.Game.Screens.Ranking
             IsShown = true;
             Height = DIALOG_HEIGHT;
 
-            // OnlineRetrival: a submitted score on a ranked, approved, qualified or loved beatmap.
-            onlineRetrieval = api.IsLoggedIn && score.BeatmapInfo?.Status >= BeatmapOnlineStatus.Ranked && score.BeatmapInfo.OnlineID > 0;
+            // OnlineRetrieval: a freshly submitted local play on a ranked, approved, qualified or loved beatmap in a legacy ruleset.
+            onlineRetrieval = resultsScreen?.IsLocalPlay == true
+                              && api.IsLoggedIn
+                              && score.OnlineID > 0
+                              && score.BeatmapInfo?.Status >= BeatmapOnlineStatus.Ranked
+                              && score.BeatmapInfo.OnlineID > 0
+                              && score.Ruleset.IsLegacyRuleset();
+
+            float optionY = 10;
 
             var children = new List<Drawable>
             {
+                new ScoreDownloadTracker(score)
+                {
+                    State = { BindTarget = replayState },
+                },
                 new DialogBackground(),
                 // the local rank, centred 410 units left of the right edge.
                 (localRankText = new OsuSpriteText
@@ -158,19 +203,34 @@ namespace osu.Game.Screens.Ranking
                     Colour = gold,
                     Alpha = 0,
                 }),
-                new LegacyCheckbox(LegacyRankingDialogStrings.SaveReplay, onExportReplay)
+                (saveReplayCheckbox = new LegacyCheckbox(LegacyRankingDialogStrings.SaveReplay, onExportReplay)
                 {
                     Anchor = Anchor.TopRight,
-                    Position = new Vector2(-160, 10) * unit,
-                },
+                    Position = new Vector2(-160, optionY) * unit,
+                }),
             };
+            optionY += 20;
 
-            if (score.BeatmapInfo?.BeatmapSet?.OnlineID > 0)
+            int beatmapSetOnlineId = score.BeatmapInfo?.BeatmapSet?.OnlineID ?? 0;
+
+            if (api.IsLoggedIn && beatmapSetOnlineId > 0)
             {
-                children.Add(new LegacyCheckbox(LegacyRankingDialogStrings.AddOnlineFavourite, onToggleFavourite)
+                bool initiallyFavourited = api.LocalUserState.FavouriteBeatmapSets.Contains(beatmapSetOnlineId);
+                children.Add(favouriteCheckbox = new LegacyCheckbox(LegacyRankingDialogStrings.AddOnlineFavourite, onToggleFavourite, initiallyFavourited)
                 {
                     Anchor = Anchor.TopRight,
-                    Position = new Vector2(-160, 30) * unit,
+                    Position = new Vector2(-160, optionY) * unit,
+                });
+                optionY += 20;
+            }
+
+            if (replayVideoExporter != null)
+            {
+                bool isAutoplay = score.BeatmapInfo != null && score.Mods.OfType<ModAutoplay>().Any();
+                children.Add(exportVideoCheckbox = new LegacyCheckbox(isAutoplay ? VideoRecordingStrings.ExportAutoplay : VideoRecordingStrings.ExportReplay, onExportVideo)
+                {
+                    Anchor = Anchor.TopRight,
+                    Position = new Vector2(-160, optionY) * unit,
                 });
             }
 
@@ -243,16 +303,16 @@ namespace osu.Game.Screens.Ranking
                 fetchBest();
                 calculatePp();
                 fetchBeatmapInfo();
-            }
 
-            if (statisticsWatcher != null)
-            {
-                latestUpdate.BindTo(statisticsWatcher.LatestUpdate);
-                latestUpdate.BindValueChanged(update =>
+                if (statisticsWatcher != null)
                 {
-                    if (update.NewValue != null && update.NewValue.Score.MatchesOnlineID(score))
-                        Schedule(() => ShowStatisticsUpdate(update.NewValue));
-                }, true);
+                    latestUpdate.BindTo(statisticsWatcher.LatestUpdate);
+                    latestUpdate.BindValueChanged(update =>
+                    {
+                        if (update.NewValue != null && update.NewValue.Score.MatchesOnlineID(score))
+                            Schedule(() => ShowStatisticsUpdate(update.NewValue));
+                    }, true);
+                }
             }
         }
 
@@ -260,12 +320,31 @@ namespace osu.Game.Screens.Ranking
         {
             base.LoadComplete();
 
-            // Historical scores and failed submissions may never produce a matching watcher update.
-            Scheduler.AddDelayed(() =>
+            if (!IsShown)
+                return;
+
+            replayState.BindValueChanged(_ => updateReplayCheckboxes(), true);
+
+            if (favouriteCheckbox != null)
             {
-                statisticsWaitExpired = true;
-                tryShowChart();
-            }, 10000);
+                int setId = score.BeatmapInfo?.BeatmapSet?.OnlineID ?? 0;
+                favouriteBeatmapSets.BindTo(api.LocalUserState.FavouriteBeatmapSets);
+                favouriteBeatmapSets.BindCollectionChanged((_, _) =>
+                {
+                    if (favouriteCheckbox.Enabled.Value && setId > 0)
+                        favouriteCheckbox.SetTicked(favouriteBeatmapSets.Contains(setId));
+                }, true);
+            }
+
+            if (onlineRetrieval)
+            {
+                // Failed or delayed statistics updates should eventually reveal the beatmap row instead of spinning forever.
+                Scheduler.AddDelayed(() =>
+                {
+                    statisticsWaitExpired = true;
+                    tryShowChart();
+                }, 10000);
+            }
 
             if (loadingText != null && !chartShown)
             {
@@ -561,6 +640,7 @@ namespace osu.Game.Screens.Ranking
         protected override void Dispose(bool isDisposing)
         {
             cancellation?.Cancel();
+            favouriteRequest?.Cancel();
             base.Dispose(isDisposing);
         }
 
@@ -573,13 +653,15 @@ namespace osu.Game.Screens.Ranking
                 if (beatmap.PlayCount <= 0)
                     return;
 
-                var metadata = score.BeatmapInfo!.Metadata;
+                var metadata = score.BeatmapInfo!.BeatmapSet?.Metadata ?? score.BeatmapInfo.Metadata;
+                var artist = new RomanisableString(metadata.ArtistUnicode, metadata.Artist);
+                var title = new RomanisableString(metadata.TitleUnicode, metadata.Title);
                 string since = beatmap.BeatmapSet?.Ranked?.ToString(@"MMM, yyyy") ?? @"unknown";
                 int passRate = (int)(beatmap.PassCount * 100f / beatmap.PlayCount);
 
                 beatmapInfo.Children = new Drawable[]
                 {
-                    infoLine($"{metadata.Artist} - {metadata.Title} [{score.BeatmapInfo.DifficultyName}] by {metadata.Author.Username}"),
+                    infoLine(LocalisableString.Interpolate($"{artist} - {title} [{score.BeatmapInfo.DifficultyName}] by {metadata.Author.Username}")),
                     infoLine(LocalisableString.Interpolate($"{LegacyRankingDialogStrings.PlaysSince(beatmap.PlayCount, since)} | {LegacyRankingDialogStrings.PassRate(passRate)}")),
                 };
                 beatmapInfo.FadeIn(200);
@@ -602,25 +684,156 @@ namespace osu.Game.Screens.Ranking
         #region actions
 
         private bool replayExported;
+        private bool exportReplayWhenDownloaded;
+        private bool videoExported;
+        private bool exportVideoWhenDownloaded;
+
+        private void updateReplayCheckboxes()
+        {
+            bool local = replayState.Value == DownloadState.LocallyAvailable;
+            bool busy = replayState.Value is DownloadState.Downloading or DownloadState.Importing;
+            bool replayAvailable = resultsScreen?.AllowWatchingReplay != false && (local || score.HasOnlineReplay);
+            bool isAutoplay = score.BeatmapInfo != null && score.Mods.OfType<ModAutoplay>().Any();
+            bool videoAvailable = isAutoplay || replayAvailable;
+
+            if (replayState.Value == DownloadState.NotDownloaded)
+            {
+                if (exportReplayWhenDownloaded)
+                {
+                    exportReplayWhenDownloaded = false;
+                    saveReplayCheckbox?.SetTicked(false);
+                }
+
+                if (exportVideoWhenDownloaded)
+                {
+                    exportVideoWhenDownloaded = false;
+                    exportVideoCheckbox?.SetTicked(false);
+                }
+            }
+
+            if (saveReplayCheckbox != null)
+            {
+                saveReplayCheckbox.Alpha = replayAvailable ? 1 : 0;
+                saveReplayCheckbox.Enabled.Value = replayAvailable && !busy && !replayExported;
+            }
+
+            if (exportVideoCheckbox != null)
+            {
+                exportVideoCheckbox.Alpha = videoAvailable ? 1 : 0;
+                exportVideoCheckbox.Enabled.Value = videoAvailable && !busy && !videoExported && replayVideoExporter != null;
+            }
+
+            if (local && exportReplayWhenDownloaded)
+            {
+                exportReplayWhenDownloaded = false;
+                replayExported = true;
+                saveReplayCheckbox?.SetTicked(true);
+                if (saveReplayCheckbox != null)
+                    saveReplayCheckbox.Enabled.Value = false;
+                scoreManager.Export(score);
+            }
+
+            if (local && exportVideoWhenDownloaded)
+            {
+                exportVideoWhenDownloaded = false;
+                videoExported = true;
+                exportVideoCheckbox?.SetTicked(true);
+                if (exportVideoCheckbox != null)
+                    exportVideoCheckbox.Enabled.Value = false;
+                replayVideoExporter?.Export(score);
+            }
+        }
 
         private void onExportReplay(bool ticked)
         {
-            // stable exports when the page closes with the box ticked; this exports once when it's ticked.
-            if (!ticked || replayExported)
+            if (!ticked)
+            {
+                exportReplayWhenDownloaded = false;
+                return;
+            }
+
+            if (replayExported)
                 return;
 
-            replayExported = true;
-            scoreManager.Export(score);
+            if (replayState.Value == DownloadState.LocallyAvailable)
+            {
+                replayExported = true;
+                if (saveReplayCheckbox != null)
+                    saveReplayCheckbox.Enabled.Value = false;
+                scoreManager.Export(score);
+            }
+            else if (score.HasOnlineReplay)
+            {
+                exportReplayWhenDownloaded = true;
+                if (replayState.Value == DownloadState.NotDownloaded)
+                    scoreDownloader.Download(score);
+            }
+            else
+            {
+                saveReplayCheckbox?.SetTicked(false);
+            }
+        }
+
+        private void onExportVideo(bool ticked)
+        {
+            if (!ticked)
+            {
+                exportVideoWhenDownloaded = false;
+                return;
+            }
+
+            if (videoExported || replayVideoExporter == null)
+                return;
+
+            if (score.BeatmapInfo != null && score.Mods.OfType<ModAutoplay>().Any())
+            {
+                videoExported = true;
+                if (exportVideoCheckbox != null)
+                    exportVideoCheckbox.Enabled.Value = false;
+                replayVideoExporter.ExportAutoplay(score.BeatmapInfo, score.Ruleset, score.Mods);
+            }
+            else if (replayState.Value == DownloadState.LocallyAvailable)
+            {
+                videoExported = true;
+                if (exportVideoCheckbox != null)
+                    exportVideoCheckbox.Enabled.Value = false;
+                replayVideoExporter.Export(score);
+            }
+            else if (score.HasOnlineReplay)
+            {
+                exportVideoWhenDownloaded = true;
+                if (replayState.Value == DownloadState.NotDownloaded)
+                    scoreDownloader.Download(score);
+            }
+            else
+            {
+                exportVideoCheckbox?.SetTicked(false);
+            }
         }
 
         private void onToggleFavourite(bool ticked)
         {
             int setId = score.BeatmapInfo?.BeatmapSet?.OnlineID ?? 0;
 
-            if (setId <= 0 || !api.IsLoggedIn)
+            if (setId <= 0 || !api.IsLoggedIn || favouriteCheckbox == null)
                 return;
 
-            api.Queue(new PostBeatmapFavouriteRequest(setId, ticked ? BeatmapFavouriteAction.Favourite : BeatmapFavouriteAction.UnFavourite));
+            favouriteCheckbox.Enabled.Value = false;
+            favouriteRequest?.Cancel();
+            favouriteRequest = new PostBeatmapFavouriteRequest(setId, ticked ? BeatmapFavouriteAction.Favourite : BeatmapFavouriteAction.UnFavourite);
+
+            favouriteRequest.Success += () => Schedule(() =>
+            {
+                favouriteCheckbox.Enabled.Value = true;
+                api.LocalUserState.UpdateFavouriteBeatmapSets();
+            });
+            favouriteRequest.Failure += _ => Schedule(() =>
+            {
+                favouriteCheckbox.SetTicked(!ticked);
+                favouriteCheckbox.Enabled.Value = true;
+            });
+
+            api.Queue(favouriteRequest);
         }
 
         #endregion
@@ -852,16 +1065,24 @@ namespace osu.Game.Screens.Ranking
             private readonly Action<bool> onToggle;
 
             private CircularContainer circle = null!;
-            private Box fill = null!;
+            private Box? fill;
             private bool ticked;
 
             private Sample? checkOn;
             private Sample? checkOff;
 
-            public LegacyCheckbox(LocalisableString label, Action<bool> onToggle)
+            public LegacyCheckbox(LocalisableString label, Action<bool> onToggle, bool initialTicked = false)
             {
                 this.label = label;
                 this.onToggle = onToggle;
+                ticked = initialTicked;
+            }
+
+            public void SetTicked(bool value)
+            {
+                ticked = value;
+                if (fill != null)
+                    fill.Alpha = ticked ? 1 : 0;
             }
 
             [BackgroundDependencyLoader]
@@ -886,7 +1107,7 @@ namespace osu.Game.Screens.Ranking
                         {
                             RelativeSizeAxes = Axes.Both,
                             Colour = checkbox_colour,
-                            Alpha = 0,
+                            Alpha = ticked ? 1 : 0,
                             AlwaysPresent = true,
                         },
                     },
@@ -901,6 +1122,9 @@ namespace osu.Game.Screens.Ranking
 
                 Action = () =>
                 {
+                    if (!Enabled.Value)
+                        return;
+
                     ticked = !ticked;
                     fill.Alpha = ticked ? 1 : 0;
 
@@ -910,6 +1134,12 @@ namespace osu.Game.Screens.Ranking
                     (ticked ? checkOn : checkOff)?.Play();
                     onToggle(ticked);
                 };
+            }
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+                Enabled.BindValueChanged(e => circle.Alpha = e.NewValue ? 1f : 0.5f, true);
             }
         }
     }

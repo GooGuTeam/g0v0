@@ -12,6 +12,7 @@ using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.UserInterface;
+using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
@@ -21,6 +22,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osu.Game.Overlays;
 using osuTK;
@@ -152,11 +154,15 @@ namespace osu.Game.Screens.Select
 
                 realm.Write(r =>
                 {
-                    if (!r.All<BeatmapCollection>().Any(c => c.Name == name))
+                    bool duplicate = r.All<BeatmapCollection>()
+                                      .AsEnumerable()
+                                      .Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
+
+                    if (!duplicate)
                         r.Add(new BeatmapCollection(name));
                 });
 
-                refresh();
+                Schedule(refresh);
             };
         }
 
@@ -168,6 +174,7 @@ namespace osu.Game.Screens.Select
             beatmap = current;
             selectedCollection = null;
             renamingCollection = null;
+            rows.Clear();
             refresh();
             Show();
         }
@@ -178,15 +185,31 @@ namespace osu.Game.Screens.Select
                                                 .Select(c => (c.ID, c.Name, Hashes: c.BeatmapMD5Hashes.ToHashSet()))
                                                 .ToList());
 
-            rows.Clear();
+            var currentIds = collections.Select(c => c.ID).ToHashSet();
 
-            foreach (var (id, name, hashes) in collections)
+            foreach (var obsolete in rows.Where(r => !currentIds.Contains(r.CollectionId)).ToArray())
+                rows.Remove(obsolete, true);
+
+            var existingById = rows.ToDictionary(r => r.CollectionId);
+
+            for (int i = 0; i < collections.Count; i++)
             {
-                rows.Add(new CollectionRow(this, id, name, hashes.Count, beatmap != null && hashes.Contains(beatmap.MD5Hash))
+                var (id, name, hashes) = collections[i];
+                bool containsCurrent = beatmap != null && !string.IsNullOrEmpty(beatmap.MD5Hash) && hashes.Contains(beatmap.MD5Hash);
+                bool isSelected = id == selectedCollection;
+                bool isRenaming = id == renamingCollection;
+
+                if (existingById.TryGetValue(id, out var existing))
                 {
-                    Selected = id == selectedCollection,
-                    Renaming = id == renamingCollection,
-                });
+                    existing.UpdateState(name, hashes.Count, containsCurrent, isSelected, isRenaming);
+                    rows.SetLayoutPosition(existing, i);
+                }
+                else
+                {
+                    var row = new CollectionRow(this, id, name, hashes.Count, containsCurrent, isSelected, isRenaming);
+                    rows.Add(row);
+                    rows.SetLayoutPosition(row, i);
+                }
             }
         }
 
@@ -203,6 +226,12 @@ namespace osu.Game.Screens.Select
             refresh();
         }
 
+        private void cancelRename()
+        {
+            renamingCollection = null;
+            Schedule(refresh);
+        }
+
         private void rename(Guid id, string newName)
         {
             newName = newName.Trim();
@@ -215,13 +244,20 @@ namespace osu.Game.Screens.Select
                 realm.Write(r =>
                 {
                     var collection = r.Find<BeatmapCollection>(id);
-                    if (collection != null)
+                    if (collection == null)
+                        return;
+
+                    bool duplicate = r.All<BeatmapCollection>()
+                                      .AsEnumerable()
+                                      .Any(c => c.ID != id && string.Equals(c.Name, newName, StringComparison.OrdinalIgnoreCase));
+
+                    if (!duplicate)
                         collection.Name = newName;
                 });
             }
 
             renamingCollection = null;
-            refresh();
+            Schedule(refresh);
         }
 
         /// <summary>
@@ -229,11 +265,11 @@ namespace osu.Game.Screens.Select
         /// </summary>
         private void change(Guid id, bool remove, bool wholeSet)
         {
-            if (beatmap == null)
+            if (beatmap == null || string.IsNullOrEmpty(beatmap.MD5Hash))
                 return;
 
             IEnumerable<string> hashes = wholeSet && beatmap.BeatmapSet != null
-                ? beatmap.BeatmapSet.Beatmaps.Select(b => b.MD5Hash)
+                ? beatmap.BeatmapSet.Beatmaps.Select(b => b.MD5Hash).Where(h => !string.IsNullOrEmpty(h))
                 : new[] { beatmap.MD5Hash };
 
             realm.Write(r =>
@@ -280,15 +316,17 @@ namespace osu.Game.Screens.Select
 
         protected override bool OnKeyDown(KeyDownEvent e)
         {
-            if (!e.Repeat && !nameBox.HasFocus && renamingCollection == null)
+            if (!e.Repeat && !e.ControlPressed && !e.AltPressed && !e.SuperPressed && !nameBox.HasFocus && renamingCollection == null)
             {
                 switch (e.Key)
                 {
                     case Key.Number1:
+                    case Key.Keypad1:
                         deleteSelected();
                         return true;
 
                     case Key.Number2:
+                    case Key.Keypad2:
                         Hide();
                         return true;
                 }
@@ -304,8 +342,13 @@ namespace osu.Game.Screens.Select
         /// <summary>
         /// The new collection name box (stable's pTextBox: white text on black with a thin border).
         /// </summary>
-        private partial class NameBox : BasicTextBox
+        private partial class NameBox : BasicTextBox, IKeyBindingHandler<GlobalAction>
         {
+            public string InitialText { get; init; } = string.Empty;
+            public Action? OnCancel { get; init; }
+
+            private bool suppressCommit;
+
             public NameBox()
             {
                 BackgroundUnfocused = Color4.Black;
@@ -314,6 +357,49 @@ namespace osu.Game.Screens.Select
                 Masking = true;
                 BorderThickness = 1;
                 BorderColour = Color4.White;
+            }
+
+            public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
+            {
+                if (HasFocus && e.Action == GlobalAction.Back && !e.Repeat)
+                {
+                    cancel();
+                    return true;
+                }
+
+                return false;
+            }
+
+            public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
+            {
+            }
+
+            protected override bool OnKeyDown(KeyDownEvent e)
+            {
+                if (HasFocus && e.Key == Key.Escape && !e.Repeat)
+                {
+                    cancel();
+                    return true;
+                }
+
+                return base.OnKeyDown(e);
+            }
+
+            private void cancel()
+            {
+                suppressCommit = true;
+                Text = InitialText;
+                KillFocus();
+                suppressCommit = false;
+                OnCancel?.Invoke();
+            }
+
+            protected override void Commit()
+            {
+                if (suppressCommit)
+                    return;
+
+                base.Commit();
             }
 
             protected override SpriteText CreatePlaceholder() => new OsuSpriteText
@@ -338,24 +424,32 @@ namespace osu.Game.Screens.Select
             private static readonly Color4 colour_not_present = new Color4(150, 150, 150, 255);
             private static readonly Color4 colour_text = new Color4(200, 200, 200, 255);
 
-            public bool Selected { get; init; }
-            public bool Renaming { get; init; }
+            public Guid CollectionId => id;
 
             private readonly LegacyCollectionDialog dialog;
             private readonly Guid id;
-            private readonly string name;
-            private readonly int count;
-            private readonly bool containsCurrent;
+            private string name;
+            private int count;
+            private bool containsCurrent;
+            private bool selected;
+            private bool renaming;
 
+            private Container titleContainer = null!;
             private OsuSpriteText? title;
+            private RowButton addSetButton = null!;
+            private RowButton addButton = null!;
+            private RowButton removeSetButton = null!;
+            private RowButton removeButton = null!;
 
-            public CollectionRow(LegacyCollectionDialog dialog, Guid id, string name, int count, bool containsCurrent)
+            public CollectionRow(LegacyCollectionDialog dialog, Guid id, string name, int count, bool containsCurrent, bool selected, bool renaming)
             {
                 this.dialog = dialog;
                 this.id = id;
                 this.name = name;
                 this.count = count;
                 this.containsCurrent = containsCurrent;
+                this.selected = selected;
+                this.renaming = renaming;
 
                 Size = new Vector2(row_width, row_height);
             }
@@ -363,19 +457,89 @@ namespace osu.Game.Screens.Select
             [BackgroundDependencyLoader]
             private void load()
             {
-                Drawable titleContent;
+                bool wasRenamingOnMouseDown = false;
 
-                if (Renaming)
+                // CollectionSprites.InitializeButtons: rename 35 wide, then +Set 30, + 20, -Set 30, - 20, from 280 units in.
+                InternalChildren = new Drawable[]
+                {
+                    titleContainer = new Container
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                    },
+                    new FillFlowContainer
+                    {
+                        AutoSizeAxes = Axes.Both,
+                        Direction = FillDirection.Horizontal,
+                        Position = new Vector2(280, 2),
+                        Children = new Drawable[]
+                        {
+                            new RowButton(CommonStrings.Rename, 35, Color4.Orange, Color4.Orange, colour_present, () =>
+                            {
+                                if (wasRenamingOnMouseDown)
+                                {
+                                    wasRenamingOnMouseDown = false;
+                                    return;
+                                }
+
+                                dialog.toggleRename(id);
+                            })
+                            {
+                                Margin = new MarginPadding { Right = 10 },
+                                MouseDownCallback = () => wasRenamingOnMouseDown = dialog.renamingCollection == id,
+                            },
+                            addSetButton = new RowButton(@"+Set", 30, Color4.Green, Color4.YellowGreen, containsCurrent ? colour_not_present : colour_present, () => dialog.change(id, false, true))
+                                { Margin = new MarginPadding { Right = 5 } },
+                            addButton = new RowButton(@"+", 20, Color4.Green, Color4.YellowGreen, containsCurrent ? colour_not_present : colour_present, () => dialog.change(id, false, false))
+                                { Margin = new MarginPadding { Right = 5 }, TooltipText = CollectionsStrings.AddSelectedBeatmap },
+                            removeSetButton = new RowButton(@"-Set", 30, Color4.OrangeRed, Color4.DarkOrange, containsCurrent ? colour_present : colour_not_present, () => dialog.change(id, true, true))
+                                { Margin = new MarginPadding { Right = 5 } },
+                            removeButton = new RowButton(@"-", 20, Color4.OrangeRed, Color4.DarkOrange, containsCurrent ? colour_present : colour_not_present, () => dialog.change(id, true, false))
+                                { TooltipText = CollectionsStrings.RemoveSelectedBeatmap },
+                        },
+                    },
+                };
+
+                rebuildTitleContent();
+            }
+
+            public void UpdateState(string newName, int newCount, bool newContainsCurrent, bool newSelected, bool newRenaming)
+            {
+                bool renamingChanged = renaming != newRenaming;
+                name = newName;
+                count = newCount;
+                containsCurrent = newContainsCurrent;
+                selected = newSelected;
+                renaming = newRenaming;
+
+                if (!IsLoaded)
+                    return;
+
+                addSetButton.UpdateTextColour(containsCurrent ? colour_not_present : colour_present);
+                addButton.UpdateTextColour(containsCurrent ? colour_not_present : colour_present);
+                removeSetButton.UpdateTextColour(containsCurrent ? colour_present : colour_not_present);
+                removeButton.UpdateTextColour(containsCurrent ? colour_present : colour_not_present);
+
+                if (!renaming || renamingChanged)
+                    rebuildTitleContent();
+            }
+
+            private void rebuildTitleContent()
+            {
+                title = null;
+
+                if (renaming)
                 {
                     var box = new NameBox
                     {
                         RelativeSizeAxes = Axes.Both,
                         Text = name,
+                        InitialText = name,
                         BorderColour = Color4.Yellow,
                         CommitOnFocusLost = true,
+                        OnCancel = dialog.cancelRename,
                     };
                     box.OnCommit += (b, _) => dialog.rename(id, b.Text);
-                    titleContent = box;
+                    titleContainer.Child = box;
 
                     Schedule(() => GetContainingFocusManager()?.ChangeFocus(box));
                 }
@@ -383,7 +547,7 @@ namespace osu.Game.Screens.Select
                 {
                     string shown = name.Length > 40 ? name[..40] + "..." : name;
 
-                    titleContent = new Container
+                    titleContainer.Child = new Container
                     {
                         RelativeSizeAxes = Axes.Both,
                         Masking = true,
@@ -398,36 +562,12 @@ namespace osu.Game.Screens.Select
                                 Origin = Anchor.CentreLeft,
                                 X = 2,
                                 Text = $"{shown} ({count})",
-                                Font = OsuFont.Inter.With(size: text(12), weight: Selected ? FontWeight.Bold : FontWeight.Regular),
-                                Colour = colour_text,
+                                Font = OsuFont.Inter.With(size: text(12), weight: selected ? FontWeight.Bold : FontWeight.Regular),
+                                Colour = IsHovered ? Color4.White : colour_text,
                             },
                         },
                     };
                 }
-
-                // CollectionSprites.InitializeButtons: rename 35 wide, then +Set 30, + 20, -Set 30, - 20, from 280 units in.
-                InternalChildren = new[]
-                {
-                    titleContent,
-                    new FillFlowContainer
-                    {
-                        AutoSizeAxes = Axes.Both,
-                        Direction = FillDirection.Horizontal,
-                        Position = new Vector2(280, 2),
-                        Children = new Drawable[]
-                        {
-                            new RowButton(CommonStrings.Rename, 35, Color4.Orange, Color4.Orange, colour_present, () => dialog.toggleRename(id)) { Margin = new MarginPadding { Right = 10 } },
-                            new RowButton(@"+Set", 30, Color4.Green, Color4.YellowGreen, containsCurrent ? colour_not_present : colour_present, () => dialog.change(id, false, true))
-                                { Margin = new MarginPadding { Right = 5 } },
-                            new RowButton(@"+", 20, Color4.Green, Color4.YellowGreen, containsCurrent ? colour_not_present : colour_present, () => dialog.change(id, false, false))
-                                { Margin = new MarginPadding { Right = 5 }, TooltipText = CollectionsStrings.AddSelectedBeatmap },
-                            new RowButton(@"-Set", 30, Color4.OrangeRed, Color4.DarkOrange, containsCurrent ? colour_present : colour_not_present, () => dialog.change(id, true, true))
-                                { Margin = new MarginPadding { Right = 5 } },
-                            new RowButton(@"-", 20, Color4.OrangeRed, Color4.DarkOrange, containsCurrent ? colour_present : colour_not_present, () => dialog.change(id, true, false))
-                                { TooltipText = CollectionsStrings.RemoveSelectedBeatmap },
-                        },
-                    },
-                };
             }
 
             protected override bool OnHover(HoverEvent e)
@@ -444,7 +584,7 @@ namespace osu.Game.Screens.Select
 
             protected override bool OnClick(ClickEvent e)
             {
-                if (!Renaming)
+                if (!renaming)
                     dialog.select(id);
                 return true;
             }
@@ -455,6 +595,10 @@ namespace osu.Game.Screens.Select
         /// </summary>
         private partial class RowButton : OsuClickableContainer
         {
+            public Action? MouseDownCallback { get; init; }
+
+            private readonly OsuSpriteText labelText;
+
             public RowButton(LocalisableString label, float width, Color4 background, Color4 border, Color4 textColour, Action action)
             {
                 Size = new Vector2(width, 11);
@@ -466,7 +610,7 @@ namespace osu.Game.Screens.Select
                 Children = new Drawable[]
                 {
                     new Box { RelativeSizeAxes = Axes.Both, Colour = background },
-                    new OsuSpriteText
+                    labelText = new OsuSpriteText
                     {
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
@@ -475,6 +619,16 @@ namespace osu.Game.Screens.Select
                         Colour = textColour,
                     },
                 };
+            }
+
+            public void UpdateTextColour(Color4 colour) => labelText.Colour = colour;
+
+            protected override bool OnMouseDown(MouseDownEvent e)
+            {
+                if (e.Button == MouseButton.Left)
+                    MouseDownCallback?.Invoke();
+
+                return base.OnMouseDown(e);
             }
 
             protected override bool OnHover(HoverEvent e)

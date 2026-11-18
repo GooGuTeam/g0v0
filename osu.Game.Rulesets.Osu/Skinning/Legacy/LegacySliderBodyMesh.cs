@@ -239,19 +239,32 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
 
                 Vector2 min = boundsMin[^1], max = boundsMax[^1];
 
-                if (!float.IsFinite(min.X) || !float.IsFinite(min.Y) || !float.IsFinite(max.X) || !float.IsFinite(max.Y)
-                    || (double)max.X - min.X + radius * 2.3 > int.MaxValue
-                    || (double)max.Y - min.Y + radius * 2.3 > int.MaxValue)
+                if (!float.IsFinite(min.X) || !float.IsFinite(min.Y) || !float.IsFinite(max.X) || !float.IsFinite(max.Y))
                 {
                     reset();
                     return default;
                 }
 
-                int x = (int)(min.X - radius * 1.15);
-                int y = (int)(min.Y - radius * 1.15);
+                double rawX = min.X - radius * 1.15;
+                double rawY = min.Y - radius * 1.15;
                 // Stable subtracts the bounds as floats before widening.
-                int width = (int)((double)(max.X - min.X) + radius * 2.3);
-                int height = (int)((double)(max.Y - min.Y) + radius * 2.3);
+                double rawWidth = (double)(max.X - min.X) + radius * 2.3;
+                double rawHeight = (double)(max.Y - min.Y) + radius * 2.3;
+
+                if (!double.IsFinite(rawX) || !double.IsFinite(rawY) || !double.IsFinite(rawWidth) || !double.IsFinite(rawHeight)
+                    || rawX < int.MinValue || rawX > int.MaxValue
+                    || rawY < int.MinValue || rawY > int.MaxValue
+                    || rawWidth < 0 || rawWidth > int.MaxValue
+                    || rawHeight < 0 || rawHeight > int.MaxValue)
+                {
+                    reset();
+                    return default;
+                }
+
+                int x = (int)rawX;
+                int y = (int)rawY;
+                int width = (int)rawWidth;
+                int height = (int)rawHeight;
 
                 return new Viewport(new Vector2(Math.Max(x, 0), Math.Max(y, 0)), new Vector2(width, (float)(height - Math.Max(-(double)y, 0))))
                 {

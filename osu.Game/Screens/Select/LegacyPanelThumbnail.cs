@@ -28,6 +28,7 @@ namespace osu.Game.Screens.Select
         private BeatmapCarousel? beatmapCarousel { get; set; }
 
         private ThumbnailSprite? sprite;
+        private ThumbnailSprite? pendingSprite;
         private WorkingBeatmap? working;
         private CancellationTokenSource? loadCancellation;
         private double timeSinceUnpool;
@@ -45,8 +46,7 @@ namespace osu.Game.Screens.Select
 
                 working = value;
 
-                loadCancellation?.Cancel();
-                loadCancellation = null;
+                cancelPendingLoad();
 
                 sprite?.Expire();
                 sprite = null;
@@ -55,9 +55,25 @@ namespace osu.Game.Screens.Select
             }
         }
 
+        private void cancelPendingLoad()
+        {
+            loadCancellation?.Cancel();
+            loadCancellation?.Dispose();
+            loadCancellation = null;
+
+            pendingSprite?.Abandon();
+            pendingSprite = null;
+        }
+
         public LegacyPanelThumbnail()
         {
             Masking = true;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            cancelPendingLoad();
+            base.Dispose(isDisposing);
         }
 
         /// <summary>
@@ -70,7 +86,9 @@ namespace osu.Game.Screens.Select
             private const float target_height = 85.5f * 2;
 
             private readonly WorkingBeatmap working;
+            private readonly Lock stateLock = new Lock();
             private Texture? ownTexture;
+            private bool abandoned;
 
             public ThumbnailSprite(WorkingBeatmap working)
             {
@@ -78,28 +96,70 @@ namespace osu.Game.Screens.Select
             }
 
             [BackgroundDependencyLoader]
-            private void load(IRenderer renderer)
+            private void load(IRenderer renderer, CancellationToken cancellationToken)
             {
-                Texture = ownTexture = createThumbnail(renderer);
-                Texture ??= working.GetBackground();
+                if (cancellationToken.IsCancellationRequested)
+                    return;
 
-                if (Texture != null)
-                    FillAspectRatio = Texture.Width / (float)Texture.Height;
+                var created = createThumbnail(renderer, cancellationToken);
+                Texture? fallback = null;
+
+                if (created == null && !cancellationToken.IsCancellationRequested)
+                    fallback = working.GetBackground();
+
+                Texture? activeTexture;
+
+                lock (stateLock)
+                {
+                    if (abandoned || cancellationToken.IsCancellationRequested)
+                    {
+                        created?.Dispose();
+                        return;
+                    }
+
+                    ownTexture = created;
+                    Texture = activeTexture = created ?? fallback;
+                }
+
+                if (activeTexture != null)
+                    FillAspectRatio = activeTexture.Width / (float)activeTexture.Height;
+            }
+
+            /// <summary>
+            /// Marks this sprite as superseded/cancelled and disposes any GPU texture it created,
+            /// even if <see cref="CompositeDrawable.LoadComponentAsync{TLoadable}"/> skipped <c>onLoaded</c> due to cancellation.
+            /// </summary>
+            public void Abandon()
+            {
+                Texture? toDispose;
+
+                lock (stateLock)
+                {
+                    abandoned = true;
+                    toDispose = ownTexture;
+                    ownTexture = null;
+                }
+
+                toDispose?.Dispose();
             }
 
             /// <summary>
             /// A copy of the background shrunk to about the box's size. Drawn straight into the box, a full background (usually 1920 x 1080) is
             /// sampled at a few of its pixels each, which leaves its edges jagged; stable's thumbnails are small images to begin with.
             /// </summary>
-            private Texture? createThumbnail(IRenderer renderer)
+            private Texture? createThumbnail(IRenderer renderer, CancellationToken cancellationToken)
             {
                 string? file = working.Metadata.BackgroundFile;
 
                 if (string.IsNullOrEmpty(file))
                     return null;
 
+                Image<Rgba32>? image = null;
+
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     string? path = working.BeatmapSetInfo.GetPathForFile(file);
 
                     if (path == null)
@@ -110,12 +170,16 @@ namespace osu.Game.Screens.Select
                     if (stream == null)
                         return null;
 
-                    var image = Image.Load<Rgba32>(stream);
+                    image = Image.Load<Rgba32>(stream);
 
                     float scale = Math.Max(target_width / image.Width, target_height / image.Height);
 
                     if (scale >= 1)
+                    {
+                        image.Dispose();
+                        image = null;
                         return null;
+                    }
 
                     int width = Math.Max(1, (int)Math.Ceiling(image.Width * scale));
                     int height = Math.Max(1, (int)Math.Ceiling(image.Height * scale));
@@ -123,19 +187,45 @@ namespace osu.Game.Screens.Select
                     // halving averages each 2 x 2 block, so every source pixel counts; one bilinear step down this far would skip most of them.
                     while (image.Width / 2 >= width && image.Height / 2 >= height)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         var half = new Size(image.Width / 2, image.Height / 2);
                         image.Mutate(i => i.Resize(half));
                     }
 
                     if (image.Width != width || image.Height != height)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
                         image.Mutate(i => i.Resize(new Size(width, height)));
+                    }
 
-                    var texture = renderer.CreateTexture(width, height);
-                    texture.SetData(new TextureUpload(image));
-                    return texture;
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var upload = new TextureUpload(image);
+                    image = null; // TextureUpload now owns `image` and will dispose it.
+
+                    Texture? texture = null;
+
+                    try
+                    {
+                        texture = renderer.CreateTexture(width, height);
+                        texture.SetData(upload);
+                        return texture;
+                    }
+                    catch
+                    {
+                        texture?.Dispose();
+                        upload.Dispose();
+                        throw;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    image?.Dispose();
+                    return null;
                 }
                 catch (Exception e)
                 {
+                    image?.Dispose();
                     Logger.Error(e, $@"Could not create a song select thumbnail for {working.BeatmapInfo}");
                     return null;
                 }
@@ -144,7 +234,7 @@ namespace osu.Game.Screens.Select
             protected override void Dispose(bool isDisposing)
             {
                 base.Dispose(isDisposing);
-                ownTexture?.Dispose();
+                Abandon();
             }
         }
 
@@ -170,15 +260,24 @@ namespace osu.Game.Screens.Select
             }
 
             loadCancellation = new CancellationTokenSource();
-
-            LoadComponentAsync(new ThumbnailSprite(working)
+            var candidate = pendingSprite = new ThumbnailSprite(working)
             {
                 RelativeSizeAxes = Axes.Both,
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,
                 FillMode = FillMode.Fill,
-            }, s =>
+            };
+
+            LoadComponentAsync(candidate, s =>
             {
+                if (pendingSprite != s)
+                {
+                    s.Abandon();
+                    s.Dispose();
+                    return;
+                }
+
+                pendingSprite = null;
                 Add(sprite = s);
 
                 // stable fades a newly loaded thumbnail in over 400ms.

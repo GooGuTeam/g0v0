@@ -55,8 +55,11 @@ namespace osu.Game.Skinning
         [Resolved]
         private ISkinSource skin { get; set; } = null!;
 
-        [Resolved]
-        private SkinManager skins { get; set; } = null!;
+        [Resolved(CanBeNull = true)]
+        private SkinManager? skins { get; set; }
+
+        [Resolved(CanBeNull = true)]
+        private DefaultLegacySkin? defaultClassicSkin { get; set; }
 
         private readonly IBindable<IReadOnlyList<Mod>> mods = new Bindable<IReadOnlyList<Mod>>(Array.Empty<Mod>());
 
@@ -169,7 +172,7 @@ namespace osu.Game.Skinning
         private Texture? getTexture(Mod mod)
         {
             string name = $@"selection-mod-{stableName(mod)}";
-            return skin.GetStableTexture(name) ?? skins.DefaultClassicSkin.GetStableTexture(name);
+            return skin.GetStableTexture(name) ?? (skins?.DefaultClassicSkin ?? defaultClassicSkin)?.GetStableTexture(name);
         }
 
         /// <summary>
@@ -186,6 +189,7 @@ namespace osu.Game.Skinning
                 @"autopilot" => @"relax2",
                 @"targetpractice" => @"target",
                 @"daycore" => @"halftime",
+                @"dualstages" => @"keycoop",
                 _ => name,
             };
         }

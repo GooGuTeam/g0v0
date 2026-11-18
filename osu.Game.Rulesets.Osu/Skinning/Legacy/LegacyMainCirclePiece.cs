@@ -142,7 +142,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         {
             base.LoadComplete();
 
-            if (visualOrdering?.IsActive == true && drawableObject is DrawableOsuHitObject owner)
+            if (visualOrdering != null && drawableObject is DrawableOsuHitObject owner)
             {
                 AddInternal(baseProxies);
                 AddInternal(flashProxies);
@@ -228,7 +228,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
 
         protected override void Dispose(bool isDisposing)
         {
-            if (visualOrdering?.IsActive == true)
+            if (visualOrdering != null)
             {
                 if (CircleSprite != null) visualOrdering.Unregister(CircleSprite);
                 if (OverlaySprite != null) visualOrdering.Unregister(OverlaySprite);

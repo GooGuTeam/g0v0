@@ -1,17 +1,18 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
-using osu.Framework.Allocation;
-using osu.Framework.Audio;
-using osu.Framework.Graphics;
-using osu.Framework.Graphics.Containers;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework;
+using osu.Framework.Allocation;
+using osu.Framework.Audio;
 using osu.Framework.Bindables;
 using osu.Framework.Development;
 using osu.Framework.Extensions.ObjectExtensions;
+using osu.Framework.Graphics;
+using osu.Framework.Graphics.Containers;
 using osu.Framework.Localisation;
+using osu.Framework.Threading;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osuTK;
@@ -41,6 +42,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         private SliderEntry<double>? buffer;
         private SliderEntry<double>? period;
         private FillFlowContainer? wasapiSettings;
+        private ScheduledDelegate? wasapiUnmaskDelegate;
 
         [BackgroundDependencyLoader]
         private void load()
@@ -57,6 +59,9 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
 
             if (RuntimeInfo.OS == RuntimeInfo.Platform.Windows)
             {
+                legacyAudioMode.Default = !audio.UseWasapi.Default;
+                legacyAudioMode.Value = !audio.UseWasapi.Value;
+
                 Add(CreateItem(legacyAudio = new CheckboxEntry
                 {
                     Caption = AudioSettingsStrings.LegacyAudioLabel,
@@ -81,7 +86,6 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                     AutoSizeAxes = Axes.Y,
                     Direction = FillDirection.Vertical,
                     Spacing = new Vector2(0, SettingsSection.ITEM_SPACING_V2),
-                    Masking = true,
                     Children = new Drawable[]
                     {
                         CreateItem(exclusive = new CheckboxEntry
@@ -138,6 +142,8 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
             {
                 // Manual two-way binding because the toggle is the inverse of what the framework exposes.
                 useWasapi = audio.UseWasapi.GetBoundCopy();
+                legacyAudioMode.Default = !useWasapi.Default;
+                useWasapi.DefaultChanged += d => legacyAudioMode.Default = !d.NewValue;
                 legacyAudioMode.ValueChanged += legacy => useWasapi.Value = !legacy.NewValue;
                 useWasapi.BindValueChanged(experimental =>
                 {
@@ -156,10 +162,12 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
 
         private void updateWasapiVisibility(ValueChangedEvent<bool> state)
         {
+            wasapiUnmaskDelegate?.Cancel();
             wasapiSettings!.ClearTransforms();
 
             if (!state.NewValue)
             {
+                wasapiSettings.Masking = true;
                 wasapiSettings.AutoSizeAxes = Axes.None;
                 if (state.NewValue == state.OldValue)
                     wasapiSettings.Height = 0;
@@ -168,11 +176,16 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
             }
             else
             {
-                wasapiSettings.AutoSizeDuration = state.NewValue == state.OldValue ? 0 : 300;
+                bool animate = state.NewValue != state.OldValue;
+                wasapiSettings.Masking = animate;
+                wasapiSettings.AutoSizeDuration = animate ? 300 : 0;
                 wasapiSettings.AutoSizeEasing = Easing.OutQuint;
                 wasapiSettings.AutoSizeAxes = Axes.Y;
 
                 ScheduleAfterChildren(() => wasapiSettings.AutoSizeDuration = 0);
+
+                if (animate)
+                    wasapiUnmaskDelegate = Scheduler.AddDelayed(() => wasapiSettings.Masking = false, 300);
             }
         }
 
@@ -227,6 +240,8 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         private void load(AudioManager audio)
         {
             configExperimentalAudio = audio.UseWasapi.GetBoundCopy();
+            Current.Default = !configExperimentalAudio.Default;
+            configExperimentalAudio.DefaultChanged += d => Current.Default = !d.NewValue;
         }
 
         protected override void LoadComplete()

@@ -191,10 +191,16 @@ namespace osu.Game.Screens.Ranking
         {
             appearanceSample = audio.Samples.Get(@"Results/score-panel-top-appear");
 
+            bool isAchievedScore = resultsScreen?.Score != null && score.Equals(resultsScreen.Score);
+
             if (resultsScreen != null)
             {
-                isPersonalBest.BindTo(resultsScreen.IsPersonalBest);
-                ComparisonScore.BindTo(resultsScreen.ComparisonScore);
+                if (isAchievedScore)
+                {
+                    isPersonalBest.BindTo(resultsScreen.IsPersonalBest);
+                    ComparisonScore.BindTo(resultsScreen.ComparisonScore);
+                }
+
                 DetailsVisible.BindTo(resultsScreen.V2DetailsVisible);
                 LeaderboardVisible.BindTo(resultsScreen.V2LeaderboardVisible);
             }
@@ -319,7 +325,7 @@ namespace osu.Game.Screens.Ranking
                             RelativeSizeAxes = Axes.X,
                             AutoSizeAxes = Axes.Y,
                             Score = { Value = score },
-                            AchievedScore = resultsScreen?.Score,
+                            AchievedScore = isAchievedScore && resultsScreen?.IsLocalPlay == true ? resultsScreen.Score : null,
                             State = { Value = Visibility.Visible },
                         },
                     },

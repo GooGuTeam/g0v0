@@ -4,6 +4,7 @@
 using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Configuration;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
@@ -37,6 +38,7 @@ namespace osu.Game.Graphics.UserInterface
         private const float idle_background_alpha = 0.4f;
 
         private readonly BindableBool showFpsDisplay = new BindableBool(true);
+        private readonly Bindable<FrameSync> frameSync = new Bindable<FrameSync>(FrameSync.Unlimited);
 
         private double displayedFpsCount;
         private double displayedFrameTime;
@@ -45,6 +47,7 @@ namespace osu.Game.Graphics.UserInterface
 
         private double aimDrawFPS;
         private double aimUpdateFPS;
+        private FrameSync lastFrameSync;
 
         private double lastUpdate;
         private ThrottledFrameClock drawClock = null!;
@@ -67,7 +70,7 @@ namespace osu.Game.Graphics.UserInterface
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuConfigManager config, GameHost gameHost)
+        private void load(OsuConfigManager config, GameHost gameHost, FrameworkConfigManager? frameworkConfig)
         {
             InternalChildren = new Drawable[]
             {
@@ -125,6 +128,16 @@ namespace osu.Game.Graphics.UserInterface
             };
 
             config.BindWith(OsuSetting.ShowFpsDisplay, showFpsDisplay);
+            frameworkConfig?.BindWith(FrameworkSetting.FrameSync, frameSync);
+
+            showFpsDisplay.BindValueChanged(showFps =>
+            {
+                State.Value = showFps.NewValue ? Visibility.Visible : Visibility.Hidden;
+                if (IsLoaded && showFps.NewValue)
+                    requestDisplay();
+            }, true);
+
+            State.BindValueChanged(state => showFpsDisplay.Value = state.NewValue == Visibility.Visible);
 
             host = gameHost;
 
@@ -138,15 +151,6 @@ namespace osu.Game.Graphics.UserInterface
             base.LoadComplete();
 
             requestDisplay();
-
-            showFpsDisplay.BindValueChanged(showFps =>
-            {
-                State.Value = showFps.NewValue ? Visibility.Visible : Visibility.Hidden;
-                if (showFps.NewValue)
-                    requestDisplay();
-            }, true);
-
-            State.BindValueChanged(state => showFpsDisplay.Value = state.NewValue == Visibility.Visible);
         }
 
         protected override void PopIn() => this.FadeIn(100);
@@ -248,14 +252,17 @@ namespace osu.Game.Graphics.UserInterface
             counterUpdateFrameTime.Colour = getColour((1000 / displayedFrameTime) / effectiveAimUpdateFPS);
         }
 
-        // GooGuTeam: an effectively unlimited limiter (VSync, Unlimited, or 8x on a fast display) is judged against the refresh rate, as stable
+        // GooGuTeam: an effectively unlimited limiter (VSync or Unlimited) is judged against the refresh rate, as stable
         // does; against the limiter itself, any frame rate was a tiny fraction of it and showed red.
-        private double effectiveAimDrawFPS => FrameRateTarget.Effective(aimDrawFPS, host);
+        private double effectiveAimDrawFPS => FrameRateTarget.Effective(aimDrawFPS, host, frameSync.Value);
 
-        private double effectiveAimUpdateFPS => FrameRateTarget.Effective(aimUpdateFPS, host);
+        private double effectiveAimUpdateFPS => FrameRateTarget.Effective(aimUpdateFPS, host, frameSync.Value);
 
         private bool updateAimFPS()
         {
+            bool changed = lastFrameSync != frameSync.Value;
+            lastFrameSync = frameSync.Value;
+
             if (updateClock.Throttling)
             {
                 double newAimDrawFPS = drawClock.MaximumUpdateHz;
@@ -279,7 +286,7 @@ namespace osu.Game.Graphics.UserInterface
                 }
             }
 
-            return false;
+            return changed;
         }
 
         private ColourInfo getColour(double performanceRatio)

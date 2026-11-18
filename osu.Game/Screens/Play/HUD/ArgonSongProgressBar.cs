@@ -45,12 +45,13 @@ namespace osu.Game.Screens.Play.HUD
                 if (!Interactive)
                     return default;
 
-                double progress = Math.Clamp(lastMouseX, 0, DrawWidth) / DrawWidth;
+                double progress = DrawWidth <= 0 ? 0 : Math.Clamp(lastMouseX, 0, DrawWidth) / DrawWidth;
 
                 TimeSpan currentSpan = Math.Round((EndTime - StartTime) * progress).ToClampedTimeSpan();
+                TimeSpan duration = currentSpan == TimeSpan.MinValue ? TimeSpan.MaxValue : currentSpan.Duration();
 
-                int seconds = currentSpan.Duration().Seconds;
-                int minutes = (int)Math.Floor(currentSpan.Duration().TotalMinutes);
+                int seconds = duration.Seconds;
+                long minutes = (long)Math.Floor(duration.TotalMinutes);
 
                 return $"{minutes}:{seconds:D2} ({progress:P0})";
             }
@@ -141,12 +142,11 @@ namespace osu.Game.Screens.Play.HUD
             else
                 ChangeInternalChildDepth(audioBar, 1);
 
-            float timeDelta = (float)Math.Abs(AudioTime - trackTime);
-
-            const float colour_transition_threshold = 20000;
+            const double colour_transition_threshold = 20000;
+            double timeDelta = Math.Min(Math.Abs(AudioTime - trackTime), colour_transition_threshold);
 
             audioBar.AccentColour = Interpolation.ValueAt(
-                Math.Min(timeDelta, colour_transition_threshold),
+                timeDelta,
                 mainColour,
                 catchUpColour,
                 0, colour_transition_threshold,

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Configuration;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
@@ -38,6 +39,7 @@ namespace osu.Game.Graphics.UserInterface
 
         private readonly Bindable<bool> showFpsDisplay = new Bindable<bool>();
         private readonly Bindable<bool> legacy = new Bindable<bool>();
+        private readonly Bindable<FrameSync> frameSync = new Bindable<FrameSync>(FrameSync.Unlimited);
 
         private Container fpsBox = null!;
         private Container delayBox = null!;
@@ -49,7 +51,6 @@ namespace osu.Game.Graphics.UserInterface
         private GameHost host = null!;
         private ThrottledFrameClock drawClock = null!;
         private ThrottledFrameClock updateClock = null!;
-        private ThrottledFrameClock inputClock = null!;
 
         // PerformanceMonitor: frames are counted over 250ms windows, the frame time is smoothed by 0.05^(elapsed / 1000).
         private int framesCounted;
@@ -59,6 +60,8 @@ namespace osu.Game.Graphics.UserInterface
         private double lastDrawTime;
 
         private double displayedFps;
+        private double lastTarget = -1;
+        private char lastSuffix;
         private double droppedFramesLast;
         private bool faded;
 
@@ -68,15 +71,15 @@ namespace osu.Game.Graphics.UserInterface
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuConfigManager config, GameHost gameHost)
+        private void load(OsuConfigManager config, GameHost gameHost, FrameworkConfigManager? frameworkConfig)
         {
             host = gameHost;
             drawClock = gameHost.DrawThread.Clock;
             updateClock = gameHost.UpdateThread.Clock;
-            inputClock = gameHost.InputThread.Clock;
 
             config.BindWith(OsuSetting.ShowFpsDisplay, showFpsDisplay);
             config.BindWith(OsuSetting.ToriiLegacyFpsCounter, legacy);
+            frameworkConfig?.BindWith(FrameworkSetting.FrameSync, frameSync);
 
             var corner = new Container
             {
@@ -176,6 +179,8 @@ namespace osu.Game.Graphics.UserInterface
             if (visible)
             {
                 displayedFps = 0;
+                lastTarget = -1;
+                lastSuffix = default;
                 fpsText.Text = @"0";
             }
         }
@@ -189,24 +194,28 @@ namespace osu.Game.Graphics.UserInterface
 
             monitorDrawFrame();
 
-            double target = targetFrameRate;
-            char suffix = 'f';
+            double rawTarget = targetFrameRate;
+            bool unlimited = FrameRateTarget.IsUnlimited(rawTarget, frameSync.Value);
+            double target = unlimited ? Math.Round(FrameRateTarget.Effective(rawTarget, host, frameSync.Value)) : rawTarget;
+            char suffix = unlimited ? 'h' : 'f';
 
-            if (FrameRateTarget.IsUnlimited(target))
+            if (target != lastTarget || suffix != lastSuffix)
             {
-                target = Math.Round(FrameRateTarget.Effective(target, host));
-                suffix = 'h';
+                lastTarget = target;
+                lastSuffix = suffix;
+                limitText.Text = $"/{target}{(suffix == 'h' ? "hz" : "fps")}";
             }
 
+            double cappedFps = Math.Min(target, framesPerSecond);
+
             // the shown frame rate eases towards the measured one, capped at the target.
-            if (Math.Abs(framesPerSecond - displayedFps) > 0.5)
+            if (Math.Abs(cappedFps - displayedFps) > 0.5)
             {
                 double decay = Math.Pow(0.05, Time.Elapsed / 1000);
-                displayedFps = displayedFps * decay + Math.Min(target, framesPerSecond) * (1 - decay);
+                displayedFps = displayedFps * decay + cappedFps * (1 - decay);
 
                 int rounded = (int)Math.Round(displayedFps);
                 fpsText.Text = rounded == 0 ? string.Empty : $"{rounded:#,#}";
-                limitText.Text = $"/{target}{(suffix == 'h' ? "hz" : "fps")}";
             }
 
             setFaded(Math.Abs(displayedFps - target) < 0.5);
@@ -224,9 +233,9 @@ namespace osu.Game.Graphics.UserInterface
         }
 
         /// <summary>
-        /// The draw limiter, or the input thread's when the update thread isn't throttled, as lazer's own counter takes it.
+        /// The draw limiter, or 0 (unlimited) when the update thread isn't throttled.
         /// </summary>
-        private double targetFrameRate => updateClock.Throttling ? drawClock.MaximumUpdateHz : inputClock.MaximumUpdateHz;
+        private double targetFrameRate => updateClock.Throttling ? drawClock.MaximumUpdateHz : 0;
 
         /// <summary>
         /// PerformanceMonitor.NewFrame, once per drawn frame.
@@ -253,7 +262,7 @@ namespace osu.Game.Graphics.UserInterface
 
             if (timeCounted >= 250)
             {
-                framesPerSecond = Math.Ceiling(Math.Min(framesCounted * 1000 / timeCounted, FrameRateTarget.Effective(targetFrameRate, host)));
+                framesPerSecond = Math.Ceiling(Math.Min(framesCounted * 1000 / timeCounted, FrameRateTarget.Effective(targetFrameRate, host, frameSync.Value)));
                 framesCounted = 0;
                 timeCounted = 0;
             }

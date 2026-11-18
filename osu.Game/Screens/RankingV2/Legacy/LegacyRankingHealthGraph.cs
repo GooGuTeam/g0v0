@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
@@ -25,6 +26,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
     {
         public LocalisableString TooltipText { get; private set; }
 
+        private Sprite frameSprite = null!;
         private Container graphContainer = null!;
         private Container passingContainer = null!;
         private Container failingContainer = null!;
@@ -35,12 +37,21 @@ namespace osu.Game.Screens.RankingV2.Legacy
         [Resolved]
         private IBindable<IScoreInfo> score { get; set; } = null!;
 
+        [Resolved]
+        private ISkinSource skin { get; set; } = null!;
+
+        [Resolved]
+        private SkinManager? skins { get; set; }
+
+        [Resolved]
+        private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
+        private ISkin? classicFallback => skins?.DefaultClassicSkin ?? defaultClassicSkin;
+
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin)
+        private void load()
         {
             AutoSizeAxes = Axes.Both;
-
-            bool useNewLayout = skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value > 1M;
 
             // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L467
             var graphSize = new Vector2(186, 86) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
@@ -49,14 +60,9 @@ namespace osu.Game.Screens.RankingV2.Legacy
 
             InternalChildren =
             [
-                new Sprite
-                {
-                    Texture = skin.GetStableTexture(@"ranking-graph"),
-                },
+                frameSprite = new Sprite(),
                 graphContainer = new Container
                 {
-                    // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L463-L465
-                    Position = new Vector2(useNewLayout ? 5 : 10) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR,
                     Size = graphSize + new Vector2(2 * graph_path_radius, 0),
                     Children =
                     [
@@ -100,13 +106,36 @@ namespace osu.Game.Screens.RankingV2.Legacy
 
             passingPath.OriginPosition = failingPath.PositionInBoundingBox(new Vector2(-graph_path_radius, -graph_path_radius));
             failingPath.OriginPosition = failingPath.PositionInBoundingBox(new Vector2(-graph_path_radius, -graph_path_radius + graphSize.Y));
+
+            applySkin();
         }
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
+            skin.SourceChanged += onSkinChanged;
             score.BindValueChanged(_ => updateState(), true);
+        }
+
+        private void onSkinChanged() => Scheduler.AddOnce(applySkin);
+
+        private void applySkin()
+        {
+            bool useNewLayout = (skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value
+                                 ?? classicFallback?.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value) > 1M;
+
+            frameSprite.Texture = skin.GetStableTexture(@"ranking-graph") ?? classicFallback?.GetStableTexture(@"ranking-graph");
+            // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L463-L465
+            graphContainer.Position = new Vector2(useNewLayout ? 5 : 10) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinChanged;
         }
 
         private void updateState()

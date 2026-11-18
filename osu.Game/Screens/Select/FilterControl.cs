@@ -50,6 +50,7 @@ namespace osu.Game.Screens.Select
         private ShearedDropdown<SortMode> sortDropdown = null!;
         private ShearedDropdown<GroupModeDropdownItem> groupDropdown = null!;
         private readonly Bindable<string> configCollectionFilter = new Bindable<string>();
+        private Bindable<bool> legacySongSelect = null!;
 
         /// <summary>
         /// An optional method which can force certain criteria adjustments.
@@ -229,6 +230,22 @@ namespace osu.Game.Screens.Select
             config.BindWith(OsuSetting.ShowConvertedBeatmaps, showConvertedBeatmapsButton.Active);
             config.BindWith(OsuSetting.SongSelectSortingMode, sortDropdown.Current);
             config.BindWith(OsuSetting.SongSelectCollectionFilter, configCollectionFilter);
+            legacySongSelect = config.GetBindable<bool>(OsuSetting.ToriiLegacyFooterUseSkin);
+            searchTextBox.HoldFocus = !legacySongSelect.Value;
+            legacySongSelect.BindValueChanged(legacy =>
+            {
+                searchTextBox.HoldFocus = !legacy.NewValue;
+
+                if (legacy.NewValue)
+                    ReleaseSearchFocus();
+
+                if (!difficultyRangeSlider.LowerBound.IsDefault
+                    || !difficultyRangeSlider.UpperBound.IsDefault
+                    || !string.IsNullOrEmpty(configCollectionFilter.Value))
+                {
+                    updateCriteria();
+                }
+            });
 
             ruleset.BindValueChanged(_ => updateCriteria());
             mods.BindValueChanged(m =>
@@ -295,7 +312,9 @@ namespace osu.Game.Screens.Select
 
             IEnumerable<string>? collectionBeatmapMD5Hashes = null;
 
-            if (Guid.TryParse(configCollectionFilter.Value, out var collectionId))
+            bool useModernControls = legacySongSelect?.Value != true;
+
+            if (useModernControls && Guid.TryParse(configCollectionFilter.Value, out var collectionId))
                 collectionBeatmapMD5Hashes = realm.Run(r => r.Find<BeatmapCollection>(collectionId)?.BeatmapMD5Hashes.ToImmutableHashSet());
 
             var criteria = new FilterCriteria
@@ -311,11 +330,14 @@ namespace osu.Game.Screens.Select
                 LocalUserUsername = isValidUser ? localUser.Value.Username : null,
             };
 
-            if (!difficultyRangeSlider.LowerBound.IsDefault)
-                criteria.UserStarDifficulty.Min = difficultyRangeSlider.LowerBound.Value;
+            if (useModernControls)
+            {
+                if (!difficultyRangeSlider.LowerBound.IsDefault)
+                    criteria.UserStarDifficulty.Min = difficultyRangeSlider.LowerBound.Value;
 
-            if (!difficultyRangeSlider.UpperBound.IsDefault)
-                criteria.UserStarDifficulty.Max = difficultyRangeSlider.UpperBound.Value;
+                if (!difficultyRangeSlider.UpperBound.IsDefault)
+                    criteria.UserStarDifficulty.Max = difficultyRangeSlider.UpperBound.Value;
+            }
 
             criteria.RulesetCriteria = ruleset.Value.CreateInstance().CreateRulesetFilterCriteria();
 
@@ -347,6 +369,12 @@ namespace osu.Game.Screens.Select
         public void Search(string query)
         {
             searchTextBox.Current.Value = query;
+        }
+
+        public void ReleaseSearchFocus()
+        {
+            if (searchTextBox.HasFocus)
+                GetContainingFocusManager()?.ChangeFocus(null);
         }
 
         /// <summary>

@@ -3,6 +3,7 @@
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
@@ -10,6 +11,7 @@ using osu.Game.Configuration;
 using osu.Game.Localisation.SkinComponents;
 using osu.Game.Scoring;
 using osu.Game.Skinning;
+using osuTK;
 
 namespace osu.Game.Screens.RankingV2.Legacy
 {
@@ -23,29 +25,57 @@ namespace osu.Game.Screens.RankingV2.Legacy
         [Resolved]
         private IBindable<IScoreInfo> score { get; set; } = null!;
 
+        [Resolved]
+        private ISkinSource skin { get; set; } = null!;
+
+        [Resolved]
+        private SkinManager? skins { get; set; }
+
+        [Resolved]
+        private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
+        private ISkin? classicFallback => skins?.DefaultClassicSkin ?? defaultClassicSkin;
+
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin)
+        private void load()
         {
             InternalChild = perfectIndicator = new Sprite
             {
-                Texture = skin.GetStableTexture(@"ranking-perfect"),
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,
             };
 
-            Size = perfectIndicator.Size;
+            updateTexture();
         }
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
+            skin.SourceChanged += onSkinChanged;
             score.BindValueChanged(_ => updateState(), true);
+        }
+
+        private void onSkinChanged() => Scheduler.AddOnce(updateTexture);
+
+        private void updateTexture()
+        {
+            perfectIndicator.Size = Vector2.Zero;
+            perfectIndicator.Texture = skin.GetStableTexture(@"ranking-perfect") ?? classicFallback?.GetStableTexture(@"ranking-perfect");
+            Size = perfectIndicator.Size;
         }
 
         private void updateState()
         {
             perfectIndicator.Alpha = score.Value.IsPerfect() ? 1 : 0;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinChanged;
         }
 
         #region ISerialisableDrawable

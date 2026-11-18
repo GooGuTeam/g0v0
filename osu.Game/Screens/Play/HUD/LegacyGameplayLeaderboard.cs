@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
@@ -46,6 +47,8 @@ namespace osu.Game.Screens.Play.HUD
 
         public bool UsesFixedAnchor { get; set; }
 
+        public bool AlwaysShown { get; set; }
+
         [Resolved]
         private IGameplayLeaderboardProvider leaderboardProvider { get; set; } = null!;
 
@@ -56,7 +59,8 @@ namespace osu.Game.Screens.Play.HUD
         private GameplayState? gameplayState { get; set; }
 
         private readonly IBindableList<GameplayLeaderboardScore> scores = new BindableList<GameplayLeaderboardScore>();
-        private readonly Bindable<bool> alwaysVisible = new Bindable<bool>();
+        private readonly Bindable<bool> showLeaderboard = new Bindable<bool>();
+        private readonly IBindable<bool> isBreakTime = new BindableBool();
         private readonly IBindable<LocalUserPlayingState> playingState = new Bindable<LocalUserPlayingState>();
 
         private readonly List<Entry> entries = new List<Entry>();
@@ -72,7 +76,10 @@ namespace osu.Game.Screens.Play.HUD
         [BackgroundDependencyLoader]
         private void load(OsuConfigManager config)
         {
-            config.BindWith(OsuSetting.GameplayLeaderboard, alwaysVisible);
+            config.BindWith(OsuSetting.GameplayLeaderboard, showLeaderboard);
+
+            if (player != null)
+                isBreakTime.BindTo(player.IsBreakTime);
 
             if (gameplayState != null)
                 playingState.BindTo(gameplayState.PlayingState);
@@ -117,7 +124,8 @@ namespace osu.Game.Screens.Play.HUD
 
             // stable shows its scoreboard during breaks, or throughout while toggled on, and takes it away once the play is over.
             bool over = gameplayState?.HasPassed == true || gameplayState?.HasFailed == true;
-            bool visible = player?.Configuration.ShowLeaderboard != false && !over && (alwaysVisible.Value || playingState.Value != LocalUserPlayingState.Playing);
+            bool isBreak = player != null ? isBreakTime.Value : playingState.Value == LocalUserPlayingState.Break;
+            bool visible = player?.Configuration.ShowLeaderboard != false && !over && (showLeaderboard.Value || AlwaysShown || isBreak);
 
             // stable steps the alpha by 0.08 every 60th of a second.
             float target = visible ? 1 : 0;
@@ -194,6 +202,15 @@ namespace osu.Game.Screens.Play.HUD
 
             private Bindable<ScoringMode> scoringMode = null!;
 
+            [Resolved]
+            private ISkinSource skin { get; set; } = null!;
+
+            [Resolved]
+            private SkinManager? skins { get; set; }
+
+            [Resolved]
+            private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
             public Entry(GameplayLeaderboardScore score)
             {
                 Score = score;
@@ -209,17 +226,14 @@ namespace osu.Game.Screens.Play.HUD
             }
 
             [BackgroundDependencyLoader]
-            private void load(ISkinSource skin, SkinManager skins, OsuConfigManager config)
+            private void load(OsuConfigManager config)
             {
                 scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
-
-                var texture = skin.GetStableTexture(@"menu-button-background") ?? skins.DefaultClassicSkin.GetStableTexture(@"menu-button-background");
 
                 InternalChildren = new Drawable[]
                 {
                     background = new Sprite
                     {
-                        Texture = texture,
                         Scale = new Vector2(0.62f),
                         Colour = backgroundColour,
                         BypassAutoSizeAxes = Axes.Both,
@@ -256,9 +270,7 @@ namespace osu.Game.Screens.Play.HUD
                     },
                 };
 
-                // the plate's texture is anchored by a point inside it, leaving its left part off-screen.
-                if (texture != null)
-                    background.OriginPosition = new Vector2(470, 20);
+                updateSkin();
             }
 
             private Color4 backgroundColour => Score.Tracked ? tracked_colour : leader ? leader_colour : others_colour;
@@ -266,6 +278,8 @@ namespace osu.Game.Screens.Play.HUD
             protected override void LoadComplete()
             {
                 base.LoadComplete();
+
+                skin.SourceChanged += onSkinChanged;
 
                 // stable's scoreboard digits overlap by 2.5 (3 for the rank) at 1024x768.
                 scoreText.Spacing = comboText.Spacing = new Vector2(-2.5f, 0);
@@ -277,6 +291,26 @@ namespace osu.Game.Screens.Play.HUD
                 HasQuit.BindValueChanged(q => nameText.FadeColour(q.NewValue ? quit_name_colour : Color4.White, 150), true);
 
                 updateScore();
+            }
+
+            private void onSkinChanged() => Scheduler.AddOnce(updateSkin);
+
+            private void updateSkin()
+            {
+                var classicFallback = skins?.DefaultClassicSkin ?? defaultClassicSkin;
+                var texture = skin.GetStableTexture(@"menu-button-background") ?? classicFallback?.GetStableTexture(@"menu-button-background");
+
+                background.Texture = texture;
+                // the plate's texture is anchored by a point inside it, leaving its left part off-screen.
+                background.OriginPosition = texture != null ? new Vector2(470, 20) : Vector2.Zero;
+            }
+
+            protected override void Dispose(bool isDisposing)
+            {
+                base.Dispose(isDisposing);
+
+                if (skin.IsNotNull())
+                    skin.SourceChanged -= onSkinChanged;
             }
 
             private void updateScore()

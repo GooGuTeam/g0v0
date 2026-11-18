@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ManagedBass.Fx;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
@@ -132,7 +133,7 @@ namespace osu.Game.Screens.Play
                 });
                 track.AddAdjustment(AdjustableProperty.Frequency, trackFreq);
                 failSample.Play();
-                applyToPlayfield(drawableRuleset.Playfield);
+                updatePlayfields();
                 return;
             }
 
@@ -150,7 +151,7 @@ namespace osu.Game.Screens.Play
             track.AddAdjustment(AdjustableProperty.Frequency, trackFreq);
             track.AddAdjustment(AdjustableProperty.Volume, volumeAdjustment);
 
-            applyToPlayfield(drawableRuleset.Playfield);
+            updatePlayfields();
             drawableRuleset.Playfield.HitObjectContainer.FadeOut(duration / 2);
 
             if (config.Get<bool>(OsuSetting.FadePlayfieldWhenHealthLow))
@@ -180,6 +181,18 @@ namespace osu.Game.Screens.Play
         {
             failSample.Stop();
             removeFilters();
+            clearAppliedObjects();
+        }
+
+        public override void FinishTransforms(bool propagateChildren = false, string? targetMember = null)
+        {
+            if (started && legacyAnimation && string.IsNullOrEmpty(targetMember))
+            {
+                legacyStartTime = Time.Current - legacy_duration;
+                updatePlayfields();
+            }
+
+            base.FinishTransforms(propagateChildren, targetMember);
         }
 
         private void removeFilters(bool resetTrackFrequency = true)
@@ -207,17 +220,48 @@ namespace osu.Game.Screens.Play
             if (!started)
                 return;
 
-            applyToPlayfield(drawableRuleset.Playfield);
+            updatePlayfields();
         }
 
-        private readonly List<DrawableHitObject> appliedObjects = new List<DrawableHitObject>();
+        private sealed class AppliedObject
+        {
+            public required double FailTime { get; init; }
+            public required float RandomRotation { get; init; }
+            public required Vector2 OriginalScale { get; init; }
+            public required Vector2 OriginalPosition { get; init; }
+            public required float OriginalRotation { get; init; }
+            public Action<DrawableHitObject, ArmedState>? Handler { get; set; }
+        }
+
+        private readonly Dictionary<DrawableHitObject, AppliedObject> appliedObjects = new Dictionary<DrawableHitObject, AppliedObject>();
+        private readonly HashSet<DrawableHitObject> currentAliveObjects = new HashSet<DrawableHitObject>();
+
+        private void updatePlayfields()
+        {
+            currentAliveObjects.Clear();
+            applyToPlayfield(drawableRuleset.Playfield);
+
+            if (appliedObjects.Count > currentAliveObjects.Count)
+            {
+                foreach (var (obj, state) in appliedObjects.Where(kvp => !currentAliveObjects.Contains(kvp.Key)).ToList())
+                {
+                    releaseAppliedObject(obj, state);
+                    appliedObjects.Remove(obj);
+                }
+            }
+        }
 
         private void applyToPlayfield(Playfield playfield)
         {
             double failTime = playfield.Time.Current;
 
             if (legacyAnimation)
-                playfield.HitObjectContainer.Alpha = Math.Max(0, 1 - (float)Math.Floor((Time.Current - legacyStartTime) / legacy_frame_duration) * 0.007f);
+            {
+                double elapsed = Math.Max(0, Time.Current - legacyStartTime);
+                playfield.HitObjectContainer.Alpha = elapsed >= legacy_duration
+                    ? 0
+                    : Math.Max(0, 1 - (float)(elapsed / legacy_frame_duration) * 0.007f);
+            }
 
             foreach (var nested in playfield.NestedPlayfields)
                 applyToPlayfield(nested);
@@ -225,55 +269,92 @@ namespace osu.Game.Screens.Play
             foreach (var entry in playfield.HitObjectContainer.AliveEntries)
             {
                 var obj = entry.Value;
+                currentAliveObjects.Add(obj);
 
-                if (appliedObjects.Contains(obj))
-                    continue;
+                if (!appliedObjects.TryGetValue(obj, out var state))
+                {
+                    float rotation = legacyAnimation
+                        ? (RNG.NextBool() ? 1f : -1f) * RNG.NextSingle(0.005f, 0.02f)
+                        : RNG.NextSingle(-90, 90);
 
-                float rotation = legacyAnimation ? RNG.NextSingle(-0.02f, 0.02f) : RNG.NextSingle(-90, 90);
-                Vector2 originalPosition = obj.Position;
-                Vector2 originalScale = obj.Scale;
+                    state = new AppliedObject
+                    {
+                        FailTime = failTime,
+                        RandomRotation = rotation,
+                        OriginalPosition = obj.Position,
+                        OriginalScale = obj.Scale,
+                        OriginalRotation = obj.Rotation,
+                    };
 
-                dropOffScreen(obj, failTime, rotation, originalScale, originalPosition);
+                    // need to reapply the fail drop after judgement state changes
+                    state.Handler = (_, _) => dropOffScreen(obj, state);
+                    obj.ApplyCustomUpdateState += state.Handler;
+                    appliedObjects[obj] = state;
 
-                // need to reapply the fail drop after judgement state changes
-                obj.ApplyCustomUpdateState += (_, _) => dropOffScreen(obj, failTime, rotation, originalScale, originalPosition);
-
-                appliedObjects.Add(obj);
+                    dropOffScreen(obj, state);
+                }
+                else if (legacyAnimation)
+                {
+                    // Drive legacy drop directly from wall-clock Time.Current each frame so the decelerating/stopped
+                    // gameplay audio clock never freezes or desynchronises hit object transforms.
+                    dropOffScreen(obj, state);
+                }
             }
         }
 
-        private void dropOffScreen(DrawableHitObject obj, double failTime, float randomRotation, Vector2 originalScale, Vector2 originalPosition)
+        private void dropOffScreen(DrawableHitObject obj, AppliedObject state)
         {
             if (legacyAnimation)
             {
                 // stable updates each sprite at 60 Hz, without shrinking the whole playfield.
                 // Rotation values in stable are radians; framework drawable rotations are degrees.
-                double elapsedFrames = Math.Max(0, Math.Floor((failTime - legacyStartTime) / legacy_frame_duration));
-                double remainingFrames = Math.Max(0, 147 - elapsedFrames);
-                using (obj.BeginAbsoluteSequence(failTime))
-                {
-                    for (int frame = 1; frame <= remainingFrames; frame++)
-                    {
-                        using (obj.BeginDelayedSequence((frame - 1) * legacy_frame_duration))
-                        {
-                            float y = originalPosition.Y < 0
-                                ? originalPosition.Y * MathF.Pow(0.6f, frame)
-                                : originalPosition.Y * MathF.Pow(1.01f, frame);
-                            obj.MoveToY(y, legacy_frame_duration);
-                            float radians = randomRotation + Math.Sign(randomRotation) * 0.01f * (frame - 1);
-                            obj.RotateTo(radians * 180 / MathF.PI, legacy_frame_duration);
-                        }
-                    }
-                }
+                double elapsed = Math.Clamp(Time.Current - legacyStartTime, 0, legacy_duration);
+                float elapsedFrames = (float)(elapsed / legacy_frame_duration);
+
+                // Ensure objects at Y <= 0 (such as Taiko hit objects or circles near the top edge) still accelerate downwards.
+                float dropBase = MathF.Max(0f, state.OriginalPosition.Y) + 150f;
+                float y = state.OriginalPosition.Y + dropBase * (MathF.Pow(1.01f, elapsedFrames) - 1f);
+                float radians = state.RandomRotation + MathF.Sign(state.RandomRotation) * 0.01f * elapsedFrames;
+
+                obj.Position = new Vector2(state.OriginalPosition.X, y);
+                obj.Rotation = state.OriginalRotation + radians * (180f / MathF.PI);
                 return;
             }
 
-            using (obj.BeginAbsoluteSequence(failTime))
+            using (obj.BeginAbsoluteSequence(state.FailTime))
             {
-                obj.RotateTo(randomRotation, duration);
-                obj.ScaleTo(originalScale * 0.5f, duration);
-                obj.MoveTo(originalPosition + new Vector2(0, 400), duration);
+                obj.RotateTo(state.RandomRotation, duration);
+                obj.ScaleTo(state.OriginalScale * 0.5f, duration);
+                obj.MoveTo(state.OriginalPosition + new Vector2(0, 400), duration);
             }
+        }
+
+        private void clearAppliedObjects()
+        {
+            foreach (var (obj, state) in appliedObjects)
+                releaseAppliedObject(obj, state);
+
+            appliedObjects.Clear();
+            currentAliveObjects.Clear();
+        }
+
+        private void releaseAppliedObject(DrawableHitObject obj, AppliedObject state)
+        {
+            if (state.Handler != null)
+                obj.ApplyCustomUpdateState -= state.Handler;
+
+            if (legacyAnimation)
+            {
+                obj.Position = state.OriginalPosition;
+                obj.Rotation = state.OriginalRotation;
+                obj.Scale = state.OriginalScale;
+            }
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+            clearAppliedObjects();
         }
     }
 }

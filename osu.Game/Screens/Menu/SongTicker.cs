@@ -36,6 +36,7 @@ namespace osu.Game.Screens.Menu
         public SongTicker()
         {
             AutoSizeAxes = Axes.Both;
+            Alpha = 0;
             InternalChildren = new Drawable[]
             {
                 new Container
@@ -102,8 +103,12 @@ namespace osu.Game.Screens.Menu
             {
                 if (e.NewValue)
                 {
-                    this.ClearTransforms();
+                    ClearTransforms();
                     this.FadeOut();
+                }
+                else if (e.OldValue)
+                {
+                    Scheduler.AddOnce(show);
                 }
             });
 

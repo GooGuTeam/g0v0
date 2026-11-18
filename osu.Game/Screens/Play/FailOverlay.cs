@@ -29,10 +29,8 @@ namespace osu.Game.Screens.Play
         [BackgroundDependencyLoader]
         private void load()
         {
-            // stable's fail screen offers F1 to watch the replay instead.
-            if (LegacyMenu != null)
-                return;
-
+            // Always populate FooterContent even if legacy mode is initially active; modernContent hides it while
+            // legacy mode is enabled, and toggling ToriiLegacyGameplayScreens off mid-play reveals it intact.
             // from #10339 maybe this is a better visual effect
             FooterContent.Add(new Container
             {

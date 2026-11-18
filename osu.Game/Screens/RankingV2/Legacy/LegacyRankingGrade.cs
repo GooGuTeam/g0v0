@@ -4,6 +4,7 @@
 using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
@@ -28,6 +29,14 @@ namespace osu.Game.Screens.RankingV2.Legacy
 
         [Resolved]
         private ISkinSource skin { get; set; } = null!;
+
+        [Resolved]
+        private SkinManager? skins { get; set; }
+
+        [Resolved]
+        private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
+        private ISkin? classicFallback => skins?.DefaultClassicSkin ?? defaultClassicSkin;
 
         private ScoreRank? lastShownRank;
 
@@ -55,8 +64,15 @@ namespace osu.Game.Screens.RankingV2.Legacy
         {
             base.LoadComplete();
 
+            skin.SourceChanged += onSkinChanged;
             score.BindValueChanged(_ => updateState(), true);
         }
+
+        private void onSkinChanged() => Scheduler.AddOnce(() =>
+        {
+            lastShownRank = null;
+            updateState();
+        });
 
         private void updateState()
         {
@@ -65,12 +81,25 @@ namespace osu.Game.Screens.RankingV2.Legacy
             if (lastShownRank == rank)
                 return;
 
+            var texture = skin.GetStableTexture($@"ranking-{rank}")
+                          ?? classicFallback?.GetStableTexture($@"ranking-{rank}")
+                          ?? skin.GetStableTexture(@"ranking-D")
+                          ?? classicFallback?.GetStableTexture(@"ranking-D");
+
             // The fixed size is transferred manually from the sprite instead of using `AutoSizeAxes = Axes.Both`
             // so that the bounding box of this component does not change as the animation of this component plays.
             gradeAdditiveSprite.Size = gradeSprite.Size = Vector2.Zero;
-            gradeAdditiveSprite.Texture = gradeSprite.Texture = skin.GetStableTexture($@"ranking-{rank.ToString()}");
+            gradeAdditiveSprite.Texture = gradeSprite.Texture = texture;
             Size = gradeSprite.Size;
             lastShownRank = rank;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinChanged;
         }
 
         #region ISerialisableDrawable

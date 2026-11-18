@@ -10,6 +10,7 @@ using osu.Framework.Input;
 using osu.Framework.Input.StateChanges;
 using osu.Game.Configuration;
 using osu.Game.Beatmaps;
+using osu.Game.Graphics;
 using osu.Game.Rulesets;
 using osu.Game.Skinning;
 
@@ -57,7 +58,7 @@ namespace osu.Game.Graphics.Cursor
         }
 
         [BackgroundDependencyLoader]
-        private void load(RulesetStore rulesets)
+        private void load(RulesetStore rulesets, ScreenshotManager? screenshotManager)
         {
             var ruleset = rulesets.GetRuleset(0)?.CreateInstance();
             gameplayCursor = ruleset?.CreateMenuCursor();
@@ -68,8 +69,7 @@ namespace osu.Game.Graphics.Cursor
 
             // The gameplay cursor only dims itself when hidden (so a hidden cursor stays faintly visible during gameplay).
             // Outside gameplay a hidden menu cursor must disappear entirely, trail included, or it leaves a ghost behind the active cursor.
-            Container gameplayCursorVisibility;
-            AddInternal(gameplayCursorVisibility = new Container
+            var gameplayCursorVisibility = new GameplayCursorVisibilityContainer(screenshotManager)
             {
                 RelativeSizeAxes = Axes.Both,
                 Alpha = 0,
@@ -79,7 +79,9 @@ namespace osu.Game.Graphics.Cursor
                 {
                     Child = gameplayCursor,
                 },
-            });
+            };
+
+            AddInternal(gameplayCursorVisibility);
 
             gameplayCursor.State.BindValueChanged(state => gameplayCursorVisibility.FadeTo(state.NewValue == Visibility.Visible ? 1 : 0, state.NewValue == Visibility.Visible ? 0 : 250, Easing.OutQuint));
         }
@@ -126,6 +128,19 @@ namespace osu.Game.Graphics.Cursor
             displayedCursor?.Show();
 
             currentOverrideProvider = newOverrideProvider;
+        }
+
+        private partial class GameplayCursorVisibilityContainer : Container
+        {
+            private readonly IBindable<bool> screenshotCursorVisibility = new Bindable<bool>(true);
+
+            public override bool IsPresent => screenshotCursorVisibility.Value && base.IsPresent;
+
+            public GameplayCursorVisibilityContainer(ScreenshotManager? screenshotManager)
+            {
+                if (screenshotManager != null)
+                    screenshotCursorVisibility.BindTo(screenshotManager.CursorVisibility);
+            }
         }
     }
 }

@@ -67,6 +67,13 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         protected override float IntervalMultiplier => 1 / Math.Max(cursorSize.Value, 1);
         protected override bool AvoidDrawingNearCursor => !DisjointTrail;
 
+        public override void ResetTime()
+        {
+            base.ResetTime();
+            currentPosition = null;
+            lastTrailTime = double.NegativeInfinity;
+        }
+
         protected override void Update()
         {
             base.Update();

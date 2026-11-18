@@ -41,7 +41,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         protected override void LoadComplete()
         {
             base.LoadComplete();
-            if (visualOrdering?.IsActive == true && CirclePiece != null)
+            if (visualOrdering != null && CirclePiece != null)
                 visualOrdering.Register(CirclePiece, this, OsuVisualKind.CircleGroup, () => scaleContainer);
         }
 

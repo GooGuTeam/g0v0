@@ -16,6 +16,8 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
+using osu.Game.Overlays;
+using osu.Game.Recording.Export;
 using WebCommonStrings = osu.Game.Resources.Localisation.Web.CommonStrings;
 using osuTK;
 using osuTK.Graphics;
@@ -28,6 +30,12 @@ namespace osu.Game.Screens.Select
         private readonly List<Action> actions = new List<Action>();
         private FillFlowContainer buttons = null!;
         private OsuTextFlowContainer heading = null!;
+
+        [Resolved]
+        private BeatmapSetOverlay? beatmapOverlay { get; set; }
+
+        [Resolved]
+        private ReplayVideoExporter? videoExporter { get; set; }
 
         public LegacyBeatmapOptionsOverlay()
         {
@@ -56,10 +64,10 @@ namespace osu.Game.Screens.Select
                         {
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
-                            Y = 105,
+                            Y = 80,
                             AutoSizeAxes = Axes.Both,
                             Direction = FillDirection.Vertical,
-                            Spacing = new Vector2(0, 15),
+                            Spacing = new Vector2(0, 12),
                         },
                     },
                 },
@@ -70,25 +78,36 @@ namespace osu.Game.Screens.Select
         {
             buttons.Clear();
             actions.Clear();
-            heading.Text = $"{beatmap.Metadata.Artist} - {beatmap.Metadata.Title}";
+            var artist = new RomanisableString(beatmap.Metadata.ArtistUnicode, beatmap.Metadata.Artist);
+            var title = new RomanisableString(beatmap.Metadata.TitleUnicode, beatmap.Metadata.Title);
+            heading.Text = LocalisableString.Interpolate($"{artist} - {title}");
             heading.NewLine();
             heading.AddText(UserInterfaceStrings.LegacyBeatmapOptionsPrompt);
 
             var destructive = new Color4(233, 49, 0, 255);
             var purple = new Color4(187, 104, 194, 255);
+            var blue = new Color4(31, 160, 222, 255);
 
             add(CollectionsStrings.ManageCollectionsTitle, new Color4(133, 184, 31, 255), songSelect.ManageCollections);
             if (beatmap.BeatmapSet != null)
                 add(CommonStrings.DeleteWithConfirmation, destructive, () => songSelect.Delete(beatmap.BeatmapSet));
+
+            if (beatmap.OnlineID > 0 && beatmapOverlay != null)
+                add(CommonStrings.Details, blue, () => beatmapOverlay.FetchAndShowBeatmap(beatmap.OnlineID));
 
             if (songSelect is SoloSongSelect solo)
             {
                 add(UserInterfaceStrings.LegacyBeatmapOptionsRemoveFromUnplayed, purple, () => solo.RemoveFromUnplayed(beatmap));
                 add(UserInterfaceStrings.LegacyBeatmapOptionsClearLocalScores, purple, () => solo.ClearLocalScores(beatmap));
                 add(ButtonSystemStrings.Edit.ToSentence(), destructive, () => solo.Edit(beatmap));
+
+                if (videoExporter != null)
+                    add(VideoRecordingStrings.ExportAutoplay, blue, () => solo.ExportAutoplayVideo(beatmap));
             }
 
             add(WebCommonStrings.ButtonsCancel, OsuColour.Gray((byte)107), () => { });
+
+            buttons.Spacing = new Vector2(0, actions.Count > 6 ? 10 : 14);
             Show();
         }
 
@@ -127,9 +146,9 @@ namespace osu.Game.Screens.Select
             if (e.ControlPressed || e.AltPressed || e.SuperPressed)
                 return base.OnKeyDown(e);
 
-            if (!e.Repeat && e.Key >= Key.Number1 && e.Key <= Key.Number9)
+            if (!e.Repeat && ((e.Key >= Key.Number1 && e.Key <= Key.Number9) || (e.Key >= Key.Keypad1 && e.Key <= Key.Keypad9)))
             {
-                int index = e.Key - Key.Number1;
+                int index = e.Key >= Key.Keypad1 ? e.Key - Key.Keypad1 : e.Key - Key.Number1;
                 if (index < actions.Count)
                     invoke(index);
                 return true;

@@ -24,6 +24,8 @@ using osuTK;
 using osu.Game.Localisation;
 using osu.Game.Online.Chat;
 using osu.Game.Overlays.Settings.Entries;
+using osu.Game.Overlays.Settings.Rendering;
+using osu.Game.Overlays.Settings.Rendering.Stable;
 
 namespace osu.Game.Overlays.Settings.Sections.Input
 {
@@ -93,6 +95,33 @@ namespace osu.Game.Overlays.Settings.Sections.Input
             scalingSizeX = osuConfig.GetBindable<float>(OsuSetting.ScalingSizeX);
             scalingSizeY = osuConfig.GetBindable<float>(OsuSetting.ScalingSizeY);
 
+            AreaSelection = new TabletAreaSelection(tabletHandler)
+            {
+                RelativeSizeAxes = Axes.X,
+                Height = 300,
+            };
+
+            Drawable areaSelectionRow = Renderer.UseStableLayouts
+                ? new StableSectionLineContainer
+                {
+                    Padding = new MarginPadding { Left = StableOptionsMetrics.ELEMENT_X - SettingsPanel.CONTENT_PADDING.Left },
+                    Child = AreaSelection,
+                }
+                : AreaSelection;
+
+            Drawable rotationPresetsRow = Renderer.UseStableLayouts
+                ? new StableSectionLineContainer
+                {
+                    Child = new RotationPresetButtons(tabletHandler)
+                    {
+                        Padding = new MarginPadding { Left = StableOptionsMetrics.ELEMENT_X, Right = StableSettingsItem.CONTENT_RIGHT },
+                    },
+                }
+                : new RotationPresetButtons(tabletHandler)
+                {
+                    Padding = SettingsPanel.CONTENT_PADDING,
+                };
+
             AddRange(new[]
             {
                 noTabletMessage = new NoTabletMessage(),
@@ -105,11 +134,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                     Direction = FillDirection.Vertical,
                     Children = new Drawable[]
                     {
-                        AreaSelection = new TabletAreaSelection(tabletHandler)
-                        {
-                            RelativeSizeAxes = Axes.X,
-                            Height = 300,
-                        },
+                        areaSelectionRow,
                         CreateItem(new ButtonEntry
                         {
                             Caption = TabletSettingsStrings.ResetToFullArea,
@@ -160,10 +185,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                             KeyboardStep = 1,
                             Current = rotation,
                         }),
-                        new RotationPresetButtons(tabletHandler)
-                        {
-                            Padding = SettingsPanel.CONTENT_PADDING,
-                        },
+                        rotationPresetsRow,
                         CreateItem(new SliderEntry<float>
                         {
                             TransferValueOnCommit = true,
@@ -345,6 +367,32 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
         private static float getWidth(float height, float aspectRatio) => height * aspectRatio;
 
+        private partial class StableSectionLineContainer : Container
+        {
+            private readonly Box line;
+
+            public StableSectionLineContainer()
+            {
+                RelativeSizeAxes = Axes.X;
+                AutoSizeAxes = Axes.Y;
+
+                AddInternal(line = new Box
+                {
+                    X = StableOptionsMetrics.SECTION_LINE_X,
+                    Width = StableOptionsMetrics.SECTION_LINE_WIDTH,
+                    Colour = StableOptionsMetrics.SECTION_LINE_COLOUR,
+                    Blending = BlendingParameters.Additive,
+                    BypassAutoSizeAxes = Axes.Both,
+                });
+            }
+
+            protected override void Update()
+            {
+                base.Update();
+                line.Height = DrawHeight + SettingsSection.ITEM_SPACING_V2;
+            }
+        }
+
         private partial class NoTabletMessage : CompositeDrawable
         {
             private IBindable<string> noTabletDetectedText = new Bindable<string>();
@@ -353,14 +401,18 @@ namespace osu.Game.Overlays.Settings.Sections.Input
             [Resolved]
             private LocalisationManager localisation { get; set; }
 
+            [Resolved(canBeNull: true)]
+            private ISettingsRenderer renderer { get; set; }
+
             [BackgroundDependencyLoader]
             private void load(OsuColour colours, OverlayColourProvider colourProvider)
             {
                 RelativeSizeAxes = Axes.X;
                 AutoSizeAxes = Axes.Y;
-                Padding = SettingsPanel.CONTENT_PADDING;
 
-                InternalChild = new Container
+                bool stable = renderer?.UseStableLayouts == true;
+
+                Drawable card = new Container
                 {
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
@@ -407,6 +459,20 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                         },
                     },
                 };
+
+                if (stable)
+                {
+                    InternalChild = new StableSectionLineContainer
+                    {
+                        Padding = new MarginPadding { Left = StableOptionsMetrics.ELEMENT_X, Right = StableSettingsItem.CONTENT_RIGHT },
+                        Child = card,
+                    };
+                }
+                else
+                {
+                    Padding = SettingsPanel.CONTENT_PADDING;
+                    InternalChild = card;
+                }
 
                 const string url = @"https://opentabletdriver.net/Wiki/FAQ/General";
                 noTabletDetectedText = localisation.GetLocalisedBindableString(TabletSettingsStrings.NoTabletDetectedDescription(url));

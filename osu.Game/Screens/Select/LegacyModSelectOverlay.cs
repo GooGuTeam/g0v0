@@ -15,6 +15,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
@@ -37,6 +38,20 @@ namespace osu.Game.Screens.Select
         public readonly Bindable<WorkingBeatmap> Beatmap = new Bindable<WorkingBeatmap>();
         public readonly Bindable<IReadOnlyList<Mod>> SelectedMods = new Bindable<IReadOnlyList<Mod>>(Array.Empty<Mod>());
 
+        private Func<Mod, bool> isValidMod = _ => true;
+
+        public Func<Mod, bool> IsValidMod
+        {
+            get => isValidMod;
+            set
+            {
+                isValidMod = value ?? throw new ArgumentNullException(nameof(value));
+
+                if (IsLoaded)
+                    rebuildButtons();
+            }
+        }
+
         protected override string? PopInSampleName => @"UI/overlay-pop-in";
         protected override string? PopOutSampleName => @"UI/overlay-pop-out";
 
@@ -47,6 +62,7 @@ namespace osu.Game.Screens.Select
         private LegacyDialogButton closeButton = null!;
 
         private readonly List<LegacyModButton> buttons = new List<LegacyModButton>();
+        private ModSettingChangeTracker? modSettingChangeTracker;
 
         private Sample? checkOffSample;
 
@@ -159,7 +175,19 @@ namespace osu.Game.Screens.Select
 
             // the mod icons come from the skin, so a skin change rebuilds them (scheduled: SourceChanged may fire off the update thread).
             skinSource.SourceChanged += onSkinChanged;
-            SelectedMods.BindValueChanged(_ => refreshButtons(), true);
+            SelectedMods.BindValueChanged(mods =>
+            {
+                modSettingChangeTracker?.Dispose();
+                modSettingChangeTracker = null;
+
+                if (mods.NewValue.Count > 0)
+                {
+                    modSettingChangeTracker = new ModSettingChangeTracker(mods.NewValue);
+                    modSettingChangeTracker.SettingChanged += _ => Scheduler.AddOnce(updateMultiplier);
+                }
+
+                refreshButtons();
+            }, true);
             Beatmap.BindValueChanged(_ => updateMultiplier(), true);
         }
 
@@ -170,6 +198,9 @@ namespace osu.Game.Screens.Select
 
         protected override void Dispose(bool isDisposing)
         {
+            modSettingChangeTracker?.Dispose();
+            modSettingChangeTracker = null;
+
             if (skinSource.IsNotNull())
                 skinSource.SourceChanged -= onSkinChanged;
 
@@ -184,7 +215,9 @@ namespace osu.Game.Screens.Select
             if (Ruleset.Value == null)
                 return;
 
-            var allMods = Ruleset.Value.CreateInstance().CreateAllMods().ToList();
+            var allMods = Ruleset.Value.CreateInstance().CreateAllMods()
+                                 .Where(m => m.UserPlayable && IsValidMod(m))
+                                 .ToList();
 
             Mod? find(string acronym) => allMods.FirstOrDefault(m => string.Equals(m.Acronym, acronym, StringComparison.OrdinalIgnoreCase));
 
@@ -319,6 +352,9 @@ namespace osu.Game.Screens.Select
 
         private void onButtonCycled(LegacyModButton button, bool reverse)
         {
+            if (SelectedMods.Disabled)
+                return;
+
             int currentIndex = -1;
 
             for (int i = 0; i < button.AvailableMods.Count; i++)
@@ -346,26 +382,16 @@ namespace osu.Game.Screens.Select
             var currentList = SelectedMods.Value.ToList();
             currentList.RemoveAll(m => button.AvailableMods.Any(am => am.GetType() == m.GetType()));
 
-            if (nextIndex >= 0)
-            {
-                var modToAdd = button.AvailableMods[nextIndex];
-                var candidateList = currentList.Append(modToAdd).ToList();
-
-                if (!ModUtils.CheckCompatibleSet(candidateList, out var invalidMods))
-                {
-                    candidateList = candidateList.Except(invalidMods).ToList();
-                    candidateList.Add(modToAdd);
-                }
-
-                currentList = candidateList;
-            }
-
-            button.UpdateState(nextIndex >= 0 ? button.AvailableMods[nextIndex] : null, playSound: true);
-            SelectedMods.Value = currentList;
+            var nextMod = nextIndex >= 0 ? button.AvailableMods[nextIndex] : null;
+            button.UpdateState(nextMod, playSound: true);
+            applyModSelection(currentList, nextMod);
         }
 
         private void setModByAcronym(string acronym)
         {
+            if (SelectedMods.Disabled)
+                return;
+
             var button = buttons.FirstOrDefault(b => b.AvailableMods.Any(m => string.Equals(m.Acronym, acronym, StringComparison.OrdinalIgnoreCase)));
             if (button == null)
                 return;
@@ -379,20 +405,27 @@ namespace osu.Game.Screens.Select
 
             currentList.RemoveAll(m => button.AvailableMods.Any(am => am.GetType() == m.GetType()));
 
-            if (!isAlreadyActive)
+            var nextMod = isAlreadyActive ? null : mod;
+            button.UpdateState(nextMod, playSound: true);
+            applyModSelection(currentList, nextMod);
+        }
+
+        private void applyModSelection(List<Mod> currentList, Mod? modToAdd)
+        {
+            if (modToAdd != null)
             {
-                var candidateList = currentList.Append(mod).ToList();
+                var clone = modToAdd.DeepClone();
+                currentList.RemoveAll(m => !ModUtils.CheckCompatibleSet(new[] { m, clone }));
+                currentList.Add(clone);
 
-                if (!ModUtils.CheckCompatibleSet(candidateList, out var invalidMods))
+                if (!ModUtils.CheckCompatibleSet(currentList, out var invalidMods))
                 {
-                    candidateList = candidateList.Except(invalidMods).ToList();
-                    candidateList.Add(mod);
+                    currentList = currentList.Except(invalidMods).ToList();
+                    if (!currentList.Contains(clone) && ModUtils.CheckCompatibleSet(currentList.Append(clone)))
+                        currentList.Add(clone);
                 }
-
-                currentList = candidateList;
             }
 
-            button.UpdateState(isAlreadyActive ? null : mod, playSound: true);
             SelectedMods.Value = currentList;
         }
 
@@ -405,6 +438,9 @@ namespace osu.Game.Screens.Select
 
         public void ResetAllMods()
         {
+            if (SelectedMods.Disabled)
+                return;
+
             if (SelectedMods.Value.Count > 0)
             {
                 checkOffSample?.Play();
@@ -491,11 +527,11 @@ namespace osu.Game.Screens.Select
                     return true;
 
                 case Key.X:
-                    setModByAcronym(mania ? "RD" : "AP");
+                    setModByAcronym(mania ? "DS" : "AP");
                     return true;
 
                 case Key.C:
-                    setModByAcronym("SO");
+                    setModByAcronym(mania ? "RD" : "SO");
                     return true;
 
                 case Key.V:
@@ -503,6 +539,10 @@ namespace osu.Game.Screens.Select
                         setModByAcronym("CN");
                     else
                         cycleButtonByAcronym("AT");
+                    return true;
+
+                case Key.B:
+                    setModByAcronym("SV2");
                     return true;
 
                 case Key.Number1:
@@ -530,6 +570,8 @@ namespace osu.Game.Screens.Select
 
         protected override void PopIn()
         {
+            rebuildButtons();
+
             this.FadeIn(150, Easing.OutQuint);
             canvas.ScaleTo(1f, 250, Easing.OutBack);
 

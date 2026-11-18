@@ -6,14 +6,15 @@ using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
-using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
+using osu.Game.Overlays.Settings.Entries;
+using osu.Game.Overlays.Settings.Rendering.Stable;
 using osu.Game.Rulesets;
 using osuTK;
-using osu.Game.Overlays.Settings.Entries;
 
 namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
 {
@@ -44,29 +45,11 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
                     {
                         BindTarget = rulesets.BlockUnseenRulesets
                     },
-                }),
-                new Container
-                {
-                    RelativeSizeAxes = Axes.X,
-                    AutoSizeAxes = Axes.Y,
-                    Padding = SettingsPanel.CONTENT_PADDING,
-                    Children = new Drawable[]
+                    Note =
                     {
-                        new SettingsNote
-                        {
-                            RelativeSizeAxes = Axes.X,
-                            Margin = new MarginPadding
-                            {
-                                Top = -ITEM_SPACING_V2,
-                                Bottom = ITEM_SPACING_V2,
-                            },
-                            Current =
-                            {
-                                Value = new SettingsNote.Data(RulesetSettingsStrings.LocalRulesetRestartNote, SettingsNote.Type.Informational),
-                            },
-                        },
+                        Value = new SettingsNote.Data(RulesetSettingsStrings.LocalRulesetRestartNote, SettingsNote.Type.Informational),
                     },
-                },
+                }),
                 new LoadedRulesetsSettings(),
                 new BrokenRulesetsSettings(),
             });
@@ -89,7 +72,7 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         [BackgroundDependencyLoader]
         private void load(RulesetStore rulesets)
         {
-            Child = new FillFlowContainer
+            var flow = new FillFlowContainer
             {
                 Anchor = Anchor.TopCentre,
                 Origin = Anchor.TopCentre,
@@ -97,9 +80,13 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
                 AutoSizeAxes = Axes.Y,
                 Direction = FillDirection.Vertical,
                 Spacing = new Vector2(5),
-                Padding = SettingsPanel.CONTENT_PADDING,
+                Padding = Renderer.UseStableLayouts
+                    ? new MarginPadding { Left = StableOptionsMetrics.ELEMENT_X, Right = StableSettingsItem.CONTENT_RIGHT }
+                    : SettingsPanel.CONTENT_PADDING,
                 ChildrenEnumerable = rulesets.AllRulesets.Select(r => new RulesetRow(r)),
             };
+
+            Child = Renderer.UseStableLayouts ? new StableRulesetListContainer { Child = flow } : flow;
         }
     }
 
@@ -112,37 +99,57 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         [BackgroundDependencyLoader]
         private void load(RulesetStore rulesets)
         {
+            var flow = new FillFlowContainer
+            {
+                Anchor = Anchor.TopCentre,
+                Origin = Anchor.TopCentre,
+                RelativeSizeAxes = Axes.X,
+                AutoSizeAxes = Axes.Y,
+                Direction = FillDirection.Vertical,
+                Spacing = new Vector2(5),
+                Padding = Renderer.UseStableLayouts
+                    ? new MarginPadding { Left = StableOptionsMetrics.ELEMENT_X, Right = StableSettingsItem.CONTENT_RIGHT }
+                    : SettingsPanel.CONTENT_PADDING,
+                ChildrenEnumerable = rulesets.BrokenRulesetFilenames.Select(name => new BrokenRulesetRow(name)),
+            };
+
             Children = new Drawable[]
             {
-                new Container
+                CreateItem(new NoteEntry
                 {
-                    RelativeSizeAxes = Axes.X,
-                    AutoSizeAxes = Axes.Y,
-                    Padding = SettingsPanel.CONTENT_PADDING,
-                    Children = new Drawable[]
+                    Note =
                     {
-                        new SettingsNote
-                        {
-                            RelativeSizeAxes = Axes.X,
-                            Current =
-                            {
-                                Value = new SettingsNote.Data(RulesetSettingsStrings.BrokenRulesetsNote, SettingsNote.Type.Warning),
-                            },
-                        },
+                        Value = new SettingsNote.Data(RulesetSettingsStrings.BrokenRulesetsNote, SettingsNote.Type.Warning),
                     },
-                },
-                new FillFlowContainer
-                {
-                    Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopCentre,
-                    RelativeSizeAxes = Axes.X,
-                    AutoSizeAxes = Axes.Y,
-                    Direction = FillDirection.Vertical,
-                    Spacing = new Vector2(5),
-                    Padding = SettingsPanel.CONTENT_PADDING,
-                    ChildrenEnumerable = rulesets.BrokenRulesetFilenames.Select(name => new BrokenRulesetRow(name)),
-                }
+                }),
+                Renderer.UseStableLayouts ? new StableRulesetListContainer { Child = flow } : flow,
             };
+        }
+    }
+
+    internal partial class StableRulesetListContainer : Container
+    {
+        private readonly Box line;
+
+        public StableRulesetListContainer()
+        {
+            RelativeSizeAxes = Axes.X;
+            AutoSizeAxes = Axes.Y;
+
+            AddInternal(line = new Box
+            {
+                X = StableOptionsMetrics.SECTION_LINE_X,
+                Width = StableOptionsMetrics.SECTION_LINE_WIDTH,
+                Colour = StableOptionsMetrics.SECTION_LINE_COLOUR,
+                Blending = BlendingParameters.Additive,
+                BypassAutoSizeAxes = Axes.Both,
+            });
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+            line.Height = DrawHeight > 0 ? DrawHeight + SettingsSection.ITEM_SPACING_V2 : 0;
         }
     }
 }

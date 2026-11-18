@@ -25,6 +25,7 @@ using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.Leaderboards;
 using osu.Game.Overlays;
+using osu.Game.Recording.Export;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
@@ -48,6 +49,10 @@ namespace osu.Game.Screens.Select
     public partial class LegacyLeaderboard : CompositeDrawable
     {
         public readonly Bindable<BeatmapLeaderboardScope> Scope = new Bindable<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Local);
+
+        internal BeatmapLeaderboardScope? InitialPreferredScope { get; init; }
+
+        internal BeatmapLeaderboardScope PreferredScope => preferredScope;
 
         /// <summary>
         /// torii: lo dispara SongSelect (con carousel.ScrollToSelection). hoverear la leaderboard hace
@@ -95,7 +100,22 @@ namespace osu.Game.Screens.Select
         private LegacyStableDropdown<BeatmapLeaderboardScope> scopeDropdown = null!;
 
         // Torii: osu!stable draws the ranking dropdown at depth 1, above the skin's selection-mode decoration.
-        private ScreenFrontLayer.ProxySet? frontProxies;
+        private Container proxyHome = null!;
+        private Drawable? scopeDropdownProxy;
+        private bool holdInFrontLayer = true;
+
+        public bool HoldInFrontLayer
+        {
+            get => holdInFrontLayer;
+            set
+            {
+                if (holdInFrontLayer == value)
+                    return;
+
+                holdInFrontLayer = value;
+                updateFrontLayer();
+            }
+        }
 
         [Resolved(CanBeNull = true)]
         private ScreenFrontLayer? frontLayer { get; set; }
@@ -121,7 +141,7 @@ namespace osu.Game.Screens.Select
         private const float pb_top = list_top + scroll_height + 12;
 
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin)
+        private void load(ISkinSource skin, SkinManager skins)
         {
             RelativeSizeAxes = Axes.Both;
 
@@ -156,7 +176,7 @@ namespace osu.Game.Screens.Select
                     Anchor = Anchor.TopLeft,
                     Origin = Anchor.Centre,
                     Position = no_records_position,
-                    Texture = skin.GetStableTexture(@"selection-norecords"),
+                    Texture = skin.GetStableTexture(@"selection-norecords") ?? skins.DefaultClassicSkin.GetStableTexture(@"selection-norecords"),
                     Alpha = 0,
                 },
                 // seccion Personal Best, pegada abajo del scroll (no scrollea con la lista).
@@ -181,28 +201,37 @@ namespace osu.Game.Screens.Select
                     ItemText = scope => $@"{scope} Ranking",
                     Current = { BindTarget = Scope },
                 },
+                proxyHome = new Container
+                {
+                    Depth = -10,
+                },
             };
+
+            scopeDropdownProxy = scopeDropdown.CreateProxy();
+            scopeDropdownProxy.Depth = ScreenFrontLayer.Depths.TOP_CONTROLS;
+            proxyHome.Add(scopeDropdownProxy);
         }
 
         // overlay de pantalla completa, pero solo el contenido del leaderboard (scores / dropdown)
         // tiene que capturar input. el lado derecho vacio deja pasar asi se puede dragear el carousel.
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos)
-        {
-            foreach (var child in InternalChildren)
-            {
-                if (child.ReceivePositionalInputAt(screenSpacePos))
-                    return true;
-            }
+            => scoreScroll.ReceivePositionalInputAt(screenSpacePos)
+               || personalBest.ReceivePositionalInputAt(screenSpacePos)
+               || scopeDropdown.ReceivePositionalInputAt(screenSpacePos);
 
-            return false;
+        private void updateFrontLayer()
+        {
+            if (frontLayer == null || scopeDropdownProxy == null)
+                return;
+
+            frontLayer.Hold(scopeDropdownProxy, holdInFrontLayer, proxyHome);
         }
 
         protected override void Update()
         {
             base.Update();
 
-            frontProxies ??= new ScreenFrontLayer.ProxySet((scopeDropdown, ScreenFrontLayer.Depths.TOP_CONTROLS));
-            frontProxies.Update(frontLayer);
+            updateFrontLayer();
 
             // torii: cuando el mouse entra a la region real de la leaderboard (la misma que captura
             // input) disparamos el scroll-a-la-seleccion una sola vez. la zona vacia de al lado no
@@ -218,7 +247,9 @@ namespace osu.Game.Screens.Select
 
         protected override void Dispose(bool isDisposing)
         {
-            frontProxies?.Release(frontLayer);
+            if (scopeDropdownProxy != null)
+                frontLayer?.Release(scopeDropdownProxy);
+
             base.Dispose(isDisposing);
         }
 
@@ -235,7 +266,8 @@ namespace osu.Game.Screens.Select
 
             // como stable: si estas logueado arrancamos mostrando el ranking Global en los mapas
             // que tienen leaderboard online; sin login queda Local.
-            preferredScope = api.IsLoggedIn ? BeatmapLeaderboardScope.Global : BeatmapLeaderboardScope.Local;
+            preferredScope = InitialPreferredScope
+                             ?? (!Scope.IsDefault ? Scope.Value : api.IsLoggedIn ? BeatmapLeaderboardScope.Global : BeatmapLeaderboardScope.Local);
 
             beatmap.BindValueChanged(_ =>
             {
@@ -464,6 +496,9 @@ namespace osu.Game.Screens.Select
             [Resolved(CanBeNull = true)]
             private OsuGame? game { get; set; }
 
+            [Resolved(CanBeNull = true)]
+            private ReplayVideoExporter? videoExporter { get; set; }
+
             private Box hoverHighlight = null!;
 
             public LegacyScoreRow(ScoreInfo score, string displayName, long? scoreDiff)
@@ -474,7 +509,7 @@ namespace osu.Game.Screens.Select
             }
 
             [BackgroundDependencyLoader]
-            private void load(ISkinSource skin)
+            private void load(ISkinSource skin, SkinManager skins)
             {
                 RelativeSizeAxes = Axes.X;
                 Height = 50;
@@ -548,7 +583,7 @@ namespace osu.Game.Screens.Select
                             Origin = Anchor.Centre,
                             RelativeSizeAxes = Axes.Both,
                             FillMode = FillMode.Fit,
-                            Texture = skin.GetStableTexture($@"ranking-{score.Rank}-small"),
+                            Texture = skin.GetStableTexture($@"ranking-{score.Rank}-small") ?? skins.DefaultClassicSkin.GetStableTexture($@"ranking-{score.Rank}-small"),
                         },
                     },
                     new FillFlowContainer
@@ -593,8 +628,14 @@ namespace osu.Game.Screens.Select
                     // los system mods nunca se copian.
                     var copyableMods = score.Mods.Where(m => m.Type != ModType.System).ToArray();
 
-                    if (copyableMods.Length > 0 && selectedMods != null)
-                        items.Add(new OsuMenuItem(SongSelectStrings.UseTheseMods, MenuItemType.Highlighted, () => selectedMods.Value = copyableMods));
+                    if (copyableMods.Length > 0 && selectedMods is { Disabled: false })
+                    {
+                        items.Add(new OsuMenuItem(SongSelectStrings.UseTheseMods, MenuItemType.Highlighted, () =>
+                        {
+                            if (!selectedMods.Disabled)
+                                selectedMods.Value = copyableMods.Select(m => m.DeepClone()).ToArray();
+                        }));
+                    }
 
                     if (score.OnlineID > 0)
                         items.Add(new OsuMenuItem(CommonStrings.CopyLink, MenuItemType.Standard, () => game?.CopyToClipboard($@"{api.Endpoints.WebsiteUrl}/scores/{score.OnlineID}")));
@@ -607,6 +648,9 @@ namespace osu.Game.Screens.Select
 
                     if (songSelect?.CanPresentScore == true)
                         items.Add(new OsuMenuItem(SongSelectStrings.WatchReplay, MenuItemType.Standard, () => songSelect.PresentScore(score, ScorePresentType.Gameplay)));
+
+                    if (videoExporter != null)
+                        items.Add(new OsuMenuItem(VideoRecordingStrings.ExportReplay, MenuItemType.Standard, () => videoExporter.Export(score)));
 
                     items.Add(new OsuMenuItem(CommonStrings.Export, MenuItemType.Standard, () => scoreManager.Export(score)));
                     items.Add(new OsuMenuItem(WebCommonStrings.ButtonsDelete, MenuItemType.Destructive, () => dialogOverlay?.Push(new LocalScoreDeleteDialog(score))));

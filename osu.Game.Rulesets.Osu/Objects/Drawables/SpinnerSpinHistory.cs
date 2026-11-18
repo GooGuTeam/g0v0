@@ -28,7 +28,18 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         /// </remarks>
         public float TotalRotation => 360 * completedSpins.Count + currentSpinMaxRotation;
 
+        /// <summary>
+        /// The total accumulated signed rotation, in degrees.
+        /// </summary>
+        public float TotalAccumulatedRotation => totalAccumulatedRotation;
+
+        /// <summary>
+        /// The timestamp of the most recent rotation report.
+        /// </summary>
+        public double LastReportTime => lastReportTime;
+
         private readonly Stack<CompletedSpin> completedSpins = new Stack<CompletedSpin>();
+        private readonly List<HistorySnapshot> snapshots = new List<HistorySnapshot>();
 
         /// <summary>
         /// The total accumulated (absolute) rotation.
@@ -99,6 +110,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                     // Importantly, carry over the remainder (which is now stored in `currentSpinRotation`).
                     currentSpinMaxRotation = Math.Abs(currentSpinRotation);
                 }
+
+                snapshots.Add(new HistorySnapshot(currentTime, totalAccumulatedRotation, totalAccumulatedRotationAtLastCompletion, currentSpinMaxRotation));
             }
             else
             {
@@ -114,10 +127,52 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                 // We know that the player is somewhere in a spin.
                 // In the worst case, this will be lower than expected, and recover in forward playback.
                 currentSpinMaxRotation = Math.Abs(currentSpinRotation);
+
+                while (snapshots.Count > 0 && snapshots[^1].Time > currentTime)
+                    snapshots.RemoveAt(snapshots.Count - 1);
+
+                snapshots.Add(new HistorySnapshot(currentTime, totalAccumulatedRotation, totalAccumulatedRotationAtLastCompletion, currentSpinMaxRotation));
             }
 
             lastReportTime = currentTime;
         }
+
+        /// <summary>
+        /// Reverts accumulated rotation history after <paramref name="currentTime"/> using recorded forward snapshots.
+        /// </summary>
+        public void RewindTo(double currentTime)
+        {
+            if (currentTime >= lastReportTime)
+                return;
+
+            while (completedSpins.TryPeek(out var segment) && segment.CompletionTime > currentTime)
+                completedSpins.Pop();
+
+            while (snapshots.Count > 0 && snapshots[^1].Time > currentTime)
+                snapshots.RemoveAt(snapshots.Count - 1);
+
+            if (snapshots.Count > 0)
+            {
+                HistorySnapshot snapshot = snapshots[^1];
+                totalAccumulatedRotation = snapshot.TotalAccumulatedRotation;
+                totalAccumulatedRotationAtLastCompletion = snapshot.TotalAccumulatedRotationAtLastCompletion;
+                currentSpinMaxRotation = snapshot.CurrentSpinMaxRotation;
+                lastReportTime = currentTime;
+            }
+            else
+            {
+                totalAccumulatedRotation = 0;
+                totalAccumulatedRotationAtLastCompletion = 0;
+                currentSpinMaxRotation = 0;
+                lastReportTime = double.NegativeInfinity;
+            }
+        }
+
+        private readonly record struct HistorySnapshot(
+            double Time,
+            float TotalAccumulatedRotation,
+            float TotalAccumulatedRotationAtLastCompletion,
+            float CurrentSpinMaxRotation);
 
         /// <summary>
         /// Represents a single completed spin.

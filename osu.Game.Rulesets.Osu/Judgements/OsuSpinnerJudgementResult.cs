@@ -27,6 +27,11 @@ namespace osu.Game.Rulesets.Osu.Judgements
         public readonly SpinnerSpinHistory History = new SpinnerSpinHistory();
 
         /// <summary>
+        /// Stores the Classic spinner rotation simulation across pool reuse so backward and forward seeks remain consistent.
+        /// </summary>
+        internal LegacySpinnerRotation? LegacyRotation;
+
+        /// <summary>
         /// Time instant at which the spin was started (the first user input which caused an increase in spin).
         /// </summary>
         public double? TimeStarted;

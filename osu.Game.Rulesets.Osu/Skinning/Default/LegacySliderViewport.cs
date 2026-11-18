@@ -48,10 +48,22 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
                 || !float.IsFinite(maximum.X) || !float.IsFinite(maximum.Y) || !float.IsFinite(radius))
                 return new LegacySliderViewport(Vector2.Zero, Vector2.Zero);
 
-            int left = (int)(minimum.X - (double)radius * 1.15);
-            int top = (int)(minimum.Y - (double)radius * 1.15);
-            int width = (int)((maximum.X - minimum.X) + (double)radius * 2.3);
-            int height = (int)((maximum.Y - minimum.Y) + (double)radius * 2.3);
+            double rawLeft = minimum.X - (double)radius * 1.15;
+            double rawTop = minimum.Y - (double)radius * 1.15;
+            double rawWidth = (maximum.X - minimum.X) + (double)radius * 2.3;
+            double rawHeight = (maximum.Y - minimum.Y) + (double)radius * 2.3;
+
+            if (!double.IsFinite(rawLeft) || !double.IsFinite(rawTop) || !double.IsFinite(rawWidth) || !double.IsFinite(rawHeight)
+                || rawLeft < int.MinValue || rawLeft > int.MaxValue
+                || rawTop < int.MinValue || rawTop > int.MaxValue
+                || rawWidth < 0 || rawWidth > int.MaxValue
+                || rawHeight < 0 || rawHeight > int.MaxValue)
+                return new LegacySliderViewport(Vector2.Zero, Vector2.Zero);
+
+            int left = (int)rawLeft;
+            int top = (int)rawTop;
+            int width = (int)rawWidth;
+            int height = (int)rawHeight;
             double clippedTop = Math.Max(-(double)top, 0);
             return new LegacySliderViewport(
                 new Vector2(Math.Max(left, 0), Math.Max(top, 0)),

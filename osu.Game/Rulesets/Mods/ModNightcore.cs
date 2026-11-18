@@ -109,8 +109,11 @@ namespace osu.Game.Rulesets.Mods
                 base.OnNewBeat(beatIndex, timingPoint, effectPoint, amplitudes);
 
                 int beatsPerBar = timingPoint.LegacyTimeSignature ?? timingPoint.TimeSignature.Numerator;
+                if (beatsPerBar == 0)
+                    beatsPerBar = 4;
+                int divisor = Divisor > 0 ? Divisor : 2;
                 // Widen before multiplication: signed legacy meters can exceed the 32-bit segment range.
-                long segmentLength = (long)beatsPerBar * Divisor * bars_per_segment;
+                long segmentLength = (long)beatsPerBar * divisor * bars_per_segment;
 
                 if (!IsBeatSyncedWithTrack)
                 {
@@ -129,12 +132,15 @@ namespace osu.Game.Rulesets.Mods
             // The historical NightcoreBeat.Update uses signed remainder rather than switching on a
             // positive native signature. Keep that sample selection for otherwise unrepresentable meters.
             // Beat event scheduling still uses BeatSyncedContainer's native bounded timing.
-            internal static (bool Kick, bool Finish, bool Clap, bool Hat) GetLegacyBeatSamples(int beatIndex, int meter, bool omitFirstBarLine, bool playHats)
+            public static (bool Kick, bool Finish, bool Clap, bool Hat) GetLegacyBeatSamples(int beatIndex, int meter, bool omitFirstBarLine, bool playHats)
             {
+                if (meter == 0)
+                    meter = 4;
+
                 if (beatIndex % (8L * meter) == 0)
                     return (true, beatIndex > 0 || !omitFirstBarLine, false, false);
 
-                int beatInBar = beatIndex % meter;
+                int beatInBar = (int)((long)beatIndex % meter);
                 if (beatInBar % 4 == 0)
                     return (true, false, false, false);
                 if (beatInBar % 4 == 2)
@@ -161,7 +167,8 @@ namespace osu.Game.Rulesets.Mods
                     return;
                 }
 
-                long beatInSegment = beatIndex % segmentLength;
+                long effectiveSegmentLength = segmentLength != 0 ? segmentLength : (long)4 * (Divisor > 0 ? Divisor : 2) * bars_per_segment;
+                long beatInSegment = beatIndex % effectiveSegmentLength;
 
                 if (beatInSegment == 0)
                 {

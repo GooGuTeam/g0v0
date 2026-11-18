@@ -55,11 +55,11 @@ namespace osu.Game.Screens.Play
         protected const double CONTENT_OUT_DURATION = 300;
 
         // stable starts as soon as the beatmap has loaded.
-        protected virtual double PlayerPushDelay => (legacyOverlay != null ? 500 : 1800) + disclaimers.Count * 500;
+        protected virtual double PlayerPushDelay => (UsesLegacyPresentation ? 500 : 1800) + disclaimers.Count * 500;
 
         public override bool HideOverlaysOnEnter => hideOverlays || UsesLegacyPresentation;
 
-        public bool UsesLegacyPresentation => legacyOverlay != null;
+        public bool UsesLegacyPresentation => legacyGameplayScreens.Value;
 
         public override bool DisallowExternalBeatmapRulesetChanges => true;
 
@@ -99,11 +99,14 @@ namespace osu.Game.Screens.Play
 
         private FillFlowContainer disclaimers = null!;
         private GridContainer sideContent = null!;
+        private OsuScrollContainer settingsScroll = null!;
+        private ScreenFooterContent? defaultFooterContent;
 
         /// <summary>
         /// osu!stable's loading screen, shown instead of the metadata display, logo and player settings when the legacy gameplay screens are enabled.
         /// </summary>
         private LegacyPlayerLoaderOverlay? legacyOverlay;
+        private readonly Bindable<bool> legacyGameplayScreens = new Bindable<bool>();
 
         private Bindable<bool> showStoryboards = null!;
 
@@ -152,7 +155,7 @@ namespace osu.Game.Screens.Play
             // or if a child of a focused overlay is focused, like settings' search textbox.
             && inputManager.FocusedDrawable?.FindClosestParent<OsuFocusedOverlayContainer>() == null
             // stable holds the beatmap back while its visual settings are extended.
-            && legacyOverlay?.Extended != true;
+            && (!UsesLegacyPresentation || legacyOverlay?.Extended != true);
 
         private bool holdForMenuExitButton => !AllowUserExit;
 
@@ -228,10 +231,12 @@ namespace osu.Game.Screens.Play
             muteWarningShownOnce = sessionStatics.GetBindable<bool>(Static.MutedAudioNotificationShownOnce);
             batteryWarningShownOnce = sessionStatics.GetBindable<bool>(Static.LowBatteryNotificationShownOnce);
             showStoryboards = config.GetBindable<bool>(OsuSetting.ShowStoryboard);
+            config.BindWith(OsuSetting.ToriiLegacyGameplayScreens, legacyGameplayScreens);
+            defaultFooterContent = FooterContent.Value;
 
             const float padding = 25;
 
-            bool legacy = config.Get<bool>(OsuSetting.ToriiLegacyGameplayScreens);
+            bool legacy = UsesLegacyPresentation;
 
             InternalChildren = new Drawable[]
             {
@@ -281,7 +286,7 @@ namespace osu.Game.Screens.Play
                     {
                         new Drawable[]
                         {
-                            new OsuScrollContainer
+                            settingsScroll = new OsuScrollContainer
                             {
                                 RelativeSizeAxes = Axes.Both,
                                 // stable's visual settings take the place of the player settings.
@@ -381,6 +386,8 @@ namespace osu.Game.Screens.Play
             showStoryboards.BindValueChanged(val => epilepsyWarning?.FadeTo(val.NewValue ? 1 : 0, 250, Easing.OutQuint), true);
             epilepsyWarning?.FinishTransforms(true);
 
+            legacyGameplayScreens.BindValueChanged(_ => updateLegacyPresentation());
+
             // this re-fetch has two purposes:
             // - is a safety against potential unexpected screen transitions, making sure that the leaderboard
             //   displayed during gameplay definitely matches the beatmap and ruleset being played
@@ -415,7 +422,7 @@ namespace osu.Game.Screens.Play
 
             const double metadata_delay = 500;
 
-            if (legacyOverlay == null)
+            if (!UsesLegacyPresentation)
                 MetadataInfo.Delay(metadata_delay).FadeIn(500, Easing.OutQuint);
             contentIn(metadata_delay + 250);
 
@@ -493,7 +500,7 @@ namespace osu.Game.Screens.Play
             osuLogo = logo;
 
             // stable has no logo while loading.
-            if (legacyOverlay != null)
+            if (UsesLegacyPresentation)
             {
                 logo.FadeOut(100);
                 return;
@@ -560,7 +567,7 @@ namespace osu.Game.Screens.Play
             // We need to perform this check here rather than in OnHover as any number of children of VisualSettings
             // may also be handling the hover events.
             // stable shows the background as it will be in gameplay, at the user's dim and without blur.
-            if (inputManager.HoveredDrawables.Contains(VisualSettings) || QuickRestart || legacyOverlay != null)
+            if ((!UsesLegacyPresentation && inputManager.HoveredDrawables.Contains(VisualSettings)) || QuickRestart || UsesLegacyPresentation)
             {
                 // Preview user-defined background dim and blur when hovered on the visual settings panel.
                 ApplyToBackground(b =>
@@ -630,14 +637,85 @@ namespace osu.Game.Screens.Play
             refetchLeaderboard(force: !quickRestartRequested);
         }
 
+        private void ensureLegacyOverlay()
+        {
+            if (legacyOverlay != null)
+                return;
+
+            AddInternal(legacyOverlay = new LegacyPlayerLoaderOverlay());
+        }
+
+        private void updateLegacyPresentation()
+        {
+            settingsScroll.Alpha = UsesLegacyPresentation ? 0 : 1;
+
+            if (UsesLegacyPresentation)
+            {
+                ensureLegacyOverlay();
+
+                MetadataInfo.ClearTransforms();
+                MetadataInfo.Alpha = 0;
+
+                logoTracking?.Dispose();
+                logoTracking = null;
+                osuLogo?.FadeOut(100);
+
+                quickRestartBackButtonRestore?.Cancel();
+                FooterContent.Value = ScreenFooterContent.None;
+
+                lowPassFilter?.RemoveAndDisposeImmediately();
+                lowPassFilter = null;
+                highPassFilter?.RemoveAndDisposeImmediately();
+                highPassFilter = null;
+
+                if (QuickRestart)
+                    legacyOverlay?.CancelAndHide();
+                else if (this.IsCurrentScreen())
+                {
+                    legacyOverlay?.BeginLoading();
+                    if (CurrentPlayer?.LoadState == LoadState.Ready)
+                        legacyOverlay?.FinishLoading();
+                }
+            }
+            else
+            {
+                legacyOverlay?.CancelAndHide();
+
+                if (!QuickRestart)
+                {
+                    FooterContent.Value = defaultFooterContent;
+
+                    if (this.IsCurrentScreen())
+                    {
+                        content.ClearTransforms();
+                        content.ScaleTo(1, 250, Easing.OutQuint).FadeIn(250, Easing.OutQuint);
+                        MetadataInfo.FadeIn(250, Easing.OutQuint);
+                        sideContent.FadeIn(250, Easing.Out).MoveToX(0, 250, Easing.OutQuint);
+                        disclaimers.FadeIn(250, Easing.Out).MoveToX(0, 250, Easing.OutQuint);
+
+                        if (osuLogo != null)
+                        {
+                            osuLogo.ScaleTo(new Vector2(0.15f), 250, Easing.OutQuint).FadeIn(250);
+                            logoTracking = content.StartTracking(osuLogo, 0, Easing.InOutExpo);
+                        }
+                    }
+                }
+            }
+        }
+
         private void contentIn(double delayBeforeSideDisplays = 0)
         {
             MetadataInfo.Loading = true;
-            legacyOverlay?.BeginLoading();
 
             if (QuickRestart)
             {
-                var originalFooterContent = FooterContent.Value;
+                legacyOverlay?.CancelAndHide();
+
+                sideContent.ClearTransforms();
+                sideContent.Alpha = 0;
+                disclaimers.ClearTransforms();
+                disclaimers.Alpha = 0;
+
                 FooterContent.Value = ScreenFooterContent.None;
 
                 // A quick restart starts by triggering a fade to black
@@ -654,16 +732,50 @@ namespace osu.Game.Screens.Play
 
                 prepareNewPlayer();
 
-                content
-                    .Delay(quick_restart_initial_delay)
-                    .ScaleTo(1)
-                    .FadeInFromZero(500, Easing.OutQuint);
-
                 quickRestartBackButtonRestore?.Cancel();
-                quickRestartBackButtonRestore = Scheduler.AddDelayed(() => FooterContent.Value = originalFooterContent, quick_restart_initial_delay);
+
+                if (!UsesLegacyPresentation)
+                {
+                    content
+                        .Delay(quick_restart_initial_delay)
+                        .ScaleTo(1)
+                        .FadeInFromZero(500, Easing.OutQuint);
+
+                    quickRestartBackButtonRestore = Scheduler.AddDelayed(() =>
+                    {
+                        if (!UsesLegacyPresentation)
+                            FooterContent.Value = defaultFooterContent;
+                    }, quick_restart_initial_delay);
+                }
+                else
+                {
+                    content.ClearTransforms();
+                    content.Alpha = 0;
+                }
+            }
+            else if (UsesLegacyPresentation)
+            {
+                ensureLegacyOverlay();
+                legacyOverlay?.BeginLoading();
+
+                content.ClearTransforms();
+                content.Alpha = 0;
+
+                Schedule(prepareNewPlayer);
+
+                using (BeginDelayedSequence(delayBeforeSideDisplays))
+                {
+                    sideContent.FadeInFromZero(500, Easing.Out)
+                               .MoveToX(0, 500, Easing.OutQuint);
+
+                    disclaimers.FadeInFromZero(500, Easing.Out)
+                               .MoveToX(0, 500, Easing.OutQuint);
+                }
             }
             else
             {
+                legacyOverlay?.CancelAndHide();
+
                 content.FadeInFromZero(500, Easing.OutQuint);
 
                 content
@@ -683,7 +795,7 @@ namespace osu.Game.Screens.Play
             }
 
             // stable leaves the preview playing as it is.
-            if (legacyOverlay == null)
+            if (!UsesLegacyPresentation)
             {
                 AddRangeInternal(new[]
                 {
@@ -793,7 +905,8 @@ namespace osu.Game.Screens.Play
                 },
                 // When a quick restart is activated, the metadata content will display some time later if it's taking too long.
                 // To avoid it appearing too briefly, if it begins to fade in let's induce a standard delay.
-                QuickRestart && content.Alpha == 0 ? 0 : 500);
+                // In legacy presentation, PlayerPushDelay and LegacyPlayerLoaderOverlay's initial peek already govern start timing.
+                (QuickRestart && content.Alpha == 0) || UsesLegacyPresentation ? 0 : 500);
         }
 
         private void cancelLoad()

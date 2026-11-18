@@ -102,8 +102,9 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                             Alpha = 0,
                             Children = new Drawable[]
                             {
-                                pendingBindingText = new OsuSpriteText
+                                pendingBindingText = new TruncatingSpriteText
                                 {
+                                    RelativeSizeAxes = Axes.X,
                                     Alpha = 0.4f,
                                     Text = InputSettingsStrings.PendingBinding,
                                     Font = M.Font(M.LABEL_FONT_SIZE),

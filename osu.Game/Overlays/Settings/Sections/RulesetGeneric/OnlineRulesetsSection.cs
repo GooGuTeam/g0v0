@@ -19,6 +19,8 @@ using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Private;
 using osu.Game.Online.API.Requests.Private.Responses;
+using osu.Game.Overlays.Settings.Entries;
+using osu.Game.Overlays.Settings.Rendering.Stable;
 using osu.Game.Rulesets;
 using osuTK;
 
@@ -46,7 +48,7 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         [Resolved]
         private IAPIProvider api { get; set; } = null!;
 
-        private SettingsNote statusNote = null!;
+        private readonly NoteEntry statusNote = new NoteEntry();
         private FillFlowContainer rulesetFlow = null!;
         private IconButton refreshButton = null!;
         private OsuTextFlowContainer sourceFlow = null!;
@@ -71,76 +73,71 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         [BackgroundDependencyLoader]
         private void load()
         {
-            AddRange(new Drawable[]
+            MarginPadding rowPadding = Renderer.UseStableLayouts
+                ? new MarginPadding { Left = StableOptionsMetrics.ELEMENT_X, Right = StableSettingsItem.CONTENT_RIGHT }
+                : SettingsPanel.CONTENT_PADDING;
+
+            Drawable headerRow = new Container
             {
-                new Container
+                RelativeSizeAxes = Axes.X,
+                AutoSizeAxes = Axes.Y,
+                Padding = rowPadding,
+                Child = new GridContainer
                 {
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
-                    Padding = SettingsPanel.CONTENT_PADDING,
-                    Child = new GridContainer
+                    ColumnDimensions = new[]
                     {
-                        RelativeSizeAxes = Axes.X,
-                        AutoSizeAxes = Axes.Y,
-                        ColumnDimensions = new[]
-                        {
-                            new Dimension(),
-                            new Dimension(GridSizeMode.AutoSize),
-                        },
-                        RowDimensions = new[]
-                        {
-                            new Dimension(GridSizeMode.AutoSize),
-                        },
-                        Content = new[]
-                        {
-                            new Drawable?[]
-                            {
-                                sourceFlow = new OsuTextFlowContainer(t => t.Font = OsuFont.Style.Caption1)
-                                {
-                                    Anchor = Anchor.CentreLeft,
-                                    Origin = Anchor.CentreLeft,
-                                    RelativeSizeAxes = Axes.X,
-                                    AutoSizeAxes = Axes.Y,
-                                },
-                                refreshButton = new IconButton
-                                {
-                                    Anchor = Anchor.CentreRight,
-                                    Origin = Anchor.CentreRight,
-                                    Icon = FontAwesome.Solid.Sync,
-                                    TooltipText = RulesetSettingsStrings.RefreshOnlineRulesets,
-                                    Action = fetch,
-                                },
-                            },
-                        },
+                        new Dimension(),
+                        new Dimension(GridSizeMode.AutoSize),
                     },
-                },
-                new Container
-                {
-                    RelativeSizeAxes = Axes.X,
-                    AutoSizeAxes = Axes.Y,
-                    Padding = SettingsPanel.CONTENT_PADDING,
-                    Child = new FillFlowContainer
+                    RowDimensions = new[]
                     {
-                        RelativeSizeAxes = Axes.X,
-                        AutoSizeAxes = Axes.Y,
-                        Direction = FillDirection.Vertical,
-                        Spacing = new Vector2(5),
-                        Children = new Drawable[]
+                        new Dimension(GridSizeMode.AutoSize),
+                    },
+                    Content = new[]
+                    {
+                        new Drawable?[]
                         {
-                            statusNote = new SettingsNote
+                            sourceFlow = new OsuTextFlowContainer(t => t.Font = Renderer.UseStableLayouts ? StableOptionsMetrics.Font(StableOptionsMetrics.LABEL_FONT_SIZE) : OsuFont.Style.Caption1)
                             {
-                                RelativeSizeAxes = Axes.X,
-                            },
-                            rulesetFlow = new FillFlowContainer
-                            {
+                                Anchor = Anchor.CentreLeft,
+                                Origin = Anchor.CentreLeft,
                                 RelativeSizeAxes = Axes.X,
                                 AutoSizeAxes = Axes.Y,
-                                Direction = FillDirection.Vertical,
-                                Spacing = new Vector2(5),
+                            },
+                            refreshButton = new IconButton
+                            {
+                                Anchor = Anchor.CentreRight,
+                                Origin = Anchor.CentreRight,
+                                Icon = FontAwesome.Solid.Sync,
+                                TooltipText = RulesetSettingsStrings.RefreshOnlineRulesets,
+                                Action = fetch,
                             },
                         },
                     },
                 },
+            };
+
+            Drawable listRow = new Container
+            {
+                RelativeSizeAxes = Axes.X,
+                AutoSizeAxes = Axes.Y,
+                Padding = rowPadding,
+                Child = rulesetFlow = new FillFlowContainer
+                {
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
+                    Direction = FillDirection.Vertical,
+                    Spacing = new Vector2(5),
+                },
+            };
+
+            AddRange(new Drawable[]
+            {
+                Renderer.UseStableLayouts ? new StableRulesetListContainer { Child = headerRow } : headerRow,
+                CreateItem(statusNote),
+                Renderer.UseStableLayouts ? new StableRulesetListContainer { Child = listRow } : listRow,
             });
 
             string apiUrl = api.Endpoints.APIUrl;
@@ -167,7 +164,7 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
             fetching = true;
             refreshButton.Enabled.Value = false;
 
-            statusNote.Current.Value = null;
+            statusNote.Note.Value = null;
             rulesetFlow.Clear();
             rulesetFlow.Add(createLoadingBox());
 
@@ -242,7 +239,7 @@ namespace osu.Game.Overlays.Settings.Sections.RulesetGeneric
         }
 
         private void setNote(LocalisableString text, SettingsNote.Type type)
-            => statusNote.Current.Value = new SettingsNote.Data(text, type);
+            => statusNote.Note.Value = new SettingsNote.Data(text, type);
 
         /// <summary>
         /// Finds the base mode a known relax/autopilot variant is derived from.

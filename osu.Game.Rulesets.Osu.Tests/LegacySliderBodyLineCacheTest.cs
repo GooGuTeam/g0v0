@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
+using osu.Game.Rulesets.Osu.Skinning.Default;
 using osu.Game.Rulesets.Osu.Skinning.Legacy;
 using osuTK;
 using Edge = osu.Game.Rulesets.Osu.Skinning.Legacy.LegacySliderBodyMesh.Edge;
@@ -69,6 +70,28 @@ namespace osu.Game.Rulesets.Osu.Tests
                 Assert.That(actual.OrthoTop, Is.EqualTo(reference.OrthoTop));
                 Assert.That(cache.Lines, Is.EqualTo(expected), $"lines at frame {frame}");
             }
+        }
+
+        [TestCase(1.5e9f)]
+        [TestCase(-1.5e9f)]
+        public void TestExtremeCoordinatesDoNotOverflowIntBounds(float baseCoord)
+        {
+            var edges = new List<LegacySliderBallPath.Edge>
+            {
+                new LegacySliderBallPath.Edge(new Vector2(baseCoord, baseCoord), new Vector2(baseCoord + 50, baseCoord + 50), true, true),
+            };
+
+            var cache = new LegacySliderBodyMesh.LineCache();
+            cache.SetSource(edges);
+
+            // Multiplied by ratio = 2, min * ratio = +/-3e9 exceeds Int32 range even though max - min is only 100px.
+            Viewport viewport = cache.Prepare(0, 1, Vector2.Zero, 2f, 64f, null);
+            Assert.That(viewport, Is.EqualTo(default(Viewport)));
+            Assert.That(cache.Lines, Is.Empty);
+
+            var legacyViewport = LegacySliderViewport.FromBounds(new Vector2(baseCoord * 2, baseCoord * 2), new Vector2(baseCoord * 2 + 100, baseCoord * 2 + 100), 64f);
+            Assert.That(legacyViewport.Origin, Is.EqualTo(Vector2.Zero));
+            Assert.That(legacyViewport.Size, Is.EqualTo(Vector2.Zero));
         }
 
         /// <summary>

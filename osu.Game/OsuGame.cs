@@ -272,10 +272,13 @@ namespace osu.Game
 
         private Bindable<UserActivity> configUserActivity;
         private readonly BindableBool legacySongSelectEnabled = new BindableBool();
+        private readonly BindableBool legacyGameplayScreensEnabled = new BindableBool();
         private readonly BindableBool legacyResultsEnabled = new BindableBool();
 
         private readonly BindableBool legacyFpsCounter = new BindableBool();
         private readonly Bindable<LegacySongSelectAspectRatio> legacySongSelectAspectRatio = new Bindable<LegacySongSelectAspectRatio>();
+        private readonly Bindable<LegacySongSelectAspectRatio> gameplayAspectRatio = new Bindable<LegacySongSelectAspectRatio>();
+        private bool exitingAfterCapture;
 
         private Bindable<string> configSkin;
 
@@ -1274,10 +1277,14 @@ namespace osu.Game
 
             LocalConfig.BindWith(OsuSetting.ToriiStableResults, legacyResultsEnabled);
             legacyResultsEnabled.BindValueChanged(_ => updateLegacySongSelectAspectRatio());
+            LocalConfig.BindWith(OsuSetting.ToriiLegacyGameplayScreens, legacyGameplayScreensEnabled);
+            legacyGameplayScreensEnabled.BindValueChanged(_ => updateLegacySongSelectAspectRatio());
             LocalConfig.BindWith(OsuSetting.ToriiLegacyFooterUseSkin, legacySongSelectEnabled);
             LocalConfig.BindWith(OsuSetting.ToriiLegacySongSelectAspectRatio, legacySongSelectAspectRatio);
+            LocalConfig.BindWith(OsuSetting.ToriiGameplayAspectRatio, gameplayAspectRatio);
             legacySongSelectEnabled.BindValueChanged(_ => updateLegacySongSelectAspectRatio());
             legacySongSelectAspectRatio.BindValueChanged(_ => updateLegacySongSelectAspectRatio());
+            gameplayAspectRatio.BindValueChanged(_ => updateLegacySongSelectAspectRatio());
 
             ScreenStack.ScreenPushed += screenPushed;
             ScreenStack.ScreenExited += screenExited;
@@ -1848,7 +1855,8 @@ namespace osu.Game
                     return true;
 
                 case GlobalAction.ToggleFPSDisplay:
-                    fpsCounter.ToggleVisibility();
+                    var showFpsDisplay = LocalConfig.GetBindable<bool>(OsuSetting.ShowFpsDisplay);
+                    showFpsDisplay.Value = !showFpsDisplay.Value;
                     return true;
 
                 case GlobalAction.ToggleSkinEditor:
@@ -1947,11 +1955,13 @@ namespace osu.Game
                 replayVideoExporter.Cancel();
                 return true;
             }
-            if (liveCaptureManager.IsRecording)
+
+            if (exitingAfterCapture || liveCaptureManager.IsCapturing)
             {
-                _ = liveCaptureManager.StopAsync();
+                stopCaptureAndExit();
                 return true;
             }
+
             if (ScreenStack.CurrentScreen is Loader)
                 return false;
 
@@ -1962,6 +1972,31 @@ namespace osu.Game
             }
 
             return base.OnExiting();
+        }
+
+        private void stopCaptureAndExit()
+        {
+            if (exitingAfterCapture)
+                return;
+
+            exitingAfterCapture = true;
+            _ = stopAndExitAsync();
+
+            async Task stopAndExitAsync()
+            {
+                try
+                {
+                    await liveCaptureManager.StopAsync().ConfigureAwait(false);
+                }
+                finally
+                {
+                    Schedule(() =>
+                    {
+                        exitingAfterCapture = false;
+                        Exit();
+                    });
+                }
+            }
         }
 
         protected override void UpdateAfterChildren()
@@ -1980,7 +2015,8 @@ namespace osu.Game
             {
                 MainMenu => LocalConfig.Get<bool>(OsuSetting.ToriiLegacyMainMenu),
                 SongSelect => legacySongSelectEnabled.Value,
-                ResultsScreen => LocalConfig.Get<bool>(OsuSetting.ToriiStableResults),
+                SoloResultsScreen => legacyResultsEnabled.Value,
+                PlayerLoader or Player => legacyGameplayScreensEnabled.Value,
                 _ => false,
             };
         }
@@ -2081,10 +2117,20 @@ namespace osu.Game
             LegacySongSelectAspectRatio setting = LegacySongSelectAspectRatio.FollowWindow;
 
             // One skin canvas across selection, loading, gameplay and legacy results.
-            if ((ScreenStack.CurrentScreen is SongSelect && legacySongSelectEnabled.Value)
-                || (ScreenStack.CurrentScreen is ResultsScreen && LocalConfig.Get<bool>(OsuSetting.ToriiStableResults))
-                || ScreenStack.CurrentScreen is PlayerLoader or Player)
-                setting = legacySongSelectAspectRatio.Value;
+            switch (ScreenStack.CurrentScreen)
+            {
+                case SongSelect when legacySongSelectEnabled.Value:
+                case SoloResultsScreen when legacyResultsEnabled.Value:
+                    setting = legacySongSelectAspectRatio.Value;
+                    break;
+
+                case PlayerLoader or Player:
+                    if (gameplayAspectRatio.Value != LegacySongSelectAspectRatio.FollowWindow)
+                        setting = gameplayAspectRatio.Value;
+                    else if (legacySongSelectEnabled.Value || legacyGameplayScreensEnabled.Value)
+                        setting = legacySongSelectAspectRatio.Value;
+                    break;
+            }
 
             ScreenContainer.SetFixedAspectRatio(setting switch
             {
@@ -2101,7 +2147,12 @@ namespace osu.Game
             ScreenChanged((OsuScreen)lastScreen, (OsuScreen)newScreen);
 
             if (newScreen == null)
-                Exit();
+            {
+                if (liveCaptureManager.IsCapturing)
+                    stopCaptureAndExit();
+                else
+                    Exit();
+            }
         }
     }
 }

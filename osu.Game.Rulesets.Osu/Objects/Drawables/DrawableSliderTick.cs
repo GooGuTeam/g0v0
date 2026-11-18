@@ -48,7 +48,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             legacyTickFading.BindValueChanged(_ => refreshVisualSettings());
             legacyTickVisibility.BindValueChanged(_ => refreshVisualSettings());
 
-            if (visualOrdering?.IsActive == true)
+            if (visualOrdering != null)
             {
                 AddInternal(visualProxies);
                 visualOrdering.Register(scaleContainer, this, OsuVisualKind.Tick, () => visualProxies);
@@ -102,12 +102,14 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             Position = HitObject.Position - DrawableSlider.HitObject.Position;
         }
 
-        private void refreshVisualSettings() => Schedule(() =>
+        private void refreshVisualSettings() => Scheduler.AddOnce(applyVisualSettings);
+
+        private void applyVisualSettings()
         {
             // A config change may also reach a free pooled drawable. Its next Apply() will use the current settings.
             if (Entry != null)
                 RefreshStateTransforms();
-        });
+        }
 
         protected override void CheckForResult(bool userTriggered, double timeOffset) => DrawableSlider.SliderInputManager.TryJudgeNestedObject(this, timeOffset);
 

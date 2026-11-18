@@ -72,8 +72,19 @@ namespace osu.Game.Screens.Play
             beatmap = working.Beatmap;
             track = working.Track;
 
+            if (beatmap.HitObjects.FirstOrDefault() is { } firstObject && OverflowsLegacyLeadIn(firstObject.StartTime))
+            {
+                double earliest = -Math.Max(0, beatmap.AudioLeadIn);
+
+                if (gameplayStartTime < earliest)
+                {
+                    var firstPlayable = beatmap.HitObjects.FirstOrDefault(h => h.StartTime >= earliest);
+                    gameplayStartTime = firstPlayable != null ? Math.Max(earliest, firstPlayable.StartTime - 2000) : 0;
+                }
+            }
+
             GameplayStartTime = gameplayStartTime;
-            StartTime = findEarliestStartTime(gameplayStartTime, beatmap, working.Storyboard);
+            StartTime = findEarliestStartTime(GameplayStartTime, beatmap, working.Storyboard);
         }
 
         private static double findEarliestStartTime(double gameplayStartTime, IBeatmap beatmap, Storyboard storyboard)
@@ -81,8 +92,13 @@ namespace osu.Game.Screens.Play
             // here we are trying to find the time to start playback from the "zero" point.
             // generally this is either zero, or some point earlier than zero in the case of storyboards, lead-ins etc.
 
+            double? firstHitObjectTime = beatmap.HitObjects.FirstOrDefault()?.StartTime;
+            bool overflowsLeadIn = firstHitObjectTime.HasValue && OverflowsLegacyLeadIn(firstHitObjectTime.Value);
+            double earliestLeadIn = -Math.Max(0, beatmap.AudioLeadIn);
+
             // start with the originally provided latest time (if before zero).
-            double time = Math.Min(0, gameplayStartTime);
+            // rulesets other than osu! pass `firstHitObject.StartTime - 2000` directly, so guard against legacy lead-in overflow here too.
+            double time = Math.Min(0, overflowsLeadIn ? Math.Max(earliestLeadIn, gameplayStartTime) : gameplayStartTime);
 
             // if a storyboard is present, it may dictate the appropriate start time by having events in negative time space.
             // this is commonly used to display an intro before the audio track start.
@@ -92,13 +108,11 @@ namespace osu.Game.Screens.Play
 
             // some beatmaps specify a current lead-in time which should be used instead of the ruleset-provided value when available.
             // this is not available as an option in the live editor but can still be applied via .osu editing.
-            double firstHitObjectTime = beatmap.HitObjects.First().StartTime;
-
-            if (beatmap.AudioLeadIn > 0)
+            if (beatmap.AudioLeadIn > 0 && firstHitObjectTime.HasValue)
             {
                 // Stable only ever consults the first hit object. Where its lead-in overflows, nothing but
                 // the beatmap's own lead-in (counted back from zero) and the storyboard delay the start.
-                time = Math.Min(time, OverflowsLegacyLeadIn(firstHitObjectTime) ? -beatmap.AudioLeadIn : firstHitObjectTime - beatmap.AudioLeadIn);
+                time = Math.Min(time, overflowsLeadIn ? -beatmap.AudioLeadIn : firstHitObjectTime.Value - beatmap.AudioLeadIn);
             }
 
             return time;

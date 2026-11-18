@@ -171,6 +171,16 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
                 resetTime();
         }
 
+        /// <summary>
+        /// Clears any existing trail particles and resets interpolation state so subsequent input starts fresh.
+        /// </summary>
+        public virtual void ResetTime()
+        {
+            clearParts();
+            resetTime();
+            Invalidate(Invalidation.DrawNode);
+        }
+
         private void clearParts()
         {
             for (int i = 0; i < parts.Length; i++)

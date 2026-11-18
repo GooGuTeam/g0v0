@@ -2,6 +2,7 @@
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
@@ -23,7 +24,7 @@ using osuTK;
 
 namespace osu.Game.Overlays.Settings.Sections.Audio
 {
-    public partial class AudioOffsetAdjustControl : CompositeDrawable
+    public partial class AudioOffsetAdjustControl : CompositeDrawable, IFilterable
     {
         private const int notch_container_height = 10;
 
@@ -40,12 +41,47 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         public readonly Bindable<double?> SuggestedOffset = new Bindable<double?>();
 
         private Container<Circle> notchContainer = null!;
-        private SettingsNote hintNote = null!;
+        private SettingsNote? hintNote;
         private RoundedButton applySuggestion = null!;
 
         // the stable layout (see ISettingsRenderer.UseStableLayouts): a stable slider, the hint as stable text, and a stable button.
+        private SliderEntry<double>? stableSlider;
         private NoteEntry? stableHint;
         private ButtonEntry? stableApply;
+
+        public IEnumerable<LocalisableString> FilterTerms
+        {
+            get
+            {
+                yield return AudioSettingsStrings.AudioOffset;
+                yield return AudioSettingsStrings.ApplySuggestedOffset;
+                yield return AudioSettingsStrings.SuggestedOffsetNote;
+
+                if (stableHint?.Note.Value is SettingsNote.Data stableData && stableData.Text != default)
+                    yield return stableData.Text;
+                else if (hintNote?.Current.Value is SettingsNote.Data lazerData && lazerData.Text != default)
+                    yield return lazerData.Text;
+            }
+        }
+
+        private bool matchingFilter = true;
+
+        public bool MatchingFilter
+        {
+            get => matchingFilter;
+            set
+            {
+                bool wasPresent = IsPresent;
+                matchingFilter = value;
+
+                if (IsPresent != wasPresent)
+                    Invalidate(Invalidation.Presence);
+            }
+        }
+
+        public override bool IsPresent => base.IsPresent && MatchingFilter;
+
+        public bool FilteringActive { get; set; }
 
         [Resolved(canBeNull: true)]
         private ISettingsRenderer? renderer { get; set; }
@@ -127,6 +163,14 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
 
         private void loadStable(ISettingsRenderer stable, SessionAverageHitErrorTracker hitErrorTracker)
         {
+            stableSlider = new SliderEntry<double>
+            {
+                Caption = AudioSettingsStrings.AudioOffset,
+                Current = current,
+                KeyboardStep = 1,
+                LabelFormat = v => $"{v:N0} ms",
+                TooltipFormat = BeatmapOffsetControl.GetOffsetExplanatoryText,
+            };
             stableHint = new NoteEntry { AttachedToPrevious = true };
             stableApply = new ButtonEntry
             {
@@ -147,14 +191,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                 Spacing = new Vector2(SettingsSection.ITEM_SPACING_V2),
                 Children = new[]
                 {
-                    stable.CreateSlider(new SliderEntry<double>
-                    {
-                        Caption = AudioSettingsStrings.AudioOffset,
-                        Current = current,
-                        KeyboardStep = 1,
-                        LabelFormat = v => $"{v:N0} ms",
-                        TooltipFormat = BeatmapOffsetControl.GetOffsetExplanatoryText,
-                    }),
+                    stable.CreateSlider(stableSlider),
                     stable.CreateNote(stableHint),
                     stable.CreateButton(stableApply),
                 },
@@ -174,8 +211,17 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
 
             applySuggestion.Enabled.Value = canApply;
             notchContainer.FadeTo(showNotches ? 1 : 0);
-            hintNote.Current.Value = note;
+            hintNote!.Current.Value = note;
             hintNote.MoveToY(showNotches ? notch_container_height : -SettingsSection.ITEM_SPACING_V2, 200, Easing.OutQuint);
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            stableSlider?.Unbind();
+            stableHint?.Unbind();
+            stableApply?.Unbind();
         }
 
         protected override void LoadComplete()

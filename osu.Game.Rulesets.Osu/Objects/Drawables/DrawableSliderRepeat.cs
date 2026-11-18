@@ -39,7 +39,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         protected override void LoadComplete()
         {
             base.LoadComplete();
-            if (visualOrdering?.IsActive == true)
+            if (visualOrdering != null)
             {
                 visualOrdering.Register(CirclePiece, this, OsuVisualKind.CircleGroup, () => scaleContainer, localDepth: 1);
                 visualOrdering.Register(Arrow, this, OsuVisualKind.Arrow, () => scaleContainer);
@@ -108,7 +108,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             base.UpdateHitStateTransforms(state);
 
-            double animDuration = Math.Min(300, HitObject.SpanDuration);
+            double rawAnimDuration = Math.Min(300, HitObject.SpanDuration);
+            double animDuration = double.IsNaN(rawAnimDuration) ? 0 : Math.Max(0, rawAnimDuration);
 
             switch (state)
             {

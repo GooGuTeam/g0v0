@@ -419,9 +419,11 @@ namespace osu.Game.Screens.Select
 
             Expanded.BindValueChanged(_ => updateLegacyEntryState());
 
-            skinSource.SourceChanged += updateLegacyBackground;
+            skinSource.SourceChanged += onSkinChanged;
             updateLegacyBackground();
         }
+
+        private void onSkinChanged() => Scheduler.AddOnce(updateLegacyBackground);
 
         protected override void PrepareForUse()
         {
@@ -436,6 +438,7 @@ namespace osu.Game.Screens.Select
 
             updateLegacyBackground();
 
+            scheduledBackgroundRetrieval?.Cancel();
             scheduledBackgroundRetrieval = Scheduler.AddDelayed(b =>
             {
                 var working = beatmaps.GetWorkingBeatmap(b);
@@ -723,8 +726,15 @@ namespace osu.Game.Screens.Select
 
         protected override void Dispose(bool isDisposing)
         {
+            scheduledBackgroundRetrieval?.Cancel();
+            scheduledBackgroundRetrieval = null;
+
+            starDifficultyCancellationSource?.Cancel();
+            starDifficultyCancellationSource?.Dispose();
+            starDifficultyCancellationSource = null;
+
             if (skinSource != null)
-                skinSource.SourceChanged -= updateLegacyBackground;
+                skinSource.SourceChanged -= onSkinChanged;
 
             base.Dispose(isDisposing);
         }

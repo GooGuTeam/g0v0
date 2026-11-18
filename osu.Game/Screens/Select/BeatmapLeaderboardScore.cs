@@ -27,6 +27,7 @@ using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Online.Leaderboards;
 using osu.Game.Overlays;
+using osu.Game.Recording.Export;
 using osu.Game.Resources.Localisation.Web;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
@@ -80,6 +81,9 @@ namespace osu.Game.Screens.Select
 
         [Resolved]
         private IAPIProvider api { get; set; } = null!;
+
+        [Resolved]
+        private ReplayVideoExporter? videoExporter { get; set; }
 
         private const float expanded_right_content_width = 200;
         private const float grade_width = 35;
@@ -633,6 +637,8 @@ namespace osu.Game.Screens.Select
 
                 if (ShowReplay != null)
                     items.Add(new OsuMenuItem(SongSelectStrings.WatchReplay, MenuItemType.Standard, () => ShowReplay.Invoke(Score)));
+                if (videoExporter != null)
+                    items.Add(new OsuMenuItem(VideoRecordingStrings.ExportReplay, MenuItemType.Standard, () => videoExporter.Export(Score)));
                 items.Add(new OsuMenuItem(CommonStrings.Export, MenuItemType.Standard, () => scoreManager.Export(Score)));
                 items.Add(new OsuMenuItem(Resources.Localisation.Web.CommonStrings.ButtonsDelete, MenuItemType.Destructive, () => dialogOverlay?.Push(new LocalScoreDeleteDialog(Score))));
 

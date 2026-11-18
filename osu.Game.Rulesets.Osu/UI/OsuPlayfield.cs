@@ -23,6 +23,7 @@ using osu.Game.Rulesets.Osu.Objects.Drawables.Connections;
 using osu.Game.Rulesets.Osu.UI.Cursor;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.UI;
+using osu.Game.Screens.Edit;
 using osuTK;
 
 namespace osu.Game.Rulesets.Osu.UI
@@ -37,6 +38,9 @@ namespace osu.Game.Rulesets.Osu.UI
         [Cached]
         public OsuVisualOrdering VisualOrdering { get; } = new OsuVisualOrdering();
         private readonly JudgementContainer<DrawableOsuJudgement> judgementLayer;
+
+        [Resolved(CanBeNull = true)]
+        private EditorBeatmap? editorBeatmap { get; set; }
 
         private readonly JudgementPooler<DrawableOsuJudgement> judgementPooler;
 
@@ -125,30 +129,22 @@ namespace osu.Game.Rulesets.Osu.UI
                     break;
 
                 case DrawableHitCircle hitCircle:
-                    if (VisualOrdering.IsActive)
-                    {
-                        if (hitCircle is not DrawableSliderHead)
-                            VisualOrdering.Register(hitCircle, hitCircle, OsuVisualKind.Object);
+                    if (hitCircle is not DrawableSliderHead)
+                        VisualOrdering.Register(hitCircle, hitCircle, OsuVisualKind.Object);
 
-                        var acProxy = hitCircle.ProxiedLayer.CreateProxy();
-                        VisualOrdering.Register(
-                            hitCircle.ProxiedLayer,
-                            hitCircle,
-                            OsuVisualKind.Approach,
-                            existingProxy: acProxy,
-                            addFallback: approachCircles.Add,
-                            removeFallback: approachCircles.Remove,
-                            changeFallbackDepth: approachCircles.ChangeChildDepth);
-                    }
-                    else
-                    {
-                        approachCircles.Add(hitCircle.ProxiedLayer.CreateProxy());
-                    }
+                    var acProxy = hitCircle.ProxiedLayer.CreateProxy();
+                    VisualOrdering.Register(
+                        hitCircle.ProxiedLayer,
+                        hitCircle,
+                        OsuVisualKind.Approach,
+                        existingProxy: acProxy,
+                        addFallback: approachCircles.Add,
+                        removeFallback: approachCircles.Remove,
+                        changeFallbackDepth: approachCircles.ChangeChildDepth);
                     break;
 
                 case DrawableSlider slider:
-                    if (VisualOrdering.IsActive)
-                        VisualOrdering.Register(slider, slider, OsuVisualKind.Object);
+                    VisualOrdering.Register(slider, slider, OsuVisualKind.Object);
                     break;
             }
         }
@@ -163,7 +159,7 @@ namespace osu.Game.Rulesets.Osu.UI
         {
             config?.BindWith(OsuRulesetSetting.PlayfieldBorderStyle, playfieldBorder.PlayfieldBorderStyle);
 
-            var osuBeatmap = (OsuBeatmap?)beatmap;
+            var osuBeatmap = beatmap as OsuBeatmap;
 
             RegisterPool<HitCircle, DrawableHitCircle>(20, 100);
 
@@ -199,22 +195,46 @@ namespace osu.Game.Rulesets.Osu.UI
             borderContainer.Padding = new MarginPadding(OsuHitObject.OBJECT_RADIUS * -LegacyRulesetExtensions.CalculateScaleFromCircleSize(beatmap.Difficulty.CircleSize, true));
         }
 
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            if (editorBeatmap != null)
+            {
+                editorBeatmap.HitObjectUpdated += onHitObjectUpdated;
+                editorBeatmap.BeatmapReprocessed += scheduleRefreshBeatmap;
+            }
+        }
+
         protected override HitObjectLifetimeEntry CreateLifetimeEntry(HitObject hitObject) => new OsuHitObjectLifetimeEntry(hitObject);
 
         protected override void OnHitObjectAdded(HitObject hitObject)
         {
             base.OnHitObjectAdded(hitObject);
             FollowPoints.AddFollowPoints((OsuHitObject)hitObject);
-            if (VisualOrdering.IsActive)
-                VisualOrdering.RefreshBeatmap();
+            scheduleRefreshBeatmap();
         }
 
         protected override void OnHitObjectRemoved(HitObject hitObject)
         {
             base.OnHitObjectRemoved(hitObject);
             FollowPoints.RemoveFollowPoints((OsuHitObject)hitObject);
-            if (VisualOrdering.IsActive)
-                VisualOrdering.RefreshBeatmap();
+            scheduleRefreshBeatmap();
+        }
+
+        private void onHitObjectUpdated(HitObject _) => scheduleRefreshBeatmap();
+
+        private void scheduleRefreshBeatmap() => Scheduler.AddOnce(VisualOrdering.RefreshBeatmap);
+
+        protected override void Dispose(bool isDisposing)
+        {
+            if (editorBeatmap != null)
+            {
+                editorBeatmap.HitObjectUpdated -= onHitObjectUpdated;
+                editorBeatmap.BeatmapReprocessed -= scheduleRefreshBeatmap;
+            }
+
+            base.Dispose(isDisposing);
         }
 
         private void onNewResult(DrawableHitObject judgedObject, JudgementResult result)

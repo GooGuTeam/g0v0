@@ -66,7 +66,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             hiddenHitFeedback.BindValueChanged(_ => refreshHitFeedback());
             hitAnimations.BindValueChanged(_ => refreshHitFeedback());
 
-            if (visualOrdering?.IsActive == true)
+            if (visualOrdering != null)
                 visualOrdering.Register(CirclePiece, this, OsuVisualKind.CircleGroup, () => shakeContainer, localDepth: 1);
         }
 
@@ -156,6 +156,20 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         /// Stable applies such results directly, without consulting note lock.
         /// </summary>
         public bool JudgedByLegacyHoldEnd { get; private set; }
+
+        protected override void OnApply()
+        {
+            base.OnApply();
+
+            JudgedByLegacyHoldEnd = false;
+        }
+
+        protected override void OnFree()
+        {
+            base.OnFree();
+
+            JudgedByLegacyHoldEnd = false;
+        }
 
         protected override void CheckForResult(bool userTriggered, double timeOffset)
         {
@@ -281,6 +295,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                     break;
 
                 case ArmedState.Idle:
+                    JudgedByLegacyHoldEnd = false;
                     HitArea.Reset();
                     break;
 

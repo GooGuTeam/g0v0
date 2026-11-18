@@ -7,7 +7,10 @@ using osu.Framework.Allocation;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Primitives;
 using osu.Framework.Input.Events;
+using osuTK;
+using osuTK.Input;
 
 namespace osu.Game.Skinning.Select
 {
@@ -21,6 +24,16 @@ namespace osu.Game.Skinning.Select
 
         [Resolved]
         private ISkinSource skin { get; set; } = null!;
+
+        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos)
+        {
+            if (!base.ReceivePositionalInputAt(screenSpacePos))
+                return false;
+
+            float width = Math.Min(DrawWidth, LegacyOldBackButtonPiece.MAX_HIT_WIDTH);
+            float height = Math.Min(DrawHeight, LegacyOldBackButtonPiece.MAX_HIT_HEIGHT);
+            return new RectangleF(0, DrawHeight - height, width, height).Contains(ToLocalSpace(screenSpacePos));
+        }
 
         [BackgroundDependencyLoader]
         private void load()
@@ -63,6 +76,14 @@ namespace osu.Game.Skinning.Select
                 skin.SourceChanged -= onSkinChanged;
 
             base.Dispose(isDisposing);
+        }
+
+        protected override bool OnMouseDown(MouseDownEvent e)
+        {
+            if (e.Button == MouseButton.Right && Action != null)
+                return true;
+
+            return base.OnMouseDown(e);
         }
 
         protected override bool OnClick(ClickEvent e)

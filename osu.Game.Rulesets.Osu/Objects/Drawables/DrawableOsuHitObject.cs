@@ -170,9 +170,12 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (repeatIndex > 0)
                 fadeTime = Math.Min(slider.HitObject.SpanDuration, fadeTime);
 
+            fadeTime = double.IsNaN(fadeTime) ? 0 : Math.Max(0, fadeTime);
+            double delay = delayFadeIn ? Math.Max(0, slider.HitObject.TimePreempt / 3) : 0;
+
             target
                 .FadeOut()
-                .Delay(delayFadeIn ? (slider.HitObject.TimePreempt) / 3 : 0)
+                .Delay(delay)
                 .FadeIn(fadeTime);
         }
     }

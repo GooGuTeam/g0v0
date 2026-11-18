@@ -2,21 +2,38 @@
 // See the LICENCE-OSU file in the repository root for full licence text.
 // Ported from ShikkesoraSIM/torii-osu, commit 8d7f1f25b737263dd140bbe59b0d51b999a7fc24.
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Primitives;
 using osu.Framework.Input.Events;
 using osu.Game.Audio;
+using osuTK;
 
 namespace osu.Game.Skinning.Select
 {
     public partial class LegacyOldBackButtonPiece : CompositeDrawable
     {
+        // Classic skins sometimes pack a full-screen decorative frame into menu-back; keep hit testing to the bottom-left button slot.
+        internal const float MAX_HIT_WIDTH = 240;
+        internal const float MAX_HIT_HEIGHT = 110;
+
         private Drawable? sprite;
         private Drawable? glow;
 
         private SkinnableSound hoverSound = null!;
         private SkinnableSound clickSound = null!;
+
+        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos)
+        {
+            if (!base.ReceivePositionalInputAt(screenSpacePos))
+                return false;
+
+            float width = Math.Min(DrawWidth, MAX_HIT_WIDTH);
+            float height = Math.Min(DrawHeight, MAX_HIT_HEIGHT);
+            return new RectangleF(0, DrawHeight - height, width, height).Contains(ToLocalSpace(screenSpacePos));
+        }
 
         [BackgroundDependencyLoader]
         private void load(ISkinSource skin)

@@ -24,8 +24,10 @@ namespace osu.Game.Screens.Play.HUD
         private double startTime;
         private double endTime;
 
+        private const double max_displayable_seconds = 9e11;
+
         private int? previousPercent;
-        private int? previousSecond;
+        private long? previousSecond;
 
         private double songLength => endTime - startTime;
 
@@ -146,8 +148,8 @@ namespace osu.Game.Screens.Play.HUD
             double time = gameplayClock?.CurrentTime ?? Time.Current;
 
             double songCurrentTime = time - startTime;
-            int currentPercent = songLength == 0 ? 0 : Math.Max(0, Math.Min(100, (int)(songCurrentTime / songLength * 100)));
-            int currentSecond = (int)Math.Floor(songCurrentTime / 1000.0);
+            int currentPercent = songLength <= 0 || double.IsNaN(songCurrentTime) ? 0 : (int)Math.Clamp(songCurrentTime / songLength * 100, 0, 100);
+            long currentSecond = double.IsNaN(songCurrentTime) ? 0 : (long)Math.Clamp(Math.Floor(songCurrentTime / 1000.0), -max_displayable_seconds, max_displayable_seconds);
 
             if (currentPercent != previousPercent)
             {
@@ -164,6 +166,10 @@ namespace osu.Game.Screens.Play.HUD
             }
         }
 
-        private string formatTime(TimeSpan timeSpan) => $"{(timeSpan < TimeSpan.Zero ? "-" : "")}{Math.Floor(timeSpan.Duration().TotalMinutes)}:{timeSpan.Duration().Seconds:D2}";
+        private string formatTime(TimeSpan timeSpan)
+        {
+            TimeSpan duration = timeSpan == TimeSpan.MinValue ? TimeSpan.MaxValue : timeSpan.Duration();
+            return $"{(timeSpan < TimeSpan.Zero ? "-" : "")}{(long)Math.Floor(duration.TotalMinutes)}:{duration.Seconds:D2}";
+        }
     }
 }

@@ -133,6 +133,7 @@ namespace osu.Game.Recording.Export
                 dependencies.CacheAs(new OsuColour());
                 dependencies.CacheAs(own(new SessionStatics()));
                 var frameworkConfig = own(new OfflineFrameworkConfigManager());
+                dependencies.CacheAs<FrameworkConfigManager>(frameworkConfig);
                 dependencies.CacheAs(own(new LocalisationManager(frameworkConfig)));
 
                 var shaderBytes = new ResourceStore<byte[]>();
@@ -185,7 +186,8 @@ namespace osu.Game.Recording.Export
                 var difficultyScoreProcessor = exportRuleset.CreateScoreProcessor();
                 difficultyScoreProcessor.Mods.Value = exportMods;
                 difficultyScoreProcessor.ApplyBeatmap(playableBeatmap);
-                var difficulty = own(new ReplayExportDifficultyCache(exportBeatmap, exportRuleset, exportMods, difficultyScoreProcessor));
+                bool useModSpecific = config.Get<bool>(OsuSetting.UseModSpecificCalculation);
+                var difficulty = own(new ReplayExportDifficultyCache(exportBeatmap, exportRuleset, exportMods, difficultyScoreProcessor, useModSpecific));
 
                 var gameplay = new OfflineGameplayScene(exportBeatmap, exportMods, replay, clock, classicSkin, privateSkin is LegacySkin, difficulty, width, height);
                 // Same fallback order as SkinManager.AllSources: the classic skin only backs legacy user skins, and the triangles skin

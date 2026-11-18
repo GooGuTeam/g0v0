@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using osu.Game.Rulesets.Osu.Mods;
+using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
 using osu.Game.Rulesets.Scoring;
 
@@ -121,6 +123,23 @@ namespace osu.Game.Rulesets.Osu.Tests
             simulate(rotation, 0.05, true, range(start_time - 500, start_time + 500, 1), null, null);
 
             Assert.That(rotation.ScoringHalfRotations, Is.Zero);
+        }
+
+        [TestCase(80, 150, 0)]
+        [TestCase(-100, 150, 0)]
+        [TestCase(400, 150, 250)]
+        [TestCase(1500, 150, 1000)]
+        public void TestHiddenTickFadeOutClampsNegativeDuration(double timePreempt, double fadeInDuration, double expectedDuration)
+        {
+            var tick = new SliderTick
+            {
+                StartTime = 2000,
+                TimePreempt = timePreempt,
+            };
+
+            (double fadeStart, double duration) = OsuModHidden.GetTickFadeOutParameters(tick, fadeInDuration);
+            Assert.That(duration, Is.EqualTo(expectedDuration));
+            Assert.That(fadeStart, Is.EqualTo(tick.StartTime - expectedDuration));
         }
 
         private static LegacySpinnerRotation run(double angularVelocity, bool pressed, IEnumerable<double> updateTimes, double[]? inputFrames = null)

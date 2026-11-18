@@ -77,19 +77,33 @@ namespace osu.Game.Rulesets.Osu.Tests
             {
                 var proxies = enabled
                     ? playfield.VisualOrdering.ChildrenOfType<Container>().SelectMany(gate => gate.Children)
-                    : playfield.HitObjectContainer.AliveObjects.OfType<DrawableSlider>().SelectMany(slider => slider.OverlayElementContainer.Children);
+                    : playfield.HitObjectContainer.AliveObjects.OfType<DrawableSlider>()
+                               .SelectMany(slider => slider.OverlayElementContainer.ChildrenOfType<Container>().SelectMany(gate => gate.Children));
                 return loadedArrows().All(arrow => proxies.Any(proxy => ReferenceEquals(original(proxy), arrow)));
             });
         }
 
         [Test]
-        public void TestOrderingModeDoesNotChangeDuringPlayback([Values(false, true)] bool enabled)
+        public void TestOrderingModeChangesReactivelyDuringPlayback([Values(false, true)] bool enabled)
         {
-            createPlayfield(false, enabled: enabled);
-            AddStep("seek into objects", () => clock.CurrentTime = 1500);
+            createPlayfield(true, enabled: enabled, singleSlider: true);
+            AddStep("seek into objects", () => clock.CurrentTime = 1400);
             AddWaitStep("update proxies", 3);
+            assertProxiesValid();
+
             AddStep("toggle ordering setting", () => ((OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(new OsuRuleset())!).SetValue(OsuRulesetSetting.KeepOverlapCirclesVisible, !enabled));
-            AddAssert("current playfield keeps its registration mode", () => playfield.VisualOrdering.IsActive, () => Is.EqualTo(enabled));
+            AddAssert("current playfield updates its ordering mode immediately", () => playfield.VisualOrdering.IsActive, () => Is.EqualTo(!enabled));
+            AddWaitStep("update proxies after toggle", 3);
+            assertProxiesValid();
+            AddAssert("arrows moved to new proxy layer", () =>
+            {
+                var proxies = !enabled
+                    ? playfield.VisualOrdering.ChildrenOfType<Container>().SelectMany(gate => gate.Children)
+                    : playfield.HitObjectContainer.AliveObjects.OfType<DrawableSlider>()
+                               .SelectMany(slider => slider.OverlayElementContainer.ChildrenOfType<Container>().SelectMany(gate => gate.Children));
+                return loadedArrows().All(arrow => proxies.Any(proxy => ReferenceEquals(original(proxy), arrow)));
+            });
+
             AddStep("seek outside all lifetimes", () => clock.CurrentTime = 30000);
             AddWaitStep("update proxies", 3);
             AddAssert("expired proxy gates are hidden", () =>
@@ -97,13 +111,66 @@ namespace osu.Game.Rulesets.Osu.Tests
                 var gates = playfield.VisualOrdering.ChildrenOfType<Container>().Where(c => c.Children.Any(d => d.IsProxy));
                 return gates.All(c => c.Alpha == 0);
             });
-            AddStep("seek back into objects", () => clock.CurrentTime = 1500);
+            AddStep("seek back into objects", () => clock.CurrentTime = 1400);
             AddWaitStep("reuse pooled objects", 3);
             assertProxiesValid();
-            createPlayfield(false, enabled: !enabled);
-            AddStep("load objects in new playfield", () => clock.CurrentTime = 1500);
-            AddWaitStep("load visuals", 3);
-            AddAssert("new playfield uses new proxy mode", () => playfield.HitObjectContainer.AliveObjects.All(drawable => drawable.HasProxy == !enabled));
+        }
+
+        [Test]
+        public void TestShowHiddenSlidersWorksRegardlessOfOverlapSetting([Values(false, true)] bool keepOverlap)
+        {
+            AddStep("create playfield with hidden slider", () =>
+            {
+                var config = (OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(new OsuRuleset())!;
+                config.SetValue(OsuRulesetSetting.KeepOverlapCirclesVisible, keepOverlap);
+                config.SetValue(OsuRulesetSetting.ShowHiddenSliders, false);
+
+                var beatmap = new OsuBeatmap();
+                var hiddenSlider = new Slider
+                {
+                    StartTime = 1000,
+                    Position = new Vector2(256, 192),
+                    Path = new SliderPath(PathType.LINEAR, new[] { Vector2.Zero, new Vector2(100, 0) }, expectedDistance: 1e-5),
+                };
+                hiddenSlider.ApplyDefaults(new ControlPointInfo(), new BeatmapDifficulty());
+                beatmap.HitObjects.Add(hiddenSlider);
+
+                Child = new OsuInputManager(new OsuRuleset().RulesetInfo)
+                {
+                    Child = skinProvider = new TestSkinProvider(createSkin(false))
+                    {
+                        Child = new BeatmapContainer(beatmap)
+                        {
+                            Child = playfield = new OsuPlayfield
+                            {
+                                Clock = new FramedClock(clock = new ManualClock()),
+                            },
+                        },
+                    },
+                };
+
+                playfield.Add(hiddenSlider);
+                playfield.VisualOrdering.CheckLifetimes = true;
+            });
+
+            AddUntilStep("playfield loaded", () => playfield.IsLoaded);
+            AddStep("seek into hidden slider", () => clock.CurrentTime = 1000);
+            AddWaitStep("update proxies", 3);
+            assertProxiesValid();
+            AddAssert("hidden slider proxy gates have zero alpha", () =>
+            {
+                var gates = playfield.VisualOrdering.ChildrenOfType<Container>().Where(c => c.Children.Any(d => d.IsProxy));
+                return gates.Any() && gates.All(c => c.Alpha == 0);
+            });
+
+            AddStep("enable show hidden sliders", () => ((OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(new OsuRuleset())!).SetValue(OsuRulesetSetting.ShowHiddenSliders, true));
+            AddWaitStep("update proxies", 3);
+            assertProxiesValid();
+            AddAssert("hidden slider proxy gates become visible", () =>
+            {
+                var gates = playfield.VisualOrdering.ChildrenOfType<Container>().Where(c => c.Children.Any(d => d.IsProxy));
+                return gates.Any(c => c.Alpha == 1);
+            });
         }
 
         [Test]
@@ -145,6 +212,7 @@ namespace osu.Game.Rulesets.Osu.Tests
             {
                 var config = (OsuRulesetConfigManager)RulesetConfigs.GetConfigFor(new OsuRuleset())!;
                 config.SetValue(OsuRulesetSetting.KeepOverlapCirclesVisible, enabled);
+                config.SetValue(OsuRulesetSetting.ShowHiddenSliders, true);
                 var beatmap = new OsuBeatmap();
 
                 for (int i = 0; i < (singleSlider ? 1 : dense ? 150 : 80); i++)

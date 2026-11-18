@@ -9,6 +9,7 @@ using System.Text;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.LocalisationExtensions;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Effects;
@@ -44,6 +45,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
         /// </remarks>
         private Vector2 baselinePosition;
 
+        private Sprite panelSprite = null!;
         private LegacySpriteText scoreText = null!;
         private Container rulesetRankingElements = null!;
         private LegacyRankingElement maxComboElement = null!;
@@ -54,6 +56,17 @@ namespace osu.Game.Screens.RankingV2.Legacy
 
         [Resolved]
         private OsuColour colours { get; set; } = null!;
+
+        [Resolved]
+        private ISkinSource skin { get; set; } = null!;
+
+        [Resolved]
+        private SkinManager? skins { get; set; }
+
+        [Resolved]
+        private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
+        private ISkin? classicFallback => skins?.DefaultClassicSkin ?? defaultClassicSkin;
 
         private readonly Bindable<ScoringMode> scoringMode = new Bindable<ScoringMode>();
 
@@ -70,28 +83,17 @@ namespace osu.Game.Screens.RankingV2.Legacy
         private const float row4 = 320;
 
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin, OsuConfigManager config)
+        private void load(OsuConfigManager config)
         {
             AutoSizeAxes = Axes.Both;
 
-            bool useNewLayout = skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value > 1M;
-            baselinePosition = new Vector2(0, useNewLayout ? 64 : 46);
-
-            // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L395
-            int row4Offset = useNewLayout ? 20 : 8;
-
             InternalChildren =
             [
-                new Sprite
-                {
-                    Texture = skin.GetStableTexture(@"ranking-panel"),
-                },
+                panelSprite = new Sprite(),
                 scoreText = new LegacySpriteText(LegacyFont.Score)
                 {
                     // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L283-L287
                     Origin = Anchor.Centre,
-                    Position = (new Vector2(220, 94) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR,
-                    Scale = new Vector2(useNewLayout ? 1.3f : 1.05f),
                     // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L290
                     FixedWidth = true,
                 },
@@ -104,8 +106,6 @@ namespace osu.Game.Screens.RankingV2.Legacy
                 {
                     ElementName = @"ranking-maxcombo",
                     Origin = Anchor.TopLeft,
-                    Position = (new Vector2(img_x1 - 35, row4 - row4Offset) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR,
-                    ScoreTextPosition = (new Vector2(text_x1 - 65, row4 + 10) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR,
                     InitialElementScale = Vector2.One,
                     FinalElementScale = Vector2.One,
                 },
@@ -114,18 +114,12 @@ namespace osu.Game.Screens.RankingV2.Legacy
                 {
                     ElementName = @"ranking-accuracy",
                     Origin = Anchor.TopLeft,
-                    Position = (new Vector2(img_x2 - 58, row4 - row4Offset) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR,
-                    ScoreTextPosition = (new Vector2(text_x2 - 86, row4 + 10) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR,
                     InitialElementScale = Vector2.One,
                     FinalElementScale = Vector2.One,
                 },
             ];
 
-            // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L288-L289
-            // value is negated because of https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/Graphics/Sprites/pSpriteText.cs#L209-L218
-            // also note that the timing here is significant (this set needs to happen post-load of the text because `Spacing` is set in `LegacySpriteText` BDL)
-            if (useNewLayout)
-                scoreText.Spacing = new Vector2(2, 0);
+            applySkinLayout();
 
             config.BindWith(OsuSetting.ScoreDisplayMode, scoringMode);
         }
@@ -134,8 +128,48 @@ namespace osu.Game.Screens.RankingV2.Legacy
         {
             base.LoadComplete();
 
+            skin.SourceChanged += onSkinChanged;
             score.BindValueChanged(_ => updateState());
             scoringMode.BindValueChanged(_ => updateState(), true);
+        }
+
+        private void onSkinChanged() => Scheduler.AddOnce(() =>
+        {
+            applySkinLayout();
+            updateState();
+        });
+
+        private void applySkinLayout()
+        {
+            bool useNewLayout = (skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value
+                                 ?? classicFallback?.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value) > 1M;
+            baselinePosition = new Vector2(0, useNewLayout ? 64 : 46);
+
+            // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L395
+            int row4Offset = useNewLayout ? 20 : 8;
+
+            panelSprite.Texture = skin.GetStableTexture(@"ranking-panel") ?? classicFallback?.GetStableTexture(@"ranking-panel");
+
+            scoreText.Position = (new Vector2(220, 94) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+            scoreText.Scale = new Vector2(useNewLayout ? 1.3f : 1.05f);
+            // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L288-L289
+            // value is negated because of https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/Graphics/Sprites/pSpriteText.cs#L209-L218
+            // also note that the timing here is significant (this set needs to happen post-load of the text because `Spacing` is set in `LegacySpriteText` BDL)
+            scoreText.Spacing = useNewLayout ? new Vector2(2, 0) : Vector2.Zero;
+
+            maxComboElement.Position = (new Vector2(img_x1 - 35, row4 - row4Offset) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+            maxComboElement.ScoreTextPosition = (new Vector2(text_x1 - 65, row4 + 10) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+
+            accuracyElement.Position = (new Vector2(img_x2 - 58, row4 - row4Offset) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+            accuracyElement.ScoreTextPosition = (new Vector2(text_x2 - 86, row4 + 10) - baselinePosition) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinChanged;
         }
 
         private void updateState()
@@ -473,26 +507,45 @@ namespace osu.Game.Screens.RankingV2.Legacy
 
             public new Anchor Origin { get; init; } = Anchor.Centre;
 
+            private Vector2? scoreTextPosition;
+
             /// <summary>
             /// Used to force the <see cref="ScoreText"/> to appear at a fixed component-space position.
             /// </summary>
-            public Vector2? ScoreTextPosition { get; init; }
+            public Vector2? ScoreTextPosition
+            {
+                get => scoreTextPosition;
+                set
+                {
+                    scoreTextPosition = value;
+                    if (IsLoaded)
+                        updateLayout();
+                }
+            }
+
+            [Resolved]
+            private ISkinSource skin { get; set; } = null!;
+
+            [Resolved]
+            private SkinManager? skins { get; set; }
+
+            [Resolved]
+            private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
+            private ISkin? classicFallback => skins?.DefaultClassicSkin ?? defaultClassicSkin;
 
             private Drawable element = null!;
             private LegacySpriteText scoreTextSprite = null!;
 
             [BackgroundDependencyLoader]
-            private void load(ISkinSource skin)
+            private void load()
             {
                 AutoSizeAxes = Axes.Both;
-                bool useNewLayout = skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value > 1M;
 
                 if (!string.IsNullOrEmpty(ElementName))
                 {
                     AddInternal(element = new Sprite
                     {
-                        // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/RankingElement.cs#L32
-                        Texture = skin.GetTextures(ElementName, default, default, true, "-", null, out _).FirstOrDefault(),
                         Anchor = Anchor.TopLeft,
                         Origin = Origin,
                         Scale = FinalElementScale,
@@ -545,21 +598,52 @@ namespace osu.Game.Screens.RankingV2.Legacy
                     Scale = new Vector2(1.12f),
                 });
 
-                if (ScoreTextPosition != null)
-                    scoreTextSprite.Position = ScoreTextPosition.Value - Position;
-                else
-                {
-                    // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/RankingElement.cs#L29
-                    // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/RankingElement.cs#L52
-                    scoreTextSprite.Position = new Vector2(40, useNewLayout ? -16 : -25) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
-                }
+                applySkin();
             }
 
             protected override void LoadComplete()
             {
                 base.LoadComplete();
 
+                skin.SourceChanged += onSkinChanged;
                 updateState();
+            }
+
+            private void onSkinChanged() => Scheduler.AddOnce(applySkin);
+
+            private void applySkin()
+            {
+                if (element is Sprite elementSprite && !string.IsNullOrEmpty(ElementName))
+                {
+                    // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/RankingElement.cs#L32
+                    elementSprite.Texture = skin.GetTextures(ElementName, default, default, true, "-", null, out _).FirstOrDefault()
+                                            ?? classicFallback?.GetTextures(ElementName, default, default, true, "-", null, out _).FirstOrDefault();
+                }
+
+                updateLayout();
+            }
+
+            private void updateLayout()
+            {
+                if (ScoreTextPosition != null)
+                    scoreTextSprite.Position = ScoreTextPosition.Value - Position;
+                else
+                {
+                    bool useNewLayout = (skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value
+                                         ?? classicFallback?.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value) > 1M;
+
+                    // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/RankingElement.cs#L29
+                    // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/RankingElement.cs#L52
+                    scoreTextSprite.Position = new Vector2(40, useNewLayout ? -16 : -25) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+                }
+            }
+
+            protected override void Dispose(bool isDisposing)
+            {
+                base.Dispose(isDisposing);
+
+                if (skin.IsNotNull())
+                    skin.SourceChanged -= onSkinChanged;
             }
 
             private void updateState()

@@ -6,11 +6,13 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
+using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Framework.Logging;
@@ -18,13 +20,13 @@ using osu.Game.Audio;
 using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osu.Game.Scoring;
 using osu.Game.Screens.Select;
 using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
-using osuTK.Input;
 
 namespace osu.Game.Screens.Play
 {
@@ -33,7 +35,7 @@ namespace osu.Game.Screens.Play
     /// dim, the skin's <c>pause-continue</c>, <c>pause-retry</c> and <c>pause-back</c> buttons, and the <c>arrow-pause</c> pointers that keyboard
     /// selection brings up.
     /// </summary>
-    public partial class LegacyGameplayMenu : CompositeDrawable
+    public partial class LegacyGameplayMenu : CompositeDrawable, IKeyBindingHandler<GlobalAction>
     {
         // stable lays the screen out in 640x480 units, which g0v0's legacy screens draw at 1.6x.
         private const float scale = 1.6f;
@@ -63,6 +65,7 @@ namespace osu.Game.Screens.Play
         private float dimAlpha;
         private int selected = -1;
         private bool presentingReplay;
+        private bool exportingReplay;
 
         /// <summary>
         /// Whether the screen is up. It keeps fading out for a while after being dismissed, and takes no input meanwhile.
@@ -74,10 +77,22 @@ namespace osu.Game.Screens.Play
         private SkinnableSound hoverSample = null!;
 
         [Resolved]
+        private ISkinSource skin { get; set; } = null!;
+
+        [Resolved]
+        private SkinManager? skins { get; set; }
+
+        [Resolved]
+        private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
+        [Resolved]
         private OsuGame? game { get; set; }
 
         [Resolved]
-        private RealmAccess realm { get; set; } = null!;
+        private ScoreManager? scoreManager { get; set; }
+
+        [Resolved]
+        private RealmAccess? realm { get; set; }
 
         public LegacyGameplayMenu(bool failed, Action? resume, Action? retry, Action? quit, Func<Task<ScoreInfo>>? saveReplay)
         {
@@ -91,21 +106,8 @@ namespace osu.Game.Screens.Play
         }
 
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin, SkinManager skins)
+        private void load()
         {
-            // stable dims further for skins made before its 2.0 layout (SkinManager.UseNewLayout).
-            decimal? version = skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value;
-            dimAlpha = version is decimal v && v <= 1 ? 0.95f : 0.8f;
-
-            arrowTexture = skin.GetStableTexture(@"arrow-pause");
-
-            if (arrowTexture == null)
-            {
-                // stable tints the old warning arrow the new layout's blue.
-                arrowTexture = skin.GetStableTexture(@"play-warningarrow") ?? skins.DefaultClassicSkin.GetStableTexture(@"play-warningarrow");
-                arrowColour = new Color4(0, 114, 255, 255);
-            }
-
             content = new Container
             {
                 RelativeSizeAxes = Axes.Both,
@@ -132,20 +134,12 @@ namespace osu.Game.Screens.Play
 
             if (failed)
             {
-                var texture = skin.GetStableTexture(@"fail-background");
-
-                if (texture != null)
+                content.Add(failBackground = new Sprite
                 {
-                    content.Add(failBackground = new Sprite
-                    {
-                        Anchor = Anchor.Centre,
-                        Origin = Anchor.Centre,
-                        Texture = texture,
-                        // stable fits the fail background to the screen's height.
-                        Scale = new Vector2(768 / texture.DisplayHeight),
-                        Alpha = 0,
-                    });
-                }
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    Alpha = 0,
+                });
 
                 if (saveReplay != null)
                 {
@@ -161,18 +155,12 @@ namespace osu.Game.Screens.Play
             }
             else
             {
-                var texture = skin.GetStableTexture(@"pause-overlay");
-
-                if (texture != null)
+                content.Add(overlay = new Sprite
                 {
-                    content.Add(overlay = new Sprite
-                    {
-                        Anchor = Anchor.Centre,
-                        Origin = Anchor.Centre,
-                        Texture = texture,
-                        Alpha = 0,
-                    });
-                }
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    Alpha = 0,
+                });
             }
 
             if (!failed && resume != null)
@@ -183,6 +171,76 @@ namespace osu.Game.Screens.Play
 
             if (quit != null)
                 addButton(2, @"pause-back", GameplayMenuOverlayStrings.Quit, new Color4(170, 27, 39, 255), 120, quit);
+
+            updateSkin();
+        }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            skin.SourceChanged += onSkinChanged;
+        }
+
+        private void onSkinChanged() => Scheduler.AddOnce(updateSkin);
+
+        private void updateSkin()
+        {
+            // stable dims further for skins made before its 2.0 layout (SkinManager.UseNewLayout).
+            decimal? version = skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value;
+            dimAlpha = version is decimal v && v <= 1 ? 0.95f : 0.8f;
+
+            if (active)
+                dim.FadeTo(dimAlpha, 300);
+
+            var classicFallback = skins?.DefaultClassicSkin ?? defaultClassicSkin;
+
+            arrowTexture = skin.GetStableTexture(@"arrow-pause");
+            arrowColour = Color4.White;
+
+            if (arrowTexture == null)
+            {
+                // stable tints the old warning arrow the new layout's blue.
+                arrowTexture = skin.GetStableTexture(@"play-warningarrow") ?? classicFallback?.GetStableTexture(@"play-warningarrow");
+                arrowColour = new Color4(0, 114, 255, 255);
+            }
+
+            if (arrowTexture == null)
+                clearArrows();
+            else if (active && selected >= 0 && arrows.Count == 0)
+                createArrows();
+            else
+            {
+                foreach (var arrow in arrows)
+                {
+                    arrow.Texture = arrowTexture;
+                    arrow.Colour = arrowColour;
+                }
+            }
+
+            if (failBackground != null)
+            {
+                var texture = skin.GetStableTexture(@"fail-background");
+                failBackground.Texture = texture;
+                failBackground.Scale = texture != null && texture.DisplayHeight > 0
+                    ? new Vector2(768 / texture.DisplayHeight)
+                    : Vector2.One;
+
+                if (texture == null)
+                    failBackground.Alpha = 0;
+                else if (active && failBackground.Alpha == 0)
+                    failBackground.FadeIn(300);
+            }
+
+            if (overlay != null)
+            {
+                var texture = skin.GetStableTexture(@"pause-overlay");
+                overlay.Texture = texture;
+
+                if (texture == null)
+                    overlay.Alpha = 0;
+                else if (active && overlay.Alpha == 0)
+                    overlay.FadeIn(300);
+            }
         }
 
         private void addButton(int index, string name, LocalisableString fallbackText, Color4 fallbackColour, float y, Action action)
@@ -204,10 +262,12 @@ namespace osu.Game.Screens.Play
             clearArrows();
 
             dim.FadeTo(dimAlpha, 300);
-            overlay?.FadeIn(300);
+            if (overlay?.Texture != null)
+                overlay.FadeIn(300);
 
             // stable adds the fail background and its replay hint when the screen first comes up; they never fade out.
-            failBackground?.FadeInFromZero(600);
+            if (failBackground?.Texture != null)
+                failBackground.FadeInFromZero(600);
             replayText?.Show();
 
             foreach (var button in buttons)
@@ -242,25 +302,69 @@ namespace osu.Game.Screens.Play
 
             if (direction == 0)
             {
-                if (selected >= 0)
-                    buttons[selected]?.Activate();
+                if (selected >= 0 && buttons[selected] != null)
+                    buttons[selected]!.Activate();
                 else if (!failed)
                     resume?.Invoke();
 
                 return;
             }
 
+            bool hasAnyButton = false;
+
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                if (buttons[i] != null)
+                {
+                    hasAnyButton = true;
+                    break;
+                }
+            }
+
+            if (!hasAnyButton)
+                return;
+
             if (selected < 0)
             {
-                selected = direction == -1 ? 2 : failed ? 1 : 0;
+                if (direction < 0)
+                {
+                    for (int i = buttons.Length - 1; i >= 0; i--)
+                    {
+                        if (buttons[i] != null)
+                        {
+                            selected = i;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < buttons.Length; i++)
+                    {
+                        if (buttons[i] != null)
+                        {
+                            selected = i;
+                            break;
+                        }
+                    }
+                }
+
                 createArrows();
                 return;
             }
 
-            hoverSample.Play();
+            int step = direction < 0 ? -1 : 1;
+            int next = selected;
 
-            // a failed screen has no continue button, so its selection cycles between retry and back.
-            selected = failed ? (selected + direction + 1) % 2 + 1 : (selected + direction + 3) % 3;
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                next = (next + step + buttons.Length) % buttons.Length;
+                if (buttons[next] != null)
+                    break;
+            }
+
+            hoverSample.Play();
+            selected = next;
 
             foreach (var arrow in arrows)
                 arrow.MoveToY(selectedY, 100, Easing.Out);
@@ -314,36 +418,77 @@ namespace osu.Game.Screens.Play
             arrows.Clear();
         }
 
-        protected override bool OnKeyDown(KeyDownEvent e)
+        public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
         {
-            // stable submits the failed score and plays it back from the start.
-            if (active && failed && e.Key == Key.F1 && !e.Repeat && saveReplay != null && !presentingReplay)
+            if (e.Repeat || !active || !failed || saveReplay == null)
+                return false;
+
+            switch (e.Action)
             {
-                presentingReplay = true;
-
-                Task.Run(saveReplay).ContinueWith(t =>
-                {
-                    ScoreInfo? score = null;
-
-                    // if saving fails, F1 can be pressed again.
-                    if (t.IsCompletedSuccessfully)
-                        score = realm.Run(r => r.Find<ScoreInfo>(t.GetResultSafely().ID)?.Detach());
-                    else
-                        Logger.Error(t.Exception, @"Failed to save the failed score for its replay");
-
-                    Schedule(() =>
+                // stable submits the failed score and plays it back from the start.
+                case GlobalAction.SaveReplay:
+                    if (!presentingReplay)
                     {
-                        if (score != null)
-                            game?.PresentScore(score, ScorePresentType.Gameplay);
-                        else
-                            presentingReplay = false;
-                    });
-                });
+                        presentingReplay = true;
+                        importFailedScore(score =>
+                        {
+                            if (score != null && game != null)
+                                game.PresentScore(score, ScorePresentType.Gameplay);
+                            else
+                                presentingReplay = false;
+                        });
+                    }
 
-                return true;
+                    return true;
+
+                case GlobalAction.ExportReplay:
+                    if (!exportingReplay && scoreManager != null)
+                    {
+                        exportingReplay = true;
+                        importFailedScore(score =>
+                        {
+                            exportingReplay = false;
+                            if (score != null)
+                                scoreManager.Export(score);
+                        });
+                    }
+
+                    return true;
             }
 
-            return base.OnKeyDown(e);
+            return false;
+        }
+
+        public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
+        {
+        }
+
+        private void importFailedScore(Action<ScoreInfo?> onReady)
+        {
+            Task.Run(saveReplay!).ContinueWith(t =>
+            {
+                ScoreInfo? score = null;
+
+                if (t.IsCompletedSuccessfully)
+                {
+                    var result = t.GetResultSafely();
+                    score = realm != null
+                        ? realm.Run(r => r.Find<ScoreInfo>(result.ID)?.Detach())
+                        : result;
+                }
+                else
+                    Logger.Error(t.Exception, @"Failed to save the failed score for its replay");
+
+                Schedule(() => onReady(score));
+            });
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinChanged;
         }
 
         /// <summary>
@@ -357,6 +502,10 @@ namespace osu.Game.Screens.Play
             private readonly LocalisableString fallbackText;
             private readonly Color4 fallbackColour;
 
+            [Resolved]
+            private ISkinSource skin { get; set; } = null!;
+
+            private Container visualContent = null!;
             private Sprite? sprite;
             private LegacyMissingTexture? placeholder;
             private SkinnableSound hoverSample = null!;
@@ -372,20 +521,53 @@ namespace osu.Game.Screens.Play
             }
 
             [BackgroundDependencyLoader]
-            private void load(ISkinSource skin)
+            private void load()
             {
-                var texture = skin.GetStableTexture(name);
-
                 InternalChildren = new Drawable[]
                 {
-                    texture != null
-                        ? sprite = new Sprite { Texture = texture }
-                        // osu!stable's own buttons come from osu!ui.dll, which can't be shipped; stand in for the texture instead.
-                        : placeholder = new LegacyMissingTexture(name, fallbackText, fallbackColour, new Vector2(300, 66) * scale),
+                    visualContent = new Container
+                    {
+                        AutoSizeAxes = Axes.Both,
+                    },
                     // stable plays the button's own hover sample, falling back to the shared one.
                     hoverSample = new SkinnableSound(new SampleInfo($@"{name}-hover", @"pause-hover")),
                     clickSample = new SkinnableSound(new SampleInfo($@"{name}-click")),
                 };
+
+                updateSkin();
+            }
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+                skin.SourceChanged += onSkinChanged;
+            }
+
+            private void onSkinChanged() => Scheduler.AddOnce(updateSkin);
+
+            private void updateSkin()
+            {
+                var texture = skin.GetStableTexture(name);
+
+                if (texture != null)
+                {
+                    placeholder = null;
+                    visualContent.Child = sprite = new Sprite { Texture = texture };
+                }
+                else
+                {
+                    sprite = null;
+                    // osu!stable's own buttons come from osu!ui.dll, which can't be shipped; stand in for the texture instead.
+                    visualContent.Child = placeholder = new LegacyMissingTexture(name, fallbackText, fallbackColour, new Vector2(300, 66) * scale);
+                }
+            }
+
+            protected override void Dispose(bool isDisposing)
+            {
+                base.Dispose(isDisposing);
+
+                if (skin.IsNotNull())
+                    skin.SourceChanged -= onSkinChanged;
             }
 
             protected override bool OnHover(HoverEvent e)

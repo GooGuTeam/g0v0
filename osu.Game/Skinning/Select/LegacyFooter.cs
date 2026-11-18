@@ -31,7 +31,10 @@ namespace osu.Game.Skinning.Select
         // Torii: osu!stable draws the footer buttons (0.95) and back button (0.9-0.92) above the song select cookie (0.9), and songselect-bottom
         // (0.7) below it. The foreground is drawn through a proxy in the game's front layer, so the logo can sit between the bar and the buttons.
         private Container foreground = null!;
-        private ScreenFrontLayer.ProxySet frontProxies = null!;
+        private Container proxyHome = null!;
+        private Drawable? foregroundProxy;
+        private Drawable? modeMenuProxy;
+        private bool isActive = true;
 
         [Resolved(CanBeNull = true)]
         private ScreenFrontLayer? frontLayer { get; set; }
@@ -49,6 +52,7 @@ namespace osu.Game.Skinning.Select
         public Action? ModsAction { get; init; }
         public Action? ModsRightClickAction { get; init; }
         public Action? RandomAction { get; init; }
+        public Action? RandomRightClickAction { get; init; }
         public Action? OptionsAction { get; init; }
 
         /// <summary>
@@ -150,7 +154,13 @@ namespace osu.Game.Skinning.Select
                         {
                             Anchor = Anchor.BottomLeft,
                             Origin = Anchor.BottomLeft,
-                            Action = BackAction,
+                            Action = BackAction == null
+                                ? null
+                                : () =>
+                                {
+                                    modeMenu.Hide();
+                                    BackAction();
+                                },
                         },
                         // solo la tarjeta de stats del user. los botones salieron a su propia capa (buttonsContainer)
                         // que va DESPUES de la decoracion selection-mode, asi el glow -over del hover no queda tapado.
@@ -216,9 +226,51 @@ namespace osu.Game.Skinning.Select
                                     Children = new LegacyFooterButton[]
                                     {
                                         new LegacyRulesetFooterButton { TextureSource = buttonSource, SuppressBaseGlyph = skinFooterDecoration, Action = () => modeMenu.ToggleVisibility() },
-                                        new LegacyFooterButton("mods") { X = mods_button_off, Action = ModsAction, RightClickAction = ModsRightClickAction, TextureSource = buttonSource },
-                                        new LegacyFooterButton("random") { X = random_button_off, Action = RandomAction, TextureSource = buttonSource },
-                                        new LegacyFooterButton("options") { X = options_button_off, Action = OptionsAction ?? ShowOptions, TextureSource = buttonSource },
+                                        new LegacyFooterButton("mods")
+                                        {
+                                            X = mods_button_off,
+                                            Action = () =>
+                                            {
+                                                modeMenu.Hide();
+                                                ModsAction?.Invoke();
+                                            },
+                                            RightClickAction = () =>
+                                            {
+                                                modeMenu.Hide();
+                                                ModsRightClickAction?.Invoke();
+                                            },
+                                            TextureSource = buttonSource,
+                                        },
+                                        new LegacyFooterButton("random")
+                                        {
+                                            X = random_button_off,
+                                            Action = () =>
+                                            {
+                                                modeMenu.Hide();
+                                                RandomAction?.Invoke();
+                                            },
+                                            RightClickAction = () =>
+                                            {
+                                                modeMenu.Hide();
+                                                RandomRightClickAction?.Invoke();
+                                            },
+                                            ShiftClickAction = () =>
+                                            {
+                                                modeMenu.Hide();
+                                                RandomRightClickAction?.Invoke();
+                                            },
+                                            TextureSource = buttonSource,
+                                        },
+                                        new LegacyFooterButton("options")
+                                        {
+                                            X = options_button_off,
+                                            Action = () =>
+                                            {
+                                                modeMenu.Hide();
+                                                (OptionsAction ?? ShowOptions).Invoke();
+                                            },
+                                            TextureSource = buttonSource,
+                                        },
                                     },
                                 },
                                 modeMenu = new LegacyModeMenu
@@ -230,6 +282,11 @@ namespace osu.Game.Skinning.Select
                             },
                         },
                     },
+                },
+                proxyHome = new Container
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    Depth = -1,
                 },
                 (logoTrackingContainer = new LogoTrackingContainer
                 {
@@ -245,15 +302,44 @@ namespace osu.Game.Skinning.Select
                 })),
             };
 
-            frontProxies = new ScreenFrontLayer.ProxySet(
-                (foreground, ScreenFrontLayer.Depths.FOREGROUND),
-                // stable draws its mode menu (spriteManagerLow) below everything else in the footer and the top bar (spriteManagerHigh).
-                (modeMenu, ScreenFrontLayer.Depths.MODE_MENU));
+            foregroundProxy = foreground.CreateProxy();
+            foregroundProxy.Depth = ScreenFrontLayer.Depths.FOREGROUND;
+
+            // stable draws its mode menu (spriteManagerLow) below everything else in the footer and the top bar (spriteManagerHigh).
+            modeMenuProxy = modeMenu.CreateProxy();
+            modeMenuProxy.Depth = ScreenFrontLayer.Depths.MODE_MENU;
+
+            proxyHome.AddRange(new[] { foregroundProxy, modeMenuProxy });
+        }
+
+        public void SetActive(bool active)
+        {
+            isActive = active;
+
+            if (!active)
+            {
+                modeMenu?.Hide();
+                optionsMenu?.Close();
+            }
+
+            updateFrontLayer();
+        }
+
+        private void updateFrontLayer()
+        {
+            if (frontLayer == null || foregroundProxy == null || modeMenuProxy == null)
+                return;
+
+            frontLayer.Hold(foregroundProxy, isActive, proxyHome);
+            frontLayer.Hold(modeMenuProxy, isActive, proxyHome);
         }
 
         protected override void Dispose(bool isDisposing)
         {
-            frontProxies?.Release(frontLayer);
+            if (foregroundProxy != null)
+                frontLayer?.Release(foregroundProxy);
+            if (modeMenuProxy != null)
+                frontLayer?.Release(modeMenuProxy);
 
             base.Dispose(isDisposing);
         }
@@ -262,7 +348,7 @@ namespace osu.Game.Skinning.Select
         {
             base.Update();
 
-            frontProxies.Update(frontLayer);
+            updateFrontLayer();
 
             components.X = ButtonsX(DrawWidth);
             // los botones (capa de arriba, separada de components) y la decoracion selection-mode siguen el mismo X, como en stable,

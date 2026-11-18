@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -23,10 +24,14 @@ using osu.Framework.Input.Events;
 using osu.Framework.Utils;
 using osu.Game.Graphics.Containers;
 using osu.Game.Input.Bindings;
+using osu.Game.Localisation;
 using osu.Game.Online;
+using osu.Game.Recording.Export;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Screens.Play;
+using osu.Game.Screens.Select;
 using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
@@ -46,6 +51,9 @@ namespace osu.Game.Screens.Ranking
 
         [Resolved]
         private ResultsScreen? resultsScreen { get; set; }
+
+        [Resolved]
+        private ReplayVideoExporter? replayVideoExporter { get; set; }
 
         // stable's entrance (RankingElement): each image fades in and scales over 300ms, its text slides in 200ms later.
         private readonly List<EntranceElement> entranceElements = new List<EntranceElement>();
@@ -258,15 +266,28 @@ namespace osu.Game.Screens.Ranking
             // LoadMods: field TopRight, y = 260, the first 40 units from the right edge and each next one 20 further left, drawn
             // over the previous ones.
             int modIndex = 0;
+            bool hasNightcore = score.Mods.Any(m => m is ModNightcore);
+            bool hasPerfect = score.Mods.Any(m => m is ModPerfect);
+            var shownModTextures = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var mod in score.Mods)
             {
+                if (hasNightcore && mod is ModDoubleTime && mod is not ModNightcore)
+                    continue;
+
+                if (hasPerfect && mod is ModSuddenDeath && mod is not ModPerfect)
+                    continue;
+
                 string name = mod.GetType().Name;
                 int idx = name.IndexOf(@"Mod", StringComparison.Ordinal);
                 if (idx < 0)
                     continue;
 
-                var modTex = tex($@"selection-mod-{mapModTextureName(name[(idx + 3)..].ToLowerInvariant())}");
+                string modTexName = mapModTextureName(name[(idx + 3)..].ToLowerInvariant());
+                if (!shownModTextures.Add(modTexName))
+                    continue;
+
+                var modTex = tex($@"selection-mod-{modTexName}");
                 if (modTex == null)
                     continue;
 
@@ -307,6 +328,16 @@ namespace osu.Game.Screens.Ranking
                     Anchor = Anchor.TopRight,
                     Origin = Anchor.CentreRight,
                     Y = buttonY * 1.6f,
+                });
+            }
+
+            if (replayVideoExporter != null)
+            {
+                front.Add(new LegacyExportVideoButton(score, resultsScreen?.AllowWatchingReplay != false)
+                {
+                    Anchor = Anchor.BottomRight,
+                    Origin = Anchor.BottomRight,
+                    Position = new Vector2(-8, -8) * 1.6f,
                 });
             }
 
@@ -491,10 +522,17 @@ namespace osu.Game.Screens.Ranking
             @"autopilot" => @"relax2",
             @"targetpractice" => @"target",
             @"daycore" => @"halftime",
+            @"dualstages" => @"keycoop",
             _ => name,
         };
 
-        private bool isPerfect => stat(HitResult.Miss) == 0 && stat(HitResult.LargeTickMiss) == 0 && stat(HitResult.ComboBreak) == 0;
+        private bool isPerfect => score.Passed
+                                  && score.Rank != ScoreRank.F
+                                  && score.GetMaximumAchievableCombo() > 0
+                                  && score.IsPerfect()
+                                  && stat(HitResult.Miss) == 0
+                                  && stat(HitResult.LargeTickMiss) == 0
+                                  && stat(HitResult.ComboBreak) == 0;
 
         private int stat(HitResult result) => score.Statistics.GetValueOrDefault(result);
 
@@ -605,6 +643,7 @@ namespace osu.Game.Screens.Ranking
         {
             private readonly ScoreInfo score;
             private readonly Bindable<DownloadState> state = new Bindable<DownloadState>();
+            private bool exportWhenDownloaded;
 
             [Resolved]
             private OsuGame? game { get; set; }
@@ -642,8 +681,20 @@ namespace osu.Game.Screens.Ranking
 
             private void updateAvailability()
             {
-                Enabled.Value = replayAvailable;
+                bool local = state.Value == DownloadState.LocallyAvailable;
+                bool busy = state.Value is DownloadState.Downloading or DownloadState.Importing;
+
+                if (state.Value == DownloadState.NotDownloaded)
+                    exportWhenDownloaded = false;
+
+                Enabled.Value = replayAvailable && !busy;
                 this.FadeTo(replayAvailable ? (IsHovered ? 1 : 0.7f) : 0, 120);
+
+                if (local && exportWhenDownloaded)
+                {
+                    exportWhenDownloaded = false;
+                    scoreManager.Export(score);
+                }
             }
 
             private void onClick()
@@ -677,8 +728,9 @@ namespace osu.Game.Screens.Ranking
                             scoreManager.Export(score);
                         else if (score.HasOnlineReplay)
                         {
-                            scoreDownloader.Download(score);
-                            state.BindValueChanged(exportWhenReady);
+                            exportWhenDownloaded = true;
+                            if (state.Value == DownloadState.NotDownloaded)
+                                scoreDownloader.Download(score);
                         }
 
                         return true;
@@ -690,14 +742,90 @@ namespace osu.Game.Screens.Ranking
             public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
             {
             }
+        }
 
-            private void exportWhenReady(ValueChangedEvent<DownloadState> s)
+        private partial class LegacyExportVideoButton : CompositeDrawable
+        {
+            private readonly ScoreInfo score;
+            private readonly bool allowWatchingReplay;
+            private readonly Bindable<DownloadState> state = new Bindable<DownloadState>();
+            private bool exportWhenDownloaded;
+            private LegacyDialogButton button = null!;
+
+            [Resolved]
+            private ReplayVideoExporter? videoExporter { get; set; }
+
+            [Resolved]
+            private ScoreModelDownloader scoreDownloader { get; set; } = null!;
+
+            public LegacyExportVideoButton(ScoreInfo score, bool allowWatchingReplay)
             {
-                if (s.NewValue != DownloadState.LocallyAvailable)
+                this.score = score;
+                this.allowWatchingReplay = allowWatchingReplay;
+                AutoSizeAxes = Axes.Both;
+            }
+
+            private bool isAutoplay => score.BeatmapInfo != null && score.Mods.OfType<ModAutoplay>().Any();
+
+            [BackgroundDependencyLoader]
+            private void load()
+            {
+                InternalChildren = new Drawable[]
+                {
+                    new ScoreDownloadTracker(score)
+                    {
+                        State = { BindTarget = state },
+                    },
+                    button = new LegacyDialogButton(isAutoplay ? VideoRecordingStrings.ExportAutoplay : VideoRecordingStrings.ExportReplay, new Color4(88, 120, 175, 255), exportVideo)
+                    {
+                        Anchor = Anchor.BottomRight,
+                        Origin = Anchor.BottomRight,
+                        ButtonSize = new Vector2(130, 22) * 1.6f,
+                        LabelSize = 11 * 1.6f,
+                    },
+                };
+            }
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+                state.BindValueChanged(_ => updateState(), true);
+            }
+
+            private void updateState()
+            {
+                bool local = state.Value == DownloadState.LocallyAvailable;
+                bool busy = state.Value is DownloadState.Downloading or DownloadState.Importing;
+                bool available = isAutoplay || (allowWatchingReplay && (local || score.HasOnlineReplay));
+
+                if (state.Value == DownloadState.NotDownloaded)
+                    exportWhenDownloaded = false;
+
+                Alpha = available && videoExporter != null ? (busy ? 0.45f : 0.85f) : 0;
+                button.Action = available && !busy ? exportVideo : null;
+
+                if (local && exportWhenDownloaded)
+                {
+                    exportWhenDownloaded = false;
+                    videoExporter?.Export(score);
+                }
+            }
+
+            private void exportVideo()
+            {
+                if (videoExporter == null)
                     return;
 
-                scoreManager.Export(score);
-                state.ValueChanged -= exportWhenReady;
+                if (isAutoplay)
+                    videoExporter.ExportAutoplay(score.BeatmapInfo!, score.Ruleset, score.Mods);
+                else if (state.Value == DownloadState.LocallyAvailable)
+                    videoExporter.Export(score);
+                else if (allowWatchingReplay && score.HasOnlineReplay)
+                {
+                    exportWhenDownloaded = true;
+                    if (state.Value == DownloadState.NotDownloaded)
+                        scoreDownloader.Download(score);
+                }
             }
         }
     }

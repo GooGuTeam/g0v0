@@ -13,6 +13,7 @@ using osu.Framework.Screens;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Localisation;
 using osu.Game.Skinning;
 using osu.Game.Skinning.Select;
 using osuTK;
@@ -153,10 +154,11 @@ namespace osu.Game.Screens.Footer
             if (active)
                 ensureLegacyFooterLoaded();
 
+            legacyFooter?.SetActive(active);
             legacyFooterContainer?.FadeTo(active ? 1 : 0, 120, Easing.OutQuint);
 
-            // Hand the default lazer footer chrome off to the legacy footer (or take it back).
-            Footer.SetDefaultChromeVisible(!ownsChrome);
+            // Hand the default lazer footer chrome off to the legacy footer (or take it back while a footer-based overlay such as ModSelectOverlay is open).
+            Footer.SetDefaultChromeVisible(!ownsChrome || Footer.HasActiveOverlay);
         }
 
         private void ensureLegacyFooterLoaded()
@@ -188,7 +190,18 @@ namespace osu.Game.Screens.Footer
                     else
                         Footer.TriggerFooterButton(0);
                 },
-                RandomAction = () => Footer.TriggerFooterButton(1),
+                RandomAction = () =>
+                {
+                    if (screenTracker.LeadingScreen is Select.SongSelect songSelect)
+                        songSelect.NextRandom();
+                    else
+                        Footer.TriggerFooterButton(1);
+                },
+                RandomRightClickAction = () =>
+                {
+                    if (screenTracker.LeadingScreen is Select.SongSelect songSelect)
+                        songSelect.PreviousRandom();
+                },
                 // el boton options abre el popup estilo stable del propio footer (las mismas
                 // acciones forward del song select que el menu contextual del carousel).
                 OptionsMenuItems = getStableOptionsMenuItems,
@@ -231,10 +244,15 @@ namespace osu.Game.Screens.Footer
 
             var beatmapInfo = beatmap.Value?.BeatmapInfo;
 
-            if (beatmapInfo == null)
+            if (beatmap.IsDefault || beatmapInfo == null)
                 return Array.Empty<osu.Framework.Graphics.UserInterface.MenuItem>();
 
-            return songSelect.GetForwardActions(beatmapInfo).Cast<osu.Framework.Graphics.UserInterface.MenuItem>().ToArray();
+            var items = songSelect.GetForwardActions(beatmapInfo).Cast<osu.Framework.Graphics.UserInterface.MenuItem>().ToList();
+
+            if (beatmapInfo.BeatmapSet != null)
+                items.Add(new OsuMenuItem(CommonStrings.DeleteWithConfirmation, MenuItemType.Destructive, () => songSelect.Delete(beatmapInfo.BeatmapSet)));
+
+            return items.ToArray();
         }
 
         private void onScreenChanged(IScreen lastScreen, IScreen newScreen)

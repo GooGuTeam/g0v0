@@ -33,8 +33,11 @@ namespace osu.Game.Extensions
         /// </summary>
         /// <param name="timeSpan">A time value.</param>
         /// <returns>An editor formatted display string.</returns>
-        public static string ToEditorFormattedString(this TimeSpan timeSpan) =>
-            $"{(timeSpan < TimeSpan.Zero ? "-" : string.Empty)}{(int)timeSpan.TotalMinutes:00}:{timeSpan:ss\\:fff}";
+        public static string ToEditorFormattedString(this TimeSpan timeSpan)
+        {
+            TimeSpan duration = timeSpan == TimeSpan.MinValue ? TimeSpan.MaxValue : timeSpan.Duration();
+            return $"{(timeSpan < TimeSpan.Zero ? "-" : string.Empty)}{(long)duration.TotalMinutes:00}:{duration:ss\\:fff}";
+        }
 
         /// <summary>
         /// Get a formatted duration (dd:hh:mm:ss with days/hours omitted if zero).

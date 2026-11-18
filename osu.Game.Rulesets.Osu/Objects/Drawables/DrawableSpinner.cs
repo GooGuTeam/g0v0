@@ -21,6 +21,7 @@ using osu.Game.Rulesets.Osu.Scoring;
 using osu.Game.Rulesets.Osu.Skinning;
 using osu.Game.Rulesets.Osu.Skinning.Default;
 using osu.Game.Rulesets.Scoring;
+using osu.Game.Screens.Play;
 using osu.Game.Screens.Ranking;
 using osu.Game.Skinning;
 
@@ -35,6 +36,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         public SkinnableDrawable Body { get; private set; }
 
         public SpinnerRotationTracker RotationTracker { get; private set; }
+
+        internal bool SpunOut { get; set; }
 
         private SpinnerSpmCalculator spmCalculator;
 
@@ -71,6 +74,9 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         private const int legacy_display_score_per_bonus = 1000;
 
         private int legacyBonusTicks;
+        private int lastLegacyHalfSpins;
+        private double lastUpdateTime = double.NegativeInfinity;
+        private bool rewindingThisFrame;
 
         public IBindable<int> CompletedFullSpins => completedFullSpins;
 
@@ -151,13 +157,30 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             base.OnApply();
 
             legacyBonusTicks = 0;
+            lastLegacyHalfSpins = 0;
+            lastUpdateTime = double.NegativeInfinity;
+            rewindingThisFrame = false;
+            completedFullSpins.Value = 0;
 
-            if (HitObject.LegacySpinnerScoring)
-                completedFullSpins.Value = 0;
+            if (!Result.HasResult && Time.Current <= HitObject.StartTime)
+            {
+                Result.History.RewindTo(Time.Current);
+                Result.LegacyRotation?.RewindTo(Time.Current);
+                Result.TimeStarted = null;
+                Result.TimeCompleted = null;
+            }
         }
 
         protected override void OnFree()
         {
+            if (HitObject != null && !Result.HasResult && Time.Current <= HitObject.StartTime)
+            {
+                Result.History.RewindTo(Time.Current);
+                Result.LegacyRotation?.RewindTo(Time.Current);
+                Result.TimeStarted = null;
+                Result.TimeCompleted = null;
+            }
+
             hideApproachCircle = false;
             CanTrack = null;
             base.OnFree();
@@ -316,6 +339,12 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         {
             if (Time.Current < HitObject.StartTime) return;
 
+            if (!userTriggered && Time.Current >= HitObject.EndTime && HitObject.ClassicSpinnerBehaviour)
+            {
+                RotationTracker?.ProcessLegacyRotation(Time.Current);
+                updateBonusScore(false);
+            }
+
             if (Progress >= 1)
                 Result.TimeCompleted ??= Time.Current;
 
@@ -379,6 +408,12 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
         protected override void Update()
         {
+            rewindingThisFrame = (Clock as IGameplayClock)?.IsRewinding == true
+                                 || Time.Current < lastUpdateTime
+                                 || Time.Current < Result.History.LastReportTime
+                                 || Time.Current < Result.LegacyRotation?.LastProcessedTime;
+            lastUpdateTime = Time.Current;
+
             base.Update();
 
             if (HandleUserInput)
@@ -428,24 +463,47 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             return false;
         }
 
+        public override void OnKilled()
+        {
+            if (HitObject != null && !Judged && Time.Current >= HitObject.EndTime)
+            {
+                if (HitObject.ClassicSpinnerBehaviour)
+                    RotationTracker?.ProcessLegacyRotation(Time.Current);
+
+                updateBonusScore(false);
+            }
+
+            base.OnKilled();
+        }
+
         protected override void UpdateAfterChildren()
         {
-            base.UpdateAfterChildren();
+            if (rewindingThisFrame)
+            {
+                if (Result.TimeStarted is double timeStarted && (Time.Current < timeStarted || Time.Current < HitObject.StartTime || Result.TotalRotation <= 0))
+                    Result.TimeStarted = null;
 
-            if (Result.TimeStarted == null && RotationTracker.Tracking)
+                if (Result.TimeCompleted is double timeCompleted && (Time.Current < timeCompleted || Time.Current < HitObject.StartTime || Progress < 1))
+                    Result.TimeCompleted = null;
+            }
+            else if (Result.TimeStarted == null && RotationTracker.Tracking)
+            {
                 Result.TimeStarted = Time.Current;
+            }
 
             // don't update after end time to avoid the rate display dropping during fade out.
             // this shouldn't be limited to StartTime as it causes weirdness with the underlying calculation, which is expecting updates during that period.
             if (Time.Current <= HitObject.EndTime)
                 spmCalculator.SetRotation(Result.TotalRotation);
 
-            updateBonusScore();
+            updateBonusScore(rewindingThisFrame);
+
+            base.UpdateAfterChildren();
         }
 
         private static readonly int score_per_tick = new OsuScoreProcessor().GetBaseScoreForResult(new SpinnerBonusTick.OsuSpinnerBonusTickJudgement().MaxResult);
 
-        private void updateBonusScore()
+        private void updateBonusScore(bool rewinding)
         {
             if (ticks.Count == 0)
                 return;
@@ -453,8 +511,14 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (HitObject.LegacySpinnerScoring)
             {
                 int halfSpins = (int)(Result.TotalRotation / 180);
-                foreach (var tick in ticks.Where(t => !t.Result.HasResult && ((SpinnerTick)t.HitObject).LegacyHalfSpinIndex <= halfSpins))
-                    tick.TriggerResult(true);
+
+                if (!rewinding && halfSpins >= lastLegacyHalfSpins)
+                {
+                    foreach (var tick in ticks.Where(t => !t.Result.HasResult && ((SpinnerTick)t.HitObject).LegacyHalfSpinIndex <= halfSpins))
+                        tick.TriggerResult(true);
+                }
+
+                lastLegacyHalfSpins = halfSpins;
 
                 int bonusTicks = ticks.Count(t => t.HitObject is SpinnerBonusTick && t.IsHit);
                 bool bonusChanged = legacyBonusTicks != bonusTicks;
@@ -471,7 +535,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
             int spins = (int)(Result.TotalRotation / 360);
 
-            if (spins < completedFullSpins.Value)
+            if (rewinding || spins < completedFullSpins.Value)
             {
                 // rewinding, silently handle
                 completedFullSpins.Value = spins;

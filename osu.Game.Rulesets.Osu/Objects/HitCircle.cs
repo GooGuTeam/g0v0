@@ -2,11 +2,12 @@
 // See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Game.Rulesets.Judgements;
+using osu.Game.Rulesets.Objects.Legacy;
 using osu.Game.Rulesets.Osu.Judgements;
 
 namespace osu.Game.Rulesets.Osu.Objects
 {
-    public class HitCircle : OsuHitObject
+    public class HitCircle : OsuHitObject, IHasLegacyHoldEndTime
     {
         /// <summary>
         /// The end time of the legacy "Hold" object this circle was converted from, if any.
@@ -17,6 +18,8 @@ namespace osu.Game.Rulesets.Osu.Objects
         /// end time precedes the start time the circle may therefore complete itself.
         /// </remarks>
         public double? LegacyHoldEndTime { get; set; }
+
+        double IHasLegacyHoldEndTime.LegacyEndTime => LegacyHoldEndTime ?? double.NaN;
 
         public override Judgement CreateJudgement() => new OsuJudgement();
     }

@@ -4,9 +4,11 @@
 using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Events;
 using osu.Game.Audio;
 using osu.Game.Scoring;
@@ -26,13 +28,24 @@ namespace osu.Game.Screens.RankingV2.Legacy
         [Resolved]
         protected IBindable<IScoreInfo> Score { get; private set; } = null!;
 
+        [Resolved]
+        private ISkinSource skin { get; set; } = null!;
+
+        [Resolved]
+        private SkinManager? skins { get; set; }
+
+        [Resolved]
+        private DefaultLegacySkin? defaultClassicSkin { get; set; }
+
+        private ISkin? classicFallback => skins?.DefaultClassicSkin ?? defaultClassicSkin;
+
         protected LegacyRankingButton(params string[] spriteNames)
         {
             this.spriteNames = spriteNames;
         }
 
         [BackgroundDependencyLoader]
-        private void load(ISkinSource skin)
+        private void load()
         {
             AutoSizeAxes = Axes.Both;
             InternalChildren =
@@ -43,16 +56,39 @@ namespace osu.Game.Screens.RankingV2.Legacy
                 sample = new PoolableSkinnableSample(new SampleInfo(@"menuhit")),
             ];
 
-            foreach (string spriteName in spriteNames)
-                buttonSprite.Texture ??= skin.GetStableTexture(spriteName);
+            updateTexture();
         }
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
+            skin.SourceChanged += onSkinChanged;
             updateState();
             buttonSprite.FinishTransforms();
+        }
+
+        private void onSkinChanged() => Scheduler.AddOnce(updateTexture);
+
+        private void updateTexture()
+        {
+            Texture? texture = null;
+
+            foreach (string spriteName in spriteNames)
+                texture ??= skin.GetStableTexture(spriteName);
+
+            foreach (string spriteName in spriteNames)
+                texture ??= classicFallback?.GetStableTexture(spriteName);
+
+            buttonSprite.Texture = texture;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinChanged;
         }
 
         protected override bool OnHover(HoverEvent e)

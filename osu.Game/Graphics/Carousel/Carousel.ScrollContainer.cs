@@ -205,7 +205,7 @@ namespace osu.Game.Graphics.Carousel
                 if (e.Button == MouseButton.Right)
                 {
                     // To avoid conflicts with context menus, disallow absolute scroll if it looks like things will fall over.
-                    if (GetContainingInputManager()!.HoveredDrawables.OfType<IHasContextMenu>().Any())
+                    if (GetContainingInputManager()!.HoveredDrawables.OfType<IHasContextMenu>().Any(c => c.ContextMenuItems?.Length > 0))
                         return false;
 
                     beginAbsoluteScrolling(e);
