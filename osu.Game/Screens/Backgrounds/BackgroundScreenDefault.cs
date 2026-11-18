@@ -182,5 +182,10 @@ namespace osu.Game.Screens.Backgrounds
         }
 
         private string getBackgroundTextureName() => $@"Menu/menu-background-{currentDisplay % background_count + 1}";
+
+        /// <summary>
+        /// The remote URL of the seasonal background currently being displayed, if any.
+        /// </summary>
+        public string CurrentSeasonalBackgroundUrl => (background as SeasonalBackground)?.Url;
     }
 }
