@@ -1,6 +1,7 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -21,10 +22,21 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
 
         private readonly Bindable<SettingsNote.Data?> backgroundSourceNote = new Bindable<SettingsNote.Data?>();
 
+        private readonly BindableInt pinnedIndex = new BindableInt
+        {
+            MinValue = 0,
+            MaxValue = 0,
+        };
+
+        private Bindable<APISeasonalBackgrounds> seasonalBackgrounds = null!;
+
         [BackgroundDependencyLoader]
-        private void load(OsuConfigManager config, IAPIProvider api)
+        private void load(OsuConfigManager config, IAPIProvider api, SessionStatics sessionStatics)
         {
             user = api.LocalUser.GetBoundCopy();
+            seasonalBackgrounds = sessionStatics.GetBindable<APISeasonalBackgrounds>(Static.SeasonalBackgrounds);
+
+            config.BindWith(OsuSetting.PinnedSeasonalBackgroundIndex, pinnedIndex);
 
             Children = new Drawable[]
             {
@@ -61,7 +73,18 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
                 {
                     Caption = UserInterfaceStrings.SeasonalBackgrounds,
                     Current = config.GetBindable<SeasonalBackgroundMode>(OsuSetting.SeasonalBackgroundMode),
-                })
+                }),
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = UserInterfaceStrings.PinnedSeasonalBackground,
+                    Current = config.GetBindable<bool>(OsuSetting.PinnedSeasonalBackground),
+                }),
+                new SettingsItemV2(new FormSliderBar<int>
+                {
+                    Caption = UserInterfaceStrings.PinnedSeasonalBackgroundIndex,
+                    Current = pinnedIndex,
+                    KeyboardStep = 1,
+                }),
             };
         }
 
@@ -69,13 +92,20 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
         {
             base.LoadComplete();
 
+            seasonalBackgrounds.BindValueChanged(_ => updatePinnedIndexRange(), true);
             user.BindValueChanged(u =>
             {
-                if (u.NewValue?.IsSupporter != true)
-                    backgroundSourceNote.Value = new SettingsNote.Data(UserInterfaceStrings.NotSupporterNote, SettingsNote.Type.Informational);
-                else
-                    backgroundSourceNote.Value = null;
+                backgroundSourceNote.Value = u.NewValue?.IsSupporter != true ? new SettingsNote.Data(UserInterfaceStrings.NotSupporterNote, SettingsNote.Type.Informational) : null;
             }, true);
+        }
+
+        private void updatePinnedIndexRange()
+        {
+            int count = seasonalBackgrounds.Value?.Backgrounds?.Count ?? 0;
+            pinnedIndex.MaxValue = Math.Max(0, count - 1);
+
+            if (pinnedIndex.Value > pinnedIndex.MaxValue)
+                pinnedIndex.Value = pinnedIndex.MaxValue;
         }
     }
 }

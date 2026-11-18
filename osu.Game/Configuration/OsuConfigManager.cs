@@ -214,6 +214,8 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.MenuBackgroundSource, BackgroundSource.Skin);
             SetDefault(OsuSetting.SeasonalBackgroundMode, SeasonalBackgroundMode.Sometimes);
+            SetDefault(OsuSetting.PinnedSeasonalBackground, false);
+            SetDefault(OsuSetting.PinnedSeasonalBackgroundIndex, 0);
 
             SetDefault(OsuSetting.DiscordRichPresence, DiscordRichPresenceMode.Full);
 
@@ -546,5 +548,15 @@ namespace osu.Game.Configuration
         /// The <see cref="osu.Game.Beatmaps.BeatmapSetInfo.ID"/> of the beatmap set used as custom theme music, stored as a string.
         /// </summary>
         ThemeMusicBeatmapSetId,
+
+        /// <summary>
+        /// Whether a specific seasonal background (by index) should always be used as the main menu background.
+        /// </summary>
+        PinnedSeasonalBackground,
+
+        /// <summary>
+        /// The index of the seasonal background pinned via <see cref="PinnedSeasonalBackground"/>.
+        /// </summary>
+        PinnedSeasonalBackgroundIndex,
     }
 }
