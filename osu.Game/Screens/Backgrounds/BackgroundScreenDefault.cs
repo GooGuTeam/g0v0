@@ -15,8 +15,6 @@ using osu.Framework.Utils;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Backgrounds;
-using osu.Game.Online.API;
-using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Skinning;
 
 namespace osu.Game.Screens.Backgrounds
@@ -27,7 +25,6 @@ namespace osu.Game.Screens.Backgrounds
 
         private int currentDisplay;
         private const int background_count = 8;
-        private IBindable<APIUser> user;
         private Bindable<Skin> skin;
         private Bindable<BackgroundSource> source;
         private Bindable<bool> pinnedSeasonalBackground;
@@ -45,9 +42,8 @@ namespace osu.Game.Screens.Backgrounds
         protected virtual string SkinBackgroundLookupName => @"menu-background";
 
         [BackgroundDependencyLoader]
-        private void load(IAPIProvider api, SkinManager skinManager, OsuConfigManager config)
+        private void load(SkinManager skinManager, OsuConfigManager config)
         {
-            user = api.LocalUser.GetBoundCopy();
             skin = skinManager.CurrentSkin.GetBoundCopy();
             source = config.GetBindable<BackgroundSource>(OsuSetting.MenuBackgroundSource);
             pinnedSeasonalBackground = config.GetBindable<bool>(OsuSetting.PinnedSeasonalBackground);
@@ -60,7 +56,6 @@ namespace osu.Game.Screens.Backgrounds
         {
             base.LoadComplete();
 
-            user.ValueChanged += _ => Scheduler.AddOnce(next);
             skin.ValueChanged += _ => Scheduler.AddOnce(next);
             source.ValueChanged += _ => Scheduler.AddOnce(next);
             beatmap.ValueChanged += _ => Scheduler.AddOnce(next);

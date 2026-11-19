@@ -31,11 +31,10 @@ using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Input.Bindings;
 using osu.Game.IO;
 using osu.Game.Localisation;
-using osu.Game.Online.API;
+using osu.Game.Online;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
-using osu.Game.Overlays.Settings;
 using osu.Game.Skinning;
 using osu.Game.Screens.Backgrounds;
 using Image = osu.Framework.Imaging.Image;
@@ -52,7 +51,6 @@ namespace osu.Game.Screens.Menu
         private const double carousel_interval = 3000;
 
         private readonly FillFlowContainer optionsFlow;
-        private readonly SettingsNote supporterNote;
         private readonly FormEnumDropdown<BackgroundSource> sourceDropdown;
         private readonly FormEnumDropdown<SeasonalBackgroundMode> seasonalDropdown;
 
@@ -86,7 +84,6 @@ namespace osu.Game.Screens.Menu
         private Bindable<bool> pinnedSeasonal = null!;
         private Bindable<int> pinnedSeasonalIndex = null!;
         private Bindable<APISeasonalBackgrounds> seasonalBackgrounds = null!;
-        private IBindable<APIUser> localUser = null!;
 
         [Resolved]
         private SkinManager skinManager { get; set; } = null!;
@@ -114,9 +111,6 @@ namespace osu.Game.Screens.Menu
 
         [Resolved]
         private SessionStatics sessionStatics { get; set; } = null!;
-
-        [Resolved]
-        private IAPIProvider api { get; set; } = null!;
 
         [Cached]
         private readonly OverlayColourProvider colourProvider = new OverlayColourProvider(OverlayColourScheme.Purple);
@@ -180,33 +174,18 @@ namespace osu.Game.Screens.Menu
                                         Content = new Drawable[][]
                                         {
                                             [
-                                                // Background preview & selection area.
-                                                new FillFlowContainer
+                                                // a scroll container cannot auto-size along its scroll axis,
+                                                // so the height is fixed to the option height plus the scrollbar.
+                                                new OsuScrollContainer(Direction.Horizontal)
                                                 {
                                                     RelativeSizeAxes = Axes.X,
-                                                    AutoSizeAxes = Axes.Y,
-                                                    Direction = FillDirection.Vertical,
-                                                    Spacing = new Vector2(8),
-                                                    Children = new Drawable[]
+                                                    ScrollbarOverlapsContent = false,
+                                                    Height = background_option_height + 24,
+                                                    Child = optionsFlow = new FillFlowContainer
                                                     {
-                                                        // a scroll container cannot auto-size along its scroll axis,
-                                                        // so the height is fixed to the option height plus the scrollbar.
-                                                        new OsuScrollContainer(Direction.Horizontal)
-                                                        {
-                                                            RelativeSizeAxes = Axes.X,
-                                                            ScrollbarOverlapsContent = false,
-                                                            Height = background_option_height + 24,
-                                                            Child = optionsFlow = new FillFlowContainer
-                                                            {
-                                                                AutoSizeAxes = Axes.Both,
-                                                                Direction = FillDirection.Horizontal,
-                                                                Spacing = new Vector2(8),
-                                                            },
-                                                        },
-                                                        supporterNote = new SettingsNote
-                                                        {
-                                                            RelativeSizeAxes = Axes.X,
-                                                        },
+                                                        AutoSizeAxes = Axes.Both,
+                                                        Direction = FillDirection.Horizontal,
+                                                        Spacing = new Vector2(8),
                                                     },
                                                 },
                                                 // Settings area.
@@ -325,7 +304,6 @@ namespace osu.Game.Screens.Menu
             pinnedSeasonal = config.GetBindable<bool>(OsuSetting.PinnedSeasonalBackground);
             pinnedSeasonalIndex = config.GetBindable<int>(OsuSetting.PinnedSeasonalBackgroundIndex);
             seasonalBackgrounds = sessionStatics.GetBindable<APISeasonalBackgrounds>(Static.SeasonalBackgrounds);
-            localUser = api.LocalUser.GetBoundCopy();
 
             exportStorage = (storage as OsuStorage)?.GetExportStorage() ?? storage.GetStorageForDirectory(@"exports");
 
@@ -401,7 +379,6 @@ namespace osu.Game.Screens.Menu
             if (!optionsBuilt)
             {
                 rebuildOptions();
-                refreshSelection();
                 optionsBuilt = true;
             }
 
@@ -610,12 +587,6 @@ namespace osu.Game.Screens.Menu
 
         private void refreshSelection()
         {
-            bool supporter = localUser.Value?.IsSupporter == true;
-
-            supporterNote.Current.Value = supporter
-                ? null
-                : new SettingsNote.Data(UserInterfaceStrings.NotSupporterNote, SettingsNote.Type.Informational);
-
             int availableCount = seasonalBackgrounds.Value?.Backgrounds?.Count ?? 0;
             bool pinnedIndexValid = pinnedSeasonal.Value && pinnedSeasonalIndex.Value >= 0 && pinnedSeasonalIndex.Value < availableCount;
 
