@@ -550,7 +550,8 @@ namespace osu.Game.Configuration
         ThemeMusicBeatmapSetId,
 
         /// <summary>
-        /// Whether a specific seasonal background (by index) should always be used as the main menu background.
+        /// Whether the seasonal background at <see cref="PinnedSeasonalBackgroundIndex"/> should be displayed in
+        /// place of the rotating ones. Only takes effect while seasonal backgrounds are enabled.
         /// </summary>
         PinnedSeasonalBackground,
 

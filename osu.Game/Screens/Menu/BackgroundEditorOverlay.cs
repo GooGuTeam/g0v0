@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -24,6 +25,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Graphics;
+using osu.Game.Graphics.Backgrounds;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
@@ -49,6 +51,11 @@ namespace osu.Game.Screens.Menu
         private const float background_option_height = 128;
         private const float header_height = 40;
         private const double carousel_interval = 3000;
+
+        /// <summary>
+        /// The namespace the bundled game textures live in, relative to the game's resource store.
+        /// </summary>
+        private const string bundled_texture_namespace = @"Textures";
 
         private readonly FillFlowContainer optionsFlow;
         private readonly FormEnumDropdown<BackgroundSource> sourceDropdown;
@@ -107,6 +114,9 @@ namespace osu.Game.Screens.Menu
         private OsuGameBase game { get; set; } = null!;
 
         [Resolved]
+        private GameHost gameHost { get; set; } = null!;
+
+        [Resolved]
         private OsuConfigManager config { get; set; } = null!;
 
         [Resolved]
@@ -153,7 +163,7 @@ namespace osu.Game.Screens.Menu
                             RelativeSizeAxes = Axes.X,
                             AutoSizeAxes = Axes.Y,
                             Direction = FillDirection.Vertical,
-                            Children = new Drawable[]
+                            Children = new[]
                             {
                                 createHeader(),
                                 new Container
@@ -382,6 +392,9 @@ namespace osu.Game.Screens.Menu
                 optionsBuilt = true;
             }
 
+            // the selection (and the account state it depends on) may have changed while the editor was closed.
+            refreshSelection();
+
             this.MoveToY(0, 400, Easing.OutQuint);
             this.FadeIn(400, Easing.OutQuint);
         }
@@ -433,6 +446,9 @@ namespace osu.Game.Screens.Menu
                     if (source.Value != BackgroundSource.Skin)
                         source.Value = BackgroundSource.Skin;
 
+                    // a pinned background takes priority over the source, so it has to be released for the
+                    // requested source to actually take effect.
+                    pinnedSeasonal.Value = false;
                     seasonalMode.Value = SeasonalBackgroundMode.Never;
                 },
             };
@@ -446,6 +462,7 @@ namespace osu.Game.Screens.Menu
                     if (source.Value != BackgroundSource.Beatmap && source.Value != BackgroundSource.BeatmapWithStoryboard)
                         source.Value = BackgroundSource.Beatmap;
 
+                    pinnedSeasonal.Value = false;
                     seasonalMode.Value = SeasonalBackgroundMode.Never;
                 },
             };
@@ -605,6 +622,18 @@ namespace osu.Game.Screens.Menu
 
         private void exportBackground()
         {
+            // resolved on the update thread so that the export always matches what is currently on screen, even if
+            // the selection (or the beatmap / skin) changes while the file is being written.
+            Background? displayed = defaultScreen?.CurrentBackground;
+
+            // only a seasonal image which was actually retrieved from its remote URL can be downloaded again;
+            // anything else on screen has to be read from a local source.
+            string? seasonalUrl = displayed is SeasonalBackground seasonal
+                                  && seasonal.LoadedUrl != null
+                                  && TrustedDomainOnlineStore.IsAllowedUrl(seasonal.LoadedUrl, config)
+                ? seasonal.LoadedUrl
+                : null;
+
             var notification = new ProgressNotification
             {
                 State = ProgressNotificationState.Active,
@@ -613,6 +642,10 @@ namespace osu.Game.Screens.Menu
             };
 
             notifications.Post(notification);
+
+            // the editor may be hidden (or disposed) while the export runs, at which point its own scheduler
+            // stops running; the update thread's scheduler always does, so the notification always completes.
+            void post(Action action) => gameHost.UpdateThread.Scheduler.Add(action);
 
             void onCompletion(string filename)
             {
@@ -633,92 +666,164 @@ namespace osu.Game.Screens.Menu
                 notification.State = ProgressNotificationState.Cancelled;
             }
 
+            CancellationToken cancellationToken = notification.CancellationToken;
+
             // all exceptions are handled inside, so the task itself can be safely discarded.
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    using Stream? stream = await getCurrentBackgroundStreamAsync().ConfigureAwait(false);
+                    using Stream? stream = seasonalUrl != null
+                        ? await downloadImageAsync(seasonalUrl, cancellationToken).ConfigureAwait(false)
+                        : getLocalBackgroundStream(displayed);
 
                     if (stream == null)
                     {
-                        onFailure();
+                        post(onFailure);
                         return;
                     }
 
                     using (stream)
                     using (var image = Image.Load<Rgba32>(stream))
                     {
-                        string filename = $"background_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.png";
+                        // the user has already dismissed the notification and given up on the export.
+                        if (cancellationToken.IsCancellationRequested)
+                            return;
 
-                        using (var outputStream = exportStorage.GetStream(filename, FileAccess.Write, FileMode.Create))
+                        string filename = createExportFilename();
+                        string temporaryFilename = $"{filename}.tmp";
+
+                        // encode next to the destination first, so that a failed export cannot leave a partial image behind.
+                        using (var outputStream = exportStorage.GetStream(temporaryFilename, FileAccess.Write, FileMode.Create))
                             await image.SaveAsPngAsync(outputStream).ConfigureAwait(false);
 
-                        Scheduler.Add(() => onCompletion(filename));
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            exportStorage.Delete(temporaryFilename);
+                            return;
+                        }
+
+                        exportStorage.Move(temporaryFilename, filename);
+
+                        post(() => onCompletion(filename));
                     }
                 }
                 catch (Exception)
                 {
-                    Scheduler.Add(onFailure);
+                    post(onFailure);
                 }
-            });
+            }, cancellationToken);
         }
 
-        private async Task<Stream?> getCurrentBackgroundStreamAsync()
+        /// <summary>
+        /// A filename which does not clash with an existing export.
+        /// </summary>
+        private string createExportFilename()
         {
-            // if a seasonal background is currently displayed, download it directly.
-            string? seasonalUrl = defaultScreen?.CurrentSeasonalBackgroundUrl;
+            string timestamp = DateTime.Now.ToString(@"yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture);
+            string filename = $@"background_{timestamp}.png";
 
-            if (seasonalUrl != null)
+            for (int duplicate = 2; exportStorage.Exists(filename); duplicate++)
+                filename = $@"background_{timestamp}_{duplicate}.png";
+
+            return filename;
+        }
+
+        private static async Task<Stream?> downloadImageAsync(string url, CancellationToken cancellationToken)
+        {
+            var request = new WebRequest(url);
+
+            // aborts the download when the export is cancelled while it is in progress.
+            await request.PerformAsync(cancellationToken).ConfigureAwait(false);
+
+            byte[]? data = request.GetResponseData();
+
+            return data == null ? null : new MemoryStream(data);
+        }
+
+        /// <summary>
+        /// Resolve the image on screen to a stream which can be read off the update thread.
+        /// </summary>
+        private Stream? getLocalBackgroundStream(Background? displayed)
+        {
+            switch (displayed)
             {
-                var request = new WebRequest(seasonalUrl);
-                await request.PerformAsync().ConfigureAwait(false);
-                return new MemoryStream(request.GetResponseData() ?? []);
+                case BeatmapBackground beatmapBackground:
+                    return getBeatmapBackgroundStream(beatmapBackground.Beatmap)
+                           ?? getBundledTextureStream(beatmapBackground.TextureName);
+
+                case SkinBackground skinBackground:
+                    return getSkinBackgroundStream(skinBackground)
+                           ?? getBundledTextureStream(skinBackground.TextureName);
+
+                case SeasonalBackground:
+                    // the remote image is not usable (either it failed to load, or it is no longer downloadable),
+                    // so the bundled image showing in its place is what gets saved.
+                    return getBundledTextureStream(SeasonalBackground.FALLBACK_TEXTURE_NAME);
+
+                default:
+                    return getBundledTextureStream(displayed?.TextureName);
             }
+        }
 
-            switch (source.Value)
+        private Stream? getBeatmapBackgroundStream(WorkingBeatmap working)
+        {
+            string? backgroundFile = working.Metadata?.BackgroundFile;
+
+            if (string.IsNullOrEmpty(backgroundFile))
+                return null;
+
+            string? path = working.BeatmapSetInfo.GetPathForFile(backgroundFile);
+
+            return path == null ? null : working.GetStream(path);
+        }
+
+        /// <summary>
+        /// Read the image the given skin background is displaying from the skin's files.
+        /// </summary>
+        private Stream? getSkinBackgroundStream(SkinBackground background)
+        {
+            var skin = background.DisplayedSkin;
+
+            var skinStore = new RealmBackedResourceStore<SkinInfo>(skin.SkinInfo, new RealmFileStore(realm, storage).Store, realm);
+
+            // mirror the lookup order used when the skin is queried for a texture: the requested name first,
+            // then the legacy one, and the high resolution variant ahead of the regular one.
+            string[] lookupNames = background.PrimaryLookupName == @"menu-background"
+                ? [background.PrimaryLookupName]
+                : [background.PrimaryLookupName, @"menu-background"];
+
+            foreach (string lookupName in lookupNames)
             {
-                case BackgroundSource.Skin when (localUser.Value?.IsSupporter == true):
+                foreach (string name in new[] { $"{lookupName}@2x", lookupName })
                 {
-                    var skin = skinManager.CurrentSkin.Value;
-
-                    // default skins don't provide a menu background; the default rotation is used instead.
-                    if (skin is not TrianglesSkin and not ArgonSkin and not DefaultLegacySkin)
+                    foreach (string extension in (string[])[@".png", @".jpg", @".jpeg"])
                     {
-                        var skinStore = new RealmBackedResourceStore<SkinInfo>(skin.SkinInfo, new RealmFileStore(realm, storage).Store, realm);
-
-                        foreach (string extension in (string[])[@".jpg", @".png", @".jpeg"])
-                        {
-                            var stream = skinStore.GetStream($@"menu-background{extension}");
-
-                            if (stream != null)
-                                return stream;
-                        }
-                    }
-
-                    break;
-                }
-
-                case BackgroundSource.Beatmap or BackgroundSource.BeatmapWithStoryboard:
-                {
-                    var working = beatmap.Value;
-                    string? backgroundFile = working.Metadata?.BackgroundFile;
-
-                    if (!string.IsNullOrEmpty(backgroundFile))
-                    {
-                        string? path = working.BeatmapSetInfo.GetPathForFile(backgroundFile);
-                        var stream = working.GetStream(path);
+                        var stream = skinStore.GetStream($"{name}{extension}");
 
                         if (stream != null)
                             return stream;
                     }
-
-                    break;
                 }
             }
 
-            // fall back to the default background rotation.
-            return game.Resources.GetStream(@"Menu/menu-background-1");
+            return null;
+        }
+
+        /// <summary>
+        /// Read a bundled image from the game resources.
+        /// </summary>
+        /// <param name="textureName">A texture name as used by the texture store, which carries no file extension.</param>
+        private Stream? getBundledTextureStream(string? textureName)
+        {
+            if (string.IsNullOrEmpty(textureName))
+                return null;
+
+            string path = $@"{bundled_texture_namespace}/{textureName}";
+
+            // the resource store performs an exact lookup, so the extension the texture store would have probed
+            // has to be supplied explicitly.
+            return game.Resources.GetStream($"{path}.jpg") ?? game.Resources.GetStream($"{path}.png");
         }
 
         private enum BackgroundOptionType
@@ -768,7 +873,7 @@ namespace osu.Game.Screens.Menu
                 CornerRadius = 6;
                 CornerExponent = 2.5f;
 
-                Children = new Drawable[]
+                Children = new[]
                 {
                     new Box
                     {
@@ -881,20 +986,34 @@ namespace osu.Game.Screens.Menu
             /// Set (or replace) the displayed texture, fading between the two images.
             /// The option takes ownership of <paramref name="texture"/>.
             /// </summary>
-            /// <param name="texture">The texture to display.</param>
+            /// <param name="texture">The texture to display. <c>null</c> clears the preview.</param>
             /// <param name="key">Identifies the image, so that re-showing the current one does not restart a transition.</param>
             public void SetTexture(Texture? texture, string? key = null)
             {
                 loadingSpinner.Hide();
 
                 if (texture == null)
+                {
+                    ClearTexture();
                     return;
+                }
+
+                Sprite inactive = ReferenceEquals(visibleSprite, firstSprite) ? secondSprite : firstSprite;
 
                 // a texture may only ever be owned by a single sprite, as that sprite disposes it once replaced.
-                // callers can hand back a texture already on display (i.e. a skin caching its textures); ignore it
-                // rather than move it across sprites.
-                if (ReferenceEquals(firstSprite.Texture, texture) || ReferenceEquals(secondSprite.Texture, texture))
+                if (ReferenceEquals(visibleSprite.Texture, texture))
                     return;
+
+                if (ReferenceEquals(inactive.Texture, texture))
+                {
+                    // the very same instance is held by the sprite which was faded out last time (i.e. a skin caching
+                    // its textures); bring that sprite back instead of moving the texture across sprites.
+                    displayedKey = key;
+                    inactive.FadeIn(crossfade_duration, Easing.OutQuint);
+                    visibleSprite.FadeOut(crossfade_duration, Easing.OutQuint);
+                    visibleSprite = inactive;
+                    return;
+                }
 
                 if (key != null && key == displayedKey)
                 {
@@ -905,14 +1024,32 @@ namespace osu.Game.Screens.Menu
 
                 displayedKey = key;
 
-                Sprite target = ReferenceEquals(visibleSprite, firstSprite) ? secondSprite : firstSprite;
+                inactive.Texture = texture;
+                inactive.ClearTransforms();
+                inactive.Alpha = 0;
+                inactive.FadeIn(crossfade_duration, Easing.OutQuint);
 
-                target.Texture = texture;
-                target.Alpha = 0;
-                target.FadeIn(crossfade_duration, Easing.OutQuint);
-
+                visibleSprite.ClearTransforms();
                 visibleSprite.FadeOut(crossfade_duration, Easing.OutQuint);
-                visibleSprite = target;
+                visibleSprite = inactive;
+            }
+
+            /// <summary>
+            /// Remove the displayed image, for sources which no longer have one to show.
+            /// </summary>
+            public void ClearTexture()
+            {
+                loadingSpinner.Hide();
+                displayedKey = null;
+
+                foreach (var sprite in new[] { firstSprite, secondSprite })
+                {
+                    sprite.ClearTransforms();
+                    sprite.Alpha = 0;
+                    sprite.Texture = null;
+                }
+
+                visibleSprite = firstSprite;
             }
 
             public bool Selected

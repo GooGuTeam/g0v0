@@ -21,14 +21,10 @@ namespace osu.Game.Screens.Backgrounds
 {
     public partial class BackgroundScreenDefault : BackgroundScreen
     {
-        private Background background;
-
         private int currentDisplay;
         private const int background_count = 8;
         private Bindable<Skin> skin;
         private Bindable<BackgroundSource> source;
-        private Bindable<bool> pinnedSeasonalBackground;
-        private Bindable<int> pinnedSeasonalBackgroundIndex;
         private readonly SeasonalBackgroundLoader seasonalBackgroundLoader = new SeasonalBackgroundLoader();
 
         [Resolved]
@@ -46,8 +42,6 @@ namespace osu.Game.Screens.Backgrounds
         {
             skin = skinManager.CurrentSkin.GetBoundCopy();
             source = config.GetBindable<BackgroundSource>(OsuSetting.MenuBackgroundSource);
-            pinnedSeasonalBackground = config.GetBindable<bool>(OsuSetting.PinnedSeasonalBackground);
-            pinnedSeasonalBackgroundIndex = config.GetBindable<int>(OsuSetting.PinnedSeasonalBackgroundIndex);
 
             AddInternal(seasonalBackgroundLoader);
         }
@@ -59,8 +53,7 @@ namespace osu.Game.Screens.Backgrounds
             skin.ValueChanged += _ => Scheduler.AddOnce(next);
             source.ValueChanged += _ => Scheduler.AddOnce(next);
             beatmap.ValueChanged += _ => Scheduler.AddOnce(next);
-            pinnedSeasonalBackground.ValueChanged += _ => Scheduler.AddOnce(next);
-            pinnedSeasonalBackgroundIndex.ValueChanged += _ => Scheduler.AddOnce(next);
+
             seasonalBackgroundLoader.SeasonalBackgroundChanged += () => Scheduler.AddOnce(next);
 
             currentDisplay = RNG.Next(0, background_count);
@@ -74,7 +67,7 @@ namespace osu.Game.Screens.Backgrounds
 
         public override void OnSuspending(ScreenTransitionEvent e)
         {
-            if (background is BeatmapBackgroundWithStoryboard storyboardBackground)
+            if (CurrentBackground is BeatmapBackgroundWithStoryboard storyboardBackground)
                 storyboardUnloadDelegate = gameHost.UpdateThread.Scheduler.AddDelayed(storyboardBackground.UnloadStoryboard, TRANSITION_LENGTH);
 
             base.OnSuspending(e);
@@ -82,7 +75,7 @@ namespace osu.Game.Screens.Backgrounds
 
         public override void OnResuming(ScreenTransitionEvent e)
         {
-            if (background is BeatmapBackgroundWithStoryboard storyboardBackground)
+            if (CurrentBackground is BeatmapBackgroundWithStoryboard storyboardBackground)
             {
                 if (storyboardUnloadDelegate?.Completed == false)
                     storyboardUnloadDelegate.Cancel();
@@ -99,6 +92,11 @@ namespace osu.Game.Screens.Backgrounds
         private CancellationTokenSource cancellationTokenSource;
 
         /// <summary>
+        /// The background which has been queued for display but has not been displayed yet.
+        /// </summary>
+        private Background pendingBackground;
+
+        /// <summary>
         /// Request loading the next background.
         /// </summary>
         /// <returns>Whether a new background was queued for load. May return false if the current background is still valid.</returns>
@@ -107,8 +105,19 @@ namespace osu.Game.Screens.Backgrounds
             var nextBackground = createBackground();
 
             // in the case that the background hasn't changed, we want to avoid cancelling any tasks that could still be loading.
-            if (nextBackground == background)
+            if (nextBackground == CurrentBackground)
+            {
+                // the latest choice is the one already on screen, so anything still queued for load is stale
+                // (and would otherwise replace it, contradicting the saved selection).
+                if (pendingBackground != null)
+                {
+                    nextTask?.Cancel();
+                    cancellationTokenSource?.Cancel();
+                    pendingBackground = null;
+                }
+
                 return false;
+            }
 
             Logger.Log(@"🌅 Global background change queued");
 
@@ -116,6 +125,8 @@ namespace osu.Game.Screens.Backgrounds
             cancellationTokenSource = new CancellationTokenSource();
 
             nextTask?.Cancel();
+            pendingBackground = nextBackground;
+
             nextTask = Scheduler.AddDelayed(() =>
             {
                 Logger.Log(@"🌅 Global background loading");
@@ -127,26 +138,21 @@ namespace osu.Game.Screens.Backgrounds
 
         private void displayNext(Background newBackground)
         {
-            background?.FadeOut(800, Easing.OutQuint);
-            background?.Expire();
+            pendingBackground = null;
 
-            AddInternal(background = newBackground);
+            CurrentBackground?.FadeOut(800, Easing.OutQuint);
+            CurrentBackground?.Expire();
+
+            AddInternal(CurrentBackground = newBackground);
             currentDisplay++;
         }
 
         private Background createBackground()
         {
-            // A pinned seasonal background gets highest priority, even over the user's seasonal background mode setting.
-            // This is an explicit choice made from the background editor, so it should always be honored while valid.
-            Background newBackground = null;
+            // seasonal backgrounds take highest priority, with a pinned one replacing the rotation.
+            Background newBackground = seasonalBackgroundLoader.LoadNextBackground();
 
-            if (pinnedSeasonalBackground.Value)
-                newBackground = seasonalBackgroundLoader.LoadPinnedBackground(pinnedSeasonalBackgroundIndex.Value);
-
-            // seasonal background loading gets highest priority.
-            newBackground ??= seasonalBackgroundLoader.LoadNextBackground();
-
-            if (newBackground == null && user.Value?.IsSupporter == true)
+            if (newBackground == null)
             {
                 switch (source.Value)
                 {
@@ -180,8 +186,8 @@ namespace osu.Game.Screens.Backgrounds
 
             // this method is called in many cases where the background might not necessarily need to change.
             // if an equivalent background is currently being shown, we don't want to load it again.
-            if (newBackground?.Equals(background) == true)
-                return background;
+            if (newBackground?.Equals(CurrentBackground) == true)
+                return CurrentBackground;
 
             newBackground ??= new Background(getBackgroundTextureName());
             newBackground.Depth = currentDisplay;
@@ -192,8 +198,8 @@ namespace osu.Game.Screens.Backgrounds
         private string getBackgroundTextureName() => $@"Menu/menu-background-{currentDisplay % background_count + 1}";
 
         /// <summary>
-        /// The remote URL of the seasonal background currently being displayed, if any.
+        /// The background currently being displayed, if any.
         /// </summary>
-        public string CurrentSeasonalBackgroundUrl => (background as SeasonalBackground)?.Url;
+        public Background CurrentBackground { get; private set; }
     }
 }
