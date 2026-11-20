@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using NUnit.Framework;
@@ -111,7 +111,7 @@ namespace osu.Game.Tests.Visual.RankedPlay
 
             var requestHandler = new BeatmapRequestHandler(Ruleset.Value);
 
-            AddStep("setup request handler", () => ((DummyAPIAccess)API).HandleRequest = requestHandler.HandleRequest);
+            AddStep("setup request handler", () => ((DummyAPIAccess)API).AddHandler(requestHandler.HandleRequest));
 
             AddStep("set discard phase", () => MultiplayerClient.RankedPlayChangeStage(RankedPlayStage.CardDiscard).WaitSafely());
 
@@ -258,7 +258,7 @@ namespace osu.Game.Tests.Visual.RankedPlay
             BeatmapRequestHandler requestHandler = null!;
             AddStep("setup ruleset", () => requestHandler = new BeatmapRequestHandler(new OsuRuleset().RulesetInfo));
 
-            AddStep("setup request handler", () => ((DummyAPIAccess)API).HandleRequest = requestHandler.HandleRequest);
+            AddStep("setup request handler", () => ((DummyAPIAccess)API).AddHandler(requestHandler.HandleRequest));
 
             AddStep("set play phase", () => MultiplayerClient.RankedPlayChangeStage(RankedPlayStage.CardPlay, state => state.ActiveUserId = 1001).WaitSafely());
 

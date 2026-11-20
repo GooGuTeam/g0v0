@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -37,7 +37,7 @@ namespace osu.Game.Tests.Visual.Online
         {
             if (API is DummyAPIAccess daa)
             {
-                daa.HandleRequest = dummyAPIHandleRequest;
+                daa.AddHandler(dummyAPIHandleRequest);
             }
 
             friend = new APIUser { Id = 0, Username = "SomeFriend" };

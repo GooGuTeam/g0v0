@@ -31,7 +31,7 @@ namespace osu.Game.Tests.Visual.Online
         {
             // the test browser runs every test in this fixture on a single instance, so state left behind by a
             // previous test has to be cleared before each one.
-            dummyAPI.HandleRequest = null;
+            dummyAPI.ClearHandlers();
             requests.Clear();
 
             Child = display = new UserSearchDisplay();
@@ -91,7 +91,7 @@ namespace osu.Game.Tests.Visual.Online
         }
 
         private void installRequestHandler()
-            => AddStep("install request handler", () => dummyAPI.HandleRequest = request =>
+            => AddStep("install request handler", () => dummyAPI.AddHandler(request =>
             {
                 if (request is not SearchUsersRequest searchRequest)
                     return false;
@@ -99,7 +99,7 @@ namespace osu.Game.Tests.Visual.Online
                 // deliberately left pending, so that failures can be triggered at an exact point in time.
                 requests.Add(searchRequest);
                 return true;
-            });
+            }));
 
         private void searchFor(string query) => AddStep($@"search for ""{query}""", () => setQuery(query));
 

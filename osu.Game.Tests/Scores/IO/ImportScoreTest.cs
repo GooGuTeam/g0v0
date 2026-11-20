@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -326,7 +326,7 @@ namespace osu.Game.Tests.Scores.IO
                     var osu = LoadOsuIntoHost(host, true);
 
                     var api = (DummyAPIAccess)osu.API;
-                    api.HandleRequest = req =>
+                    api.AddHandler(req =>
                     {
                         switch (req)
                         {
@@ -345,7 +345,7 @@ namespace osu.Game.Tests.Scores.IO
                             default:
                                 return false;
                         }
-                    };
+                    });
 
                     var beatmap = BeatmapImportHelper.LoadOszIntoOsu(osu, TestResources.GetQuickTestBeatmapForImport()).GetResultSafely();
 
@@ -392,7 +392,7 @@ namespace osu.Game.Tests.Scores.IO
                     var osu = LoadOsuIntoHost(host, true);
 
                     var api = (DummyAPIAccess)osu.API;
-                    api.HandleRequest = req =>
+                    api.AddHandler(req =>
                     {
                         switch (req)
                         {
@@ -411,7 +411,7 @@ namespace osu.Game.Tests.Scores.IO
                             default:
                                 return false;
                         }
-                    };
+                    });
 
                     var beatmap = BeatmapImportHelper.LoadOszIntoOsu(osu, TestResources.GetQuickTestBeatmapForImport()).GetResultSafely();
 
@@ -458,7 +458,7 @@ namespace osu.Game.Tests.Scores.IO
                     var osu = LoadOsuIntoHost(host, true);
 
                     var api = (DummyAPIAccess)osu.API;
-                    api.HandleRequest = req =>
+                    api.AddHandler(req =>
                     {
                         switch (req)
                         {
@@ -477,7 +477,7 @@ namespace osu.Game.Tests.Scores.IO
                             default:
                                 return false;
                         }
-                    };
+                    });
 
                     var beatmap = BeatmapImportHelper.LoadOszIntoOsu(osu, TestResources.GetQuickTestBeatmapForImport()).GetResultSafely();
 
@@ -525,7 +525,7 @@ namespace osu.Game.Tests.Scores.IO
                     var osu = LoadOsuIntoHost(host, true);
 
                     var api = (DummyAPIAccess)osu.API;
-                    api.HandleRequest = req =>
+                    api.AddHandler(req =>
                     {
                         switch (req)
                         {
@@ -544,7 +544,7 @@ namespace osu.Game.Tests.Scores.IO
                             default:
                                 return false;
                         }
-                    };
+                    });
 
                     var beatmap = BeatmapImportHelper.LoadOszIntoOsu(osu, TestResources.GetQuickTestBeatmapForImport()).GetResultSafely();
 

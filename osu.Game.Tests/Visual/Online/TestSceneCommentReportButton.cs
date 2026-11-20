@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -28,7 +28,7 @@ namespace osu.Game.Tests.Visual.Online
         [SetUpSteps]
         public void SetUpSteps()
         {
-            AddStep("setup API", () => ((DummyAPIAccess)API).HandleRequest += req =>
+            AddStep("setup API", () => ((DummyAPIAccess)API).AddHandler(req =>
             {
                 switch (req)
                 {
@@ -38,7 +38,7 @@ namespace osu.Game.Tests.Visual.Online
                 }
 
                 return false;
-            });
+            }));
         }
 
         protected override Drawable CreateContent() => new DependencyProvidingContainer

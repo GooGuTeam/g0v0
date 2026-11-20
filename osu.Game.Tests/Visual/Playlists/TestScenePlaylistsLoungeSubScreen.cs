@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -77,7 +77,7 @@ namespace osu.Game.Tests.Visual.Playlists
             AddUntilStep("wait for footer to load", () => this.ChildrenOfType<PlaylistsRoomFooter>().SingleOrDefault()?.IsLoaded == true);
             AddAssert("close button hidden", () => !this.ChildrenOfType<PlaylistsRoomFooter>().Single().ChildrenOfType<DangerousRoundedButton>().Single().IsPresent);
 
-            AddStep("register request handling", () => ((DummyAPIAccess)API).HandleRequest = req =>
+            AddStep("register request handling", () => ((DummyAPIAccess)API).AddHandler(req =>
             {
                 switch (req)
                 {
@@ -93,7 +93,7 @@ namespace osu.Game.Tests.Visual.Playlists
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("press enter", () => InputManager.Key(Key.Enter));
             AddAssert("close button present", () => this.ChildrenOfType<PlaylistsRoomFooter>().Single().ChildrenOfType<DangerousRoundedButton>().Single().IsPresent);

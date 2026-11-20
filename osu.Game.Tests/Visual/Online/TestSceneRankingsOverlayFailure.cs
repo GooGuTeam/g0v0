@@ -36,7 +36,7 @@ namespace osu.Game.Tests.Visual.Online
             {
                 failRequests = false;
 
-                ((DummyAPIAccess)API).HandleRequest = req =>
+                ((DummyAPIAccess)API).AddHandler(req =>
                 {
                     if (req is not GetUserRankingsRequest rankingsRequest)
                         return false;
@@ -47,7 +47,7 @@ namespace osu.Game.Tests.Visual.Online
                         rankingsRequest.TriggerSuccess(new GetTopUsersResponse { Users = new List<UserStatistics>() });
 
                     return true;
-                };
+                });
             });
         }
 

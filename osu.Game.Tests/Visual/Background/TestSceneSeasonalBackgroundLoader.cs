@@ -166,7 +166,7 @@ namespace osu.Game.Tests.Visual.Background
         private void registerBackgroundsResponse(DateTimeOffset endDate)
             => AddStep("setup request handler", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (dummyAPI.State.Value != APIState.Online || !(request is GetSeasonalBackgroundsRequest backgroundsRequest))
                         return false;
@@ -178,7 +178,7 @@ namespace osu.Game.Tests.Visual.Background
                     });
 
                     return true;
-                };
+                });
             });
 
         private void setSeasonalBackgroundMode(SeasonalBackgroundMode mode)

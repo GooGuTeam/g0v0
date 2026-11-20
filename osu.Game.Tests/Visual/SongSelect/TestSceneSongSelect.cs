@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -312,6 +312,8 @@ namespace osu.Game.Tests.Visual.SongSelect
         [Test]
         public void TestFilteringRunsAfterReturningFromGameplay()
         {
+            AddStep("stub score token retrieval", StubScoreSubmissionTokenRetrieval);
+
             AddStep("import actual beatmap", () => Beatmaps.Import(TestResources.GetQuickTestBeatmapForImport()).WaitSafely());
 
             LoadSongSelect();
@@ -693,6 +695,8 @@ namespace osu.Game.Tests.Visual.SongSelect
         [Test]
         public void TestPlayCorrectBeatmapWhenSelectionNotFullyLoaded()
         {
+            AddStep("stub score token retrieval", StubScoreSubmissionTokenRetrieval);
+
             // import a beatmap set with multiple difficulties
             ImportBeatmapForRuleset(0);
 

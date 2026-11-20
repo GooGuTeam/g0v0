@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -39,7 +39,7 @@ namespace osu.Game.Tests.Visual.Menus
         {
             AddStep("don't fetch online content", () => onlineMenuBanner.FetchOnlineContent = false);
             AddStep("disable return to top on idle", () => Game.ChildrenOfType<ButtonSystem>().Single().ReturnToTopOnIdle = false);
-            AddStep("set up API", () => ((DummyAPIAccess)API).HandleRequest = req =>
+            AddStep("set up API", () => ((DummyAPIAccess)API).AddHandler(req =>
             {
                 switch (req)
                 {
@@ -65,7 +65,7 @@ namespace osu.Game.Tests.Visual.Menus
                     default:
                         return false;
                 }
-            });
+            }));
 
             AddStep("beatmap of the day active", () => Game.ChildrenOfType<IMetadataClient>().Single().DailyChallengeUpdated(new DailyChallengeInfo
             {

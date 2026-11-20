@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using NUnit.Framework;
@@ -71,7 +71,7 @@ namespace osu.Game.Tournament.Tests.Components
 
             AddStep("set up API", () =>
             {
-                ((DummyAPIAccess)API).HandleRequest = req =>
+                ((DummyAPIAccess)API).AddHandler(req =>
                 {
                     switch (req)
                     {
@@ -86,7 +86,7 @@ namespace osu.Game.Tournament.Tests.Components
                         default:
                             return false;
                     }
-                };
+                });
             });
             AddStep("set channel", () => chatDisplay.Channel.Value = testChannel);
 

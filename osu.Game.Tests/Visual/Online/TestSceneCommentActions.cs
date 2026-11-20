@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -117,7 +117,7 @@ namespace osu.Game.Tests.Visual.Online
             {
                 requestLock.Reset();
 
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (!(request is CommentDeleteRequest req))
                         return false;
@@ -153,7 +153,7 @@ namespace osu.Game.Tests.Visual.Online
                     });
 
                     return true;
-                };
+                });
             });
             AddStep("Confirm dialog", () => InputManager.Key(Key.Number1));
 
@@ -188,7 +188,7 @@ namespace osu.Game.Tests.Visual.Online
             });
             AddStep("Setup request handling", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (request is not CommentDeleteRequest req)
                         return false;
@@ -196,7 +196,7 @@ namespace osu.Game.Tests.Visual.Online
                     req.TriggerFailure(new InvalidOperationException());
                     delete = true;
                     return false;
-                };
+                });
             });
             AddStep("Confirm dialog", () => InputManager.Key(Key.Number1));
             AddUntilStep("Deletion requested", () => delete);
@@ -232,7 +232,7 @@ namespace osu.Game.Tests.Visual.Online
             {
                 requestLock.Reset();
 
-                dummyAPI.HandleRequest = r =>
+                dummyAPI.AddHandler(r =>
                 {
                     if (!(r is CommentReportRequest req))
                         return false;
@@ -245,7 +245,7 @@ namespace osu.Game.Tests.Visual.Online
                     });
 
                     return true;
-                };
+                });
             });
             AddStep("Click the button", () =>
             {
@@ -297,7 +297,7 @@ namespace osu.Game.Tests.Visual.Online
             {
                 requestLock.Reset();
 
-                dummyAPI.HandleRequest = r =>
+                dummyAPI.AddHandler(r =>
                 {
                     if (!(r is CommentPostRequest req))
                         return false;
@@ -329,7 +329,7 @@ namespace osu.Game.Tests.Visual.Online
                     });
 
                     return true;
-                };
+                });
             });
             AddStep("Click reply button", () =>
             {
@@ -409,14 +409,14 @@ namespace osu.Game.Tests.Visual.Online
 
         private void setUpCommentsResponse(CommentBundle commentBundle)
         {
-            dummyAPI.HandleRequest = request =>
+            dummyAPI.AddHandler(request =>
             {
                 if (!(request is GetCommentsRequest getCommentsRequest))
                     return false;
 
                 getCommentsRequest.TriggerSuccess(commentBundle);
                 return true;
-            };
+            });
         }
     }
 }

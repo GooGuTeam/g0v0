@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using NUnit.Framework;
@@ -23,7 +23,7 @@ namespace osu.Game.Tests.Visual.Navigation
         [SetUp]
         public void Setup() => Schedule(() =>
         {
-            ((DummyAPIAccess)API).HandleRequest = request =>
+            ((DummyAPIAccess)API).AddHandler(request =>
             {
                 switch (request)
                 {
@@ -41,7 +41,7 @@ namespace osu.Game.Tests.Visual.Navigation
                 }
 
                 return false;
-            };
+            });
         });
 
         [Test]

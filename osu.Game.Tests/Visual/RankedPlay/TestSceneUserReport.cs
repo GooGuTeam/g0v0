@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using NUnit.Framework;
@@ -34,7 +34,7 @@ namespace osu.Game.Tests.Visual.RankedPlay
 
             AddStep("setup request handling", () =>
             {
-                dummyAPI.HandleRequest += request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (request is UserReportRequest chatReportRequest)
                     {
@@ -43,7 +43,7 @@ namespace osu.Game.Tests.Visual.RankedPlay
                     }
 
                     return false;
-                };
+                });
             });
 
             AddStep("join room", () => JoinRoom(CreateDefaultRoom(MatchType.RankedPlay)));

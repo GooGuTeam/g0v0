@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Collections.Generic;
 using System.Linq;
@@ -138,7 +138,7 @@ namespace osu.Game.Tests.Visual.Ranking
             ScoreInfo localScore = null!;
 
             AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
-            AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up request handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -158,7 +158,7 @@ namespace osu.Game.Tests.Visual.Ranking
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("show results", () =>
             {
@@ -178,7 +178,7 @@ namespace osu.Game.Tests.Visual.Ranking
             ScoreInfo localScore = null!;
 
             AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
-            AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up request handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -209,7 +209,7 @@ namespace osu.Game.Tests.Visual.Ranking
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("show results", () =>
             {
@@ -255,7 +255,7 @@ namespace osu.Game.Tests.Visual.Ranking
                 scores[^1].User = API.LocalUser.Value;
                 soloScores[^1].UserID = API.LocalUser.Value.OnlineID;
 
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     switch (req)
                     {
@@ -273,7 +273,7 @@ namespace osu.Game.Tests.Visual.Ranking
                     }
 
                     return false;
-                };
+                });
             });
 
             AddStep("show results", () => LoadScreen(new SoloResultsScreen(scores[0])));
@@ -287,7 +287,7 @@ namespace osu.Game.Tests.Visual.Ranking
             ScoreInfo localScore = null!;
 
             AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
-            AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up request handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -307,7 +307,7 @@ namespace osu.Game.Tests.Visual.Ranking
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("show results", () =>
             {
@@ -327,7 +327,7 @@ namespace osu.Game.Tests.Visual.Ranking
             ScoreInfo localScore = null!;
 
             AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
-            AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up request handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -360,7 +360,7 @@ namespace osu.Game.Tests.Visual.Ranking
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("show results", () =>
             {
@@ -381,7 +381,7 @@ namespace osu.Game.Tests.Visual.Ranking
             ScoreInfo localScore = null!;
 
             AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
-            AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up request handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -415,7 +415,7 @@ namespace osu.Game.Tests.Visual.Ranking
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("show results", () =>
             {
@@ -436,7 +436,7 @@ namespace osu.Game.Tests.Visual.Ranking
             ScoreInfo localScore = null!;
 
             AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
-            AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up request handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -469,7 +469,7 @@ namespace osu.Game.Tests.Visual.Ranking
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("show results", () =>
             {
@@ -488,7 +488,7 @@ namespace osu.Game.Tests.Visual.Ranking
         public void TestOnlineLeaderboardDeduplication()
         {
             AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
-            AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up request handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -521,7 +521,7 @@ namespace osu.Game.Tests.Visual.Ranking
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("show results", () =>
             {

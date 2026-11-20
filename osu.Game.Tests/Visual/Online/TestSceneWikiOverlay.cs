@@ -36,7 +36,7 @@ namespace osu.Game.Tests.Visual.Online
         {
             // the test browser runs every test in this fixture on a single instance, so request handling which a
             // previous test installed would otherwise leak into the next one.
-            dummyAPI.HandleRequest = null;
+            dummyAPI.ClearHandlers();
 
             Child = wiki = new WikiOverlay();
         });
@@ -55,7 +55,7 @@ namespace osu.Game.Tests.Visual.Online
 
             List<GetWikiRequest> requests = new List<GetWikiRequest>();
 
-            AddStep("install request handler", () => dummyAPI.HandleRequest = request =>
+            AddStep("install request handler", () => dummyAPI.AddHandler(request =>
             {
                 if (request is not GetWikiRequest getWikiRequest)
                     return false;
@@ -63,7 +63,7 @@ namespace osu.Game.Tests.Visual.Online
                 // deliberately left pending, so that cancellation is the only way these can fail.
                 requests.Add(getWikiRequest);
                 return true;
-            });
+            }));
 
             AddStep("Show main page", () => wiki.ShowPage());
             AddStep("Show another page", () => wiki.ShowPage(article_path));
@@ -146,7 +146,7 @@ namespace osu.Game.Tests.Visual.Online
 
             GetWikiRequest? pending = null;
 
-            AddStep("install request handler", () => dummyAPI.HandleRequest = request =>
+            AddStep("install request handler", () => dummyAPI.AddHandler(request =>
             {
                 if (request is not GetWikiRequest getWikiRequest)
                     return false;
@@ -154,7 +154,7 @@ namespace osu.Game.Tests.Visual.Online
                 // deliberately left pending, so that failures can be triggered at an exact point in time.
                 pending = getWikiRequest;
                 return true;
-            });
+            }));
 
             AddStep("Show main page", () => wiki.ShowPage());
             AddUntilStep("Main page request pending", () => pending?.CompletionState == APIRequestCompletionState.Waiting);
@@ -197,7 +197,7 @@ namespace osu.Game.Tests.Visual.Online
 
             List<GetWikiRequest> requests = new List<GetWikiRequest>();
 
-            AddStep("Install failing request handler", () => dummyAPI.HandleRequest = request =>
+            AddStep("Install failing request handler", () => dummyAPI.AddHandler(request =>
             {
                 if (request is not GetWikiRequest getWikiRequest)
                     return false;
@@ -206,7 +206,7 @@ namespace osu.Game.Tests.Visual.Online
                 getWikiRequest.TriggerFailure(new WebException());
 
                 return true;
-            });
+            }));
 
             AddStep("Set header language to English", () => wiki.Header.CurrentLanguage.Value = Language.en);
 
@@ -232,7 +232,7 @@ namespace osu.Game.Tests.Visual.Online
         private void setUpWikiResponse(APIWikiPage r, string? redirectionPath = null)
             => AddStep("set up response", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (!(request is GetWikiRequest getWikiRequest))
                         return false;
@@ -246,7 +246,7 @@ namespace osu.Game.Tests.Visual.Online
                         getWikiRequest.TriggerFailure(new WebException());
 
                     return true;
-                };
+                });
             });
 
         // From https://osu.ppy.sh/api/v2/wiki/en/Main_page
