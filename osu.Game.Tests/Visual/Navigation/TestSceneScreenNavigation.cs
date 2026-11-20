@@ -33,6 +33,7 @@ using osu.Game.Overlays;
 using osu.Game.Overlays.BeatmapListing;
 using osu.Game.Overlays.Mods;
 using osu.Game.Overlays.Notifications;
+using osu.Game.Overlays.SkinEditor;
 using osu.Game.Overlays.Toolbar;
 using osu.Game.Overlays.Volume;
 using osu.Game.Rulesets;
@@ -952,7 +953,7 @@ namespace osu.Game.Tests.Visual.Navigation
             AddStep("exit lounge", () => Game.ScreenStack.Exit());
             // `TestMultiplayerComponents` registers a request handler in its BDL, but never unregisters it.
             // to prevent the handler living for longer than it should be, clean up manually.
-            AddStep("clean up multiplayer request handler", () => ((DummyAPIAccess)API).HandleRequest = null);
+            AddStep("clean up multiplayer request handler", () => ((DummyAPIAccess)API).ClearHandlers());
         }
 
         [Test]
@@ -1170,7 +1171,10 @@ namespace osu.Game.Tests.Visual.Navigation
         [Test]
         public void TestQuickSkinEditorDoesntNukeSkin()
         {
-            AddStep("import beatmap", () => BeatmapImportHelper.LoadQuickOszIntoOsu(Game).WaitSafely());
+            BeatmapSetInfo beatmapSet = null;
+            AddStep("import beatmap", () => beatmapSet = BeatmapImportHelper.LoadQuickOszIntoOsu(Game).GetResultSafely());
+            AddStep("select beatmap", () => Game.Beatmap.Value = Game.BeatmapManager.GetWorkingBeatmap(beatmapSet.Beatmaps.First(b => b.Ruleset.OnlineID == 0)));
+            AddUntilStep("skin editor ready", () => Game.ChildrenOfType<SkinEditorOverlay>().SingleOrDefault()?.IsLoaded == true);
 
             AddStep("open", () => InputManager.Key(Key.Space));
             AddStep("skin", () => InputManager.Key(Key.E));

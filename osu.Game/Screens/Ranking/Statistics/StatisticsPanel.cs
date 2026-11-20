@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Collections.Generic;
 using System.Linq;
@@ -119,9 +119,18 @@ namespace osu.Game.Screens.Ranking.Statistics
 
             var workingBeatmap = beatmapManager.GetWorkingBeatmap(newScore.BeatmapInfo);
 
+            // the score is a realm-backed model, so anything read from it has to be resolved here, while still on the update thread.
+            // accessing its ruleset / mods from the background task below throws `Realm accessed from incorrect thread`.
+            var ruleset = newScore.Ruleset.Clone();
+            var mods = newScore.Mods;
+
             // Todo: The placement of this is temporary. Eventually we'll both generate the playable beatmap _and_ run through it in a background task to generate the hit events.
-            Task.Run(() => workingBeatmap.GetPlayableBeatmap(newScore.Ruleset, newScore.Mods), loadCancellation.Token).ContinueWith(task => Schedule(() =>
+            Task.Run(() => workingBeatmap.GetPlayableBeatmap(ruleset, mods), localCancellationSource.Token).ContinueWith(task => Schedule(() =>
             {
+                // a superseded lookup gets cancelled and has nothing to show; rethrowing here would take the whole game down.
+                if (task.IsCanceled)
+                    return;
+
                 bool hitEventsAvailable = newScore.HitEvents.Count != 0;
                 Container<Drawable> container;
 

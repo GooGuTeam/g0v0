@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -32,7 +32,7 @@ namespace osu.Game.Tests.Visual.DailyChallenge
 
             AddStep("set up response without user best", () =>
             {
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     if (req is IndexPlaylistScoresRequest indexRequest)
                     {
@@ -41,7 +41,7 @@ namespace osu.Game.Tests.Visual.DailyChallenge
                     }
 
                     return false;
-                };
+                });
             });
             AddStep("create leaderboard", () => Child = leaderboard = new DailyChallengeLeaderboard(new Room { RoomID = 1 }, new PlaylistItem(Beatmap.Value.BeatmapInfo))
             {
@@ -53,7 +53,7 @@ namespace osu.Game.Tests.Visual.DailyChallenge
 
             AddStep("set up response with user best", () =>
             {
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     if (req is IndexPlaylistScoresRequest indexRequest)
                     {
@@ -62,7 +62,7 @@ namespace osu.Game.Tests.Visual.DailyChallenge
                     }
 
                     return false;
-                };
+                });
             });
             AddStep("force refetch", () => leaderboard.RefetchScores());
         }
@@ -75,7 +75,7 @@ namespace osu.Game.Tests.Visual.DailyChallenge
 
             AddStep("set up requests handler", () =>
             {
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     if (req is IndexPlaylistScoresRequest indexRequest)
                     {
@@ -84,7 +84,7 @@ namespace osu.Game.Tests.Visual.DailyChallenge
                     }
 
                     return false;
-                };
+                });
             });
             AddStep("create leaderboard", () => Child = leaderboard = new DailyChallengeLeaderboard(new Room { RoomID = 1 }, new PlaylistItem(Beatmap.Value.BeatmapInfo))
             {

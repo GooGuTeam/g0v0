@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -56,21 +56,19 @@ namespace osu.Game.Beatmaps
             this.statisticsProvider = statisticsProvider;
         }
 
-        [BackgroundDependencyLoader]
-        private void load()
+        protected override void LoadComplete()
         {
+            base.LoadComplete();
+
+            // Subscribe and read the snapshot on the update thread so statistics arriving during
+            // background loading cannot fall between the initial read and event subscription.
+            statisticsProvider.StatisticsUpdated += onStatisticsUpdated;
+
             foreach (var ruleset in rulesets.AvailableRulesets)
             {
                 if (statisticsProvider.GetStatisticsFor(ruleset) is UserStatistics statistics)
                     updateMapping(ruleset, statistics);
             }
-        }
-
-        protected override void LoadComplete()
-        {
-            base.LoadComplete();
-
-            statisticsProvider.StatisticsUpdated += onStatisticsUpdated;
         }
 
         private void onStatisticsUpdated(UserStatisticsUpdate update) => updateMapping(update.Ruleset, update.NewStatistics);

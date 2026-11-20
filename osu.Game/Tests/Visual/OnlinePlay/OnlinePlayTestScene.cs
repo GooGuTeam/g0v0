@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -66,7 +66,7 @@ namespace osu.Game.Tests.Visual.OnlinePlay
                 // To get around this, the BeatmapManager is looked up from the dependencies provided to the children of the test scene instead.
                 var beatmapManager = dependencies.Get<BeatmapManager>();
 
-                ((DummyAPIAccess)API).HandleRequest = request =>
+                ((DummyAPIAccess)API).AddHandler(request =>
                 {
                     try
                     {
@@ -80,7 +80,7 @@ namespace osu.Game.Tests.Visual.OnlinePlay
                         Logger.Log($"Handled {nameof(ObjectDisposedException)} in test request handling");
                         return true;
                     }
-                };
+                });
             });
         }
 

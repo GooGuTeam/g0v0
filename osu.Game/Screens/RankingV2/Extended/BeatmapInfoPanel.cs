@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Diagnostics;
@@ -193,42 +193,63 @@ namespace osu.Game.Screens.RankingV2.Extended
             cancellationTokenSource?.Cancel();
             cancellationTokenSource = new CancellationTokenSource();
 
+            // captured up-front: the field is replaced on the next state change, and lookups which are already running have to keep the token they started with.
+            var cancellationToken = cancellationTokenSource.Token;
+
             var rulesetInstance = score.Value.Ruleset.CreateInstance();
             var mods = score.Value.Mods.Select(m => m.ToMod(rulesetInstance)).ToArray();
 
-            difficultyCache.GetDifficultyAsync(score.Value.Beatmap, score.Value.Ruleset, mods, cancellationTokenSource.Token)
+            // read on the update thread so the continuation never touches a bindable from the thread pool.
+            var fallbackDifficulty = new StarDifficulty(score.Value.Beatmap.StarRating, 0);
+
+            // cheap to compute, but it reads the realm-backed beatmap info, so it can't be deferred to the thread pool below.
+            var difficultyStats = rulesetInstance.GetBeatmapAttributesForDisplay(score.Value.Beatmap, mods)
+                                                 .Select(s => new BeatmapTitleWedge.StatisticDifficulty
+                                                 {
+                                                     Value = new BeatmapTitleWedge.StatisticDifficulty.Data(s),
+                                                 })
+                                                 .ToArray();
+            difficultyStats.First().Margin = new MarginPadding { Left = 30, };
+
+            var workingBeatmap = beatmap.Value;
+
+            difficultyCache.GetDifficultyAsync(score.Value.Beatmap, score.Value.Ruleset, mods, cancellationToken)
                            .ContinueWith(t =>
                            {
-                               var difficulty = t.GetResultSafely() ?? new StarDifficulty(score.Value.Beatmap.StarRating, 0);
+                               // the continuation only runs for successful lookups, so this can never rethrow a cancellation.
+                               var difficulty = t.GetResultSafely() ?? fallbackDifficulty;
+
                                Schedule(() =>
                                {
                                    starRatingDisplay.Current.Value = difficulty;
                                    applyStarRatingColour();
                                });
-                           });
+                           }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
             Task.Run(() =>
             {
-                var token = cancellationTokenSource.Token;
+                IBeatmap playableBeatmap;
 
-                var playableBeatmap = beatmap.Value.GetPlayableBeatmap(score.Value.Ruleset, mods, token);
+                try
+                {
+                    playableBeatmap = workingBeatmap.GetPlayableBeatmap(rulesetInstance.RulesetInfo, mods, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // a newer state superseded this lookup.
+                    return;
+                }
+
                 var hitObjectCounts = playableBeatmap.GetStatistics()
                                                      .Select(s => new BeatmapTitleWedge.StatisticDifficulty
                                                      {
                                                          Value = new BeatmapTitleWedge.StatisticDifficulty.Data(s.Name, s.BarDisplayLength ?? 0, s.BarDisplayLength ?? 0, 1, s.Content),
                                                      })
                                                      .ToArray();
-                var difficultyStats = rulesetInstance.GetBeatmapAttributesForDisplay(score.Value.Beatmap, mods)
-                                                     .Select(s => new BeatmapTitleWedge.StatisticDifficulty
-                                                     {
-                                                         Value = new BeatmapTitleWedge.StatisticDifficulty.Data(s),
-                                                     })
-                                                     .ToArray();
-                difficultyStats.First().Margin = new MarginPadding { Left = 30, };
 
                 Schedule(() =>
                 {
-                    if (token.IsCancellationRequested)
+                    if (cancellationToken.IsCancellationRequested)
                         return;
 
                     statsContainer.FadeOut();
@@ -255,7 +276,7 @@ namespace osu.Game.Screens.RankingV2.Extended
                         statsContainer.FadeIn(100, Easing.OutQuint);
                     });
                 });
-            }, cancellationTokenSource.Token);
+            }, cancellationToken);
         }
 
         private void applyStarRatingColour()

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using NUnit.Framework;
@@ -28,7 +28,7 @@ namespace osu.Game.Tests.Visual.Playlists
             AddStep("setup api", () =>
             {
                 handleRequest = null;
-                ((DummyAPIAccess)API).HandleRequest = req =>
+                ((DummyAPIAccess)API).AddHandler(req =>
                 {
                     if (req is not CreateRoomRequest createReq || handleRequest == null)
                         return false;
@@ -43,7 +43,7 @@ namespace osu.Game.Tests.Visual.Playlists
                     }
 
                     return true;
-                };
+                });
             });
 
             AddStep("create overlay", () =>

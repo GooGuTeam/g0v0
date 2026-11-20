@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -55,7 +55,7 @@ namespace osu.Game.Tests.Visual.Online
                 spectatorClient = new TestSpectatorClient();
                 metadataClient = new TestMetadataClient();
 
-                ((DummyAPIAccess)API).HandleRequest = req =>
+                ((DummyAPIAccess)API).AddHandler(req =>
                 {
                     switch (req)
                     {
@@ -78,7 +78,7 @@ namespace osu.Game.Tests.Visual.Online
                         default:
                             return false;
                     }
-                };
+                });
 
                 Children = new Drawable[]
                 {

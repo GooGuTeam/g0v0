@@ -285,7 +285,7 @@ namespace osu.Game.Tests.Visual.Ranking
         {
             V2ResultsPanel panel = null!;
 
-            AddStep("handle metadata lookup", () => ((DummyAPIAccess)API).HandleRequest = request =>
+            AddStep("handle metadata lookup", () => ((DummyAPIAccess)API).AddHandler(request =>
             {
                 if (request is not GetBeatmapSetRequest beatmapSetRequest || requestFails)
                     return false;
@@ -296,7 +296,7 @@ namespace osu.Game.Tests.Visual.Ranking
                     TrackId = featured ? 123 : null,
                 });
                 return true;
-            });
+            }));
             AddStep("load overview", () =>
             {
                 var score = TestResources.CreateTestScoreInfo();
@@ -306,7 +306,7 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("panel loaded", () => panel.IsLoaded);
             AddUntilStep("badge reflects confirmed metadata", () =>
                 panel.ChildrenOfType<Container>().Single(c => c.Name == "Featured artist").Alpha == (featured && !requestFails ? 1 : 0));
-            AddStep("clear metadata handler", () => ((DummyAPIAccess)API).HandleRequest = null);
+            AddStep("clear metadata handler", () => ((DummyAPIAccess)API).ClearHandlers());
         }
 
         [TestCase(0.0, 0, false, ScoreRank.D, "0.00%")]

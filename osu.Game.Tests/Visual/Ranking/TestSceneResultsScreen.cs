@@ -114,7 +114,7 @@ namespace osu.Game.Tests.Visual.Ranking
 
             AddStep("set up network requests", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -141,7 +141,7 @@ namespace osu.Game.Tests.Visual.Ranking
                     }
 
                     return false;
-                };
+                });
             });
 
             AddStep("load legacy results", () =>
@@ -208,7 +208,7 @@ namespace osu.Game.Tests.Visual.Ranking
 
             AddStep("set up failing beatmap set request", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -218,7 +218,7 @@ namespace osu.Game.Tests.Visual.Ranking
                     }
 
                     return false;
-                };
+                });
             });
 
             AddStep("load legacy results", () =>
@@ -253,7 +253,7 @@ namespace osu.Game.Tests.Visual.Ranking
 
             AddStep("set up failing favourite request", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -269,7 +269,7 @@ namespace osu.Game.Tests.Visual.Ranking
                     }
 
                     return false;
-                };
+                });
             });
 
             AddStep("load legacy results", () =>
@@ -304,7 +304,7 @@ namespace osu.Game.Tests.Visual.Ranking
 
             AddStep("set up slow requests", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -322,7 +322,7 @@ namespace osu.Game.Tests.Visual.Ranking
                     }
 
                     return false;
-                };
+                });
             });
 
             AddStep("load legacy results", () =>
@@ -356,7 +356,7 @@ namespace osu.Game.Tests.Visual.Ranking
 
             AddStep("set up network requests", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -422,7 +422,7 @@ namespace osu.Game.Tests.Visual.Ranking
                     }
 
                     return false;
-                };
+                });
             });
 
             loadResultsScreen(() =>

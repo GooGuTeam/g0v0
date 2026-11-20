@@ -126,7 +126,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddStep("set up request handling", () =>
             {
                 leaderboardRequestsHandled = 0;
-                ((DummyAPIAccess)API).HandleRequest = req =>
+                ((DummyAPIAccess)API).AddHandler(req =>
                 {
                     switch (req)
                     {
@@ -142,7 +142,7 @@ namespace osu.Game.Tests.Visual.Gameplay
                         default:
                             return false;
                     }
-                };
+                });
             });
 
             AddStep("read all notifications", () =>
@@ -597,7 +597,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         [Test]
         public void TestScoreSubmissionFailureHoldsGameplayUntilConfirmed()
         {
-            AddStep("fail score token requests", () => ((DummyAPIAccess)API).HandleRequest = req =>
+            AddStep("fail score token requests", () => ((DummyAPIAccess)API).AddHandler(req =>
             {
                 switch (req)
                 {
@@ -612,7 +612,7 @@ namespace osu.Game.Tests.Visual.Gameplay
                     default:
                         return false;
                 }
-            });
+            }));
 
             AddStep("load dummy beatmap", () => resetPlayer(false));
 
