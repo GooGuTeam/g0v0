@@ -487,9 +487,9 @@ namespace osu.Game.Localisation
         public static LocalisableString LegacyScoreMultiplier(string multiplier) => new TranslatableString(getKey(@"legacy_score_multiplier"), @"Score Multiplier: {0}", multiplier);
 
         /// <summary>
-        /// "More Mods..."
+        /// "3. More mods"
         /// </summary>
-        public static LocalisableString MoreMods => new TranslatableString(getKey(@"more_mods"), @"More Mods...");
+        public static LocalisableString MoreMods => new TranslatableString(getKey(@"more_mods"), @"3. More mods");
 
         private static string getKey(string key) => $@"{prefix}:{key}";
     }

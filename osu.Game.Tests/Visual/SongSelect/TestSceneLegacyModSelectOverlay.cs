@@ -290,6 +290,27 @@ namespace osu.Game.Tests.Visual.SongSelect
         }
 
         [Test]
+        public void TestAutoplayAndCinemaAvailable()
+        {
+            AddStep("show overlay", () => overlay.Show());
+            AddUntilStep("overlay is visible", () => overlay.State.Value == Visibility.Visible);
+
+            AddAssert("Autoplay/Cinema button exists", () =>
+                overlay.ChildrenOfType<LegacyModButton>().Any(b =>
+                    b.AvailableMods.Any(m => m is ModAutoplay && m is not ModCinema) &&
+                    b.AvailableMods.Any(m => m is ModCinema)));
+
+            AddStep("press V to select Autoplay", () => InputManager.Key(Key.V));
+            AddAssert("Autoplay selected", () => overlay.SelectedMods.Value.Any(m => m is ModAutoplay && m is not ModCinema));
+
+            AddStep("press V again to cycle to Cinema", () => InputManager.Key(Key.V));
+            AddAssert("Cinema selected", () => overlay.SelectedMods.Value.Any(m => m is ModCinema));
+
+            AddStep("press V again to clear Autoplay/Cinema", () => InputManager.Key(Key.V));
+            AddAssert("Autoplay/Cinema cleared", () => !overlay.SelectedMods.Value.Any(m => m is ModAutoplay));
+        }
+
+        [Test]
         public void TestModifiedF1NotConsumed()
         {
             AddStep("show overlay", () => overlay.Show());

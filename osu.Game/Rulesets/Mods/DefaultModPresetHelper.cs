@@ -89,7 +89,7 @@ namespace osu.Game.Rulesets.Mods
             if (mods == null)
                 return null;
 
-            mods.RemoveAll(m => !m.UserPlayable || (isValidMod != null && !isValidMod(m)));
+            mods.RemoveAll(m => m.Type == ModType.System || !m.HasImplementation || (isValidMod != null && !isValidMod(m)));
 
             if (!ModUtils.CheckValidForGameplay(mods, out var invalid))
                 invalid.ForEach(m => mods.Remove(m));

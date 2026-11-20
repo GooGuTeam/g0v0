@@ -236,7 +236,7 @@ namespace osu.Game.Screens.Select
                 return;
 
             var allMods = Ruleset.Value.CreateInstance().CreateAllMods()
-                                 .Where(m => m.UserPlayable && IsValidMod(m))
+                                 .Where(m => m.Type != ModType.System && m.HasImplementation && IsValidMod(m))
                                  .ToList();
 
             Mod? find(string acronym) => allMods.FirstOrDefault(m => string.Equals(m.Acronym, acronym, StringComparison.OrdinalIgnoreCase));
