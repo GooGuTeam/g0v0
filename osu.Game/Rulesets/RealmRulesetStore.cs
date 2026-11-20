@@ -130,7 +130,7 @@ namespace osu.Game.Rulesets
 
                         // The assembly scan has already reported this ruleset if its assembly failed to load.
                         // Don't report the same failure a second time, under a different name.
-                        if (rulesetAssembly == null || !Events.OfType<RulesetErrorEvent>().Any(e => e.Assembly == rulesetAssembly))
+                        if (rulesetAssembly == null || Events.OfType<RulesetErrorEvent>().All(e => e.Assembly != rulesetAssembly))
                         {
                             AddEvent(new RulesetErrorEvent(rulesetAssembly, ex, rulesetAssembly?.Location ?? string.Empty)
                             {

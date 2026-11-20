@@ -21,7 +21,7 @@ namespace osu.Game.Medals
         private const int max_failures = 5;
         private const double retry_delay = 5000;
 
-        private static readonly Lazy<Type[]> awarder_types = new(discoverAwarderTypes);
+        private static readonly Lazy<Type[]> awarder_types = new Lazy<Type[]>(discoverAwarderTypes);
 
         private readonly List<IMedalAwarder> awarders = new List<IMedalAwarder>();
 
@@ -81,9 +81,7 @@ namespace osu.Game.Medals
                 return;
             }
 
-            HashSet<int> ownedMedals = (localUser.Value.Achievements ?? Array.Empty<APIUserAchievement>())
-                .Select(a => a.ID)
-                .ToHashSet();
+            HashSet<int> ownedMedals = (localUser.Value.Achievements ?? Array.Empty<APIUserAchievement>()).Select(a => a.ID).ToHashSet();
 
             foreach (IMedalAwarder awarder in awarders)
                 awarder.Enabled = !ownedMedals.Contains(awarder.MedalId);
@@ -148,13 +146,8 @@ namespace osu.Game.Medals
 
         private static Type[] discoverAwarderTypes()
         {
-            return getAwarderAssemblies()
-                .SelectMany(getLoadableTypes)
-                .Where(t => !t.IsAbstract && !t.IsInterface)
-                .Where(t => typeof(IMedalAwarder).IsAssignableFrom(t))
-                .Where(t => t.GetConstructor(Type.EmptyTypes) != null)
-                .DistinctBy(t => t.FullName)
-                .ToArray();
+            IEnumerable<Type> candidates = getAwarderAssemblies().SelectMany(getLoadableTypes).Where(t => !t.IsAbstract && !t.IsInterface);
+            return candidates.Where(t => typeof(IMedalAwarder).IsAssignableFrom(t) && t.GetConstructor(Type.EmptyTypes) != null).DistinctBy(t => t.FullName).ToArray();
         }
 
         private static IEnumerable<Assembly> getAwarderAssemblies()
@@ -163,13 +156,11 @@ namespace osu.Game.Medals
 
             if (assembly != null)
                 yield return assembly;
-
         }
 
         private static Assembly? tryLoadAssembly(string assemblyName)
         {
-            Assembly? loadedAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => string.Equals(a.GetName().Name, assemblyName, StringComparison.Ordinal));
+            Assembly? loadedAssembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => string.Equals(a.GetName().Name, assemblyName, StringComparison.Ordinal));
 
             if (loadedAssembly != null)
                 return loadedAssembly;

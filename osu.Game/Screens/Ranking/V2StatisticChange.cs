@@ -78,6 +78,7 @@ namespace osu.Game.Screens.Ranking
             spinner.Hide();
 
             double? displayedDifference = DebugPreview ? (Suffix == "×" ? -12 : Suffix == "pp" ? 15.25 : 0.42) : Difference.Value;
+
             if (displayedDifference is not { } difference || !double.IsFinite(difference))
             {
                 text.Text = string.Empty;

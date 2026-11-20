@@ -134,6 +134,11 @@ namespace osu.Game
 
         private ChatOverlay chatOverlay;
 
+        /// <summary>
+        /// Whether a ruleset skin preference is currently being applied, so that skin change events that result from it are ignored.
+        /// </summary>
+        private bool switchingSkin;
+
         private ChannelManager channelManager;
 
         [NotNull]
@@ -481,11 +486,10 @@ namespace osu.Game
                 rulesetSkins = new Dictionary<string, string>();
             }
 
-            bool switchingSkin = false;
-
             void restoreSkin()
             {
                 switchingSkin = true;
+
                 try
                 {
                     string skin = useRulesetSkins.Value && rulesetSkins.TryGetValue(Ruleset.Value.ShortName, out string preferredSkin)
@@ -1888,8 +1892,7 @@ namespace osu.Game
         {
             base.UpdateAfterChildren();
 
-            if (Toolbar != null)
-                Toolbar.UseV2ResultsStyle.Value = ScreenStack.CurrentScreen is ResultsScreen { IsV2Overview: true };
+            Toolbar?.UseV2ResultsStyle.Value = ScreenStack.CurrentScreen is ResultsScreen { IsV2Overview: true };
 
             ScreenOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };
             overlayOffsetContainer.Padding = new MarginPadding { Top = toolbarOffset };
