@@ -144,7 +144,6 @@ namespace osu.Game.Tests.Visual.Matchmaking
         {
             AddStep("setup request handler", () =>
             {
-
                 ((DummyAPIAccess)API).AddHandler(request =>
                 {
                     switch (request)
