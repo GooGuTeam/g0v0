@@ -371,7 +371,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         {
             AddStep("Prepare test API", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -422,7 +422,7 @@ namespace osu.Game.Tests.Visual.Gameplay
                     }
 
                     return false;
-                };
+                });
             });
         }
 

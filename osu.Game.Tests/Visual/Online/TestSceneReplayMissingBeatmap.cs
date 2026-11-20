@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Linq;
 using System.Net;
@@ -68,7 +68,7 @@ namespace osu.Game.Tests.Visual.Online
         private void setupBeatmapResponse(APIBeatmap b)
             => AddStep("setup response", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (request is GetBeatmapRequest getBeatmapRequest)
                     {
@@ -77,17 +77,17 @@ namespace osu.Game.Tests.Visual.Online
                     }
 
                     return false;
-                };
+                });
             });
 
         private void setupFailedResponse()
             => AddStep("setup failed response", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     request.TriggerFailure(new WebException());
                     return true;
-                };
+                });
             });
     }
 }

@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -57,7 +57,7 @@ namespace osu.Game.Tests.Visual.Online
         {
             AddStep("set up request handling", () =>
             {
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     if (req is GetUserRequest getUserRequest)
                     {
@@ -76,7 +76,7 @@ namespace osu.Game.Tests.Visual.Online
                     }
 
                     return false;
-                };
+                });
             });
             AddStep("show user", () => profile.ShowUser(new APIUser { Id = 1 }));
             AddToggleStep("toggle visibility", visible => profile.State.Value = visible ? Visibility.Visible : Visibility.Hidden);
@@ -95,7 +95,7 @@ namespace osu.Game.Tests.Visual.Online
 
             AddStep("set up request handling", () =>
             {
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     if (req is GetUserRequest getUserRequest)
                     {
@@ -104,7 +104,7 @@ namespace osu.Game.Tests.Visual.Online
                     }
 
                     return false;
-                };
+                });
             });
             AddStep("show user", () => profile.ShowUser(new APIUser { Id = 1 }));
             AddWaitStep("wait some", 3);
@@ -118,7 +118,7 @@ namespace osu.Game.Tests.Visual.Online
 
             AddStep("set up request handling", () =>
             {
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     if (dummyAPI.State.Value == APIState.Online && req is GetUserRequest getUserRequest)
                     {
@@ -127,7 +127,7 @@ namespace osu.Game.Tests.Visual.Online
                     }
 
                     return false;
-                };
+                });
             });
             AddStep("logout", () => dummyAPI.Logout());
             AddStep("show user", () => profile.ShowUser(new APIUser { Id = 1 }));
@@ -149,7 +149,7 @@ namespace osu.Game.Tests.Visual.Online
 
             AddStep("set up request handling", () =>
             {
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     if (req is GetUserRequest getUserRequest)
                     {
@@ -166,7 +166,7 @@ namespace osu.Game.Tests.Visual.Online
                     }
 
                     return false;
-                };
+                });
             });
 
             AddStep("show user", () => profile.ShowUser(new APIUser { Id = 1 }));
@@ -182,7 +182,7 @@ namespace osu.Game.Tests.Visual.Online
 
             AddStep("set up request handling", () =>
             {
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     if (req is GetUserRequest getUserRequest)
                     {
@@ -191,7 +191,7 @@ namespace osu.Game.Tests.Visual.Online
                     }
 
                     return false;
-                };
+                });
             });
 
             AddStep("show user", () => profile.ShowUser(new APIUser { Id = 1 }));
@@ -242,7 +242,7 @@ namespace osu.Game.Tests.Visual.Online
         {
             AddStep("set up request handling", () =>
             {
-                dummyAPI.HandleRequest = req =>
+                dummyAPI.AddHandler(req =>
                 {
                     if (req is GetUserRequest getUserRequest)
                     {
@@ -261,7 +261,7 @@ namespace osu.Game.Tests.Visual.Online
                     }
 
                     return false;
-                };
+                });
             });
             AddStep("show user", () => profile.ShowUser(new APIUser { Id = 1 }));
             AddStep("set language", () => configManager.SetValue(FrameworkSetting.Locale, "ko"));

@@ -1,7 +1,6 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -60,9 +59,8 @@ namespace osu.Game.Tests.Online
             AddStep("setup tracker", () =>
             {
                 DummyAPIAccess api = (DummyAPIAccess)API;
-                Func<APIRequest, bool>? defaultRequestHandler = api.HandleRequest;
 
-                api.HandleRequest = req =>
+                api.AddHandler(req =>
                 {
                     switch (req)
                     {
@@ -90,9 +88,9 @@ namespace osu.Game.Tests.Online
                             return true;
 
                         default:
-                            return defaultRequestHandler?.Invoke(req) ?? false;
+                            return false;
                     }
-                };
+                });
 
                 Child = tracker = new MultiplayerBeatmapAvailabilityTracker();
             });

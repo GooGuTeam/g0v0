@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -90,7 +90,7 @@ namespace osu.Game.Tests.Visual.Online
         {
             AddStep("Setup request handler", () =>
             {
-                ((DummyAPIAccess)API).HandleRequest = req =>
+                ((DummyAPIAccess)API).AddHandler(req =>
                 {
                     switch (req)
                     {
@@ -139,7 +139,7 @@ namespace osu.Game.Tests.Visual.Online
                             Logger.Log($"Unhandled Request Type: {req.GetType()}");
                             return false;
                     }
-                };
+                });
             });
 
             AddStep("Add test channels", () =>
@@ -283,7 +283,7 @@ namespace osu.Game.Tests.Visual.Online
 
             // Make sure no unnecessary requests are made when the PM channel is already open.
             AddStep("Select channel 1", () => clickDrawable(getChannelListItem(testChannel1)));
-            AddStep("Unregister request handling", () => ((DummyAPIAccess)API).HandleRequest = null);
+            AddStep("Unregister request handling", () => ((DummyAPIAccess)API).ClearHandlers());
             AddStep("Open chat with user", () => channelManager.PostCommand($"chat {testUser.Username}"));
             AddAssert("PM channel is selected", () =>
                 channelManager.CurrentChannel.Value.Type == ChannelType.PM && channelManager.CurrentChannel.Value.Users.Single() == testUser);
@@ -682,7 +682,7 @@ namespace osu.Game.Tests.Visual.Online
             {
                 requestLock.Reset();
 
-                dummyAPI.HandleRequest = r =>
+                dummyAPI.AddHandler(r =>
                 {
                     if (!(r is ChatReportRequest req))
                         return false;
@@ -695,7 +695,7 @@ namespace osu.Game.Tests.Visual.Online
                     });
 
                     return true;
-                };
+                });
             });
 
             AddStep("Open context menu", () =>

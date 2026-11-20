@@ -41,7 +41,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         {
             AddStep("populate ruleset statistics", () =>
             {
-                ((DummyAPIAccess)API).HandleRequest = r =>
+                ((DummyAPIAccess)API).AddHandler(r =>
                 {
                     switch (r)
                     {
@@ -60,7 +60,7 @@ namespace osu.Game.Tests.Visual.SongSelect
                         default:
                             return false;
                     }
-                };
+                });
             });
 
             decimal getNecessaryPP(int? rulesetID)

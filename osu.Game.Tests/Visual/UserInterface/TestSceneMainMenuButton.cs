@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -41,7 +41,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         [Test]
         public void TestDailyChallengeButton()
         {
-            AddStep("set up API", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up API", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -66,7 +66,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                     default:
                         return false;
                 }
-            });
+            }));
 
             NotificationOverlay notificationOverlay = null!;
             DependencyProvidingContainer buttonContainer = null!;
@@ -119,7 +119,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         [Test]
         public void TestDailyChallengeButtonOldChallenge()
         {
-            AddStep("set up API", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up API", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -144,7 +144,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                     default:
                         return false;
                 }
-            });
+            }));
 
             NotificationOverlay notificationOverlay = null!;
 

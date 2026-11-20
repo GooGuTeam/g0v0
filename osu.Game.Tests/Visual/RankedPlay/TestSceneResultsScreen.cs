@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -123,9 +123,7 @@ namespace osu.Game.Tests.Visual.RankedPlay
         {
             AddStep("setup request handler", () =>
             {
-                Func<APIRequest, bool>? defaultRequestHandler = ((DummyAPIAccess)API).HandleRequest;
-
-                ((DummyAPIAccess)API).HandleRequest = request =>
+                ((DummyAPIAccess)API).AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -134,9 +132,9 @@ namespace osu.Game.Tests.Visual.RankedPlay
                             return true;
 
                         default:
-                            return defaultRequestHandler?.Invoke(request) ?? false;
+                            return false;
                     }
-                };
+                });
             });
 
             AddStep("set results state", () => MultiplayerClient.RankedPlayChangeStage(RankedPlayStage.Results, state =>
@@ -274,9 +272,7 @@ namespace osu.Game.Tests.Visual.RankedPlay
         {
             AddStep("setup request handler", () =>
             {
-                Func<APIRequest, bool>? defaultRequestHandler = ((DummyAPIAccess)API).HandleRequest;
-
-                ((DummyAPIAccess)API).HandleRequest = request =>
+                ((DummyAPIAccess)API).AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -329,9 +325,9 @@ namespace osu.Game.Tests.Visual.RankedPlay
                             return true;
 
                         default:
-                            return defaultRequestHandler?.Invoke(request) ?? false;
+                            return false;
                     }
-                };
+                });
             });
         }
 

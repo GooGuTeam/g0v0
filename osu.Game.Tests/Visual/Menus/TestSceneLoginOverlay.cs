@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -68,7 +68,7 @@ namespace osu.Game.Tests.Visual.Menus
             assertAPIState(APIState.RequiresSecondFactorAuth);
             AddUntilStep("wait for second factor auth form", () => loginOverlay.ChildrenOfType<SecondFactorAuthForm>().SingleOrDefault(), () => Is.Not.Null);
 
-            AddStep("set up verification handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up verification handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -81,7 +81,7 @@ namespace osu.Game.Tests.Visual.Menus
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("enter code", () => loginOverlay.ChildrenOfType<OsuTextBox>().First().Text = "88800088");
             assertAPIState(APIState.Online);
@@ -90,7 +90,7 @@ namespace osu.Game.Tests.Visual.Menus
             AddStep("set failing", () => { dummyAPI.SetState(APIState.Failing); });
             AddStep("return to online", () => { dummyAPI.SetState(APIState.Online); });
 
-            AddStep("clear handler", () => dummyAPI.HandleRequest = null);
+            AddStep("clear handler", () => dummyAPI.ClearHandlers());
 
             assertDropdownState(UserAction.Online);
             AddStep("change user state", () => localConfig.SetValue(OsuSetting.UserOnlineStatus, UserStatus.DoNotDisturb));
@@ -110,7 +110,7 @@ namespace osu.Game.Tests.Visual.Menus
             assertAPIState(APIState.RequiresSecondFactorAuth);
             AddUntilStep("wait for second factor auth form", () => loginOverlay.ChildrenOfType<SecondFactorAuthForm>().SingleOrDefault(), () => Is.Not.Null);
 
-            AddStep("set up verification handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up verification handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -123,7 +123,7 @@ namespace osu.Game.Tests.Visual.Menus
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("enter code", () => loginOverlay.ChildrenOfType<OsuTextBox>().First().Text = "012345");
             assertAPIState(APIState.Online);
@@ -132,7 +132,7 @@ namespace osu.Game.Tests.Visual.Menus
             AddStep("set failing", () => { dummyAPI.SetState(APIState.Failing); });
             AddStep("return to online", () => { dummyAPI.SetState(APIState.Online); });
 
-            AddStep("clear handler", () => dummyAPI.HandleRequest = null);
+            AddStep("clear handler", () => dummyAPI.ClearHandlers());
 
             assertDropdownState(UserAction.Online);
             AddStep("change user state", () => localConfig.SetValue(OsuSetting.UserOnlineStatus, UserStatus.DoNotDisturb));
@@ -152,7 +152,7 @@ namespace osu.Game.Tests.Visual.Menus
             assertAPIState(APIState.RequiresSecondFactorAuth);
             AddUntilStep("wait for second factor auth form", () => loginOverlay.ChildrenOfType<SecondFactorAuthForm>().SingleOrDefault(), () => Is.Not.Null);
 
-            AddStep("set up verification handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up verification handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -169,7 +169,7 @@ namespace osu.Game.Tests.Visual.Menus
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("request fallback to email", () =>
             {
@@ -184,7 +184,7 @@ namespace osu.Game.Tests.Visual.Menus
             AddStep("set failing", () => { dummyAPI.SetState(APIState.Failing); });
             AddStep("return to online", () => { dummyAPI.SetState(APIState.Online); });
 
-            AddStep("clear handler", () => dummyAPI.HandleRequest = null);
+            AddStep("clear handler", () => dummyAPI.ClearHandlers());
 
             assertDropdownState(UserAction.Online);
             AddStep("change user state", () => localConfig.SetValue(OsuSetting.UserOnlineStatus, UserStatus.DoNotDisturb));
@@ -206,7 +206,7 @@ namespace osu.Game.Tests.Visual.Menus
             assertAPIState(APIState.RequiresSecondFactorAuth);
             AddUntilStep("wait for second factor auth form", () => loginOverlay.ChildrenOfType<SecondFactorAuthForm>().SingleOrDefault(), () => Is.Not.Null);
 
-            AddStep("set up verification handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up verification handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -218,13 +218,16 @@ namespace osu.Game.Tests.Visual.Menus
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("enter code", () => loginOverlay.ChildrenOfType<OsuTextBox>().First().Text = "123456");
             AddUntilStep("first verification attempt handled", () => firstAttemptHandled);
             assertAPIState(APIState.RequiresSecondFactorAuth);
 
-            AddStep("set up verification handling", () => dummyAPI.HandleRequest = req =>
+            // the second attempt is meant to be handled by a different handler, so the failing one has to be dropped.
+            AddStep("clear handler", () => dummyAPI.ClearHandlers());
+
+            AddStep("set up verification handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -237,7 +240,7 @@ namespace osu.Game.Tests.Visual.Menus
                 }
 
                 return false;
-            });
+            }));
             AddStep("enter code", () => loginOverlay.ChildrenOfType<OsuTextBox>().First().Text = "deadbeef");
             assertAPIState(APIState.Online);
             assertDropdownState(UserAction.Online);
@@ -265,7 +268,7 @@ namespace osu.Game.Tests.Visual.Menus
             assertAPIState(APIState.RequiresSecondFactorAuth);
             AddUntilStep("wait for second factor auth form", () => loginOverlay.ChildrenOfType<SecondFactorAuthForm>().SingleOrDefault(), () => Is.Not.Null);
 
-            AddStep("set up verification handling", () => dummyAPI.HandleRequest = req =>
+            AddStep("set up verification handling", () => dummyAPI.AddHandler(req =>
             {
                 switch (req)
                 {
@@ -279,11 +282,11 @@ namespace osu.Game.Tests.Visual.Menus
                 }
 
                 return false;
-            });
+            }));
             AddStep("enter code", () => loginOverlay.ChildrenOfType<OsuTextBox>().First().Text = "abcdefgh");
             AddUntilStep("wait for verification handled", () => verificationHandled);
             assertAPIState(APIState.RequiresSecondFactorAuth);
-            AddStep("clear handler", () => dummyAPI.HandleRequest = null);
+            AddStep("clear handler", () => dummyAPI.ClearHandlers());
         }
 
         [Test]

@@ -953,7 +953,7 @@ namespace osu.Game.Tests.Visual.Navigation
             AddStep("exit lounge", () => Game.ScreenStack.Exit());
             // `TestMultiplayerComponents` registers a request handler in its BDL, but never unregisters it.
             // to prevent the handler living for longer than it should be, clean up manually.
-            AddStep("clean up multiplayer request handler", () => ((DummyAPIAccess)API).HandleRequest = null);
+            AddStep("clean up multiplayer request handler", () => ((DummyAPIAccess)API).ClearHandlers());
         }
 
         [Test]

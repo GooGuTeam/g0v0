@@ -139,7 +139,7 @@ namespace osu.Game.Tests.Visual.RankedPlay
 
             AddStep("setup request handling", () =>
             {
-                dummyAPI.HandleRequest += request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (request is ChatReportRequest chatReportRequest)
                     {
@@ -148,7 +148,7 @@ namespace osu.Game.Tests.Visual.RankedPlay
                     }
 
                     return false;
-                };
+                });
             });
 
             AddStep("set pick state", () => MultiplayerClient.RankedPlayChangeStage(RankedPlayStage.CardPlay, state => state.ActiveUserId = API.LocalUser.Value.OnlineID).WaitSafely());

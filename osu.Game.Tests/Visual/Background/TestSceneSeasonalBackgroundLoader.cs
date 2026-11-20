@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -134,7 +134,7 @@ namespace osu.Game.Tests.Visual.Background
         private void registerBackgroundsResponse(DateTimeOffset endDate)
             => AddStep("setup request handler", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (dummyAPI.State.Value != APIState.Online || !(request is GetSeasonalBackgroundsRequest backgroundsRequest))
                         return false;
@@ -146,7 +146,7 @@ namespace osu.Game.Tests.Visual.Background
                     });
 
                     return true;
-                };
+                });
             });
 
         private void setSeasonalBackgroundMode(SeasonalBackgroundMode mode)
