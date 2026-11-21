@@ -404,6 +404,146 @@ Click to see what's new!", version);
         /// </summary>
         public static LocalisableString UserChallengedYouToDuel(string username, string poolName) => new TranslatableString(getKey(@"user_challenged_you_to_duel"), @"{0} challenged you to a duel ({1}). Click to accept.", username, poolName);
 
+        /// <summary>
+        /// "Task has completed!"
+        /// </summary>
+        public static LocalisableString TaskCompleted => new TranslatableString(getKey(@"task_completed"), @"Task has completed!");
+
+        /// <summary>
+        /// "Preparing to delete all {0}s..."
+        /// </summary>
+        public static LocalisableString PreparingToDeleteAll(string modelName) => new TranslatableString(getKey(@"preparing_to_delete_all"), @"Preparing to delete all {0}s...", modelName);
+
+        /// <summary>
+        /// "Deleting {0}s ({1} of {2})"
+        /// </summary>
+        public static LocalisableString DeletingModels(string modelName, int index, int totalCount) => new TranslatableString(getKey(@"deleting_models"), @"Deleting {0}s ({1} of {2})", modelName, index, totalCount);
+
+        /// <summary>
+        /// "Deleted all {0}s!"
+        /// </summary>
+        public static LocalisableString DeletedAll(string modelName) => new TranslatableString(getKey(@"deleted_all"), @"Deleted all {0}s!", modelName);
+
+        /// <summary>
+        /// "No {0}s found to delete!"
+        /// </summary>
+        public static LocalisableString NoModelsFoundToDelete(string modelName) => new TranslatableString(getKey(@"no_models_found_to_delete"), @"No {0}s found to delete!", modelName);
+
+        /// <summary>
+        /// "No {0}s found to restore!"
+        /// </summary>
+        public static LocalisableString NoModelsFoundToRestore(string modelName) => new TranslatableString(getKey(@"no_models_found_to_restore"), @"No {0}s found to restore!", modelName);
+
+        /// <summary>
+        /// "Restoring ({0} of {1})"
+        /// </summary>
+        public static LocalisableString RestoringModels(int index, int totalCount) => new TranslatableString(getKey(@"restoring_models"), @"Restoring ({0} of {1})", index, totalCount);
+
+        /// <summary>
+        /// "Restored all deleted items!"
+        /// </summary>
+        public static LocalisableString RestoredAllDeletedItems => new TranslatableString(getKey(@"restored_all_deleted_items"), @"Restored all deleted items!");
+
+        /// <summary>
+        /// "Preparing to delete all {0} videos..."
+        /// </summary>
+        public static LocalisableString PreparingToDeleteAllVideos(string modelName) => new TranslatableString(getKey(@"preparing_to_delete_all_videos"), @"Preparing to delete all {0} videos...", modelName);
+
+        /// <summary>
+        /// "Failed to join room."
+        /// </summary>
+        public static LocalisableString FailedToJoinRoom => new TranslatableString(getKey(@"failed_to_join_room"), @"Failed to join room.");
+
+        /// <summary>
+        /// "Reprocessing star rating for beatmaps"
+        /// </summary>
+        public static LocalisableString ReprocessingStarRatings => new TranslatableString(getKey(@"reprocessing_star_ratings"), @"Reprocessing star rating for beatmaps");
+
+        /// <summary>
+        /// "beatmaps' star ratings have been updated"
+        /// </summary>
+        public static LocalisableString StarRatingsUpdated => new TranslatableString(getKey(@"star_ratings_updated"), @"beatmaps' star ratings have been updated");
+
+        /// <summary>
+        /// "Updating online data for beatmaps"
+        /// </summary>
+        public static LocalisableString UpdatingOnlineData => new TranslatableString(getKey(@"updating_online_data"), @"Updating online data for beatmaps");
+
+        /// <summary>
+        /// "beatmaps' online data have been updated"
+        /// </summary>
+        public static LocalisableString OnlineDataUpdated => new TranslatableString(getKey(@"online_data_updated"), @"beatmaps' online data have been updated");
+
+        /// <summary>
+        /// "Populating missing statistics for beatmaps"
+        /// </summary>
+        public static LocalisableString PopulatingBeatmapStatistics => new TranslatableString(getKey(@"populating_beatmap_statistics"), @"Populating missing statistics for beatmaps");
+
+        /// <summary>
+        /// "beatmaps have been populated with missing statistics"
+        /// </summary>
+        public static LocalisableString BeatmapStatisticsPopulated => new TranslatableString(getKey(@"beatmap_statistics_populated"), @"beatmaps have been populated with missing statistics");
+
+        /// <summary>
+        /// "Populating missing statistics for scores"
+        /// </summary>
+        public static LocalisableString PopulatingScoreStatistics => new TranslatableString(getKey(@"populating_score_statistics"), @"Populating missing statistics for scores");
+
+        /// <summary>
+        /// "scores have been populated with missing statistics"
+        /// </summary>
+        public static LocalisableString ScoreStatisticsPopulated => new TranslatableString(getKey(@"score_statistics_populated"), @"scores have been populated with missing statistics");
+
+        /// <summary>
+        /// "Upgrading scores to new mod multipliers"
+        /// </summary>
+        public static LocalisableString UpgradingModMultipliers => new TranslatableString(getKey(@"upgrading_mod_multipliers"), @"Upgrading scores to new mod multipliers");
+
+        /// <summary>
+        /// "scores have been upgraded to the new mod multipliers"
+        /// </summary>
+        public static LocalisableString ModMultipliersUpgraded => new TranslatableString(getKey(@"mod_multipliers_upgraded"), @"scores have been upgraded to the new mod multipliers");
+
+        /// <summary>
+        /// "Upgrading scores to new scoring algorithm"
+        /// </summary>
+        public static LocalisableString UpgradingScoringAlgorithm => new TranslatableString(getKey(@"upgrading_scoring_algorithm"), @"Upgrading scores to new scoring algorithm");
+
+        /// <summary>
+        /// "scores have been upgraded to the new scoring algorithm"
+        /// </summary>
+        public static LocalisableString ScoringAlgorithmUpgraded => new TranslatableString(getKey(@"scoring_algorithm_upgraded"), @"scores have been upgraded to the new scoring algorithm");
+
+        /// <summary>
+        /// "Adjusting ranks of scores"
+        /// </summary>
+        public static LocalisableString AdjustingScoreRanks => new TranslatableString(getKey(@"adjusting_score_ranks"), @"Adjusting ranks of scores");
+
+        /// <summary>
+        /// "scores now have more correct ranks."
+        /// </summary>
+        public static LocalisableString ScoreRanksAdjusted => new TranslatableString(getKey(@"score_ranks_adjusted"), @"scores now have more correct ranks.");
+
+        /// <summary>
+        /// "Populating missing submission and rank dates"
+        /// </summary>
+        public static LocalisableString PopulatingSubmissionDates => new TranslatableString(getKey(@"populating_submission_dates"), @"Populating missing submission and rank dates");
+
+        /// <summary>
+        /// "beatmap sets now have correct submission and rank dates."
+        /// </summary>
+        public static LocalisableString SubmissionDatesPopulated => new TranslatableString(getKey(@"submission_dates_populated"), @"beatmap sets now have correct submission and rank dates.");
+
+        /// <summary>
+        /// "Updating user tags"
+        /// </summary>
+        public static LocalisableString UpdatingUserTags => new TranslatableString(getKey(@"updating_user_tags"), @"Updating user tags");
+
+        /// <summary>
+        /// "beatmaps have had their tags updated. This runs once a month to allow searching user tags."
+        /// </summary>
+        public static LocalisableString UserTagsUpdated => new TranslatableString(getKey(@"user_tags_updated"), @"beatmaps have had their tags updated. This runs once a month to allow searching user tags.");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }
