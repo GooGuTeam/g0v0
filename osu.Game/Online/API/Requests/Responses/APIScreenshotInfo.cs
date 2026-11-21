@@ -32,6 +32,17 @@ namespace osu.Game.Online.API.Requests.Responses
         [JsonProperty("hits")]
         public int Hits { get; set; }
 
+        /// <summary>
+        /// The URL the image itself should be loaded from.
+        /// </summary>
+        /// <remarks>
+        /// The share URL redirects to the stored file and records a hit every time it is opened, so anything which
+        /// merely displays the image (thumbnails, previews) must use the direct link instead. It is only missing when
+        /// the server cannot build one, in which case the share URL is the only remaining option.
+        /// </remarks>
+        [JsonIgnore]
+        public string ImageUrl => string.IsNullOrEmpty(DirectUrl) ? Url : DirectUrl;
+
         [JsonProperty("timestamp")]
         public DateTimeOffset Timestamp { get; set; }
 

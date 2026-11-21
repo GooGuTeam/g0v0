@@ -69,7 +69,7 @@ namespace osu.Game.Overlays.Screenshots
         {
             AddRangeInternal(new Drawable[]
             {
-                new DelayedLoadWrapper(thumbnail = new ThumbnailSprite(Screenshot.Url)
+                new DelayedLoadWrapper(thumbnail = new ThumbnailSprite(Screenshot.ImageUrl)
                 {
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
@@ -211,11 +211,13 @@ namespace osu.Game.Overlays.Screenshots
             // the preview releases the texture it is handed when it is closed, so it is given a reference of its
             // own. handing over the tile's reference would leave the tile pointing at a released texture, which
             // crashes as soon as the tile is drawn again.
-            Texture? previewTexture = textures.Get(Screenshot.Url);
+            Texture? previewTexture = textures.Get(Screenshot.ImageUrl);
 
             if (previewTexture == null)
                 return true;
 
+            // the share url is handed over rather than the direct one, as it is the canonical link of the screenshot
+            // and the one worth copying. opening it is a deliberate action by the user at this point.
             previewOverlay.ShowImage(new ImagePreviewRequest(previewTexture, Screenshot.Url, source: this));
             return true;
         }
