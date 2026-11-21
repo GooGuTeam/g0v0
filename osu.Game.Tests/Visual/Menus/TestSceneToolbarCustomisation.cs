@@ -429,8 +429,12 @@ namespace osu.Game.Tests.Visual.Menus
             // toolbar still being able to hand out its buttons is the thing being asserted, rather than assumed.
             // the screenshots button is excluded, as it is hidden by default and malformed configuration
             // deliberately resets to that default.
-            AddUntilStep("toolbar still usable", () => toolbar.GetButton(ToolbarButtonLayout.NEWS) != null
-                                                        && !toolbar.HiddenButtonIds.Except(new[] { ToolbarButtonLayout.SCREENSHOTS }).Any());
+            AddUntilStep("toolbar still usable", () =>
+            {
+                var unexpectedlyHidden = toolbar.HiddenButtonIds.Except(new[] { ToolbarButtonLayout.SCREENSHOTS });
+
+                return toolbar.GetButton(ToolbarButtonLayout.NEWS) != null && !unexpectedlyHidden.Any();
+            });
         }
 
         [Test]
