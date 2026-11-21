@@ -412,27 +412,27 @@ Click to see what's new!", version);
         /// <summary>
         /// "Preparing to delete all {0}s..."
         /// </summary>
-        public static LocalisableString PreparingToDeleteAll(string modelName) => new TranslatableString(getKey(@"preparing_to_delete_all"), @"Preparing to delete all {0}s...", modelName);
+        public static LocalisableString PreparingToDeleteAll(LocalisableString modelName) => new TranslatableString(getKey(@"preparing_to_delete_all"), @"Preparing to delete all {0}s...", modelName);
 
         /// <summary>
         /// "Deleting {0}s ({1} of {2})"
         /// </summary>
-        public static LocalisableString DeletingModels(string modelName, int index, int totalCount) => new TranslatableString(getKey(@"deleting_models"), @"Deleting {0}s ({1} of {2})", modelName, index, totalCount);
+        public static LocalisableString DeletingModels(LocalisableString modelName, int index, int totalCount) => new TranslatableString(getKey(@"deleting_models"), @"Deleting {0}s ({1} of {2})", modelName, index, totalCount);
 
         /// <summary>
         /// "Deleted all {0}s!"
         /// </summary>
-        public static LocalisableString DeletedAll(string modelName) => new TranslatableString(getKey(@"deleted_all"), @"Deleted all {0}s!", modelName);
+        public static LocalisableString DeletedAll(LocalisableString modelName) => new TranslatableString(getKey(@"deleted_all"), @"Deleted all {0}s!", modelName);
 
         /// <summary>
         /// "No {0}s found to delete!"
         /// </summary>
-        public static LocalisableString NoModelsFoundToDelete(string modelName) => new TranslatableString(getKey(@"no_models_found_to_delete"), @"No {0}s found to delete!", modelName);
+        public static LocalisableString NoModelsFoundToDelete(LocalisableString modelName) => new TranslatableString(getKey(@"no_models_found_to_delete"), @"No {0}s found to delete!", modelName);
 
         /// <summary>
         /// "No {0}s found to restore!"
         /// </summary>
-        public static LocalisableString NoModelsFoundToRestore(string modelName) => new TranslatableString(getKey(@"no_models_found_to_restore"), @"No {0}s found to restore!", modelName);
+        public static LocalisableString NoModelsFoundToRestore(LocalisableString modelName) => new TranslatableString(getKey(@"no_models_found_to_restore"), @"No {0}s found to restore!", modelName);
 
         /// <summary>
         /// "Restoring ({0} of {1})"
@@ -447,7 +447,94 @@ Click to see what's new!", version);
         /// <summary>
         /// "Preparing to delete all {0} videos..."
         /// </summary>
-        public static LocalisableString PreparingToDeleteAllVideos(string modelName) => new TranslatableString(getKey(@"preparing_to_delete_all_videos"), @"Preparing to delete all {0} videos...", modelName);
+        public static LocalisableString PreparingToDeleteAllVideos(LocalisableString modelName) => new TranslatableString(getKey(@"preparing_to_delete_all_videos"), @"Preparing to delete all {0} videos...", modelName);
+
+        /// <summary>
+        /// "Deleted {0} {1} video(s)!"
+        /// </summary>
+        public static LocalisableString DeletedVideos(int deletedCount, LocalisableString modelName) => new TranslatableString(getKey(@"deleted_videos"), @"Deleted {0} {1} video(s)!", deletedCount, modelName);
+
+        /// <summary>
+        /// "Deleting videos from {0}s ({1} deleted)"
+        /// </summary>
+        public static LocalisableString DeletingVideosFrom(LocalisableString modelName, int deletedCount) => new TranslatableString(getKey(@"deleting_videos_from"), @"Deleting videos from {0}s ({1} deleted)", modelName, deletedCount);
+
+        /// <summary>
+        /// "beatmap"
+        /// </summary>
+        public static LocalisableString ModelBeatmap => new TranslatableString(getKey(@"model_beatmap"), @"beatmap");
+
+        /// <summary>
+        /// "score"
+        /// </summary>
+        public static LocalisableString ModelScore => new TranslatableString(getKey(@"model_score"), @"score");
+
+        /// <summary>
+        /// "skin"
+        /// </summary>
+        public static LocalisableString ModelSkin => new TranslatableString(getKey(@"model_skin"), @"skin");
+
+        /// <summary>
+        /// Returns a localisable name for the given humanised model name (see <c>IModelImporter.HumanisedModelName</c>).
+        /// Falls back to the raw name when no translation is available.
+        /// </summary>
+        public static LocalisableString ModelName(string humanisedName) => humanisedName switch
+        {
+            "beatmap" => ModelBeatmap,
+            "score" => ModelScore,
+            "skin" => ModelSkin,
+            _ => humanisedName,
+        };
+
+        /// <summary>
+        /// "No {0}s were found to import!"
+        /// </summary>
+        public static LocalisableString NoModelsFoundToImport(LocalisableString modelName) => new TranslatableString(getKey(@"no_models_found_to_import"), @"No {0}s were found to import!", modelName);
+
+        /// <summary>
+        /// "{0} import is initialising..."
+        /// </summary>
+        public static LocalisableString ImportInitialising(LocalisableString modelName) => new TranslatableString(getKey(@"import_initialising"), @"{0} import is initialising...", modelName);
+
+        /// <summary>
+        /// "Imported {0} of {1} {2}s"
+        /// </summary>
+        public static LocalisableString ImportedXOfY(int importedCount, int totalCount, LocalisableString modelName) => new TranslatableString(getKey(@"imported_x_of_y"), @"Imported {0} of {1} {2}s", importedCount, totalCount, modelName);
+
+        /// <summary>
+        /// "{0} import failed! Check logs for more information."
+        /// </summary>
+        public static LocalisableString ImportFailed(LocalisableString modelName) => new TranslatableString(getKey(@"import_failed"), @"{0} import failed! Check logs for more information.", modelName);
+
+        /// <summary>
+        /// "Imported {0} of {1} {2}s."
+        /// </summary>
+        public static LocalisableString ImportedXOfYCompleted(int importedCount, int totalCount, LocalisableString modelName) => new TranslatableString(getKey(@"imported_x_of_y_completed"), @"Imported {0} of {1} {2}s.", importedCount, totalCount, modelName);
+
+        /// <summary>
+        /// "Imported {0} {1}s!"
+        /// </summary>
+        public static LocalisableString ImportedCount(int importedCount, LocalisableString modelName) => new TranslatableString(getKey(@"imported_count"), @"Imported {0} {1}s!", importedCount, modelName);
+
+        /// <summary>
+        /// "Imported {0}!"
+        /// </summary>
+        public static LocalisableString ImportedNamed(string displayName) => new TranslatableString(getKey(@"imported_named"), @"Imported {0}!", displayName);
+
+        /// <summary>
+        /// "{0} import is paused due to gameplay..."
+        /// </summary>
+        public static LocalisableString ImportPaused(LocalisableString modelName) => new TranslatableString(getKey(@"import_paused"), @"{0} import is paused due to gameplay...", modelName);
+
+        /// <summary>
+        /// "{0} import is resuming..."
+        /// </summary>
+        public static LocalisableString ImportResuming(LocalisableString modelName) => new TranslatableString(getKey(@"import_resuming"), @"{0} import is resuming...", modelName);
+
+        /// <summary>
+        /// "{0} Click to view."
+        /// </summary>
+        public static LocalisableString WithClickToView(LocalisableString completionText) => new TranslatableString(getKey(@"with_click_to_view"), @"{0} Click to view.", completionText);
 
         /// <summary>
         /// "Failed to join room."

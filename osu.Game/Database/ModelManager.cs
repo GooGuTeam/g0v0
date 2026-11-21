@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using osu.Framework.Extensions;
+using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
 using osu.Game.Extensions;
@@ -116,15 +117,15 @@ namespace osu.Game.Database
             if (items.Count == 0)
             {
                 if (!silent)
-                    PostNotification?.Invoke(new ProgressCompletionNotification { Text = NotificationsStrings.NoModelsFoundToDelete(HumanisedModelName) });
+                    PostNotification?.Invoke(new ProgressCompletionNotification { Text = NotificationsStrings.NoModelsFoundToDelete(LocalisedModelName) });
                 return;
             }
 
             var notification = new ProgressNotification
             {
                 Progress = 0,
-                Text = NotificationsStrings.PreparingToDeleteAll(HumanisedModelName),
-                CompletionText = NotificationsStrings.DeletedAll(HumanisedModelName),
+                Text = NotificationsStrings.PreparingToDeleteAll(LocalisedModelName),
+                CompletionText = NotificationsStrings.DeletedAll(LocalisedModelName),
                 State = ProgressNotificationState.Active,
             };
 
@@ -139,7 +140,7 @@ namespace osu.Game.Database
                     // user requested abort
                     return;
 
-                notification.Text = NotificationsStrings.DeletingModels(HumanisedModelName, ++i, items.Count);
+                notification.Text = NotificationsStrings.DeletingModels(LocalisedModelName, ++i, items.Count);
 
                 Delete(b);
 
@@ -158,7 +159,7 @@ namespace osu.Game.Database
             if (!items.Any())
             {
                 if (!silent)
-                    PostNotification?.Invoke(new ProgressCompletionNotification { Text = NotificationsStrings.NoModelsFoundToRestore(HumanisedModelName) });
+                    PostNotification?.Invoke(new ProgressCompletionNotification { Text = NotificationsStrings.NoModelsFoundToRestore(LocalisedModelName) });
                 return;
             }
 
@@ -230,5 +231,10 @@ namespace osu.Game.Database
         public Action<Notification>? PostNotification { get; set; }
 
         public virtual string HumanisedModelName => $"{typeof(TModel).Name.Replace(@"Info", "").ToLowerInvariant()}";
+
+        /// <summary>
+        /// A localisable version of <see cref="HumanisedModelName"/>, for use in localisable notification text.
+        /// </summary>
+        protected LocalisableString LocalisedModelName => NotificationsStrings.ModelName(HumanisedModelName);
     }
 }

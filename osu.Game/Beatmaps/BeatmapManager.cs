@@ -491,10 +491,10 @@ namespace osu.Game.Beatmaps
                 {
                     DeleteFile(b, video);
                     deleted++;
-                    notification.CompletionText = $"Deleted {deleted} {HumanisedModelName} video(s)!";
+                    notification.CompletionText = NotificationsStrings.DeletedVideos(deleted, LocalisedModelName);
                 }
 
-                notification.Text = $"Deleting videos from {HumanisedModelName}s ({deleted} deleted)";
+                notification.Text = NotificationsStrings.DeletingVideosFrom(LocalisedModelName, deleted);
 
                 notification.Progress = (float)++i / items.Count;
             }
