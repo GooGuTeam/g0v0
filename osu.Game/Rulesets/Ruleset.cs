@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Concurrent;
@@ -26,6 +26,8 @@ using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Filter;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Replays.Types;
+using osu.Game.Rulesets.Replays;
+using osu.Game.Rulesets.Formats;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.UI;
 using osu.Game.Scoring;
@@ -276,6 +278,19 @@ namespace osu.Game.Rulesets
         /// <returns>The <see cref="IBeatmapProcessor"/>.</returns>
         public virtual IBeatmapProcessor? CreateBeatmapProcessor(IBeatmap beatmap) => null;
 
+        /// <summary>
+        /// Creates the native chart format for rulesets whose beatmaps cannot be stored as legacy .osu content.
+        /// When provided, import of foreign archives, storage, editor saving/undo and exports are routed through it.
+        /// </summary>
+        public virtual RulesetBeatmapFormat? CreateBeatmapFormat() => null;
+
+        /// <summary>
+        /// Whether beatmaps of other rulesets may be offered as converts for this ruleset.
+        /// Rulesets whose beatmaps only come from their own chart format should return false, so that song select
+        /// never lists beatmaps that <see cref="IBeatmapConverter.CanConvert"/> would reject.
+        /// </summary>
+        public virtual bool SupportsConvertedBeatmaps => true;
+
         public abstract DifficultyCalculator CreateDifficultyCalculator(IWorkingBeatmap beatmap);
 
         /// <summary>
@@ -380,6 +395,13 @@ namespace osu.Game.Rulesets
         /// </summary>
         /// <returns>An empty frame for the current ruleset, or null if unsupported.</returns>
         public virtual IConvertibleReplayFrame? CreateConvertibleReplayFrame() => null;
+
+        /// <summary>
+        /// Creates the native replay format for rulesets whose inputs cannot be stored in legacy mouse/button frames.
+        /// </summary>
+        /// <returns>The native frame codec, or null if unsupported. Without a compatible registered score codec,
+        /// local scores are saved without replay data.</returns>
+        public virtual RulesetReplayFormat? CreateReplayFormat() => null;
 
         /// <summary>
         /// Creates the statistics for a <see cref="ScoreInfo"/> to be displayed in the results screen.

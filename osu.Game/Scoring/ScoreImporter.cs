@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -13,7 +13,6 @@ using osu.Game.Beatmaps;
 using osu.Game.Database;
 using osu.Game.IO.Archives;
 using osu.Game.Rulesets;
-using osu.Game.Scoring.Legacy;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -24,9 +23,9 @@ namespace osu.Game.Scoring
 {
     public class ScoreImporter : RealmArchiveModelImporter<ScoreInfo>
     {
-        public override IEnumerable<string> HandledExtensions => new[] { ".osr" };
+        public override IEnumerable<string> HandledExtensions => ScoreReplayFormat.Registered.Select(f => f.Extension);
 
-        protected override string[] HashableFileTypes => new[] { ".osr" };
+        protected override string[] HashableFileTypes => ScoreReplayFormat.Registered.Select(f => f.Extension).ToArray();
 
         private readonly RulesetStore rulesets;
         private readonly Func<BeatmapManager> beatmaps;
@@ -43,15 +42,15 @@ namespace osu.Game.Scoring
 
         protected override ScoreInfo? CreateModel(ArchiveReader archive, ImportParameters parameters)
         {
-            string name = archive.Filenames.First(f => f.EndsWith(".osr", StringComparison.OrdinalIgnoreCase));
+            string name = archive.Filenames.First(f => ScoreReplayFormat.ForFilename(f) != null);
 
             using (var stream = archive.GetStream(name))
             {
                 try
                 {
-                    return new DatabasedLegacyScoreDecoder(rulesets, beatmaps()).Parse(stream).ScoreInfo;
+                    return ScoreReplayFormat.ForFilename(name)!.Decode(stream, rulesets, beatmaps()).ScoreInfo;
                 }
-                catch (LegacyScoreDecoder.BeatmapNotFoundException notFound)
+                catch (ReplayBeatmapNotFoundException notFound)
                 {
                     Logger.Log($@"Score '{archive.Name}' failed to import: no corresponding beatmap with the hash '{notFound.Hash}' could be found.", LoggingTarget.Database);
 
@@ -73,7 +72,7 @@ namespace osu.Game.Scoring
             }
         }
 
-        public Score GetScore(ScoreInfo score) => new LegacyDatabasedScore(score, rulesets, beatmaps(), Files.Store);
+        public Score GetScore(ScoreInfo score) => new DatabasedScore(score, rulesets, beatmaps(), Files.Store);
 
         protected override void Populate(ScoreInfo model, ArchiveReader? archive, Realm realm, CancellationToken cancellationToken = default)
         {

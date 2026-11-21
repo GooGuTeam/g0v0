@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Linq;
@@ -94,7 +94,7 @@ namespace osu.Game.Database
             {
                 if (scoreArchive != null)
                 {
-                    string name = scoreArchive.Filenames.First(f => f.EndsWith(".osr", StringComparison.OrdinalIgnoreCase));
+                    string name = scoreArchive.Filenames.First(f => ScoreReplayFormat.ForFilename(f) != null);
                     var importTask = new ImportTask(scoreArchive.GetStream(name), name);
                     scoreManager.Import(new[] { importTask });
                 }

@@ -1,14 +1,19 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Screens;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
+using osu.Game.Database;
+using osu.Game.IO.Archives;
 using osu.Game.Online.API;
+using osu.Game.Online.API.Requests;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Rulesets.Mania;
@@ -19,6 +24,7 @@ using osu.Game.Screens.Menu;
 using osu.Game.Screens.Play;
 using osu.Game.Screens.Ranking;
 using osu.Game.Screens.Select;
+using osu.Game.Tests.Resources;
 using FilterControl = osu.Game.Screens.Select.FilterControl;
 
 namespace osu.Game.Tests.Visual.Navigation
@@ -176,6 +182,44 @@ namespace osu.Game.Tests.Visual.Navigation
                 var score = ((ResultsScreen)Game.ScreenStack.CurrentScreen).Score!;
                 return score.OnlineID == 3 && score.Hash == "deadbeef";
             });
+        }
+
+        [Test]
+        public void TestStoredReplayWithMissingBeatmap()
+        {
+            ScoreInfo storedScore = null!;
+
+            AddStep("store replay without its beatmap", () =>
+            {
+                using var resource = TestResources.OpenResource("Replays/mania-replay.osr");
+                using var stream = new MemoryStream();
+                resource.CopyTo(stream);
+                using var archive = new ByteArrayArchiveReader(stream.ToArray(), "replay.osr");
+
+                storedScore = Game.ScoreManager.Import(new ScoreInfo
+                {
+                    Hash = Guid.NewGuid().ToString(),
+                    BeatmapInfo = beatmap.Beatmaps.First(),
+                    Ruleset = new ManiaRuleset().RulesetInfo,
+                    User = new GuestUser(),
+                }, archive)!.Value;
+
+                ((DummyAPIAccess)API).HandleRequest = request =>
+                {
+                    if (request is not GetBeatmapRequest getBeatmap)
+                        return false;
+
+                    getBeatmap.TriggerSuccess(new APIBeatmap
+                    {
+                        OnlineBeatmapSetID = 2,
+                        BeatmapSet = new APIBeatmapSet { OnlineID = 2, Title = "Missing beatmap", Artist = "Artist" },
+                    });
+                    return true;
+                };
+            });
+
+            AddStep("present stored score", () => Game.PresentScore(storedScore));
+            AddUntilStep("download notification shown", () => Game.Notifications.ChildrenOfType<MissingBeatmapNotification>().Any());
         }
 
         private void returnToMenu()

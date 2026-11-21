@@ -1,6 +1,7 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
+using System.Collections.Concurrent;
 using System.Linq;
 using osu.Framework.Localisation;
 using osu.Game.Online.API;
@@ -73,10 +74,30 @@ namespace osu.Game.Beatmaps
                 return true;
 
             if (allowConversion && beatmap.Ruleset.OnlineID == 0 && ruleset.OnlineID != 0)
-                return true;
+                return supportsConvertedBeatmaps(ruleset);
 
             return false;
         }
+
+        private static readonly ConcurrentDictionary<string, bool> converted_beatmap_support = new ConcurrentDictionary<string, bool>();
+
+        /// <summary>
+        /// <see cref="Ruleset.SupportsConvertedBeatmaps"/>, cached per ruleset as this runs for every beatmap during filtering.
+        /// </summary>
+        private static bool supportsConvertedBeatmaps(RulesetInfo ruleset) => converted_beatmap_support.GetOrAdd(ruleset.ShortName, _ =>
+        {
+            if (!ruleset.Available)
+                return true;
+
+            try
+            {
+                return ruleset.CreateInstance().SupportsConvertedBeatmaps;
+            }
+            catch
+            {
+                return true;
+            }
+        });
 
         /// <summary>
         /// Get the beatmap info page URL, or <c>null</c> if unavailable.
