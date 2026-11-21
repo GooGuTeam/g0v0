@@ -3,20 +3,22 @@
 
 using System;
 using osu.Framework.Allocation;
-using osu.Framework.Extensions.LocalisationExtensions;
+using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Localisation;
 using osu.Game.Rulesets;
 
 namespace osu.Game.Overlays.Notifications
 {
-    public partial class RulesetErrorNotification : SimpleNotification
+    public partial class RulesetErrorNotification : HeadingNotification
     {
         private readonly RulesetInfo rulesetInfo;
         private readonly Exception exception;
 
         public RulesetErrorNotification(RulesetInfo rulesetInfo, Exception exception)
+            : base(FontAwesome.Solid.PuzzlePiece)
         {
             this.rulesetInfo = rulesetInfo;
             this.exception = exception;
@@ -25,23 +27,16 @@ namespace osu.Game.Overlays.Notifications
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour colours)
+        private void load(OsuColour colours) => IconContent.Colour = colours.RedDark;
+
+        protected override LocalisableString Heading => NotificationsStrings.RulesetError;
+
+        protected override ColourInfo GetHeadingColour(OsuColour colours) => colours.Red0;
+
+        protected override void AddBody()
         {
-            Icon = FontAwesome.Solid.PuzzlePiece;
-            IconContent.Colour = colours.RedDark;
-
-            TextFlow.Clear();
-            TextFlow.AddText(NotificationsStrings.RulesetError.ToUpper(), s =>
-            {
-                s.Font = OsuFont.Style.Caption2.With(weight: FontWeight.Bold);
-                s.Colour = colours.Red0;
-            });
-
-            TextFlow.AddParagraph(NotificationsStrings.RulesetException(rulesetInfo.Name), cp);
-            TextFlow.AddParagraph(exception.Message, cp);
-            return;
-
-            void cp(SpriteText s) => s.Font = OsuFont.Style.Caption1;
+            AddBodyParagraph(NotificationsStrings.RulesetException(rulesetInfo.Name));
+            AddBodyParagraph(exception.Message);
         }
     }
 }
