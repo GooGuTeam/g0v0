@@ -19,7 +19,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
         private const double disjoint_trail_time_separation = 1000 / 60.0;
 
         public bool DisjointTrail { get; private set; }
-        private double lastTrailTime;
+        private double lastTrailTime = double.NegativeInfinity;
 
         private IBindable<float> cursorSize = null!;
 
@@ -74,7 +74,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             if (!DisjointTrail || !currentPosition.HasValue)
                 return;
 
-            if (Time.Current - lastTrailTime >= disjoint_trail_time_separation)
+            if (Time.Current - lastTrailTime >= disjoint_trail_time_separation || Time.Current < lastTrailTime)
             {
                 lastTrailTime = Time.Current;
                 AddTrail(currentPosition.Value);

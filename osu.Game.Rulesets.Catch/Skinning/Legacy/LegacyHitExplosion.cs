@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -52,9 +52,10 @@ namespace osu.Game.Rulesets.Catch.Skinning.Legacy
         }
 
         [BackgroundDependencyLoader]
-        private void load(SkinManager skins)
+        private void load(SkinManager? skins, DefaultLegacySkin? privateClassicSkin)
         {
-            var defaultLegacySkin = skins.DefaultClassicSkin;
+            var defaultLegacySkin = privateClassicSkin ?? skins?.DefaultClassicSkin
+                ?? throw new InvalidOperationException(@"A classic skin source is required.");
 
             // sprite names intentionally swapped to match stable member naming / ease of cross-referencing
             explosion1.Texture = defaultLegacySkin.GetTexture("scoreboard-explosion-2");

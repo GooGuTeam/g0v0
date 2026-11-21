@@ -166,7 +166,7 @@ namespace osu.Game.Screens.Backgrounds
             /// As an optimisation, we add the two blur portions to be applied rather than actually applying two separate blurs.
             /// </summary>
             private Vector2 blurTarget => !IgnoreUserSettings.Value
-                ? new Vector2(BlurAmount.Value + (float)userBlurLevel.Value * USER_BLUR_FACTOR)
+                ? new Vector2(BlurAmount.Value + (userBlurLevel == null ? 0 : (float)userBlurLevel.Value * USER_BLUR_FACTOR))
                 : new Vector2(BlurAmount.Value);
 
             [BackgroundDependencyLoader]
