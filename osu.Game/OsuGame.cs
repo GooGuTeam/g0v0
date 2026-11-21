@@ -1651,7 +1651,7 @@ namespace osu.Game
 
                 Schedule(() =>
                 {
-                    Notifications.Post(new SimpleNotification
+                    Notifications.Post(new SimpleErrorNotification
                     {
                         Text = NotificationsStrings.TabletSupportDisabledDueToError(message),
                         Icon = FontAwesome.Solid.PenSquare,

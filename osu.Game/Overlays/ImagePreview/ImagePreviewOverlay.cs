@@ -468,7 +468,7 @@ namespace osu.Game.Overlays.ImagePreview
                 }
                 catch (Exception)
                 {
-                    Schedule(() => notifications?.Post(new SimpleNotification
+                    Schedule(() => notifications?.Post(new SimpleErrorNotification
                     {
                         Text = ImagePreviewOverlayStrings.ImageSaveFailed,
                         Icon = FontAwesome.Solid.ExclamationTriangle,

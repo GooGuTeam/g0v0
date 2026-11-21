@@ -146,7 +146,7 @@ namespace osu.Game.Screens.Ranking
             };
             favouriteRequest.Failure += e =>
             {
-                notifications?.Post(new SimpleNotification
+                notifications?.Post(new SimpleErrorNotification
                 {
                     Text = e.Message,
                     Icon = FontAwesome.Solid.Times,
