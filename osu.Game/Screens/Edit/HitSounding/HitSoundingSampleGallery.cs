@@ -2,7 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -23,7 +22,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 {
     /// <summary>
     /// The sample gallery: every sample set as an always-expanded tree on the left, and the beatmap's sample files
-    /// as draggable tiles on the right.
+    /// as draggable rows on the right.
     /// </summary>
     /// <remarks>
     /// A tile dragged out of the file library is carried by this drawable (rather than by the tile itself) so the
@@ -228,41 +227,10 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private void importForSlot(string path, SampleSlotReference slot)
         {
-            var before = new HashSet<string>(samples.Files, StringComparer.Ordinal);
+            var imported = samples.ImportFiles(new[] { path });
 
-            samples.ImportFiles(new[] { path });
-
-            if (findImported(path, before) is string imported)
-                samples.Assign(slot.Set, slot.Bank, slot.Sample, imported);
-        }
-
-        /// <summary>
-        /// Finds the beatmap resource the library created for an imported file. The library keeps the filename (lower
-        /// casing the extension) and appends <c>-1</c>, <c>-2</c>… on collision, so an exact name match wins and a
-        /// shared stem is used as the fallback.
-        /// </summary>
-        private string? findImported(string sourcePath, HashSet<string> before)
-        {
-            string sourceName = Path.GetFileName(sourcePath);
-            string sourceStem = Path.GetFileNameWithoutExtension(sourcePath);
-
-            string? exact = null;
-            string? stem = null;
-
-            foreach (string file in samples.Files)
-            {
-                if (before.Contains(file))
-                    continue;
-
-                string name = Path.GetFileName(file);
-
-                if (string.Equals(name, sourceName, StringComparison.OrdinalIgnoreCase))
-                    exact ??= file;
-                else if (Path.GetFileNameWithoutExtension(name).StartsWith(sourceStem, StringComparison.OrdinalIgnoreCase))
-                    stem ??= file;
-            }
-
-            return exact ?? stem;
+            if (imported.Count > 0)
+                samples.Assign(slot.Set, slot.Bank, slot.Sample, imported[0]);
         }
 
         private bool isVisibleInHierarchy()

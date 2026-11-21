@@ -24,15 +24,14 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Edit.HitSounding
 {
     /// <summary>
-    /// The right half of the sample gallery: the beatmap's sample files as large draggable tiles, filtered by alias
-    /// or original filename.
+    /// The right half of the sample gallery: draggable beatmap sample rows, filtered by alias or original filename.
     /// </summary>
     public partial class HitSoundingSampleFileLibrary : CompositeDrawable
     {
         public const float HEADER_HEIGHT = 40;
         public const float SEARCH_HEIGHT = 40;
         public const float ADD_BUTTON_WIDTH = 145;
-        public const float TILE_SPACING = 10;
+        public const float TILE_SPACING = 4;
 
         private readonly HitSoundingSampleGallery gallery;
         private readonly List<HitSoundingSampleFileTile> tiles = new List<HitSoundingSampleFileTile>();
@@ -86,8 +85,8 @@ namespace osu.Game.Screens.Edit.HitSounding
                             Name = "Sample file tiles",
                             RelativeSizeAxes = Axes.X,
                             AutoSizeAxes = Axes.Y,
-                            Direction = FillDirection.Full,
-                            Spacing = new Vector2(TILE_SPACING),
+                            Direction = FillDirection.Vertical,
+                            Spacing = new Vector2(0, TILE_SPACING),
                         },
                         new OsuSpriteText
                         {
@@ -152,7 +151,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     Font = OsuFont.Default.With(size: 17, weight: FontWeight.Bold),
                     Colour = colours.Light3,
                 },
-                new SampleHeaderButton
+                new HitSoundingGalleryAddButton
                 {
                     Name = "Add sample files",
                     Anchor = Anchor.CentreRight,
@@ -230,19 +229,6 @@ namespace osu.Game.Screens.Edit.HitSounding
                 samples.Changed -= onLibraryChanged;
 
             base.Dispose(isDisposing);
-        }
-
-        private partial class SampleHeaderButton : OsuButton, IHasTooltip
-        {
-            public LocalisableString TooltipText { get; set; }
-
-            [BackgroundDependencyLoader]
-            private void load(OverlayColourProvider colours)
-            {
-                BackgroundColour = colours.Background3;
-                SpriteText.Font = OsuFont.Default.With(size: 14);
-                SpriteText.Colour = colours.Content1;
-            }
         }
 
         /// <summary>

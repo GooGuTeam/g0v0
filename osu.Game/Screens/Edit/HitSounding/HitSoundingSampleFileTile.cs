@@ -3,7 +3,10 @@
 
 using System;
 using System.IO;
+using ManagedBass;
 using osu.Framework.Allocation;
+using osu.Framework.Audio.Callbacks;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
@@ -11,6 +14,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
+using osu.Game.Beatmaps;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
@@ -23,15 +27,12 @@ using osuTK.Input;
 namespace osu.Game.Screens.Edit.HitSounding
 {
     /// <summary>
-    /// One sample file of the beatmap: a large audition tile that can be dragged onto a slot, with an inline editable
-    /// alias above the original filename.
+    /// One sample file of the beatmap, displayed as a draggable audition row with an editable alias.
     /// </summary>
     public partial class HitSoundingSampleFileTile : CompositeDrawable, IHasTooltip
     {
-        public const float TILE_WIDTH = 144;
-        public const float TILE_HEIGHT = 184;
+        public const float TILE_HEIGHT = 48;
         public const float CORNER_RADIUS = 5;
-        public const float AUDITION_SIZE = 128;
 
         private const double double_click_interval = 400;
 
@@ -42,6 +43,9 @@ namespace osu.Game.Screens.Edit.HitSounding
         private SpriteIcon playIcon = null!;
         private TruncatingSpriteText aliasText = null!;
         private AliasEditor aliasEditor = null!;
+        private TruncatingSpriteText filenameText = null!;
+        private Container labelBlock = null!;
+        private OsuSpriteText durationText = null!;
 
         private string displayedAlias = string.Empty;
         private bool? displayedPlaying;
@@ -51,6 +55,9 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         [Resolved]
         private HitSoundingSampleLibrary samples { get; set; } = null!;
+
+        [Resolved]
+        private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
 
         /// <summary>
         /// The beatmap resource this tile represents.
@@ -70,7 +77,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             this.gallery = gallery;
 
             Name = $"Sample file: {filename}";
-            Size = new Vector2(TILE_WIDTH, TILE_HEIGHT);
+            RelativeSizeAxes = Axes.X;
+            Height = TILE_HEIGHT;
             Masking = true;
             CornerRadius = CORNER_RADIUS;
         }
@@ -83,17 +91,17 @@ namespace osu.Game.Screens.Edit.HitSounding
             InternalChildren = new Drawable[]
             {
                 new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background4 },
-                new FillFlowContainer
+                createAudition(),
+                createLabelBlock(),
+                durationText = new OsuSpriteText
                 {
-                    RelativeSizeAxes = Axes.Both,
-                    Padding = new MarginPadding(8),
-                    Direction = FillDirection.Vertical,
-                    Spacing = new Vector2(0, 4),
-                    Children = new[]
-                    {
-                        createAudition(),
-                        createLabelBlock(),
-                    },
+                    Name = $"Sample duration: {Filename}",
+                    Anchor = Anchor.CentreRight,
+                    Origin = Anchor.CentreRight,
+                    X = -10,
+                    Font = OsuFont.Default.With(size: 12),
+                    Colour = colours.Light3,
+                    Text = getDuration(),
                 },
             };
         }
@@ -109,6 +117,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         protected override void Update()
         {
             base.Update();
+
+            float labelWidth = Math.Max(0, DrawWidth - 64 - durationText.DrawWidth - 20);
+            labelBlock.Width = labelWidth;
+            aliasText.MaxWidth = labelWidth;
+            filenameText.MaxWidth = labelWidth;
 
             if (IsEditingAlias || !gallery.IsVisibleInHierarchy)
                 return;
@@ -180,29 +193,22 @@ namespace osu.Game.Screens.Edit.HitSounding
             samples.TogglePreview(Filename);
         }
 
-        private Drawable createAudition() => new Container
+        private Drawable createAudition() => playIcon = new SpriteIcon
         {
             Name = $"Sample audition: {Filename}",
-            Size = new Vector2(AUDITION_SIZE),
-            Masking = true,
-            CornerRadius = CORNER_RADIUS,
-            Children = new Drawable[]
-            {
-                new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background3 },
-                playIcon = new SpriteIcon
-                {
-                    Anchor = Anchor.Centre,
-                    Origin = Anchor.Centre,
-                    Size = new Vector2(32),
-                    Icon = FontAwesome.Regular.PlayCircle,
-                    Colour = colours.Content1,
-                },
-            },
+            Anchor = Anchor.CentreLeft,
+            Origin = Anchor.CentreLeft,
+            X = 12,
+            Size = new Vector2(20),
+            Icon = FontAwesome.Regular.PlayCircle,
+            Colour = colours.Content1,
         };
 
-        private Drawable createLabelBlock() => new Container
+        private Drawable createLabelBlock() => labelBlock = new Container
         {
-            RelativeSizeAxes = Axes.X,
+            Anchor = Anchor.CentreLeft,
+            Origin = Anchor.CentreLeft,
+            X = 44,
             Height = 36,
             Children = new Drawable[]
             {
@@ -213,20 +219,16 @@ namespace osu.Game.Screens.Edit.HitSounding
                     Height = 18,
                     Child = aliasText = new TruncatingSpriteText
                     {
-                        Anchor = Anchor.TopCentre,
-                        Origin = Anchor.TopCentre,
-                        MaxWidth = AUDITION_SIZE,
+                        MaxWidth = 1,
                         ShowTooltip = false,
                         Font = OsuFont.Default.With(size: 14, weight: FontWeight.Medium),
                     },
                 },
-                new TruncatingSpriteText
+                filenameText = new TruncatingSpriteText
                 {
                     Name = $"Sample filename: {Filename}",
-                    Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopCentre,
                     Position = new Vector2(0, 20),
-                    MaxWidth = AUDITION_SIZE,
+                    MaxWidth = 1,
                     Font = OsuFont.Default.With(size: 12),
                     Colour = colours.Light3,
                     Text = Path.GetFileName(Filename),
@@ -242,6 +244,40 @@ namespace osu.Game.Screens.Edit.HitSounding
                 },
             },
         };
+
+        private string getDuration()
+        {
+            string? path = workingBeatmap.Value.BeatmapSetInfo.GetPathForFile(Filename);
+            if (path == null)
+                return "--:--";
+
+            using Stream? stream = workingBeatmap.Value.GetStream(path);
+            if (stream == null)
+                return "--:--";
+
+            using var callbacks = new FileCallbacks(new DataStreamFileProcedures(stream));
+            int decodeStream = Bass.CreateStream(StreamSystem.NoBuffer, BassFlags.Decode | BassFlags.Prescan, callbacks.Callbacks, callbacks.Handle);
+            if (decodeStream == 0)
+                return "--:--";
+
+            try
+            {
+                long length = Bass.ChannelGetLength(decodeStream);
+                if (length < 0)
+                    return "--:--";
+
+                double seconds = Bass.ChannelBytes2Seconds(decodeStream, length);
+                if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0)
+                    return "--:--";
+
+                long roundedSeconds = (long)Math.Ceiling(seconds);
+                return $"{roundedSeconds / 60}:{roundedSeconds % 60:00}";
+            }
+            finally
+            {
+                Bass.StreamFree(decodeStream);
+            }
+        }
 
         /// <summary>
         /// Re-reads the alias displayed by this tile after a library change.

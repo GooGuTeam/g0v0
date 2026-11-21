@@ -7,13 +7,11 @@ using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
-using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
 using osu.Game.Overlays;
 using osuTK;
@@ -230,7 +228,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     Font = OsuFont.Default.With(size: 17, weight: FontWeight.Bold),
                     Colour = colours.Light3,
                 },
-                new SampleTreeButton
+                new HitSoundingGalleryAddButton
                 {
                     Name = "Add sample set",
                     Anchor = Anchor.CentreRight,
@@ -306,19 +304,6 @@ namespace osu.Game.Screens.Edit.HitSounding
             base.Dispose(isDisposing);
         }
 
-        private partial class SampleTreeButton : OsuButton, IHasTooltip
-        {
-            public LocalisableString TooltipText { get; set; }
-
-            [BackgroundDependencyLoader]
-            private void load(OverlayColourProvider colours)
-            {
-                BackgroundColour = colours.Background3;
-                SpriteText.Font = OsuFont.Default.With(size: 14);
-                SpriteText.Colour = colours.Content1;
-            }
-        }
-
         /// <summary>
         /// Clips the set columns and pans them vertically with the wheel, or horizontally with Shift + wheel.
         /// </summary>
@@ -340,7 +325,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     {
                         AutoSizeAxes = Axes.Both,
                         Direction = FillDirection.Horizontal,
-                        Spacing = new Vector2(COLUMN_SPACING),
+                        Spacing = new Vector2(COLUMN_SPACING, 0),
                     },
                 };
             }
@@ -439,7 +424,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                 Show();
 
-                float thumbWidth = Math.Clamp(DrawWidth * (viewportWidth / contentWidth), 24, DrawWidth);
+                float thumbWidth = Math.Clamp(DrawWidth * (viewportWidth / contentWidth), Math.Min(24, DrawWidth), DrawWidth);
                 thumb.Width = thumbWidth;
                 thumb.X = (DrawWidth - thumbWidth) * Math.Clamp(scrollX / maxScrollX, 0, 1);
             }

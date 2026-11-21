@@ -18,9 +18,12 @@ namespace osu.Game.Screens.Edit.HitSounding
         private DependencyContainer dependencies = null!;
         private HitSoundingRoll? roll;
         private Container workspace = null!;
+        private Container selectionPanel = null!;
+        private Container previewPanel = null!;
         private WorkspaceSplitter splitter = null!;
         private float requestedRollHeight = HitSoundingLayout.ROLL_HEIGHT;
         private float lastAvailableHeight;
+        private bool galleryExpanded;
 
         protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
             => dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
@@ -62,18 +65,18 @@ namespace osu.Game.Screens.Edit.HitSounding
                         workspace = new Container
                         {
                             RelativeSizeAxes = Axes.Both,
-                            Padding = new MarginPadding { Top = HitSoundingLayout.ROLL_HEIGHT + 5 },
+                            Padding = new MarginPadding { Top = HitSoundingLayout.ROLL_HEIGHT + WorkspaceSplitter.GRAB_HEIGHT },
                             Children = new Drawable[]
                             {
-                                new Container
+                                selectionPanel = new Container
                                 {
                                     Width = 200, RelativeSizeAxes = Axes.Y,
                                     Child = new HitSoundingSelectionPanel(model)
                                 },
-                                new Container
+                                previewPanel = new Container
                                 {
                                     RelativeSizeAxes = Axes.Both, Padding = new MarginPadding { Left = 205 },
-                                    Child = new HitSoundingPreviewPanel(model, preview)
+                                    Child = new HitSoundingPreviewPanel(model, preview, setGalleryExpanded)
                                 }
                             }
                         },
@@ -97,8 +100,20 @@ namespace osu.Game.Screens.Edit.HitSounding
                 changeSplit(requestedRollHeight);
             }
 
-            workspace.Padding = new MarginPadding { Top = roll.Height + 8 };
+            workspace.Padding = new MarginPadding { Top = galleryExpanded ? 0 : roll.Height + splitter.Height };
             splitter.Y = roll.Height;
+        }
+
+        private void setGalleryExpanded(bool expanded)
+        {
+            galleryExpanded = expanded;
+            roll!.Alpha = expanded ? 0 : 1;
+            splitter.Alpha = expanded ? 0 : 1;
+            selectionPanel.Alpha = expanded ? 0 : 1;
+            previewPanel.Padding = new MarginPadding { Left = expanded ? 0 : 205 };
+
+            if (expanded)
+                roll.CancelSeekPreview();
         }
 
         private void changeSplit(float height)
@@ -113,24 +128,27 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private partial class WorkspaceSplitter : CompositeDrawable
         {
+            public const float GRAB_HEIGHT = 14;
+
             private readonly Action<float> resize;
             private readonly Box grip;
             private float startHeight;
+            private bool dragging;
 
             public WorkspaceSplitter(Action<float> resize)
             {
                 this.resize = resize;
                 Name = "Hitsounding workspace splitter";
                 RelativeSizeAxes = Axes.X;
-                Height = 8;
+                Height = GRAB_HEIGHT;
                 Depth = -10;
                 InternalChild = grip = new Box
                 {
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
                     Width = 60,
-                    Height = 2,
-                    Alpha = 0.3f,
+                    Height = 3,
+                    Alpha = 0.4f,
                 };
             }
 
@@ -139,11 +157,11 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             protected override bool OnHover(HoverEvent e)
             {
-                grip.FadeTo(0.9f, 120);
+                updateGrip(true);
                 return true;
             }
 
-            protected override void OnHoverLost(HoverLostEvent e) => grip.FadeTo(0.3f, 120);
+            protected override void OnHoverLost(HoverLostEvent e) => updateGrip(dragging);
 
             protected override bool OnDragStart(DragStartEvent e)
             {
@@ -151,6 +169,8 @@ namespace osu.Game.Screens.Edit.HitSounding
                     return false;
 
                 startHeight = Y;
+                dragging = true;
+                updateGrip(true);
                 return true;
             }
 
@@ -159,6 +179,14 @@ namespace osu.Game.Screens.Edit.HitSounding
                 float delta = Parent!.ToLocalSpace(e.ScreenSpaceMousePosition).Y - Parent.ToLocalSpace(e.ScreenSpaceMouseDownPosition).Y;
                 resize(startHeight + delta);
             }
+
+            protected override void OnDragEnd(DragEndEvent e)
+            {
+                dragging = false;
+                updateGrip(IsHovered);
+            }
+
+            private void updateGrip(bool active) => grip.FadeTo(active ? 1 : 0.4f, 120);
         }
 
         protected override void PopOut()

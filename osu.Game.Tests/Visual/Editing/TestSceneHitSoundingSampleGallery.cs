@@ -16,8 +16,10 @@ using osu.Game.Audio;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
 using osu.Game.Graphics.Containers;
+using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
+using osu.Game.Overlays;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Screens.Edit;
@@ -107,6 +109,7 @@ namespace osu.Game.Tests.Visual.Editing
 
             AddStep("import samples", () => library.ImportFiles(Directory.GetFiles(sampleDirectory)));
             AddUntilStep("tiles available", () => Editor.ChildrenOfType<HitSoundingSampleFileTile>().Any(t => t.Filename == "impact_bell_03.wav"));
+            AddAssert("audio length is displayed", () => Editor.ChildrenOfType<OsuSpriteText>().Any(t => t.Name == "Sample duration: impact_bell_03.wav" && t.Text.ToString() == "0:01"));
             AddStep("filter original filename", () => Editor.ChildrenOfType<OsuTextBox>().Single(t => t.Name == "Sample file search input").Text = "impact_bell");
             AddUntilStep("only matching file remains", () => Editor.ChildrenOfType<HitSoundingSampleFileTile>().Select(t => t.Filename).SequenceEqual(new[] { "impact_bell_03.wav" }));
             AddStep("hold file tile", () =>
@@ -139,6 +142,36 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("alias persisted without renaming source", () => library.GetAlias("impact_bell_03.wav") == "Bright finish" && working!.BeatmapSetInfo.GetFile("impact_bell_03.wav") != null);
             AddStep("search alias", () => Editor.ChildrenOfType<OsuTextBox>().Single(t => t.Name == "Sample file search input").Text = "bright");
             AddUntilStep("alias finds original file", () => gallery.FileLibrary.Tiles.Select(t => t.Filename).SequenceEqual(new[] { "impact_bell_03.wav" }));
+        }
+
+        [Test]
+        public void TestExpandedGalleryCanDeleteSetAndRestoreLayout()
+        {
+            HitSoundingSampleGallery gallery = null!;
+            HitSoundingRoll roll = null!;
+            float splitWidth = 0;
+            float splitHeight = 0;
+            AddStep("add a sample set", () => library.AddSet());
+            AddStep("expand gallery", () =>
+            {
+                gallery = Editor.ChildrenOfType<HitSoundingSampleGallery>().Single();
+                roll = Editor.ChildrenOfType<HitSoundingRoll>().Single();
+                splitWidth = gallery.DrawWidth;
+                splitHeight = gallery.DrawHeight;
+                Editor.ChildrenOfType<IconButton>().Single(b => b.Name == "Toggle expanded Sample Gallery").TriggerClick();
+            });
+            AddUntilStep("gallery replaces both the timeline and selection pane", () => roll.Alpha == 0 && gallery.DrawWidth > splitWidth && gallery.DrawHeight > splitHeight);
+            AddAssert("set columns do not overlap", () => gallery.Tree.Columns[0].ScreenSpaceDrawQuad.TopRight.X < gallery.Tree.Columns[1].ScreenSpaceDrawQuad.TopLeft.X);
+            AddStep("click the second set's delete button", () =>
+            {
+                InputManager.MoveMouseTo(gallery.Tree.Columns[1].ChildrenOfType<IconButton>().Single());
+                InputManager.Click(MouseButton.Left);
+            });
+            AddUntilStep("show deletion confirmation", () => Dependencies.Get<IDialogOverlay>().CurrentDialog != null);
+            AddStep("confirm deletion", () => InputManager.Key(Key.Number1));
+            AddUntilStep("only the default set remains", () => gallery.Tree.Columns.Select(c => c.SetIndex).SequenceEqual(new[] { 1 }));
+            AddStep("switch to Preview", () => Editor.ChildrenOfType<TabControl<LocalisableString>>().Single(t => t.Items.Contains(HitSoundingStrings.SampleGallery)).Current.Value = HitSoundingStrings.Preview);
+            AddUntilStep("return to the split workspace", () => roll.Alpha == 1 && gallery.DrawWidth == splitWidth && gallery.DrawHeight == splitHeight);
         }
 
         [Test]

@@ -11,9 +11,11 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Localisation;
 using osu.Game.Graphics.Containers;
+using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Localisation;
 using osu.Game.Overlays;
@@ -25,6 +27,7 @@ namespace osu.Game.Screens.Edit.HitSounding
     {
         private readonly HitSoundingEditModel model;
         private readonly HitSoundingPreviewState state;
+        private readonly Action<bool> setWorkspaceExpanded;
         private FillFlowContainer toolbar = null!;
         private FillFlowContainer<HitSoundingPreviewCard> cards = null!;
         private FormTextBox search = null!;
@@ -39,6 +42,8 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly List<int> candidateIndices = new List<int>();
         private Container previewContent = null!;
         private HitSoundingSampleGallery gallery = null!;
+        private GalleryLayoutButton layoutButton = null!;
+        private bool galleryExpanded;
 
         [Resolved]
         private HitSoundingSampleLibrary library { get; set; } = null!;
@@ -49,10 +54,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         [Resolved]
         private HitSoundingSamplePlayback playback { get; set; } = null!;
 
-        public HitSoundingPreviewPanel(HitSoundingEditModel model, HitSoundingPreviewState state)
+        public HitSoundingPreviewPanel(HitSoundingEditModel model, HitSoundingPreviewState state, Action<bool> setWorkspaceExpanded)
         {
             this.model = model;
             this.state = state;
+            this.setWorkspaceExpanded = setWorkspaceExpanded;
             RelativeSizeAxes = Axes.Both;
             model.Changed += invalidate;
             model.SelectedNodes.CollectionChanged += selectionChanged;
@@ -130,7 +136,15 @@ namespace osu.Game.Screens.Edit.HitSounding
                             RelativeSizeAxes = Axes.Both,
                             Padding = new MarginPadding { Top = 40 },
                             Child = gallery = new HitSoundingSampleGallery { Alpha = 0 }
-                        }
+                        },
+                        layoutButton = new GalleryLayoutButton
+                        {
+                            Name = "Toggle expanded Sample Gallery",
+                            Anchor = Anchor.TopRight,
+                            Origin = Anchor.TopRight,
+                            Alpha = 0,
+                            Action = () => setGalleryExpanded(!galleryExpanded),
+                        },
                     }
                 }
             };
@@ -152,12 +166,44 @@ namespace osu.Game.Screens.Edit.HitSounding
             if (!IsLoaded)
                 return;
 
+            if (!visible)
+                setGalleryExpanded(false);
+
+            layoutButton.Alpha = visible ? 1 : 0;
             previewContent.FadeTo(visible ? 0 : 1, 180, Easing.OutQuint);
             previewContent.MoveToX(visible ? -10 : 0, 180, Easing.OutQuint);
             gallery.FadeTo(visible ? 1 : 0, 180, Easing.OutQuint);
             gallery.MoveToX(visible ? 0 : 10, 180, Easing.OutQuint);
             playback.StopSetPreview();
             library.StopPreview();
+        }
+
+        private void setGalleryExpanded(bool expanded)
+        {
+            if (galleryExpanded == expanded)
+                return;
+
+            gallery.CancelFileDrag();
+            galleryExpanded = expanded;
+            layoutButton.Icon = expanded ? FontAwesome.Solid.Compress : FontAwesome.Solid.Expand;
+            layoutButton.TooltipText = expanded ? HitSoundingStrings.RestoreGalleryLayout : HitSoundingStrings.ExpandGalleryLayout;
+            setWorkspaceExpanded(expanded);
+        }
+
+        private partial class GalleryLayoutButton : IconButton
+        {
+            public GalleryLayoutButton()
+            {
+                Icon = FontAwesome.Solid.Expand;
+                TooltipText = HitSoundingStrings.ExpandGalleryLayout;
+            }
+
+            [BackgroundDependencyLoader]
+            private void load(OverlayColourProvider colours)
+            {
+                IconColour = colours.Light3;
+                IconHoverColour = colours.Content1;
+            }
         }
 
         private void invalidate() => invalid = true;

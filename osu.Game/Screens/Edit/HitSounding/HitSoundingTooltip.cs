@@ -188,8 +188,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private Drawable createTextRow(LocalisableString text) => new OsuTextFlowContainer(t =>
         {
-            // FontUsage sizes describe line height; the Figma 16px face has a 21px line box.
-            t.Font = OsuFont.GetFont(size: 21, weight: FontWeight.Regular);
+            t.Font = OsuFont.GetFont(weight: FontWeight.Regular);
             t.Colour = textColour;
         })
         {
@@ -218,7 +217,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     new OsuSpriteText
                     {
                         Text = keycapText,
-                        Font = OsuFont.GetFont(size: 16, weight: FontWeight.Bold),
+                        Font = OsuFont.GetFont(size: 12, weight: FontWeight.Bold),
                         Colour = keycapTextColour,
                         Margin = new MarginPadding { Horizontal = 5, Bottom = 1 },
                     },
@@ -241,7 +240,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                         keycap,
                         new OsuTextFlowContainer(t =>
                         {
-                            t.Font = OsuFont.GetFont(size: 21, weight: FontWeight.Regular);
+                            t.Font = OsuFont.GetFont(weight: FontWeight.Regular);
                             t.Colour = textColour;
                         })
                         {

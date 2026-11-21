@@ -15,6 +15,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Logging;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
+using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Utils;
 
 namespace osu.Game.Screens.Edit.HitSounding
@@ -27,8 +28,7 @@ namespace osu.Game.Screens.Edit.HitSounding
     /// The library maps every <c>(set, bank, sample)</c> slot to an audio resource of the current beatmap set. Assigning a slot
     /// materialises the canonical resource (for example <c>normal-hitnormal2.wav</c> or <c>soft-hitclap.ogg</c>) by copying the
     /// bytes of the selected source resource, so normal beatmap playback and export resolve it without any hitsounding specific
-    /// logic. The source resource is never moved or deleted; only competing canonical resources of the replaced slot are removed,
-    /// as their extension may otherwise win the skin lookup.
+    /// logic. Canonical sources used by other slots are preserved under non-canonical names when their slots are replaced or removed.
     /// </para>
     /// <para>
     /// Sample sets, assignments and aliases are persisted as a <c>hitsounding-samples.json</c> resource inside the beatmap set.
@@ -186,6 +186,32 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             int next = sets.Count == 0 ? 2 : Math.Max(2, sets[^1] + 1);
 
+            // Deleted sets stay hidden, but a set still referenced by an object must not be reused.
+            var referencedSets = new HashSet<int>();
+
+            foreach (var hitObject in beatmap.HitObjects)
+            {
+                collect(hitObject.Samples);
+
+                if (hitObject is IHasRepeats repeats)
+                {
+                    foreach (var samples in repeats.NodeSamples)
+                        collect(samples);
+                }
+            }
+
+            while (referencedSets.Contains(next))
+                next++;
+
+            void collect(IEnumerable<HitSampleInfo> samples)
+            {
+                foreach (var sample in samples)
+                {
+                    if (int.TryParse(sample.Suffix, NumberStyles.None, CultureInfo.InvariantCulture, out int index) && index >= 2)
+                        referencedSets.Add(index);
+                }
+            }
+
             if (!emptySets.Add(next))
                 return;
 
@@ -194,25 +220,61 @@ namespace osu.Game.Screens.Edit.HitSounding
         }
 
         /// <summary>
+        /// Removes the assignments and explicit empty-set state for a beatmap sample set without renumbering other sets.
+        /// Set 1 remains available as the standard set.
+        /// </summary>
+        public void RemoveSet(int set)
+        {
+            if (!loaded || set < 1 || !sets.Contains(set))
+                return;
+
+            var keys = assignments.Keys.Where(key => key.Set == set).ToArray();
+
+            foreach (var key in keys)
+                assignments.Remove(key);
+
+            emptySets.Remove(set);
+
+            var beatmapSet = currentWorkingBeatmap.Value.BeatmapSetInfo;
+
+            if (isPersisted(beatmapSet))
+            {
+                foreach (string bank in HitSampleInfo.ALL_BANKS)
+                {
+                    foreach (string sample in sample_names)
+                    {
+                        var key = new AssignmentKey(set, bank, sample);
+                        preserveSlotSources(beatmapSet, key, null, null);
+                        deleteSlotFiles(beatmapSet, key, null);
+                    }
+                }
+            }
+
+            persistAndRefresh();
+        }
+
+        /// <summary>
         /// Copies audio files from disk into the beatmap set so they can be assigned to sample slots.
         /// </summary>
         /// <param name="paths">Local audio file paths. Missing or unsupported files are skipped.</param>
+        /// <returns>The names actually added to the beatmap set, in input order.</returns>
         /// <remarks>
         /// Each imported file keeps its filename (sanitised for safe export, with a numeric suffix on collision). The import is
         /// synchronous: <see cref="Files"/> contains every imported file when this method returns.
         /// </remarks>
-        public void ImportFiles(IEnumerable<string> paths)
+        public IReadOnlyList<string> ImportFiles(IEnumerable<string> paths)
         {
+            var imported = new List<string>();
+
             if (!loaded)
-                return;
+                return imported;
 
             var beatmapSet = currentWorkingBeatmap.Value.BeatmapSetInfo;
 
             if (!isPersisted(beatmapSet))
-                return;
+                return imported;
 
             var existing = new HashSet<string>(beatmapSet.Files.Select(file => file.Filename), StringComparer.OrdinalIgnoreCase);
-            bool imported = false;
 
             foreach (string path in paths)
             {
@@ -228,11 +290,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                     beatmaps.AddFile(beatmapSet, stream, filename);
 
                 existing.Add(filename);
-                imported = true;
+                imported.Add(filename);
             }
 
-            if (imported)
+            if (imported.Count > 0)
                 refresh();
+
+            return imported;
         }
 
         /// <summary>
@@ -288,6 +352,8 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             if (isPersisted(beatmapSet))
             {
+                filename = preserveSlotSources(beatmapSet, key, filename, target) ?? filename;
+
                 if (!string.Equals(filename, target, StringComparison.OrdinalIgnoreCase))
                 {
                     string? storagePath = beatmapSet.GetPathForFile(filename);
@@ -303,7 +369,7 @@ namespace osu.Game.Screens.Edit.HitSounding
                     beatmaps.AddFile(beatmapSet, source, target);
                 }
 
-                deleteSlotFiles(beatmapSet, key, filename, target);
+                deleteSlotFiles(beatmapSet, key, target);
             }
 
             assignments[key] = new Assignment(filename, target);
@@ -326,10 +392,15 @@ namespace osu.Game.Screens.Edit.HitSounding
             var beatmapSet = currentWorkingBeatmap.Value.BeatmapSetInfo;
             bool persisted = isPersisted(beatmapSet);
 
-            if (persisted)
-                deleteSlotFiles(beatmapSet, key, null, null);
+            bool removed = assignments.Remove(key);
 
-            if (!assignments.Remove(key) && !persisted)
+            if (persisted)
+            {
+                preserveSlotSources(beatmapSet, key, null, null);
+                deleteSlotFiles(beatmapSet, key, null);
+            }
+
+            if (!removed && !persisted)
                 return;
 
             persistAndRefresh();
@@ -598,15 +669,58 @@ namespace osu.Game.Screens.Edit.HitSounding
             }
         }
 
-        private void deleteSlotFiles(BeatmapSetInfo beatmapSet, AssignmentKey key, string? keepSource, string? keepTarget)
+        private string? preserveSlotSources(BeatmapSetInfo beatmapSet, AssignmentKey key, string? source, string? target)
+        {
+            string canonical = getCanonicalBase(key);
+            var existing = new HashSet<string>(beatmapSet.Files.Select(usage => usage.Filename), StringComparer.OrdinalIgnoreCase);
+
+            foreach (string file in existing.ToArray())
+            {
+                if (!isRootAudioFile(file) || !string.Equals(Path.GetFileNameWithoutExtension(file), canonical, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (string.Equals(file, target, StringComparison.OrdinalIgnoreCase) && string.Equals(file, source, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                bool selected = string.Equals(file, source, StringComparison.OrdinalIgnoreCase);
+                bool referenced = assignments.Any(pair => pair.Key != key && string.Equals(pair.Value.Source, file, StringComparison.OrdinalIgnoreCase));
+
+                if (!selected && !referenced)
+                    continue;
+
+                string copy = getImportFilename(file, existing)!;
+                string? storagePath = beatmapSet.GetPathForFile(file);
+
+                if (storagePath == null)
+                    throw new InvalidOperationException($@"Could not locate {file} in the beatmap set.");
+
+                using Stream? stream = currentWorkingBeatmap.Value.GetStream(storagePath);
+
+                if (stream == null)
+                    throw new InvalidOperationException($@"Could not read {file} from the beatmap set.");
+
+                beatmaps.AddFile(beatmapSet, stream, copy);
+                existing.Add(copy);
+
+                foreach (var pair in assignments.Where(pair => pair.Key != key && string.Equals(pair.Value.Source, file, StringComparison.OrdinalIgnoreCase)).ToArray())
+                    assignments[pair.Key] = new Assignment(copy, pair.Value.Target);
+
+                if (aliases.TryGetValue(file, out string? alias))
+                    aliases[copy] = alias;
+
+                if (selected)
+                    source = copy;
+            }
+
+            return source;
+        }
+
+        private void deleteSlotFiles(BeatmapSetInfo beatmapSet, AssignmentKey key, string? keepTarget)
         {
             string canonical = getCanonicalBase(key);
 
             foreach (string file in beatmapSet.Files.Select(usage => usage.Filename).ToArray())
             {
-                if (keepSource != null && string.Equals(file, keepSource, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
                 if (keepTarget != null && string.Equals(file, keepTarget, StringComparison.OrdinalIgnoreCase))
                     continue;
 

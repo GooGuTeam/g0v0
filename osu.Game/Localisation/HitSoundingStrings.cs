@@ -305,19 +305,39 @@ namespace osu.Game.Localisation
         public static LocalisableString TooltipSampleGallery => new TranslatableString(getKey(@"tooltip_sample_gallery"), @"Quick edit the sampleset!");
 
         /// <summary>
+        /// "Expand Sample Gallery"
+        /// </summary>
+        public static LocalisableString ExpandGalleryLayout => new TranslatableString(getKey(@"expand_gallery_layout"), @"Expand Sample Gallery");
+
+        /// <summary>
+        /// "Restore split layout"
+        /// </summary>
+        public static LocalisableString RestoreGalleryLayout => new TranslatableString(getKey(@"restore_gallery_layout"), @"Restore split layout");
+
+        /// <summary>
         /// "Sample sets"
         /// </summary>
         public static LocalisableString SampleSetsHeader => new TranslatableString(getKey(@"sample_sets_header"), @"Sample sets");
 
         /// <summary>
-        /// "+  Add set"
+        /// "Add set"
         /// </summary>
-        public static LocalisableString AddSetButton => new TranslatableString(getKey(@"add_set_button"), @"+  Add set");
+        public static LocalisableString AddSetButton => new TranslatableString(getKey(@"add_set_button"), @"Add set");
 
         /// <summary>
         /// "Add a sample set"
         /// </summary>
         public static LocalisableString TooltipAddSet => new TranslatableString(getKey(@"tooltip_add_set"), @"Add a sample set");
+
+        /// <summary>
+        /// "Delete sample set"
+        /// </summary>
+        public static LocalisableString TooltipRemoveSet => new TranslatableString(getKey(@"tooltip_remove_set"), @"Delete sample set");
+
+        /// <summary>
+        /// "Delete sample set {0} and clear its assignments? Hit object assignments and source audio used by other sets will be kept."
+        /// </summary>
+        public static LocalisableString RemoveSetConfirmation(int set) => new TranslatableString(getKey(@"remove_set_confirmation"), @"Delete sample set {0} and clear its assignments? Hit object assignments and source audio used by other sets will be kept.", set);
 
         /// <summary>
         /// "Drop a file here to replace the assigned sample"
@@ -350,9 +370,9 @@ namespace osu.Game.Localisation
         public static LocalisableString SampleFilesHeader => new TranslatableString(getKey(@"sample_files_header"), @"Sample files");
 
         /// <summary>
-        /// "+  Add files"
+        /// "Add files"
         /// </summary>
-        public static LocalisableString AddFilesButton => new TranslatableString(getKey(@"add_files_button"), @"+  Add files");
+        public static LocalisableString AddFilesButton => new TranslatableString(getKey(@"add_files_button"), @"Add files");
 
         /// <summary>
         /// "Add sample files to this beatmap"

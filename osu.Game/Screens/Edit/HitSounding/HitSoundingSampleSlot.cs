@@ -9,12 +9,15 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
 using osu.Game.Overlays;
+using osu.Game.Overlays.Dialog;
 using osuTK;
 
 namespace osu.Game.Screens.Edit.HitSounding
@@ -34,6 +37,12 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly HitSoundingSampleGallery gallery;
         private readonly List<HitSoundingSampleSlot> slots = new List<HitSoundingSampleSlot>();
 
+        [Resolved]
+        private HitSoundingSampleLibrary samples { get; set; } = null!;
+
+        [Resolved]
+        private IDialogOverlay dialogs { get; set; } = null!;
+
         public HitSoundingSampleSetColumn(int setIndex, HitSoundingSampleGallery gallery)
         {
             SetIndex = setIndex;
@@ -41,6 +50,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             Name = $"Sample set: {setIndex}";
             Size = new Vector2(HitSoundingSampleSetsTree.COLUMN_WIDTH, HitSoundingSampleSetsTree.TREE_HEIGHT);
+            Masking = true;
         }
 
         [BackgroundDependencyLoader]
@@ -66,13 +76,29 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             RelativeSizeAxes = Axes.X,
             Height = HitSoundingSampleSetsTree.SET_HEADING_HEIGHT,
-            Child = new OsuSpriteText
+            Children = new Drawable[]
             {
-                Anchor = Anchor.CentreLeft,
-                Origin = Anchor.CentreLeft,
-                Text = HitSoundingStrings.Set(SetIndex),
-                Font = OsuFont.Default.With(size: 16, weight: FontWeight.Bold),
-                Colour = colours.Content1,
+                new OsuSpriteText
+                {
+                    Anchor = Anchor.CentreLeft,
+                    Origin = Anchor.CentreLeft,
+                    Text = HitSoundingStrings.Set(SetIndex),
+                    Font = OsuFont.Default.With(size: 16, weight: FontWeight.Bold),
+                    Colour = colours.Content1,
+                },
+                new IconButton
+                {
+                    Name = $"Delete sample set: {SetIndex}",
+                    Anchor = Anchor.CentreRight,
+                    Origin = Anchor.CentreRight,
+                    Size = new Vector2(24),
+                    Icon = FontAwesome.Solid.Trash,
+                    IconScale = new Vector2(0.7f),
+                    IconColour = colours.Light3,
+                    IconHoverColour = colours.Content1,
+                    TooltipText = HitSoundingStrings.TooltipRemoveSet,
+                    Action = () => dialogs.Push(new DeleteSetDialog(SetIndex, () => samples.RemoveSet(SetIndex))),
+                },
             },
         };
 
@@ -119,6 +145,15 @@ namespace osu.Game.Screens.Edit.HitSounding
                 Children = bankSlots,
             };
         }
+
+        private partial class DeleteSetDialog : DeletionDialog
+        {
+            public DeleteSetDialog(int set, Action remove)
+            {
+                BodyText = HitSoundingStrings.RemoveSetConfirmation(set);
+                DangerousAction = remove;
+            }
+        }
     }
 
     /// <summary>
@@ -137,7 +172,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private Container surface = null!;
         private Box background = null!;
         private TruncatingSpriteText aliasText = null!;
-        private OsuSpriteText glyphText = null!;
+        private SpriteIcon slotIcon = null!;
 
         private string displayedAlias = string.Empty;
         private string? dropSourceName;
@@ -220,13 +255,12 @@ namespace osu.Game.Screens.Edit.HitSounding
                         ShowTooltip = false,
                         Font = OsuFont.Default.With(size: 12),
                     },
-                    glyphText = new OsuSpriteText
+                    slotIcon = new SpriteIcon
                     {
-                        Anchor = Anchor.TopRight,
-                        Origin = Anchor.TopRight,
-                        Position = new Vector2(-6, 1),
-                        Font = OsuFont.Default.With(size: 12),
-                        Colour = colours.Light3,
+                        Anchor = Anchor.CentreRight,
+                        Origin = Anchor.CentreRight,
+                        X = -5,
+                        Size = new Vector2(9),
                     },
                 },
             };
@@ -307,14 +341,12 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private void updateSurface()
         {
-            background.Colour = IsDropTarget ? colours.Dark3 : colours.Background4.Darken(0.1f);
-            surface.BorderThickness = IsDropTarget ? 1 : 0;
-            surface.BorderColour = colours.Highlight1;
+            background.FadeColour(IsDropTarget ? colours.Background1 : colours.Background4.Darken(0.1f), 100, Easing.OutQuint);
         }
 
         private void updateGlyph()
         {
-            glyphText.Text = IsDropTarget ? @"↓" : Filename != null ? @"▶" : @"+";
+            slotIcon.Icon = IsDropTarget ? FontAwesome.Solid.ArrowDown : Filename != null ? FontAwesome.Solid.Play : FontAwesome.Solid.Plus;
             updateGlyphColour();
         }
 
@@ -329,6 +361,6 @@ namespace osu.Game.Screens.Edit.HitSounding
             updateGlyphColour();
         }
 
-        private void updateGlyphColour() => glyphText.Colour = playbackActive ? colours.Highlight1 : colours.Light3;
+        private void updateGlyphColour() => slotIcon.Colour = IsDropTarget || playbackActive ? colours.Highlight1 : colours.Light3;
     }
 }
