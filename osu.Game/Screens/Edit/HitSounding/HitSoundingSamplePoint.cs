@@ -458,8 +458,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             int index = Array.IndexOf(available, Node.SetIndex);
             int steps = (int)Math.CopySign(Math.Max(1, Math.Round(Math.Abs(direction))), direction);
             int next = ((index + steps) % available.Length + available.Length) % available.Length;
-            model.SetBank(model.SelectedNodes.Contains(Node) ? model.SelectedNodes : new[] { Node },
-                Node.GetBank(Lane == HitSoundingLane.Additions), available[next], Lane == HitSoundingLane.Additions);
+            model.SetSetIndex(model.SelectedNodes.Contains(Node) ? model.SelectedNodes : new[] { Node }, available[next]);
         }
 
         private void selectForEdit()

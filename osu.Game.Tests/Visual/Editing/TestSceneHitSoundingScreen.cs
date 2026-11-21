@@ -546,10 +546,9 @@ namespace osu.Game.Tests.Visual.Editing
         public void TestPausedWheelSeekSnapsWithoutSound()
         {
             // deliberately off the beat grid, and outside the times occupied by the setup's hit objects.
-            const double first_off_grid = 4712.5;
-            // far enough from the first point that a single notch only reaches it when forced past the point under the playhead.
-            const double second_off_grid = 5440.5;
-            const double slider_start = 5600.5;
+            const double first_off_grid = 4212.5;
+            const double second_off_grid = 4440.5;
+            const double slider_start = 4700.5;
 
             Slider slider = null!;
             double lastSoundPoint = 0;
@@ -591,6 +590,12 @@ namespace osu.Game.Tests.Visual.Editing
                 return firstPointLoaded && secondPointLoaded && thirdPointLoaded;
             });
 
+            AddStep("seek into a gap", () => EditorClock.Seek(100));
+            AddUntilStep("gap seek settled", () => seekSettled);
+            AddStep("wheel through the gap", () => scrollWheel(-1));
+            AddUntilStep("gap wheel settled", () => seekSettled);
+            AddAssert("does not skip to the next sound point", () => EditorClock.CurrentTime, () => Is.LessThan(500));
+
             AddStep("seek to the last setup sound point", () => EditorClock.Seek(4000));
             AddUntilStep("seek settled", () => seekSettled);
             AddStep("wheel forward once", () => scrollWheel(-1));
@@ -627,12 +632,8 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("seek settled", () => seekSettled);
             AddStep("wheel forward from the slider head", () => scrollWheel(-1));
             AddUntilStep("seek settled", () => seekSettled);
-            AddAssert("landed on a nested slider sample time", () =>
-            {
-                bool withinTolerance(double time) => System.Math.Abs(time - EditorClock.CurrentTime) < 0.5;
-
-                return model.Nodes.Any(n => n.HitObject == slider && n.Time > slider_start + 1 && withinTolerance(n.Time));
-            });
+            AddAssert("advanced without skipping beyond the next slider sample", () =>
+                EditorClock.CurrentTime > slider_start && EditorClock.CurrentTime <= model.Nodes.Where(n => n.HitObject == slider && n.Time > slider_start + 1).Min(n => n.Time) + 0.5);
 
             AddStep("record last sound point", () => lastSoundPoint = model.Nodes.Max(n => n.Time));
             AddStep("seek past the last sound point", () => EditorClock.Seek(lastSoundPoint + 200));
@@ -642,9 +643,34 @@ namespace osu.Game.Tests.Visual.Editing
             AddAssert("does not jump backward", () => EditorClock.CurrentTime, () => Is.GreaterThan(lastSoundPoint + 200));
             AddStep("wheel backward past the last sound point", () => scrollWheel(1));
             AddUntilStep("seek settled", () => seekSettled);
-            AddAssert("returns to the last sound point", () => EditorClock.CurrentTime, () => Is.EqualTo(lastSoundPoint).Within(0.5));
+            AddAssert("wheel reverses through the gap without skipping to the last sound point", () => EditorClock.CurrentTime, () => Is.EqualTo(lastSoundPoint + 200).Within(0.5));
 
             AddAssert("no sample played", () => !Editor.ChildrenOfType<HitSoundingSamplePlayback>().Single().ChildrenOfType<PoolableSkinnableSample>().Any(s => s.Played));
+        }
+
+        [Test]
+        public void TestHorizontalWheelAndMiddleDragMovePlayhead()
+        {
+            AddUntilStep("initial seek settled", () => seekSettled);
+            AddStep("scroll horizontally over the sample lanes", () =>
+            {
+                InputManager.MoveMouseTo(cell(HitSoundingLane.SampleSet));
+                InputManager.ScrollBy(new Vector2(-1, 0));
+            });
+            AddUntilStep("horizontal wheel moves forward", () => seekSettled && EditorClock.CurrentTime > 2000);
+            double afterWheel = 0;
+            AddStep("start middle-button pan over the sample lanes", () =>
+            {
+                afterWheel = EditorClock.CurrentTime;
+                InputManager.PressButton(MouseButton.Middle);
+                InputManager.MoveMouseTo(InputManager.CurrentState.Mouse.Position + new Vector2(30, 0));
+            });
+            AddStep("pan right and release", () =>
+            {
+                InputManager.MoveMouseTo(InputManager.CurrentState.Mouse.Position + new Vector2(100, 0));
+                InputManager.ReleaseButton(MouseButton.Middle);
+            });
+            AddUntilStep("drag moves back along the timeline", () => EditorClock.CurrentTime < afterWheel - 1);
         }
 
         [Test]
@@ -963,6 +989,34 @@ namespace osu.Game.Tests.Visual.Editing
             AddUntilStep("hovered set restored", () => model.Nodes[0].SetIndex == 0);
             AddStep("toggle hovered point with keyboard", () => InputManager.Key(Key.W));
             AddUntilStep("only hovered point gains whistle", () => model.Nodes[0].HasAddition(HitSampleInfo.HIT_WHISTLE) && model.Nodes.Skip(1).All(n => !n.HasAddition(HitSampleInfo.HIT_WHISTLE)));
+        }
+
+        [TestCase(HitSoundingLane.SampleSet)]
+        [TestCase(HitSoundingLane.Additions)]
+        public void TestSelectedSetCyclePreservesEachBank(HitSoundingLane lane)
+        {
+            AddStep("prepare distinct banks and select", () =>
+            {
+                model.SetBank(new[] { model.Nodes[1] }, HitSampleInfo.BANK_DRUM, -1, false);
+                model.SetBank(new[] { model.Nodes[1] }, HitSampleInfo.BANK_SOFT, -1, true);
+                model.SelectedNodes.Clear();
+                model.SelectedNodes.Add(model.Nodes[0]);
+                model.SelectedNodes.Add(model.Nodes[1]);
+            });
+            AddStep("cycle selected sets", () =>
+            {
+                InputManager.MoveMouseTo(cell(lane));
+                InputManager.PressKey(Key.ControlLeft);
+                InputManager.ScrollVerticalBy(1);
+                InputManager.ReleaseKey(Key.ControlLeft);
+            });
+            AddUntilStep("both sets changed", () => model.Nodes.Take(2).All(n => n.SetIndex == 1));
+            AddAssert("independent banks preserved", () => model.Nodes[0].GetBank(false) == HitSampleInfo.BANK_SOFT
+                                                            && model.Nodes[0].GetBank(true) == HitSampleInfo.BANK_DRUM
+                                                            && model.Nodes[1].GetBank(false) == HitSampleInfo.BANK_DRUM
+                                                            && model.Nodes[1].GetBank(true) == HitSampleInfo.BANK_SOFT);
+            AddStep("undo set cycle", () => Editor.Undo());
+            AddUntilStep("sets restored", () => model.Nodes.Take(2).All(n => n.SetIndex == 0));
         }
 
         [TestCase(HitSoundingLane.SampleSet, Key.ShiftLeft)]

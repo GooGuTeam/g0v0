@@ -38,6 +38,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly Dictionary<HitObject, HitSoundingSliderPlaybackFlash[]> sliderFlashes = [];
         private readonly Stack<HitSoundingSamplePoint[]> pointPool = [];
         private readonly Stack<HitSoundingSamplePoint[]> bodyPointPool = [];
+        private readonly Dictionary<HitObject, HitSoundingSamplePoint[]> tails = [];
         private readonly Stack<HitSoundingSliderPlaybackFlash[]> flashPool = [];
         private readonly Stack<HitSoundingObject> objectPool = [];
         private readonly List<Box> columnBoxes = [];
@@ -74,6 +75,11 @@ namespace osu.Game.Screens.Edit.HitSounding
         private HitSoundingPreviewState previewState { get; set; } = null!;
 
         private Vector2? selectionStart;
+        private double selectionStartTime;
+        private Vector2 selectionEnd;
+        private float dragTimeAccumulated;
+        private bool panning;
+        private Vector2? middlePanPosition;
         private double visibleDuration = 6000;
         private double startTime;
         private bool invalid = true;
@@ -100,7 +106,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             get
             {
-                foreach (var (node, nodePoints) in points)
+                foreach (var (node, nodePoints) in points.OrderBy(pair => pair.Key.IsBody))
                 {
                     foreach (var point in nodePoints)
                     {
@@ -120,7 +126,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             var mouse = GetContainingInputManager()!.CurrentState.Mouse.Position;
 
-            foreach (var nodePoints in points.Values)
+            foreach (var nodePoints in points.OrderBy(pair => pair.Key.IsBody).Select(pair => pair.Value))
             {
                 foreach (var point in nodePoints)
                 {
@@ -202,8 +208,8 @@ namespace osu.Game.Screens.Edit.HitSounding
                                     backgrounds = new Container { RelativeSizeAxes = Axes.Both },
                                     timingRuler = new TimelineTickDisplay(fullHeight: true) { RelativeSizeAxes = Axes.Y },
                                     selectedColumns = new Container { RelativeSizeAxes = Axes.Both },
-                                    markers = new Container { RelativeSizeAxes = Axes.Both },
                                     samplePlayhead = createPlayhead(),
+                                    markers = new Container { RelativeSizeAxes = Axes.Both },
                                     selectionBox = new Box { Colour = colours.Highlight1, Alpha = 0 }
                                 }
                             }
@@ -252,7 +258,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             Anchor = Anchor.TopCentre,
             Origin = Anchor.TopCentre,
             Width = 2,
-            Depth = -2,
+            Depth = 0,
             Colour = colours.Highlight1
         };
 
@@ -336,6 +342,14 @@ namespace osu.Game.Screens.Edit.HitSounding
                 laneHeaders[i].Height = backgrounds[i].Height = laneHeight;
             }
 
+            if (middlePanPosition != null && GetContainingInputManager() is { } input)
+            {
+                if (input.CurrentState.Mouse.Buttons.IsPressed(MouseButton.Middle))
+                    panWithMiddleButton(input.CurrentState.Mouse.Position);
+                else
+                    middlePanPosition = null;
+            }
+
             var timeline = timelineArea.Timeline;
             if (!timeline.IsLoaded || timeline.DrawWidth <= 0 || editorClock.TrackLength <= 0)
                 return;
@@ -348,6 +362,23 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             startTime = visibleStart;
             updatePreviewRange();
+            if (selectionStart != null)
+            {
+                float mouseX = selectionEnd.X;
+                float amount = mouseX > lanes.DrawWidth - 40 ? mouseX - (lanes.DrawWidth - 40) : mouseX < 40 ? mouseX - 40 : 0;
+                if (amount == 0)
+                    dragTimeAccumulated = 0;
+                else
+                {
+                    if (editorClock.IsRunning)
+                        editorClock.Stop();
+                    amount = Math.Sign(amount) * Math.Min(10, MathF.Pow(Math.Clamp(Math.Abs(amount), 0, 40), 2));
+                    dragTimeAccumulated += (float)Clock.ElapsedFrameTime;
+                    timeline.ScrollBy(amount * (float)Clock.ElapsedFrameTime * Math.Min(1, dragTimeAccumulated / 5000));
+                }
+
+                updateSelectionBox();
+            }
             float playheadX = (float)((editorClock.CurrentTime - visibleStart) / visibleDuration * lanes.DrawWidth);
             topPlayhead.Anchor = samplePlayhead.Anchor = Anchor.TopLeft;
             topPlayhead.X = samplePlayhead.X = playheadX;
@@ -496,14 +527,22 @@ namespace osu.Game.Screens.Edit.HitSounding
                         flashes[i].Width = nodePoints[i].Width + HitSoundingLayout.SAMPLE_WIDTH;
                     }
 
-                    foreach (var (related, relatedPoints) in points)
-                    {
-                        if (related.HitObject != node.HitObject || related.IsBody || related.Time < nodeEnd)
-                            continue;
+                }
+            }
 
-                        for (int i = 0; i < flashes.Length; i++)
-                            flashes[i].HasTail = relatedPoints[i].IsEnabled && !relatedPoints[i].IsEmpty;
-                    }
+            tails.Clear();
+            foreach (var (node, nodePoints) in points)
+            {
+                if (!node.IsBody && node.Time >= node.HitObject.GetEndTime())
+                    tails[node.HitObject] = nodePoints;
+            }
+
+            foreach (var (hitObject, flashes) in sliderFlashes)
+            {
+                if (tails.TryGetValue(hitObject, out var tailPoints))
+                {
+                    for (int i = 0; i < flashes.Length; i++)
+                        flashes[i].HasTail = tailPoints[i].IsEnabled && !tailPoints[i].IsEmpty;
                 }
             }
 
@@ -736,6 +775,12 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         protected override bool OnMouseDown(MouseDownEvent e)
         {
+            if (e.Button == MouseButton.Middle && (lanes.ReceivePositionalInputAt(e.ScreenSpaceMousePosition) || topLanes.ReceivePositionalInputAt(e.ScreenSpaceMousePosition)))
+            {
+                middlePanPosition = e.ScreenSpaceMousePosition;
+                return true;
+            }
+
             if (e.Button != MouseButton.Right)
                 return false;
 
@@ -784,6 +829,30 @@ namespace osu.Game.Screens.Edit.HitSounding
             return true;
         }
 
+        protected override void OnMouseUp(MouseUpEvent e)
+        {
+            if (e.Button != MouseButton.Middle)
+                return;
+
+            panWithMiddleButton(e.ScreenSpaceMousePosition);
+            middlePanPosition = null;
+        }
+
+        // The framework only emits drag events for the primary mouse button.
+        private void panWithMiddleButton(Vector2 position)
+        {
+            if (middlePanPosition is not Vector2 previous || position.X == previous.X)
+                return;
+
+            var timeline = timelineArea.Timeline;
+            if (editorClock.IsRunning)
+                editorClock.Stop();
+
+            double delta = timeline.TimeAtScreenSpacePosition(previous) - timeline.TimeAtScreenSpacePosition(position);
+            editorClock.Seek(Math.Clamp(editorClock.CurrentTimeAccurate + delta, 0, editorClock.TrackLength));
+            middlePanPosition = position;
+        }
+
         public void CancelSeekPreview() => previewingSeek = false;
 
         protected override bool OnScroll(ScrollEvent e)
@@ -793,6 +862,10 @@ namespace osu.Game.Screens.Edit.HitSounding
                 timelineArea.Timeline.AdjustZoomRelatively(e.ScrollDelta.Y);
                 return true;
             }
+
+            float delta = e.ScrollDelta.X + e.ScrollDelta.Y;
+            if (delta == 0)
+                return false;
 
             // Only scrubbing a playing track previews samples; while paused the wheel just moves the cursor silently.
             if (editorClock.IsRunning)
@@ -804,13 +877,12 @@ namespace osu.Game.Screens.Edit.HitSounding
             else
                 previewingSeek = false;
 
-            editorClock.SeekSmoothlyTo(snappedScrollTarget(e.ScrollDelta.Y));
+            editorClock.SeekSmoothlyTo(snappedScrollTarget(delta));
             return true;
         }
 
         /// <summary>
-        /// Moves by a zoom-proportional distance, then lands on the closest sound point in the direction of travel.
-        /// A notch always advances at least one point. If there is no point ahead, the clamped destination is used.
+        /// Moves by a zoom-proportional distance and snaps to a sound point within that distance, if any.
         /// </summary>
         private double snappedScrollTarget(float scrollDelta)
         {
@@ -826,7 +898,7 @@ namespace osu.Game.Screens.Edit.HitSounding
             foreach (var node in model.Nodes)
             {
                 double time = node.Time;
-                if (time < 0 || time > editorClock.TrackLength || (movingForward ? time <= current : time >= current))
+                if (time < 0 || time > editorClock.TrackLength || (movingForward ? time <= current || time > target : time >= current || time < target))
                     continue;
 
                 double distance = Math.Abs(time - target);
@@ -842,6 +914,13 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         protected override bool OnDragStart(DragStartEvent e)
         {
+            if (e.Button == MouseButton.Left && topLanes.ReceivePositionalInputAt(e.ScreenSpaceMouseDownPosition))
+            {
+                panning = true;
+                editorClock.Stop();
+                return true;
+            }
+
             if (e.Button != MouseButton.Left)
                 return false;
 
@@ -850,6 +929,9 @@ namespace osu.Game.Screens.Edit.HitSounding
                 return false;
 
             selectionStart = position;
+            selectionStartTime = startTime + position.X / lanes.DrawWidth * visibleDuration;
+            selectionEnd = position;
+            dragTimeAccumulated = 0;
             if (!e.ControlPressed)
                 model.SelectedNodes.Clear();
             selectionBox.Position = position;
@@ -860,26 +942,55 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         protected override void OnDrag(DragEvent e)
         {
+            if (panning)
+            {
+                timelineArea.Timeline.ScrollBy(-e.Delta.X);
+                return;
+            }
+
+            if (selectionStart == null)
+                return;
+
+            selectionEnd = lanes.ToLocalSpace(e.ScreenSpaceMousePosition);
+            updateSelectionBox();
+        }
+
+        private void updateSelectionBox()
+        {
             if (selectionStart is not Vector2 start)
                 return;
 
-            Vector2 end = lanes.ToLocalSpace(e.ScreenSpaceMousePosition);
-            selectionBox.Position = Vector2.ComponentMin(start, end);
-            selectionBox.Size = Vector2.ComponentMax(start, end) - selectionBox.Position;
+            start.X = timeToX(selectionStartTime);
+            selectionBox.Position = Vector2.ComponentMin(start, selectionEnd);
+            selectionBox.Size = Vector2.ComponentMax(start, selectionEnd) - selectionBox.Position;
         }
 
         protected override void OnDragEnd(DragEndEvent e)
         {
+            if (panning)
+            {
+                panning = false;
+                return;
+            }
+
             if (selectionStart == null)
                 return;
 
-            foreach (var (node, nodePoints) in points)
+            double endTime = startTime + selectionEnd.X / lanes.DrawWidth * visibleDuration;
+            double minTime = Math.Min(selectionStartTime, endTime);
+            double maxTime = Math.Max(selectionStartTime, endTime);
+            float laneHeight = lanes.DrawHeight / HitSoundingLayout.LANE_COUNT;
+
+            foreach (var node in model.Nodes)
             {
-                if (nodePoints.Any(p =>
-                        (node.IsBody
-                            ? p.X + p.Width / 2 >= selectionBox.X && p.X - p.Width / 2 <= selectionBox.X + selectionBox.Width
-                            : p.X >= selectionBox.X && p.X <= selectionBox.X + selectionBox.Width)
-                        && p.Y >= selectionBox.Y && p.Y <= selectionBox.Y + selectionBox.Height)
+                double nodeStart = node.IsBody ? node.HitObject.StartTime : node.Time;
+                double nodeEnd = node.IsBody ? node.HitObject.GetEndTime() : node.Time;
+                if (nodeEnd >= minTime && nodeStart <= maxTime
+                    && Enumerable.Range(0, HitSoundingLayout.LANE_COUNT).Any(i =>
+                    {
+                        float y = (i + 0.5f) * laneHeight - HitSoundingLayout.LANE_SPACING / 2;
+                        return y >= selectionBox.Y && y <= selectionBox.Y + selectionBox.Height;
+                    })
                     && !model.SelectedNodes.Contains(node))
                     model.SelectedNodes.Add(node);
             }
