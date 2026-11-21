@@ -1333,8 +1333,9 @@ namespace osu.Game
             loadComponentSingleFile(userProfile = new UserProfileOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(beatmapSetOverlay = new BeatmapSetOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(wikiOverlay = new WikiOverlay(), overlayContent.Add, true);
+            var screenshotOverlay = loadComponentSingleFile(new Overlays.Screenshots.ScreenshotOverlay(screenshotManager), overlayContent.Add, true);
             loadComponentSingleFile(skinEditor = new SkinEditorOverlay(ScreenContainer), overlayContent.Add, true);
-            loadComponentSingleFile(new BackgroundEditorOverlay(), overlayContent.Add, true);
+            var backgroundEditor = loadComponentSingleFile(new BackgroundEditorOverlay(), overlayContent.Add, true);
 
             loadComponentSingleFile(loginOverlay = new LoginOverlay
             {
@@ -1389,7 +1390,7 @@ namespace osu.Game
             }
 
             // ensure only one of these overlays are open at once.
-            var singleDisplayOverlays = new OverlayContainer[] { chatOverlay, news, dashboard, beatmapListing, changelogOverlay, rankingsOverlay, wikiOverlay };
+            var singleDisplayOverlays = new OverlayContainer[] { chatOverlay, news, dashboard, beatmapListing, changelogOverlay, rankingsOverlay, wikiOverlay, screenshotOverlay, backgroundEditor };
 
             foreach (var overlay in singleDisplayOverlays)
             {

@@ -15,8 +15,9 @@ namespace osu.Game.Overlays.Toolbar
     /// <remarks>
     /// The identifiers used here are deliberately decoupled from the button types,
     /// so renaming or moving a button implementation will not invalidate user configuration.
-    /// Hidden state stored here only covers buttons hidden by the user directly; buttons hidden
-    /// automatically because there's no room for them are derived at runtime and never persisted.
+    /// Hidden state stored here only covers buttons hidden by the user directly or shown out of
+    /// <see cref="DEFAULT_HIDDEN"/>; buttons hidden automatically because there's no room for them
+    /// are derived at runtime and never persisted.
     /// </remarks>
     public class ToolbarButtonLayout
     {
@@ -27,11 +28,17 @@ namespace osu.Game.Overlays.Toolbar
         public const string BEATMAP_LISTING = @"beatmap_listing";
         public const string CHAT = @"chat";
         public const string SOCIAL = @"social";
+        public const string SCREENSHOTS = @"screenshots";
 
         /// <summary>
         /// Every button which the user is allowed to hide and reorder, in its default order.
         /// </summary>
-        public static readonly string[] DEFAULT_ORDER = [NEWS, CHANGELOG, WIKI, RANKINGS, BEATMAP_LISTING, CHAT, SOCIAL];
+        public static readonly string[] DEFAULT_ORDER = [NEWS, CHANGELOG, WIKI, RANKINGS, BEATMAP_LISTING, CHAT, SOCIAL, SCREENSHOTS];
+
+        /// <summary>
+        /// Buttons which are hidden unless the user has explicitly chosen to show them.
+        /// </summary>
+        public static readonly string[] DEFAULT_HIDDEN = [SCREENSHOTS];
 
         /// <summary>
         /// The width a single one of these buttons occupies in the toolbar.
@@ -49,14 +56,27 @@ namespace osu.Game.Overlays.Toolbar
         /// </summary>
         public HashSet<string> Hidden { get; set; } = new HashSet<string>();
 
-        public bool IsHidden(string id) => Hidden.Contains(id);
+        /// <summary>
+        /// The buttons the user has explicitly chosen to show, out of <see cref="DEFAULT_HIDDEN"/>.
+        /// </summary>
+        public HashSet<string> Shown { get; set; } = new HashSet<string>();
+
+        public bool IsHidden(string id) => Hidden.Contains(id) || (DEFAULT_HIDDEN.Contains(id) && !Shown.Contains(id));
 
         public void SetHidden(string id, bool hidden)
         {
             if (hidden)
+            {
                 Hidden.Add(id);
+                Shown.Remove(id);
+            }
             else
+            {
                 Hidden.Remove(id);
+
+                if (DEFAULT_HIDDEN.Contains(id))
+                    Shown.Add(id);
+            }
         }
 
         /// <summary>
@@ -71,6 +91,7 @@ namespace osu.Game.Overlays.Toolbar
 
             Order = normalisedOrder;
             Hidden.RemoveWhere(id => !DEFAULT_ORDER.Contains(id));
+            Shown.RemoveWhere(id => !DEFAULT_HIDDEN.Contains(id));
         }
 
         public ToolbarButtonLayout Clone()
@@ -81,6 +102,7 @@ namespace osu.Game.Overlays.Toolbar
             {
                 Order = new List<string>(Order),
                 Hidden = new HashSet<string>(Hidden),
+                Shown = new HashSet<string>(Shown),
             };
         }
 
