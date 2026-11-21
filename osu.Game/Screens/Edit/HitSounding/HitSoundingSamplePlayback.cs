@@ -144,6 +144,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
         private bool setPreviewActive;
         private bool setPreviewStarting;
+        private bool setPreviewCommandInProgress;
         private double setPreviewStartTime;
         private double setPreviewEndTime;
 
@@ -338,8 +339,16 @@ namespace osu.Game.Screens.Edit.HitSounding
             localDisabler.Set(false);
 
             // Starting first makes the seek authoritative: Start() rewinds a clock which previously played to the end.
-            editorClock.Start();
-            editorClock.Seek(start);
+            setPreviewCommandInProgress = true;
+            try
+            {
+                editorClock.Start();
+                editorClock.Seek(start);
+            }
+            finally
+            {
+                setPreviewCommandInProgress = false;
+            }
         }
 
         /// <summary>
@@ -412,11 +421,15 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             if (setPreviewActive)
             {
-                if (setPreviewStarting)
+                if (!editorClock.IsRunning)
                 {
-                    // The seek performed by StartSetPreview() is not user navigation and must not end the preview. Keep the
-                    // baseline at the requested start so the first audible frame covers the whole untracked interval.
-                    if (editorClock.SeekingOrStopped.Value || editorClock.IsSeeking)
+                    endSetPreview(stopClock: false, stopSounds: true);
+                }
+                else if (setPreviewStarting)
+                {
+                    // The initial seek is silenced for one clock update. A stopped clock must be handled above, even when the
+                    // seek has not settled and SeekingOrStopped was already true when Stop() was called.
+                    if (editorClock.SeekingOrStopped.Value || editorClock.IsSeeking || current < setPreviewStartTime)
                     {
                         lastPlaybackTime = setPreviewStartTime;
                         previewRequested = false;
@@ -425,10 +438,9 @@ namespace osu.Game.Screens.Edit.HitSounding
                     }
 
                     setPreviewStarting = false;
-
-                    // The audio track can report a position a fraction behind the requested start right after the seek. Taking
-                    // the lower value keeps a node sitting exactly on the start from being skipped by the exclusive interval.
-                    lastPlaybackTime = Math.Min(current, setPreviewStartTime);
+                    // Collect() excludes its start. Use the preceding representable value to include the exact preview boundary
+                    // once, including when the boundary is zero and the clock has not yet advanced.
+                    lastPlaybackTime = Math.BitDecrement(setPreviewStartTime);
                     previewRequested = false;
                     previewActive = false;
                 }
@@ -471,9 +483,14 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             if (elapsed < 0 || elapsed > maximum_continuous_step)
             {
-                // Discontinuity (seek, mode switch, or a stalled frame). Resync rather than firing everything in between.
-                // A bounded preview is not cancelled here: a genuine user seek is reported by the clock callback, and the audio
-                // track settling after the preview's own seek must not end it.
+                // A discontinuity never emits skipped hits. If it passes the bounded end, finish before resyncing loops;
+                // otherwise a later frame could cross backwards from outside the range and play out-of-range nodes.
+                if (setPreviewActive && current >= setPreviewEndTime)
+                {
+                    finishSetPreview();
+                    return;
+                }
+
                 lastPlaybackTime = current;
                 stopLoops();
                 updateLoops(current, reportStarts: false);
@@ -930,11 +947,10 @@ namespace osu.Game.Screens.Edit.HitSounding
                     continue;
                 }
 
-                if (!string.Equals(left.Name, right.Name, StringComparison.Ordinal)
-                    || !string.Equals(left.Bank, right.Bank, StringComparison.Ordinal)
-                    || !string.Equals(left.Suffix, right.Suffix, StringComparison.Ordinal)
+                if (left.GetType() != right.GetType()
                     || left.Volume != right.Volume
-                    || left.UseBeatmapSamples != right.UseBeatmapSamples)
+                    || !left.Equals(right)
+                    || (left is ConvertHitObjectParser.FileHitSampleInfo leftFile && right is ConvertHitObjectParser.FileHitSampleInfo rightFile && leftFile.Filename != rightFile.Filename))
                     return false;
             }
 
@@ -991,7 +1007,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         /// </remarks>
         private void onClockSeekingOrStopped(ValueChangedEvent<bool> state)
         {
-            if (!state.NewValue || !setPreviewActive || setPreviewStarting)
+            if (!state.NewValue || !setPreviewActive || setPreviewCommandInProgress)
                 return;
 
             endSetPreview(stopClock: false, stopSounds: true);

@@ -8,6 +8,7 @@ using osu.Framework.Testing;
 using osu.Game.Audio;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Objects;
+using osu.Game.Rulesets.Objects.Legacy;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Screens.Edit;
@@ -122,6 +123,89 @@ namespace osu.Game.Tests.Visual.Editing
             AddStep("stop playback", () => EditorClock.Stop());
             AddAssert("normal playback restores all five nodes", () => heard.Count == 5 && heard.Distinct().Count() == 5);
             AddStep("detach playback observer", () => playback.NodePlayed -= heard.Add);
+        }
+
+        [TestCase(0)]
+        [TestCase(1000)]
+        public void TestSetPreviewIncludesStartExactlyOnce(double start)
+        {
+            var heard = new List<HitSoundingNode>();
+            HitSoundingNode target = null!;
+
+            AddStep("add hit at preview start", () => EditorBeatmap.Add(new HitCircle
+            {
+                StartTime = start,
+                Samples = [new HitSampleInfo(HitSampleInfo.HIT_NORMAL)],
+            }));
+            AddUntilStep("beatmap settled", () => !EditorBeatmap.UpdateInProgress.Value);
+            AddStep("start preview", () =>
+            {
+                target = Editor.ChildrenOfType<HitSoundingEditModel>().Single().Nodes.Single(n => n.Time == start);
+                playback.NodePlayed += heard.Add;
+                playback.StartSetPreview(0, start, start + 500, new[] { target });
+            });
+            AddUntilStep("preview finished", () => playback.PreviewSetIndex == null && !EditorClock.IsRunning);
+            AddAssert("start heard once", () => heard, () => Is.EqualTo(new[] { target }));
+            AddStep("detach observer", () => playback.NodePlayed -= heard.Add);
+        }
+
+        [Test]
+        public void TestPauseDuringPreviewStartCancelsPreview()
+        {
+            createPlayback();
+            AddUntilStep("beatmap settled", () => !EditorBeatmap.UpdateInProgress.Value);
+            AddStep("start and immediately pause", () =>
+            {
+                var target = Editor.ChildrenOfType<HitSoundingEditModel>().Single().Nodes.Single(n => n.Time == 1000);
+                playback.StartSetPreview(0, 500, 1500, new[] { target });
+                EditorClock.Stop();
+            });
+            AddUntilStep("preview cancelled", () => playback.PreviewSetIndex == null);
+            AddAssert("clock remains paused", () => !EditorClock.IsRunning);
+        }
+
+        [Test]
+        public void TestDiscontinuityBeyondPreviewEndFinishesWithoutHits()
+        {
+            createPlayback();
+            var heard = new List<HitSoundingNode>();
+            double end = 0;
+            AddUntilStep("beatmap settled", () => !EditorBeatmap.UpdateInProgress.Value);
+            AddStep("start preview", () =>
+            {
+                var target = Editor.ChildrenOfType<HitSoundingEditModel>().Single().Nodes.Single(n => n.Time == 1000);
+                playback.NodePlayed += heard.Add;
+                playback.StartSetPreview(0, 0, 2000, new[] { target });
+            });
+            AddUntilStep("preview started", () => EditorClock.IsRunning && EditorClock.CurrentTime > 100);
+            AddStep("simulate stalled frame past end", () =>
+            {
+                end = EditorClock.CurrentTime - 1;
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                typeof(HitSoundingSamplePlayback).GetField("setPreviewEndTime", flags)!.SetValue(playback, end);
+                typeof(HitSoundingSamplePlayback).GetField("lastPlaybackTime", flags)!.SetValue(playback, EditorClock.CurrentTime - 500);
+            });
+            AddUntilStep("preview finished", () => playback.PreviewSetIndex == null && !EditorClock.IsRunning);
+            AddAssert("no skipped hits played", () => heard, () => Is.Empty);
+            AddAssert("playhead stopped at end", () => EditorClock.CurrentTime, () => Is.EqualTo(end).Within(1));
+            AddStep("detach observer", () => playback.NodePlayed -= heard.Add);
+        }
+
+        [Test]
+        public void TestAuditionEqualityDistinguishesFileSamples()
+        {
+            var method = typeof(HitSoundingSamplePlayback).GetMethod("samplesEqual", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+            bool equal(HitSampleInfo left, HitSampleInfo right) => (bool)method.Invoke(null, new object[] { new ISampleInfo[] { left }, new ISampleInfo[] { right } })!;
+
+            var first = new ConvertHitObjectParser.FileHitSampleInfo("first.wav", 100);
+            var same = new ConvertHitObjectParser.FileHitSampleInfo("first.wav", 100);
+            var other = new ConvertHitObjectParser.FileHitSampleInfo("other.wav", 100);
+            var quieter = new ConvertHitObjectParser.FileHitSampleInfo("first.wav", 50);
+
+            Assert.That(equal(first, same), Is.True);
+            Assert.That(equal(first, other), Is.False);
+            Assert.That(equal(first, quieter), Is.False);
+            Assert.That(equal(first, new HitSampleInfo(HitSampleInfo.HIT_NORMAL)), Is.False);
         }
 
         private void createPlayback()
