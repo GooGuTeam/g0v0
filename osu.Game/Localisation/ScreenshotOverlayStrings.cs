@@ -50,11 +50,6 @@ namespace osu.Game.Localisation
         public static LocalisableString UnsupportedDescription => new TranslatableString(getKey(@"unsupported_description"), @"The current server does not support managing screenshots.");
 
         /// <summary>
-        /// "Views: {0}"
-        /// </summary>
-        public static LocalisableString Views(int count) => new TranslatableString(getKey(@"views"), @"Views: {0}", count);
-
-        /// <summary>
         /// "Delete this screenshot? Existing links will stop working."
         /// </summary>
         public static LocalisableString DeleteConfirmation => new TranslatableString(getKey(@"delete_confirmation"), @"Delete this screenshot? Existing links will stop working.");
