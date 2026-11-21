@@ -18,6 +18,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Events;
 using osu.Framework.IO.Network;
+using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
@@ -43,8 +44,12 @@ using osuTK;
 
 namespace osu.Game.Screens.Menu
 {
-    public partial class BackgroundEditorOverlay : OsuFocusedOverlayContainer
+    public partial class BackgroundEditorOverlay : OsuFocusedOverlayContainer, INamedOverlayComponent
     {
+        public IconUsage Icon => FontAwesome.Solid.Image;
+        public LocalisableString Title => UserInterfaceStrings.BackgroundEditor;
+        public LocalisableString Description => UserInterfaceStrings.BackgroundEditor;
+
         private const float header_height = 40;
         private const double carousel_interval = 3000;
 
@@ -150,8 +155,17 @@ namespace osu.Game.Screens.Menu
             AutoSizeAxes = Axes.Y;
             Anchor = Anchor.BottomCentre;
             Origin = Anchor.BottomCentre;
+            Masking = true;
 
             State.Value = Visibility.Hidden;
+
+            const float corner_radius = 7f;
+
+            CornerRadius = corner_radius;
+
+            // Hack to hide the bottom edge corner radius off-screen.
+            Margin = new MarginPadding { Bottom = -corner_radius };
+            Padding = new MarginPadding { Bottom = corner_radius };
 
             InternalChildren = new Drawable[]
             {
@@ -159,9 +173,6 @@ namespace osu.Game.Screens.Menu
                 {
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
-                    Masking = true,
-                    CornerRadius = 10,
-                    CornerExponent = 2.5f,
                     Children = new Drawable[]
                     {
                         new Box
