@@ -33,6 +33,13 @@ namespace osu.Game.Overlays.Screenshots
         /// </summary>
         private float laidOutWidth;
 
+        /// <summary>
+        /// The size the tiles were last laid out at, used for tiles added after that layout. The layout pass only
+        /// runs when the available width changes, so a page appended to an already-laid-out display would otherwise
+        /// keep <see cref="ScreenshotGridTile.DEFAULT_SIZE"/> until the display is resized.
+        /// </summary>
+        private Vector2 tileSize = ScreenshotGridTile.DEFAULT_SIZE;
+
         public ScreenshotDisplay(Action<APIScreenshotInfo> onDeleteRequested)
         {
             this.onDeleteRequested = onDeleteRequested;
@@ -60,9 +67,9 @@ namespace osu.Game.Overlays.Screenshots
             {
                 screenshots.Add(item);
 
-                // the size is replaced on the next layout pass, but a sane default is used up front so that
-                // nothing is ever laid out at zero size.
-                flow.Add(new ScreenshotGridTile(item, onDeleteRequested) { Size = ScreenshotGridTile.DEFAULT_SIZE });
+                // a page appended to the display is laid out at the size the existing tiles use, as the layout pass
+                // skips while the available width is unchanged.
+                flow.Add(new ScreenshotGridTile(item, onDeleteRequested) { Size = tileSize });
             }
         }
 
@@ -99,7 +106,7 @@ namespace osu.Game.Overlays.Screenshots
             laidOutWidth = width;
 
             float tileWidth = (width - spacing * (columns - 1)) / columns;
-            var tileSize = new Vector2(tileWidth, tileWidth * tile_aspect_ratio);
+            tileSize = new Vector2(tileWidth, tileWidth * tile_aspect_ratio);
 
             foreach (var tile in flow)
                 tile.Size = tileSize;

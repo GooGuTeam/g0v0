@@ -31,7 +31,6 @@ namespace osu.Game.Overlays.Screenshots
 
         private readonly Container listContainer;
         private readonly ShowMoreButton showMore;
-        private readonly IconButton refreshButton;
 
         private readonly ScreenshotManager? screenshotManager;
 
@@ -77,6 +76,7 @@ namespace osu.Game.Overlays.Screenshots
                 RelativeSizeAxes = Axes.X,
                 AutoSizeAxes = Axes.Y,
                 Direction = FillDirection.Vertical,
+                Spacing = new Vector2(8),
                 Padding = new MarginPadding
                 {
                     Vertical = 20,
@@ -85,39 +85,12 @@ namespace osu.Game.Overlays.Screenshots
                 },
                 Children = new Drawable[]
                 {
-                    new GridContainer
+                    new SettingsNote
                     {
                         RelativeSizeAxes = Axes.X,
-                        AutoSizeAxes = Axes.Y,
-                        Margin = new MarginPadding { Bottom = 8 },
-                        ColumnDimensions =
-                        [
-                            new Dimension(),
-                            new Dimension(GridSizeMode.AutoSize),
-                        ],
-                        RowDimensions = [new Dimension(GridSizeMode.AutoSize)],
-                        Content = new[]
+                        Current =
                         {
-                            new Drawable[]
-                            {
-                                new SettingsNote
-                                {
-                                    RelativeSizeAxes = Axes.X,
-                                    Current =
-                                    {
-                                        Value = new SettingsNote.Data(ScreenshotOverlayStrings.RetentionNote, SettingsNote.Type.Informational),
-                                    },
-                                },
-                                refreshButton = new IconButton
-                                {
-                                    Anchor = Anchor.CentreRight,
-                                    Origin = Anchor.CentreRight,
-                                    Margin = new MarginPadding { Left = 8 },
-                                    Icon = FontAwesome.Solid.Sync,
-                                    TooltipText = ScreenshotOverlayStrings.Refresh,
-                                    Action = refresh,
-                                },
-                            },
+                            Value = new SettingsNote.Data(ScreenshotOverlayStrings.RetentionNote, SettingsNote.Type.Informational),
                         },
                     },
                     listContainer = new Container
@@ -146,13 +119,41 @@ namespace osu.Game.Overlays.Screenshots
                 screenshotManager.ScreenshotUploaded += InvalidateListing;
 
             apiState.BindTo(API.State);
-            apiState.BindValueChanged(_ =>
+            apiState.BindValueChanged(state => Schedule(() =>
             {
-                if (!API.IsLoggedIn || State.Value != Visibility.Visible || unsupported || display != null)
+                if (state.NewValue != APIState.Online)
+                {
+                    // reset listing here to prevent outdated or invalid data from being reused.
+                    resetListing();
+                    return;
+                }
+
+                if (State.Value != Visibility.Visible || unsupported || display != null)
                     return;
 
                 loadInitialIfRequired();
-            });
+            }));
+        }
+
+        /// <summary>
+        /// Drops everything which was fetched for the previous session.
+        /// </summary>
+        private void resetListing()
+        {
+            request?.Cancel();
+            request = null;
+            cancellationToken?.Cancel();
+
+            display = null;
+            listContainer.Clear();
+            Loading.Hide();
+
+            listingLoaded = false;
+            listingStale = true;
+
+            totalCount = 0;
+            showMore.IsLoading = false;
+            updateShowMoreVisibility();
         }
 
         /// <summary>
@@ -186,15 +187,6 @@ namespace osu.Game.Overlays.Screenshots
             // the listing is kept as-is across closing and reopening - including the position the user had scrolled
             // to - so it is only fetched when there is nothing to show yet, or when it went stale in the meantime.
             if (listingLoaded && !listingStale)
-                return;
-
-            listingStale = false;
-            loadInitial();
-        }
-
-        private void refresh()
-        {
-            if (!API.IsLoggedIn || unsupported)
                 return;
 
             listingStale = false;
@@ -278,8 +270,6 @@ namespace osu.Game.Overlays.Screenshots
                     // assume the current server does not implement the private screenshot endpoints at all
                     // and avoid retrying until the client is restarted (which is required to switch servers anyway).
                     unsupported = true;
-                    refreshButton.Enabled.Value = false;
-                    refreshButton.FadeTo(0.3f, 200, Easing.OutQuint);
                     loadPlaceholder(new OnlineErrorPlaceholder(ScreenshotOverlayStrings.UnsupportedTitle, ScreenshotOverlayStrings.UnsupportedDescription));
                     return;
                 }
@@ -301,10 +291,13 @@ namespace osu.Game.Overlays.Screenshots
             var deleteRequest = new DeleteScreenshotRequest(screenshot.Id);
             deleteRequest.Success += () => Schedule(() =>
             {
-                totalCount = Math.Max(0, totalCount - 1);
+                // the listing may have been replaced while the deletion was in flight, in which case the screenshot
+                // is no longer part of what is shown and neither the count nor the empty state may be touched.
+                if (display == null || !display.RemoveScreenshot(screenshot))
+                    return;
 
-                if (display != null && display.RemoveScreenshot(screenshot))
-                    notifications?.Post(new SimpleNotification { Text = ScreenshotOverlayStrings.Deleted });
+                totalCount = Math.Max(0, totalCount - 1);
+                notifications?.Post(new SimpleNotification { Text = ScreenshotOverlayStrings.Deleted });
 
                 updateShowMoreVisibility();
 
@@ -344,18 +337,19 @@ namespace osu.Game.Overlays.Screenshots
                 display = null;
                 listContainer.Child = loaded;
                 Loading.Hide();
+                updateShowMoreVisibility();
             }, (cancellationToken = new CancellationTokenSource()).Token);
         }
 
         private static Drawable createEmptyState() => new ScreenshotEmptyState();
 
-        private void updateShowMoreVisibility() =>
-            showMore.Alpha = display != null && display.Count < totalCount ? 1 : 0;
+        private void updateShowMoreVisibility() => showMore.Alpha = display != null && display.Count < totalCount ? 1 : 0;
 
         private void beginLoading(bool showLoadingOverlay)
         {
             request?.Cancel();
             cancellationToken?.Cancel();
+            showMore.IsLoading = false;
 
             if (showLoadingOverlay)
                 Loading.Show();

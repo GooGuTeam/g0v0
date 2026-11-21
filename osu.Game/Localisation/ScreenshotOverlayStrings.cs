@@ -25,11 +25,6 @@ namespace osu.Game.Localisation
         public static LocalisableString RetentionNote => new TranslatableString(getKey(@"retention_note"), @"Screenshots which have not been accessed for a while are periodically removed from the server.");
 
         /// <summary>
-        /// "Refresh"
-        /// </summary>
-        public static LocalisableString Refresh => new TranslatableString(getKey(@"refresh"), @"Refresh");
-
-        /// <summary>
         /// "No screenshots yet"
         /// </summary>
         public static LocalisableString EmptyTitle => new TranslatableString(getKey(@"empty_title"), @"No screenshots yet");
