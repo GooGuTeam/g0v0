@@ -105,6 +105,7 @@ namespace osu.Game.Tests.Visual.Menus
         [Test]
         public void TestHidingButtonCollapsesIt()
         {
+            showDefaultHiddenButtons();
             AddStep("hide news button", () => toolbar.SetHidden(ToolbarButtonLayout.NEWS, true));
 
             // the button shrinks into nothing rather than disappearing outright. this is sampled on the step
@@ -156,6 +157,7 @@ namespace osu.Game.Tests.Visual.Menus
         [Test]
         public void TestOverflowPopoverListsHiddenIcons()
         {
+            showDefaultHiddenButtons();
             AddStep("install overlays", installStubOverlays);
             AddStep("hide wiki button", () => toolbar.SetHidden(ToolbarButtonLayout.WIKI, true));
             AddUntilStep("wiki button collapsed", () => button(ToolbarButtonLayout.WIKI).Collapsed);
@@ -203,6 +205,7 @@ namespace osu.Game.Tests.Visual.Menus
         [Test]
         public void TestConfiguredOrderIsApplied()
         {
+            showDefaultHiddenButtons();
             AddStep("move social button to the front", () =>
             {
                 ToolbarButtonLayout layout = ToolbarButtonLayout.CreateDefault();
@@ -360,6 +363,7 @@ namespace osu.Game.Tests.Visual.Menus
         [Test]
         public void TestAutoHideWhenSpaceIsLimited()
         {
+            showDefaultHiddenButtons();
             AddStep("fix toolbar width", () =>
             {
                 toolbar.RelativeSizeAxes = Axes.None;
@@ -423,8 +427,45 @@ namespace osu.Game.Tests.Visual.Menus
             AddStep("write malformed configuration", () => config.SetValue(OsuSetting.ToolbarButtons, @"{{{"));
             // the lookup is read directly here rather than through the helper, as this is the one place where the
             // toolbar still being able to hand out its buttons is the thing being asserted, rather than assumed.
-            AddUntilStep("toolbar still usable", () => toolbar.GetButton(ToolbarButtonLayout.NEWS) != null && !toolbar.HiddenButtonIds.Any());
+            // the screenshots button is excluded, as it is hidden by default and malformed configuration
+            // deliberately resets to that default.
+            AddUntilStep("toolbar still usable", () => toolbar.GetButton(ToolbarButtonLayout.NEWS) != null
+                                                        && !toolbar.HiddenButtonIds.Except(new[] { ToolbarButtonLayout.SCREENSHOTS }).Any());
         }
+
+        [Test]
+        public void TestDefaultHiddenButtonStartsHidden()
+        {
+            AddAssert("screenshots button hidden by default", () => button(ToolbarButtonLayout.SCREENSHOTS).Collapsed);
+            AddAssert("only the screenshots button reported hidden", () => toolbar.HiddenButtonIds,
+                () => Is.EqualTo(new[] { ToolbarButtonLayout.SCREENSHOTS }));
+            AddAssert("overflow button shown", () => !overflowButton().Collapsed);
+
+            AddStep("show screenshots button", () => toolbar.SetHidden(ToolbarButtonLayout.SCREENSHOTS, false));
+
+            AddUntilStep("screenshots button shown", () => !button(ToolbarButtonLayout.SCREENSHOTS).Collapsed);
+            AddAssert("shown state persisted without hiding anything", () =>
+            {
+                ToolbarButtonLayout layout = ToolbarButtonLayout.Parse(config.Get<string>(OsuSetting.ToolbarButtons));
+
+                return !layout.IsHidden(ToolbarButtonLayout.SCREENSHOTS)
+                       && layout.Hidden.Count == 0
+                       && layout.Shown.Count == 1;
+            });
+
+            AddStep("hide screenshots button again", () => toolbar.SetHidden(ToolbarButtonLayout.SCREENSHOTS, true));
+
+            AddUntilStep("screenshots button hidden again", () => button(ToolbarButtonLayout.SCREENSHOTS).Collapsed);
+            AddAssert("hidden state persisted", () =>
+                ToolbarButtonLayout.Parse(config.Get<string>(OsuSetting.ToolbarButtons)).IsHidden(ToolbarButtonLayout.SCREENSHOTS));
+        }
+
+        /// <summary>
+        /// Shows the buttons which are hidden out of the box, so that tests written before they existed
+        /// keep operating on a fully-visible toolbar.
+        /// </summary>
+        private void showDefaultHiddenButtons()
+            => AddStep("show default-hidden buttons", () => toolbar.SetHidden(ToolbarButtonLayout.SCREENSHOTS, false));
 
         /// <summary>
         /// The toolbar's button for the given identifier. Every identifier in the layout is backed by a button once
