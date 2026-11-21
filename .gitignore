@@ -350,3 +350,6 @@ FodyWeavers.xsd
 
 # Figwright files
 .figwright/
+
+# AI IDEs
+.workbuddy/
