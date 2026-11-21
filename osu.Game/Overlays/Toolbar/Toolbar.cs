@@ -149,6 +149,7 @@ namespace osu.Game.Overlays.Toolbar
                 new ToolbarBeatmapListingButton { ID = ToolbarButtonLayout.BEATMAP_LISTING },
                 new ToolbarChatButton { ID = ToolbarButtonLayout.CHAT },
                 new ToolbarSocialButton { ID = ToolbarButtonLayout.SOCIAL },
+                new ToolbarScreenshotButton { ID = ToolbarButtonLayout.SCREENSHOTS },
             };
 
             foreach (ToolbarButton button in candidates)
@@ -396,7 +397,7 @@ namespace osu.Game.Overlays.Toolbar
 
         private MenuItem[] createContextMenuItems(string id)
         {
-            bool userHidden = layout.Hidden.Contains(id);
+            bool userHidden = layout.IsHidden(id);
 
             return new MenuItem[]
             {
@@ -450,7 +451,7 @@ namespace osu.Game.Overlays.Toolbar
 
             float permanentWidth = permanentRightButtons.Sum(button => button.DrawWidth);
 
-            int userHiddenCount = layout.Hidden.Count;
+            int userHiddenCount = layout.Order.Count(layout.IsHidden);
 
             // skip until layout has settled, otherwise everything could be hidden for a frame on startup.
             if (width <= 0 || rulesetWidth <= 0)
@@ -476,11 +477,11 @@ namespace osu.Game.Overlays.Toolbar
             if (autoHideConfig != null && autoHideConfig.Value)
             {
                 // only buttons the user did not hide themselves can be taken away, starting from the left.
-                List<string> visible = layout.Order.Where(id => !layout.Hidden.Contains(id)).ToList();
+                List<string> visible = layout.Order.Where(id => !layout.IsHidden(id)).ToList();
 
                 for (int hideCount = 0; hideCount <= visible.Count; hideCount++)
                 {
-                    if (requiredWidth(leftWidth, rulesetWidth, permanentWidth, visible.Count - hideCount, layout.Hidden.Count + hideCount) <= width)
+                    if (requiredWidth(leftWidth, rulesetWidth, permanentWidth, visible.Count - hideCount, layout.Order.Count - visible.Count + hideCount) <= width)
                     {
                         autoHidden.AddRange(visible.Take(hideCount));
                         break;
@@ -519,7 +520,7 @@ namespace osu.Game.Overlays.Toolbar
                 button.Collapsed = isEffectivelyHidden(button.ID);
 
             // the overflow button is only useful while at least one button is hidden.
-            overflowButton.Collapsed = layout.Hidden.Count + autoHidden.Count == 0;
+            overflowButton.Collapsed = layout.Order.Count(layout.IsHidden) + autoHidden.Count == 0;
         }
 
         private bool isEffectivelyHidden(string id)
@@ -527,7 +528,7 @@ namespace osu.Game.Overlays.Toolbar
             if (temporarilyRevealed.Contains(id))
                 return false;
 
-            return layout.Hidden.Contains(id) || autoHidden.Contains(id);
+            return layout.IsHidden(id) || autoHidden.Contains(id);
         }
 
         private void overlayStateChanged(string id, ValueChangedEvent<Visibility> state)
