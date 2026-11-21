@@ -42,6 +42,11 @@ namespace osu.Game.Graphics
         /// </summary>
         public IBindable<bool> CursorVisibility => cursorVisibility;
 
+        /// <summary>
+        /// Fired after a screenshot has been successfully uploaded to the server.
+        /// </summary>
+        public event Action? ScreenshotUploaded;
+
         [Resolved]
         private GameHost host { get; set; } = null!;
 
@@ -156,6 +161,8 @@ namespace osu.Game.Graphics
 
                 notification.Progress = 1;
                 notification.State = ProgressNotificationState.Completed;
+
+                ScreenshotUploaded?.Invoke();
             };
             uploadRequest.Failure += e =>
             {
