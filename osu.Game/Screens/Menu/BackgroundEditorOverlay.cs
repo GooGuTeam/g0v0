@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
@@ -53,8 +54,8 @@ namespace osu.Game.Screens.Menu
         private const string bundled_texture_namespace = @"Textures";
 
         private readonly FillFlowContainer optionsFlow;
-        private readonly FormEnumDropdown<BackgroundSource> sourceDropdown;
-        private readonly FormEnumDropdown<SeasonalBackgroundMode> seasonalDropdown;
+        private readonly FormToggleGroup<BackgroundSource> sourceGroup;
+        private readonly FormToggleGroup<SeasonalBackgroundMode> seasonalGroup;
 
         /// <summary>
         /// Disabled while an export is being written, which is what keeps a second export from being started.
@@ -218,15 +219,25 @@ namespace osu.Game.Screens.Menu
                                                     Padding = new MarginPadding { Left = 8 },
                                                     Children = new Drawable[]
                                                     {
-                                                        sourceDropdown = new FormEnumDropdown<BackgroundSource>
+                                                        sourceGroup = new FormToggleGroup<BackgroundSource>
                                                         {
                                                             Caption = UserInterfaceStrings.BackgroundSource,
-                                                            RelativeSizeAxes = Axes.X,
+                                                            Items = new[]
+                                                            {
+                                                                createOption(BackgroundSource.Skin, FontAwesome.Solid.PaintBrush),
+                                                                createOption(BackgroundSource.Beatmap, FontAwesome.Solid.Music),
+                                                                createOption(BackgroundSource.BeatmapWithStoryboard, FontAwesome.Solid.Film),
+                                                            },
                                                         },
-                                                        seasonalDropdown = new FormEnumDropdown<SeasonalBackgroundMode>
+                                                        seasonalGroup = new FormToggleGroup<SeasonalBackgroundMode>
                                                         {
                                                             Caption = UserInterfaceStrings.SeasonalBackgrounds,
-                                                            RelativeSizeAxes = Axes.X,
+                                                            Items = new[]
+                                                            {
+                                                                createOption(SeasonalBackgroundMode.Always, FontAwesome.Solid.CalendarAlt),
+                                                                createOption(SeasonalBackgroundMode.Sometimes, FontAwesome.Solid.CalendarDay),
+                                                                createOption(SeasonalBackgroundMode.Never, FontAwesome.Solid.CalendarTimes),
+                                                            },
                                                         },
                                                     },
                                                 },
@@ -316,6 +327,17 @@ namespace osu.Game.Screens.Menu
             },
         };
 
+        /// <summary>
+        /// Creates an option which is presented as an icon alone, so that the text it stands for is only
+        /// shown in its tooltip.
+        /// </summary>
+        private static FormToggleGroupItem<T> createOption<T>(T value, IconUsage icon) => new FormToggleGroupItem<T>
+        {
+            Value = value,
+            Icon = icon,
+            TooltipText = value.GetLocalisableDescription(),
+        };
+
         [BackgroundDependencyLoader]
         private void load()
         {
@@ -327,10 +349,10 @@ namespace osu.Game.Screens.Menu
 
             exportStorage = (storage as OsuStorage)?.GetExportStorage() ?? storage.GetStorageForDirectory(@"exports");
 
-            // these dropdowns are the same as those in the settings sidebar; keep the same bindables
+            // these groups are the same as the dropdowns in the settings sidebar; keep the same bindables
             // so changes apply live and are visible in both places.
-            sourceDropdown.Current = source;
-            seasonalDropdown.Current = seasonalMode;
+            sourceGroup.Current = source;
+            seasonalGroup.Current = seasonalMode;
         }
 
         protected override void LoadComplete()
