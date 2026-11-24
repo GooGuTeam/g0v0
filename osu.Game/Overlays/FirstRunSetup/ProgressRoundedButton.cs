@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -92,6 +92,20 @@ namespace osu.Game.Overlays.FirstRunSetup
             loading.Hide();
             Enabled.Value = true;
             this.TransformBindableTo(progressBar.Current, 0, 500, Easing.OutQuint);
+        }
+
+        /// <summary>
+        /// Returns the button to its initial appearance.
+        /// </summary>
+        /// <remarks>The interaction state (i.e. <c>Enabled</c>) is left to the caller.</remarks>
+        public void Reset()
+        {
+            loading.Hide();
+            tick.Hide();
+
+            this.TransformTo(nameof(BackgroundColour), DefaultBackgroundColour, 300, Easing.OutQuint);
+            progressBar.FillColour = DefaultBackgroundColour;
+            this.TransformBindableTo(progressBar.Current, 0, 300, Easing.OutQuint);
         }
 
         public void SetProgress(double progress, bool animated)
