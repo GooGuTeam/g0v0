@@ -20,6 +20,7 @@ using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.IO;
 using osu.Game.Localisation;
 using osu.Game.Online.Chat;
 using osu.Game.Overlays.Settings;
@@ -49,7 +50,56 @@ namespace osu.Game.Overlays.FirstRunSetup
 
         private LinkFlowContainer copyInformation = null!;
 
+        private SourceTabControl sourceTabControl = null!;
+
         private IEnumerable<ImportCheckbox> contentCheckboxes => Content.Children.OfType<ImportCheckbox>();
+
+        /// <summary>
+        /// The sources content has already been imported from.
+        /// </summary>
+        private readonly HashSet<ImportSource> importedSources = new HashSet<ImportSource>();
+
+        /// <summary>
+        /// The source an import is currently running for, if any. No other import can be started while this is set.
+        /// </summary>
+        private ImportSource? importingSource;
+
+        private ImportButtonState buttonState;
+
+        /// <summary>
+        /// The installation whose readability has already been determined.
+        /// </summary>
+        /// <remarks>
+        /// Checking may involve copying the whole database of the installation, so each one is only ever checked once.
+        /// </remarks>
+        private LazerStorage? readabilityCheckedStorage;
+
+        /// <summary>
+        /// Whether <see cref="readabilityCheckedStorage"/> could be read.
+        /// </summary>
+        private bool readabilityCheckPassed = true;
+
+        /// <summary>
+        /// Whether the data of the currently selected source can be read.
+        /// </summary>
+        /// <remarks>
+        /// Installations of other clients are only known to be unreadable once that has been attempted, so they are assumed
+        /// to be readable while the check is still running.
+        /// </remarks>
+        private bool sourceReadable
+        {
+            get
+            {
+                // Stable data is read from files directly, so it cannot be unreadable in this sense.
+                if (source.Value != ImportSource.Lazer)
+                    return true;
+
+                LazerStorage? storage = legacyImportManager.GetCurrentLazerStorage();
+
+                // A newly selected installation has not been checked yet, and is therefore not ruled out.
+                return storage == null || !ReferenceEquals(storage, readabilityCheckedStorage) || readabilityCheckPassed;
+            }
+        }
 
         [BackgroundDependencyLoader(permitNulls: true)]
         private void load()
@@ -62,7 +112,7 @@ namespace osu.Game.Overlays.FirstRunSetup
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y
                 },
-                new OverlaySortTabControl<ImportSource>
+                sourceTabControl = new SourceTabControl
                 {
                     Title = ScreenImportStrings.SourceLabel,
                     Current = source
@@ -97,48 +147,108 @@ namespace osu.Game.Overlays.FirstRunSetup
             };
 
             locatorTextBox.Current.BindValueChanged(_ => updateSourcePath());
-            source.BindValueChanged(_ => onSourceChanged(), true);
+            source.BindValueChanged(onSourceChanged, true);
         }
 
         [Resolved(canBeNull: true)]
         private OsuGame? game { get; set; }
 
-        private void onSourceChanged()
+        private void onSourceChanged(ValueChangedEvent<ImportSource> e)
         {
-            description.Text = source.Value == ImportSource.Stable
+            description.Text = e.NewValue == ImportSource.Stable
                 ? FirstRunOverlayImportFromStableScreenStrings.Description
                 : ScreenImportStrings.LazerDescription;
 
             updateSourcePath();
         }
 
-        private void updateSourcePath()
+        private void updateSourcePath(bool updateCounts = true)
         {
             bool available = !string.IsNullOrEmpty(legacyImportManager.GetCurrentStoragePath(source.Value));
+            bool imported = importedSources.Contains(source.Value);
+            bool importing = importingSource != null;
+
+            // Pin the current source tab when an import is in progress.
+            sourceTabControl.Current.Disabled = importing;
+
+            // The directory can still be changed when nothing is selected yet, but not once content came from there.
+            locatorTextBox.Current.Disabled = importing || imported;
 
             if (!available)
             {
-                toggleInteraction(false);
-                locatorTextBox.Current.Disabled = false;
                 copyInformation.Text = string.Empty;
 
                 foreach (var c in contentCheckboxes)
+                {
+                    c.Current.Disabled = true;
                     c.ResetCount();
-
-                return;
+                }
             }
-
-            foreach (var c in contentCheckboxes)
+            else
             {
-                c.Current.Disabled = false;
-                c.UpdateCount();
+                foreach (var c in contentCheckboxes)
+                {
+                    c.Current.Disabled = importing || imported;
+
+                    if (updateCounts)
+                        c.UpdateCount();
+                }
+
+                // Describes the currently selected source, so it has to follow the selection even while an import runs.
+                if (sourceReadable)
+                    updateCopyInformation();
+                else
+                    copyInformation.Text = ScreenImportStrings.DatabaseUnreadable;
+
+                if (!importing && !imported)
+                    verifySourceReadable();
             }
 
-            toggleInteraction(true);
-            importButton.Enabled.Value = true;
+            updateImportButton();
+        }
 
-            updateCopyInformation();
-            verifySourceReadable();
+        /// <summary>
+        /// Applies the state belonging to the source which is currently selected.
+        /// </summary>
+        private void updateImportButton()
+        {
+            bool available = !string.IsNullOrEmpty(legacyImportManager.GetCurrentStoragePath(source.Value));
+            bool imported = importedSources.Contains(source.Value);
+
+            if (imported)
+                setButtonState(ImportButtonState.Completed);
+            else if (importingSource != null)
+                setButtonState(ImportButtonState.Running);
+            else
+                setButtonState(ImportButtonState.Idle);
+
+            // Everything which may keep the button from being usable is derived here, so that no caller can leave it
+            // in a state which contradicts the rest of the screen.
+            importButton.Enabled.Value = available && sourceReadable && !imported && importingSource == null;
+        }
+
+        private void setButtonState(ImportButtonState state)
+        {
+            // Skip when unchanged, as re-applying a state would restart its animations.
+            if (buttonState == state)
+                return;
+
+            buttonState = state;
+
+            switch (state)
+            {
+                case ImportButtonState.Idle:
+                    importButton.Reset();
+                    break;
+
+                case ImportButtonState.Completed:
+                    importButton.Complete();
+                    break;
+
+                case ImportButtonState.Running:
+                    // The button puts itself into this state when pressed.
+                    break;
+            }
         }
 
         private void updateCopyInformation()
@@ -181,20 +291,46 @@ namespace osu.Game.Overlays.FirstRunSetup
             if (!legacyImportManager.SupportsImportFromLazer || source.Value != ImportSource.Lazer)
                 return;
 
+            // Identifies the installation the check is about: the cached storage is replaced as soon as another one is
+            // selected, so comparing it afterwards tells whether the result still belongs to the selection on screen.
+            LazerStorage? checkedStorage = legacyImportManager.GetCurrentLazerStorage();
+
+            // An installation may need to be copied before it can be read, so it is only ever checked once.
+            if (checkedStorage == null || ReferenceEquals(checkedStorage, readabilityCheckedStorage))
+                return;
+
             legacyImportManager.CheckSourceReadableAsync(ImportSource.Lazer).ContinueWith(t => Schedule(() =>
             {
-                // The user may have switched away from the source while the check was running.
-                if (source.Value != ImportSource.Lazer || t.GetResultSafely())
+                bool readable = t.GetResultSafely();
+
+                // The installation may have been changed for a different one of the same source kind.
+                if (!ReferenceEquals(checkedStorage, legacyImportManager.GetCurrentLazerStorage()))
                     return;
 
-                copyInformation.Text = ScreenImportStrings.DatabaseUnreadable;
-                importButton.Enabled.Value = false;
+                // The result describes the installation rather than the selection, so it is kept even if the user switched
+                // away from it in the meantime. This also saves checking it again when they switch back.
+                readabilityCheckedStorage = checkedStorage;
+                readabilityCheckPassed = readable;
+
+                // The user may have switched away from the source, or already imported from it, in which case there is nothing
+                // left to explain about a database they cannot use.
+                if (readable || source.Value != ImportSource.Lazer || importedSources.Contains(ImportSource.Lazer))
+                    return;
+
+                // Re-derives both the button and the explanation from the readability which just became known.
+                updateSourcePath(false);
             }));
         }
 
         private void runImport()
         {
-            toggleInteraction(false);
+            ImportSource importSource = source.Value;
+
+            importingSource = importSource;
+
+            // Derive the locked interaction state from the import running, rather than disabling widgets by hand.
+            updateSourcePath(false);
+
             progressText.FadeIn(1000, Easing.OutQuint);
 
             ImportContent importableContent = 0;
@@ -202,26 +338,26 @@ namespace osu.Game.Overlays.FirstRunSetup
             foreach (var c in contentCheckboxes.Where(c => c.Current.Value))
                 importableContent |= c.ImportContent;
 
-            legacyImportManager.ImportAsync(source.Value, importableContent, false).ContinueWith(t => Schedule(() =>
+            legacyImportManager.ImportAsync(importSource, importableContent, false).ContinueWith(t => Schedule(() =>
             {
+                importingSource = null;
+
                 progressText.FadeOut(500, Easing.OutQuint);
 
                 if (t.IsCompletedSuccessfully)
-                    importButton.Complete();
-                else
-                {
-                    toggleInteraction(true);
-                    importButton.Abort();
-                }
+                    importedSources.Add(importSource);
+
+                // Re-derives the state of whichever source is selected now. The imported source keeps its completed state
+                // for when the user switches back to it.
+                updateSourcePath();
             }));
         }
 
-        private void toggleInteraction(bool allow)
+        private enum ImportButtonState
         {
-            importButton.Enabled.Value = allow;
-            locatorTextBox.Current.Disabled = !allow;
-            foreach (var c in contentCheckboxes)
-                c.Current.Disabled = !allow;
+            Idle,
+            Running,
+            Completed
         }
 
         public override void OnSuspending(ScreenTransitionEvent e)
@@ -234,6 +370,30 @@ namespace osu.Game.Overlays.FirstRunSetup
         {
             locatorTextBox.HidePopover();
             return base.OnExiting(e);
+        }
+
+        /// <summary>
+        /// A tab control whose tabs cannot be cycled between, so that the source can only change by activating a tab.
+        /// </summary>
+        private partial class SourceTabControl : OverlaySortTabControl<ImportSource>
+        {
+            protected override SortTabControl CreateControl() => new NonSwitchableSortTabControl();
+
+            private partial class NonSwitchableSortTabControl : SortTabControl
+            {
+                protected override TabItem<ImportSource> CreateTabItem(ImportSource value) => new NonSwitchableTabItem(value);
+            }
+
+            private partial class NonSwitchableTabItem : SortTabItem
+            {
+                public NonSwitchableTabItem(ImportSource value)
+                    : base(value)
+                {
+                }
+
+                // Cycles only consider switchable tabs, so this leaves nothing to switch to.
+                public override bool IsSwitchable => false;
+            }
         }
 
         private partial class ImportCheckbox : SettingsCheckbox
@@ -268,6 +428,7 @@ namespace osu.Game.Overlays.FirstRunSetup
             public void ResetCount()
             {
                 countUpdateCancellation?.Cancel();
+                countUpdateCancellation = null;
                 LabelText = title;
             }
 
@@ -276,20 +437,21 @@ namespace osu.Game.Overlays.FirstRunSetup
                 LabelText = LocalisableString.Interpolate($"{title} ({FirstRunOverlayImportFromStableScreenStrings.Calculating})");
 
                 countUpdateCancellation?.Cancel();
-                countUpdateCancellation = new CancellationTokenSource();
 
-                var cancellation = countUpdateCancellation;
+                var cancellation = countUpdateCancellation = new CancellationTokenSource();
 
                 legacyImportManager.GetImportCount(source.Value, ImportContent, cancellation.Token)
                                    .ContinueWith(task => Schedule(() =>
                                    {
-                                       if (task.IsCanceled)
+                                       // A newer request has been made since this one (the source was switched, or no installation
+                                       // is selected anymore), so this count belongs to a source which is no longer displayed.
+                                       if (cancellation != countUpdateCancellation || task.IsCanceled)
                                            return;
 
                                        int count = task.GetResultSafely();
 
                                        LabelText = LocalisableString.Interpolate($"{title} ({CommonStrings.ItemsCount(count)})");
-                                   }));
+                                   }), cancellation.Token);
             }
         }
 
