@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading;
 using osu.Framework.Logging;
 using osu.Game.Database;
 using Realms;
@@ -68,8 +69,11 @@ namespace osu.Game.IO
 
         private static string getStoragePath(string hash) => Path.Combine(hash.Remove(1), hash.Remove(2), hash);
 
+        private readonly Lock configurationLock = new Lock();
+
         private RealmConfiguration? configuration;
         private string? temporaryDirectory;
+        private bool disposed;
 
         /// <summary>
         /// Open a new realm context for the installation's database.
@@ -77,7 +81,23 @@ namespace osu.Game.IO
         /// <remarks>
         /// Realm contexts are thread-confined, so every consumer should open (and dispose) its own context.
         /// </remarks>
-        public Realm OpenRealm() => Realm.GetInstance(configuration ??= buildConfiguration());
+        /// <exception cref="ObjectDisposedException">The storage was already disposed.</exception>
+        public Realm OpenRealm()
+        {
+            RealmConfiguration resolved;
+
+            // Multiple consumers (the per-content counts, the readability check) may open the database at the same time.
+            // Resolving the configuration can copy the whole database, so it may only ever happen once.
+            lock (configurationLock)
+            {
+                // A late caller would otherwise create another temporary copy which nothing cleans up again.
+                ObjectDisposedException.ThrowIf(disposed, this);
+
+                resolved = configuration ??= buildConfiguration();
+            }
+
+            return Realm.GetInstance(resolved);
+        }
 
         private RealmConfiguration buildConfiguration()
         {
@@ -171,21 +191,31 @@ namespace osu.Game.IO
 
         public void Dispose()
         {
-            configuration = null;
+            string? directory;
 
-            if (temporaryDirectory == null)
+            lock (configurationLock)
+            {
+                if (disposed)
+                    return;
+
+                disposed = true;
+                configuration = null;
+                directory = temporaryDirectory;
+                temporaryDirectory = null;
+            }
+
+            if (directory == null)
                 return;
 
             try
             {
-                Directory.Delete(temporaryDirectory, true);
+                Directory.Delete(directory, true);
             }
             catch (Exception e)
             {
-                Logger.Log($@"Could not clean up temporary migration directory {temporaryDirectory}: {e.Message}", LoggingTarget.Database);
+                // Realms which are still open keep the files locked on some platforms.
+                Logger.Log($@"Could not clean up temporary migration directory {directory}: {e.Message}", LoggingTarget.Database);
             }
-
-            temporaryDirectory = null;
         }
     }
 }

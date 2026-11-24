@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using NUnit.Framework;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
@@ -16,10 +17,16 @@ namespace osu.Game.Tests.NonVisual
     public class LazerStorageTest
     {
         private string directory = null!;
+        private SynchronizationContext? originalContext;
 
         [SetUp]
         public void SetUp()
         {
+            // Realm captures the ambient synchronisation context and posts refreshes to it from its file watcher.
+            // NUnit replaces that context between tests, so a refresh could outlive the realm it belongs to.
+            originalContext = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(null);
+
             directory = Path.Combine(Path.GetTempPath(), $@"lazer-storage-test-{Guid.NewGuid():N}");
             Directory.CreateDirectory(directory);
         }
@@ -29,6 +36,8 @@ namespace osu.Game.Tests.NonVisual
         {
             if (Directory.Exists(directory))
                 Directory.Delete(directory, true);
+
+            SynchronizationContext.SetSynchronizationContext(originalContext);
         }
 
         [Test]
@@ -57,6 +66,20 @@ namespace osu.Game.Tests.NonVisual
         public void TestReadInstallationWithOlderSchema()
         {
             assertInstallationReadable(Math.Max(1UL, RealmAccess.SCHEMA_VERSION - 5));
+        }
+
+        /// <summary>
+        /// A late consumer must not silently create another temporary copy which nothing would clean up.
+        /// </summary>
+        [Test]
+        public void TestCannotOpenAfterDispose()
+        {
+            createInstallation(RealmAccess.SCHEMA_VERSION + 5);
+
+            var storage = new LazerStorage(directory);
+            storage.Dispose();
+
+            Assert.That(() => storage.OpenRealm(), Throws.TypeOf<ObjectDisposedException>());
         }
 
         private void assertInstallationReadable(ulong schemaVersion)
