@@ -88,6 +88,11 @@ namespace osu.Game.Database
                     break;
 
                 case ImportSource.Lazer:
+                    // The path is pushed back in on every source change, so re-creating the storage would throw away
+                    // (and re-copy) a database which in-flight readers may still be using.
+                    if (cachedLazerStorage != null && isSamePath(cachedLazerStorage.InstallPath, path))
+                        return;
+
                     cachedLazerStorage?.Dispose();
                     cachedLazerStorage = new LazerStorage(path);
                     break;
@@ -95,6 +100,15 @@ namespace osu.Game.Database
                 default:
                     throw new ArgumentOutOfRangeException(nameof(source), source, null);
             }
+        }
+
+        private static bool isSamePath(string first, string second)
+        {
+            StringComparison comparison = RuntimeInfo.OS == RuntimeInfo.Platform.Windows
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+
+            return string.Equals(Path.TrimEndingDirectorySeparator(first), Path.TrimEndingDirectorySeparator(second), comparison);
         }
 
         /// <summary>
@@ -229,23 +243,14 @@ namespace osu.Game.Database
                     if (stableStorage == null)
                         return 0;
 
-                    switch (content)
+                    return content switch
                     {
-                        case ImportContent.Beatmaps:
-                            return await new LegacyBeatmapImporter(beatmaps).GetAvailableCount(stableStorage).ConfigureAwait(false);
-
-                        case ImportContent.Skins:
-                            return await new LegacySkinImporter(skins).GetAvailableCount(stableStorage).ConfigureAwait(false);
-
-                        case ImportContent.Collections:
-                            return await new LegacyCollectionImporter(realmAccess).GetAvailableCount(stableStorage).ConfigureAwait(false);
-
-                        case ImportContent.Scores:
-                            return await new LegacyScoreImporter(scores).GetAvailableCount(stableStorage).ConfigureAwait(false);
-
-                        default:
-                            throw new ArgumentException($"Only one {nameof(ImportContent)} flag should be specified.");
-                    }
+                        ImportContent.Beatmaps => await new LegacyBeatmapImporter(beatmaps).GetAvailableCount(stableStorage).ConfigureAwait(false),
+                        ImportContent.Skins => await new LegacySkinImporter(skins).GetAvailableCount(stableStorage).ConfigureAwait(false),
+                        ImportContent.Collections => await new LegacyCollectionImporter(realmAccess).GetAvailableCount(stableStorage).ConfigureAwait(false),
+                        ImportContent.Scores => await new LegacyScoreImporter(scores).GetAvailableCount(stableStorage).ConfigureAwait(false),
+                        _ => throw new ArgumentException($"Only one {nameof(ImportContent)} flag should be specified.")
+                    };
                 }
 
                 case ImportSource.Lazer:
@@ -257,23 +262,14 @@ namespace osu.Game.Database
 
                     try
                     {
-                        switch (content)
+                        return content switch
                         {
-                            case ImportContent.Beatmaps:
-                                return await new LazerBeatmapImporter(beatmaps).GetAvailableCount(lazerStorage).ConfigureAwait(false);
-
-                            case ImportContent.Skins:
-                                return await new LazerSkinImporter(skins).GetAvailableCount(lazerStorage).ConfigureAwait(false);
-
-                            case ImportContent.Collections:
-                                return await new LazerCollectionImporter(realmAccess).GetAvailableCount(lazerStorage).ConfigureAwait(false);
-
-                            case ImportContent.Scores:
-                                return await new LazerScoreImporter(scores, realmAccess).GetAvailableCount(lazerStorage).ConfigureAwait(false);
-
-                            default:
-                                throw new ArgumentException($"Only one {nameof(ImportContent)} flag should be specified.");
-                        }
+                            ImportContent.Beatmaps => await new LazerBeatmapImporter(beatmaps).GetAvailableCount(lazerStorage).ConfigureAwait(false),
+                            ImportContent.Skins => await new LazerSkinImporter(skins).GetAvailableCount(lazerStorage).ConfigureAwait(false),
+                            ImportContent.Collections => await new LazerCollectionImporter(realmAccess).GetAvailableCount(lazerStorage).ConfigureAwait(false),
+                            ImportContent.Scores => await new LazerScoreImporter(scores, realmAccess).GetAvailableCount(lazerStorage).ConfigureAwait(false),
+                            _ => throw new ArgumentException($"Only one {nameof(ImportContent)} flag should be specified.")
+                        };
                     }
                     catch (Exception e) when (e is not OperationCanceledException)
                     {
@@ -294,7 +290,7 @@ namespace osu.Game.Database
         /// <remarks>
         /// Installations of other clients may store their data in a way which this version of the game cannot understand.
         /// </remarks>
-        public Task<bool> CheckSourceReadableAsync(ImportSource source) => Task.Run(() =>
+        public virtual Task<bool> CheckSourceReadableAsync(ImportSource source) => Task.Run(() =>
         {
             if (source != ImportSource.Lazer)
                 return true;
@@ -316,7 +312,7 @@ namespace osu.Game.Database
             }
         });
 
-        public async Task ImportAsync(ImportSource source, ImportContent content, bool interactiveLocateIfNotFound = true)
+        public virtual async Task ImportAsync(ImportSource source, ImportContent content, bool interactiveLocateIfNotFound = true)
         {
             switch (source)
             {
