@@ -43,42 +43,51 @@ namespace osu.Game.Database
 
             PostNotification?.Invoke(notification);
 
-            // Collections are cheap to copy, and the source realm context is thread-confined.
-            List<(string Name, List<string> BeatmapHashes)> collections;
-
-            using (Realm sourceRealm = storage.OpenRealm())
+            try
             {
-                collections = sourceRealm.All<BeatmapCollection>()
-                                         .AsEnumerable()
-                                         .Select(c => (c.Name, c.BeatmapMD5Hashes.ToList()))
-                                         .ToList();
-            }
+                // Collections are cheap to copy, and the source realm context is thread-confined.
+                List<(string Name, List<string> BeatmapHashes)> collections;
 
-            realm.Write(r =>
-            {
-                foreach ((string name, var beatmapHashes) in collections)
+                using (Realm sourceRealm = storage.OpenRealm())
                 {
-                    var existing = r.All<BeatmapCollection>().FirstOrDefault(c => c.Name == name);
-
-                    if (existing == null)
-                    {
-                        r.Add(new BeatmapCollection(name, beatmapHashes));
-                        continue;
-                    }
-
-                    foreach (string hash in beatmapHashes.Where(hash => !existing.BeatmapMD5Hashes.Contains(hash)))
-                    {
-                        existing.BeatmapMD5Hashes.Add(hash);
-                    }
-
-                    existing.LastModified = DateTimeOffset.UtcNow;
+                    collections = sourceRealm.All<BeatmapCollection>()
+                                             .AsEnumerable()
+                                             .Select(c => (c.Name, c.BeatmapMD5Hashes.ToList()))
+                                             .ToList();
                 }
-            });
 
-            notification.CompletionText = NotificationsStrings.CollectionsImportProgress(collections.Count);
-            notification.State = ProgressNotificationState.Completed;
+                realm.Write(r =>
+                {
+                    foreach ((string name, var beatmapHashes) in collections)
+                    {
+                        var existing = r.All<BeatmapCollection>().FirstOrDefault(c => c.Name == name);
 
-            return collections.Count;
+                        if (existing == null)
+                        {
+                            r.Add(new BeatmapCollection(name, beatmapHashes));
+                            continue;
+                        }
+
+                        foreach (string hash in beatmapHashes.Where(hash => !existing.BeatmapMD5Hashes.Contains(hash)))
+                        {
+                            existing.BeatmapMD5Hashes.Add(hash);
+                        }
+
+                        existing.LastModified = DateTimeOffset.UtcNow;
+                    }
+                });
+
+                notification.CompletionText = NotificationsStrings.CollectionsImportProgress(collections.Count);
+                notification.State = ProgressNotificationState.Completed;
+
+                return collections.Count;
+            }
+            catch
+            {
+                // Otherwise the notification keeps reporting an import which has already failed.
+                notification.State = ProgressNotificationState.Cancelled;
+                throw;
+            }
         });
     }
 }
