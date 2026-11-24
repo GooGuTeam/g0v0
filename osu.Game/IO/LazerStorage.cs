@@ -58,6 +58,14 @@ namespace osu.Game.IO
         /// </summary>
         public string GetFilePath(string hash) => Path.Combine(FileStorePath, getStoragePath(hash));
 
+        /// <summary>
+        /// Whether a file is actually present in the installation's file store.
+        /// </summary>
+        /// <remarks>
+        /// The database can reference files which were pruned from the store, so the two have to be checked separately.
+        /// </remarks>
+        public bool HasFile(string hash) => File.Exists(GetFilePath(hash));
+
         private static string getStoragePath(string hash) => Path.Combine(hash.Remove(1), hash.Remove(2), hash);
 
         private RealmConfiguration? configuration;

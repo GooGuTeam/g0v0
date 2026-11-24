@@ -126,6 +126,14 @@ namespace osu.Game.Database
                 return false;
             }
 
+            // Skip scores without a replay.
+            // The same (but valid) score with a replay would be skipped if we import this now.
+            if (source.Files.Any(file => !storage.HasFile(file.File.Hash)))
+            {
+                Logger.Log($"A file required by import score #{source.ID} is missing from the source installation, skipping.");
+                return false;
+            }
+
             var score = new ScoreInfo(beatmap, ruleset, new RealmUser
             {
                 OnlineID = source.RealmUser.OnlineID,
@@ -151,6 +159,9 @@ namespace osu.Game.Database
                 ModsJson = source.ModsJson,
                 StatisticsJson = source.StatisticsJson,
                 MaximumStatisticsJson = source.MaximumStatisticsJson,
+
+                // Rank is the only persisted carrier of a score's grade (and of its failed state), so it has to come along.
+                Rank = source.Rank,
             };
 
             foreach (int pause in source.Pauses)
@@ -158,12 +169,7 @@ namespace osu.Game.Database
 
             foreach (RealmNamedFileUsage file in source.Files)
             {
-                string path = storage.GetFilePath(file.File.Hash);
-
-                if (!File.Exists(path))
-                    continue;
-
-                using Stream stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                using Stream stream = File.Open(storage.GetFilePath(file.File.Hash), FileMode.Open, FileAccess.Read, FileShare.Read);
                 scores.AddFile(score, stream, file.Filename, target);
             }
 

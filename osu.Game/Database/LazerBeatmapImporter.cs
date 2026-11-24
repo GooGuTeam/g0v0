@@ -26,13 +26,16 @@ namespace osu.Game.Database
         public Task<int> GetAvailableCount(LazerStorage storage) => Task.Run(() =>
         {
             using Realm realm = storage.OpenRealm();
-            return getImportableSets(realm).Count();
+            return getImportableSets(realm, storage).Count();
         });
 
         public Task ImportFromLazerAsync(LazerStorage storage) => Task.Run(async () =>
         {
             // The importer runs on its own threads, so the import tasks carry everything they need.
             ImportTask[] tasks = getImportTasks(storage);
+
+            if (tasks.Length == 0)
+                return;
 
             await importer.Import(tasks, new ImportParameters { Batch = true, PreferHardLinks = true }).ConfigureAwait(false);
         });
@@ -42,15 +45,24 @@ namespace osu.Game.Database
             using Realm realm = storage.OpenRealm();
 
             // Cast up front so the resulting array is not a co-variant view of a LazerImportTask array.
-            return getImportableSets(realm)
+            return getImportableSets(realm, storage)
                    .Select(ImportTask (set) => new LazerImportTask($@"{set.OnlineID} {set.Metadata.Title}".Trim(), set.Files, storage))
                    .ToArray();
         }
 
-        private static IEnumerable<BeatmapSetInfo> getImportableSets(Realm realm) => realm.All<BeatmapSetInfo>()
-                                                                                          .Where(s => !s.DeletePending)
-                                                                                          .AsEnumerable()
-                                                                                          .Where(hasTopLevelBeatmap);
+        private static IEnumerable<BeatmapSetInfo> getImportableSets(Realm realm, LazerStorage storage)
+        {
+            if (!storage.FileStoreAvailable)
+                return Enumerable.Empty<BeatmapSetInfo>();
+
+            return realm.All<BeatmapSetInfo>()
+                        .Where(s => !s.DeletePending)
+                        .AsEnumerable()
+                        .Where(hasTopLevelBeatmap)
+                        // A set with a single pruned file would fail to import as a whole, after its other files were already copied.
+                        // Checked here as well so that the count reported to the user matches what will actually be imported.
+                        .Where(set => set.Files.All(f => storage.HasFile(f.File.Hash)));
+        }
 
         /// <summary>
         /// Beatmaps are only picked up by the importer when their <c>.osu</c> file is at the top level of the set.
