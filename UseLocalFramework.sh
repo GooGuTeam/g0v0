@@ -8,7 +8,7 @@
 GAME_CSPROJ="osu.Game/osu.Game.csproj"
 ANDROID_PROPS="osu.Android.props"
 IOS_PROPS="osu.iOS.props"
-SLN="osu.sln"
+SLN="osu.slnx"
 
 dotnet remove $GAME_CSPROJ reference ppy.osu.Framework
 dotnet remove $ANDROID_PROPS reference ppy.osu.Framework.Android
