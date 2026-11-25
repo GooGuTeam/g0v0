@@ -1,0 +1,100 @@
+<Solution>
+  <Folder Name="/CodeAnalysis/">
+    <File Path="CodeAnalysis/BannedSymbols.txt" />
+    <File Path="CodeAnalysis/osu.globalconfig" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="global.json" />
+    <File Path="osu.Android.props" />
+    <File Path="osu.iOS.props" />
+    <File Path="osu.sln.DotSettings" />
+    <File Path="osu.TestProject.props" />
+  </Folder>
+  <Folder Name="/Templates/" />
+  <Folder Name="/Templates/Rulesets/" />
+  <Folder Name="/Templates/Rulesets/ruleset-empty/">
+    <Project Path="Templates/Rulesets/ruleset-empty/osu.Game.Rulesets.EmptyFreeform.Tests/osu.Game.Rulesets.EmptyFreeform.Tests.csproj" />
+    <Project Path="Templates/Rulesets/ruleset-empty/osu.Game.Rulesets.EmptyFreeform/osu.Game.Rulesets.EmptyFreeform.csproj" />
+  </Folder>
+  <Folder Name="/Templates/Rulesets/ruleset-example/">
+    <Project Path="Templates/Rulesets/ruleset-example/osu.Game.Rulesets.Pippidon.Tests/osu.Game.Rulesets.Pippidon.Tests.csproj" />
+    <Project Path="Templates/Rulesets/ruleset-example/osu.Game.Rulesets.Pippidon/osu.Game.Rulesets.Pippidon.csproj" />
+  </Folder>
+  <Folder Name="/Templates/Rulesets/ruleset-scrolling-empty/">
+    <Project Path="Templates/Rulesets/ruleset-scrolling-empty/osu.Game.Rulesets.EmptyScrolling.Tests/osu.Game.Rulesets.EmptyScrolling.Tests.csproj" />
+    <Project Path="Templates/Rulesets/ruleset-scrolling-empty/osu.Game.Rulesets.EmptyScrolling/osu.Game.Rulesets.EmptyScrolling.csproj" />
+  </Folder>
+  <Folder Name="/Templates/Rulesets/ruleset-scrolling-example/">
+    <Project Path="Templates/Rulesets/ruleset-scrolling-example/osu.Game.Rulesets.Pippidon.Tests/osu.Game.Rulesets.Pippidon.Tests.csproj" />
+    <Project Path="Templates/Rulesets/ruleset-scrolling-example/osu.Game.Rulesets.Pippidon/osu.Game.Rulesets.Pippidon.csproj" />
+  </Folder>
+  <Project Path="osu.Android/osu.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="osu.Desktop/osu.Desktop.csproj" />
+  <Project Path="osu.Game.Benchmarks/osu.Game.Benchmarks.csproj" />
+  <Project Path="osu.Game.Rulesets.Catch.Tests.Android/osu.Game.Rulesets.Catch.Tests.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="osu.Game.Rulesets.Catch.Tests.iOS/osu.Game.Rulesets.Catch.Tests.iOS.csproj" />
+  <Project Path="osu.Game.Rulesets.Catch.Tests/osu.Game.Rulesets.Catch.Tests.csproj" />
+  <Project Path="osu.Game.Rulesets.Catch/osu.Game.Rulesets.Catch.csproj" />
+  <Project Path="osu.Game.Rulesets.Mania.Tests.Android/osu.Game.Rulesets.Mania.Tests.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="osu.Game.Rulesets.Mania.Tests.iOS/osu.Game.Rulesets.Mania.Tests.iOS.csproj" />
+  <Project Path="osu.Game.Rulesets.Mania.Tests/osu.Game.Rulesets.Mania.Tests.csproj" />
+  <Project Path="osu.Game.Rulesets.Mania/osu.Game.Rulesets.Mania.csproj" />
+  <Project Path="osu.Game.Rulesets.Osu.Tests.Android/osu.Game.Rulesets.Osu.Tests.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="osu.Game.Rulesets.Osu.Tests.iOS/osu.Game.Rulesets.Osu.Tests.iOS.csproj" />
+  <Project Path="osu.Game.Rulesets.Osu.Tests/osu.Game.Rulesets.Osu.Tests.csproj" />
+  <Project Path="osu.Game.Rulesets.Osu/osu.Game.Rulesets.Osu.csproj" />
+  <Project Path="osu.Game.Rulesets.Taiko.Tests.Android/osu.Game.Rulesets.Taiko.Tests.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="osu.Game.Rulesets.Taiko.Tests.iOS/osu.Game.Rulesets.Taiko.Tests.iOS.csproj" />
+  <Project Path="osu.Game.Rulesets.Taiko.Tests/osu.Game.Rulesets.Taiko.Tests.csproj" />
+  <Project Path="osu.Game.Rulesets.Taiko/osu.Game.Rulesets.Taiko.csproj" />
+  <Project Path="osu.Game.Tests.Android/osu.Game.Tests.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="osu.Game.Tests.iOS/osu.Game.Tests.iOS.csproj" />
+  <Project Path="osu.Game.Tests/osu.Game.Tests.csproj" />
+  <Project Path="osu.Game.Tournament.Tests/osu.Game.Tournament.Tests.csproj" />
+  <Project Path="osu.Game.Tournament/osu.Game.Tournament.csproj" />
+  <Project Path="osu.Game/osu.Game.csproj" />
+  <Project Path="osu.iOS/osu.iOS.csproj" />
+  <Properties Name="MonoDevelopProperties">
+    <Property Name="$0.CSharpFormattingPolicy" Value="$2" />
+    <Property Name="$0.TextStylePolicy" Value="$1" />
+    <Property Name="$1.EolMarker" Value="Windows" />
+    <Property Name="$1.inheritsScope" Value="text/plain" />
+    <Property Name="$1.inheritsSet" Value="VisualStudio" />
+    <Property Name="$1.scope" Value="text/x-csharp" />
+    <Property Name="$2.IndentSwitchSection" Value="True" />
+    <Property Name="$2.inheritsScope" Value="text/x-csharp" />
+    <Property Name="$2.inheritsSet" Value="Mono" />
+    <Property Name="$2.NewLineForCatch" Value="True" />
+    <Property Name="$2.NewLineForClausesInQuery" Value="True" />
+    <Property Name="$2.NewLineForElse" Value="True" />
+    <Property Name="$2.NewLineForFinally" Value="True" />
+    <Property Name="$2.NewLineForMembersInAnonymousTypes" Value="True" />
+    <Property Name="$2.NewLineForMembersInObjectInit" Value="True" />
+    <Property Name="$2.NewLinesForBracesInAccessors" Value="True" />
+    <Property Name="$2.NewLinesForBracesInAnonymousMethods" Value="True" />
+    <Property Name="$2.NewLinesForBracesInAnonymousTypes" Value="True" />
+    <Property Name="$2.NewLinesForBracesInControlBlocks" Value="True" />
+    <Property Name="$2.NewLinesForBracesInLambdaExpressionBody" Value="True" />
+    <Property Name="$2.NewLinesForBracesInObjectCollectionArrayInitializers" Value="True" />
+    <Property Name="$2.NewLinesForBracesInProperties" Value="True" />
+    <Property Name="$2.scope" Value="text/x-csharp" />
+    <Property Name="$2.SpaceAfterMethodCallName" Value="False" />
+    <Property Name="$2.SpaceBeforeOpenSquareBracket" Value="False" />
+    <Property Name="$2.SpacingAfterMethodDeclarationName" Value="False" />
+    <Property Name="Policies" Value="$0" />
+  </Properties>
+</Solution>
