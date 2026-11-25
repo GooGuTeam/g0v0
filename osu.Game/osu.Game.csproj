@@ -68,4 +68,10 @@ Full licence text: see LICENCE and LICENCE-OSU.</PackageReleaseNotes>
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="g0v0.Framework" Version="2026.1111.1" />
   </ItemGroup>
+  <ItemGroup Label="Source Generators">
+    <ProjectReference Include="..\osu.Game.SourceGeneration\osu.Game.SourceGeneration.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
 </Project>
