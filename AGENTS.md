@@ -180,7 +180,7 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 
 1. `git fetch upstream`，把 `upstream/master` 合并进 `v2`；解冲突时**顺手丢弃品牌字符串**比事后清理省事。
 2. 资源仓库单独同步：进入独立的 `g0v0-resources` clone，确认其 `upstream` 远端为 `https://github.com/ppy/osu-resources`，同样合并 `upstream/master`；如有资源变更，发新包并同步更新主仓库 `G0V0ResourcesVersion`。
-3. 合并后检查 `.github/workflows/*.yml` 与 `.github/actions/*.sh` 中的 `dotnet-version` / `--framework`（例如 `net8.0-*` → `net10.0-*`）是否与 `global.json`、csproj 对齐 —— 不对齐会直接让 CI 构建失败（历史上发生过）。同一趟还要确认三处 `g0v0.Framework*` 版本跟 `v2` 走（第 2 节）：分支上旧 pin 合进来不产生冲突，但会让 CI 全平台 CS0246。
+3. 合并后检查 `.github/workflows/*.yml` 与 `.github/actions/*.sh` 中的 `dotnet-version` / `--framework`（例如 `net8.0-*` → `net10.0-*`）是否与 `global.json`、csproj 对齐 —— 不对齐会直接让 CI 构建失败（历史上发生过）。同一趟还要确认三处 `g0v0.Framework*` 版本跟 `v2` 走（第 2 节）：分支上旧 pin 合进来不产生冲突，但会让 CI 全平台 CS0246。`.agents/skills/ui-design/tools/Previewer/Previewer.csproj` 还自己 pin 了一份 `G0V0FrameworkVersion`，同样要跟这三处对齐，慢了只影响预览器（restore 阶段 NU1605 降级错误），CI 不会提醒。
 4. 确认主仓库 `G0V0ResourcesVersion` 指向的 `g0v0.osu.Game.Resources` 固定版本包已经在 nuget.org 上存在；它不必与本次发布 tag 的版本号相同。
 5. 同步**前**先打一个基线标签（如 `sync-baseline-YYYYMMDD`）再动手，方便 diff 与商标扫描；历史遗留的 `backup/*` 标签已在 2026-09 清理，`trademark-check` 会退回到 `git merge-base HEAD upstream/master`。
 6. 上游仍用 `osu.sln`（`upstream/master` 上最后一次改动是 2024-12-05，近年基本不动）。一旦某次合并**动到了 `osu.sln`**（典型场景：上游新增测试项目），必须进行以下处理：
@@ -257,7 +257,7 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 ## 9. 代理工作方式
 
 - 改完先跑 `bash CheckSanity.sh <改动目录>`；涉及公共 API 或分析器规则时改跑 `InspectCode`（它内部会带着 `CheckSanity`，不必跑两遍），然后跑与改动相关的测试项目，不要动辄全量。
-- **改到界面外观时先看图再动手**。`.agents/skills/ui-design/SKILL.md` 带一个离屏 GPU 预览器（`tools/Previewer`，跑在 `OffscreenGameHost` 上，不开可见窗口），能把任意 `TestScene*`、规则集测试场景或编辑器屏幕渲成 PNG —— 用法是「同参数截 before → 改代码 → 同参数截 after → 读图对比」，不要只读布局代码就宣布改好了。缺陷先落成具体条目（对齐、溢出、间距、圆角、对比度、该用 tooltip 的长说明）再改。截图输出在 `tools/Previewer/captures/`（已 git-ignore），不要提交；如果截到加载 spinner 或占位字形，那是 `--wait` 不够，加大重截再判断。（`tools/Previewer/Previewer.csproj` 自己 pin 了一份 `G0V0FrameworkVersion`，升框架版本时要跟第 2 节那三处一起改。）
+- **改到界面外观时先看图再动手**。`.agents/skills/ui-design/SKILL.md` 带一个离屏 GPU 预览器（`tools/Previewer`，跑在 `OffscreenGameHost` 上，不开可见窗口），能把任意 `TestScene*`、规则集测试场景或编辑器屏幕渲成 PNG —— 用法是「同参数截 before → 改代码 → 同参数截 after → 读图对比」，不要只读布局代码就宣布改好了。缺陷先落成具体条目（对齐、溢出、间距、圆角、对比度、该用 tooltip 的长说明）再改。**两次截图必须用不同 `--out`**（如 `captures/<改动>-before` / `-after`）：同参数同目录时 after 会覆盖 before，唯一能对比的图就没了；after 那次还要显式加 `--build` / `-Build`（脚本默认复用旧可执行文件，改了 UI 却复用就等于拍修改前的界面），before 那次若不确定现有构建是否落后于源码也一样加。截图输出在 `tools/Previewer/captures/`（已 git-ignore），两边都不要提交；如果截到加载 spinner 或占位字形，那是 `--wait` 不够，加大重截再判断。（`tools/Previewer/Previewer.csproj` 自己 pin 了一份 `G0V0FrameworkVersion`，升框架版本时要跟第 2 节那三处一起改。）
 - 判断某处差异是不是「fork 有意为之」时，查 `git log`、同步基线标签、`.agents/skills/trademark-check/references/known-outstanding.md`，别凭感觉改回去。
 - 碰到用户可见文案，先按第 3 节「用户可见字符串」把类、base resx、`zh` 三处一起改；资源仓库没 clone 就直接问用户要路径，别跳过、也别自己往本仓库里 clone。核对时用 `.agents/skills/localisation-sync/`。
 - 上游大版本升级后，优先核对 `global.json`、csproj 的 `TargetFramework` 与 CI 里的 SDK / framework 版本三者一致。
