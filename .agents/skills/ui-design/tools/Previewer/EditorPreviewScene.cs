@@ -3,7 +3,6 @@
 
 using System;
 using System.Linq;
-using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Testing;
@@ -102,14 +101,6 @@ namespace Previewer
                     parkMouse();
                     break;
 
-                case "bar-popover":
-                    clickType("BarPropertiesButton");
-                    parkMouse();
-                    this.Capture("bar-popover", wait: 5);
-                    this.CapturePopover("bar-popover-crop");
-                    AddStep("close popover", () => this.ChildrenOfType<Popover>().ForEach(p => p.Hide()));
-                    break;
-
                 case "timestamp-input":
                     clickType("TimestampControl");
                     parkMouse();
@@ -158,7 +149,11 @@ namespace Previewer
                     waitForScreen("SetupScreen");
                     this.Capture("setup");
                     this.CaptureOf("setup-metadata", "MetadataSection", wait: 0);
-                    this.CaptureOf("setup-difficulty", "DifficultySection", wait: 0);
+
+                    // Each ruleset brings its own difficulty section (OsuDifficultySection, TaikoDifficultySection, ...)
+                    // and none of them derive from the generic DifficultySection, so the name comes from the ruleset in use.
+                    string difficultySection = CreateEditorRuleset().GetType().Name.Replace("Ruleset", string.Empty, StringComparison.Ordinal) + "DifficultySection";
+                    this.CaptureOf("setup-difficulty", difficultySection, wait: 0);
                     break;
 
                 case "compose-screen":

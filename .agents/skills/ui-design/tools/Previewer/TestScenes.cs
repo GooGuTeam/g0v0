@@ -88,7 +88,9 @@ namespace Previewer
             return cases;
         }
 
-        // Base classes first, as NUnit and the test browser run them.
+        // GetMethods already returns one entry per overridden slot (the most-derived declaration, so an override is not run twice).
+        // Attributes are matched with inherit so an override without its own attribute still counts, and grouping by declaring type
+        // keeps base classes first.
         private static MethodInfo[] methodsWith<T>(Type type) where T : Attribute
         {
             var hierarchy = new List<Type>();
@@ -96,9 +98,11 @@ namespace Previewer
             for (var t = type; t != null; t = t.BaseType)
                 hierarchy.Insert(0, t);
 
-            return hierarchy.SelectMany(t => t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
-                            .Where(m => m.GetCustomAttribute<T>(false) != null)
-                            .ToArray();
+            var byDeclaringType = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy)
+                                      .Where(m => m.IsDefined(typeof(T), inherit: true))
+                                      .ToLookup(m => m.DeclaringType);
+
+            return hierarchy.SelectMany(t => byDeclaringType[t]).ToArray();
         }
     }
 }
