@@ -20,6 +20,10 @@ Never open a visible game window for inspection, and keep preview runs focused.
 2. **Capture the current state ("before")**:
    - Capture at default desktop resolution (`1920x1080`) and compact resolution (`1280x720`).
    - Use `--locale=zh` (and `--locale=en`) if the screen contains translated or localized text.
+   - Write to a directory of its own (`--out=captures/<change>-before`): the after capture later reuses the
+     same scene and parameters, so a shared directory would overwrite the only image you have to compare with.
+   - Add `--build` / `-Build` when the existing executable may predate the current sources (a fresh clone, or
+     after editing previewer code); otherwise both captures can come from the same stale binary.
    - A capture that still shows a loading spinner or placeholder glyphs is a timing artefact, not a defect:
      raise `--wait` (for example `--wait=5000`) and capture again before judging anything.
 3. **Audit concrete defects**:
@@ -29,8 +33,12 @@ Never open a visible game window for inspection, and keep preview runs focused.
    - Reuse standard design system components and tokens (`OverlayColourProvider`, `OsuFont`, form
      controls). Do not invent custom one-off boxes or hardcode literal colors.
 5. **Capture again ("after") and compare**:
-   - Re-run the previewer with identical parameters. Read the PNGs and verify that defects are
-     resolved without clipping, overflow, or layout regression.
+   - Re-run the previewer with identical parameters **plus `--build` / `-Build`** (UI code changed, so a reused
+     executable would render the old layout), and write to a separate `--out`, for example
+     `--out=captures/<change>-after`. Read both PNGs and verify that defects are resolved without clipping,
+     overflow, or layout regression.
+   - Keep both capture directories out of the commit: `captures/` is git-ignored, restore or delete them
+     instead of staging them.
 6. **Verify code sanity and build**:
    - `powershell -File ./CheckSanity.ps1 <dir>` (or `bash CheckSanity.sh <dir>`).
    - `dotnet build osu.Desktop.slnf -c Debug -warnaserror`.
@@ -102,7 +110,7 @@ input" banner is hidden, so a capture shows the scene the way the game itself wo
 | `--scene=` | Any visual test scene in `osu.Game.Tests` / ruleset tests, or `editor`. The `TestScene` prefix is optional (`SettingsPanel` finds `TestSceneSettingsPanel`); an ambiguous name lists the full names | `editor` |
 | `--test=` | Test method name; the `Test` prefix is optional (`ShowAndHide` finds `TestShowAndHide`) | All / default |
 | `--case=` | Test case index when the method has several from `[TestCase]`, `[TestCaseSource]` or `[Values]` | `0` |
-| `--crop=` | Comma-separated drawable type names; saves each present match (exact type or any base class, 6px margin) as `<name>-<Type>.png`, with `-2`, `-3` for further matches | None (full frame) |
+| `--crop=` | Comma-separated drawable type names; saves each present match (exact type or any base class, 6px margin) as `<name>-<Type>.png`, with `-2`, `-3` for further matches. A type that matches nothing logs `No <type> is present to crop.` and is skipped; a match drawn outside the frame is skipped with a log line | None (full frame) |
 | `--scripts=` | Comma-separated editor scripts to run sequentially when `--scene=editor` | `compose` |
 | `--stop-before=` | Test scenes only: case-insensitive substring of step text; stops **instead of** running that step and captures there | None (runs to end) |
 | `--capture-before=` | Test scenes only: `\|`-separated substrings of step text; captures before each matching step, then keeps running (files get a `-NN-<step-slug>` suffix; the end state is still captured). Editor scripts capture their own named files instead | None |
@@ -124,7 +132,7 @@ in between is verbose — grep for those two lines rather than reading the whole
 | `PreviewGame.cs` | `PreviewGame` (option caching, mute) and `PreviewRunner` (loads the scene, drives its steps, decides when to capture) |
 | `TestScenes.cs` | Finds visual test scenes and replays their `[SetUp]`, `[SetUpSteps]` and test method steps |
 | `FrameCapture.cs` | Grabs a frame from the offscreen host and saves it, whole or cropped to an area |
-| `SceneSteps.cs` | Steps any scene can add: wait, find by type name, capture named PNGs |
+| `SceneSteps.cs` | Steps any scene can add: wait, find by type name, capture a named PNG (whole frame with `Capture`, one control with `CaptureOf`, every match of a type with `CaptureEach`, the open popover with `CapturePopover`) |
 | `SuppressTakeControlOverlay.cs` | Keeps the test browser's "overriding local input" banner out of captures |
 | `EditorPreviewScene.cs` | Editor scripts only: which screen to show and which parts to capture |
 
@@ -154,7 +162,7 @@ area:
 | `compose` | Compose screen root, left and right toolboxes, bottom bar, timeline area, menu bar |
 | `toolbox-hover` | Expanded toolbox states (right and left) |
 | `context-menu` | Right-click object context menu, and the menu item under the cursor |
-| `bar-popover`, `timestamp-input` | Timeline bar properties popover, timestamp entry |
+| `timestamp-input` | Timestamp entry in the editor's time info |
 | `timing` | Timing control point list and settings |
 | `verify` | Verify issue list, severity filters, issue selection details |
 | `setup` | Song setup screen, metadata section, difficulty section |
@@ -164,7 +172,10 @@ area:
 A script only names what to show; adding steps, looking controls up by type name and saving frames is handled
 generically by `SceneSteps` and `FrameCapture`, so a new script is a handful of lines in
 `tools/Previewer/EditorPreviewScene.cs`. Whether a control exists is answered by type name at runtime, so a
-script that names something the editor no longer has fails loudly instead of capturing a stale picture.
+script that names something the editor no longer has fails loudly instead of capturing a stale picture: the
+target-specific helpers (`CaptureOf`, `CaptureEach`, `CapturePopover`) fail the run when nothing matches, and
+only `Capture` saves the whole frame. A crop area that lies entirely outside the frame is skipped with a log
+line instead of being saved as a sliver of unrelated pixels.
 
 ## Design system & rules
 
