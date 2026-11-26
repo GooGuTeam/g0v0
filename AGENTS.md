@@ -170,7 +170,10 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 3. 合并后检查 `.github/workflows/*.yml` 与 `.github/actions/*.sh` 中的 `dotnet-version` / `--framework`（例如 `net8.0-*` → `net10.0-*`）是否与 `global.json`、csproj 对齐 —— 不对齐会直接让 CI 构建失败（历史上发生过）。
 4. 确认主仓库 `G0V0ResourcesVersion` 指向的 `g0v0.osu.Game.Resources` 固定版本包已经在 nuget.org 上存在；它不必与本次发布 tag 的版本号相同。
 5. 同步**前**先打一个基线标签（如 `sync-baseline-YYYYMMDD`）再动手，方便 diff 与商标扫描；历史遗留的 `backup/*` 标签已在 2026-09 清理，`trademark-check` 会退回到 `git merge-base HEAD upstream/master`。
-6. 上游仍用 `osu.sln`（`upstream/master` 上最后一次改动是 2024-12-05，近年基本不动）。一旦某次合并**动到了 `osu.sln`**（典型场景：上游新增测试项目），合完必须补三步：把新增项目手动加进 `osu.slnx`、删掉被合并回来的 `osu.sln`、核对三个 `*.slnf` 的 `path` 仍指向 `osu.slnx`。漏掉的话 CI 走 slnf 会**静默漏编/漏测**新项目（不会报错，这才是麻烦的地方）。
+6. 上游仍用 `osu.sln`（`upstream/master` 上最后一次改动是 2024-12-05，近年基本不动）。一旦某次合并**动到了 `osu.sln`**（典型场景：上游新增测试项目），必须进行以下处理：
+   - 把新增项目手动加进 `osu.slnx` 与 相关项目的 `.slnf` 文件；
+   - 删掉被合并回来的 `osu.sln`；
+   - 核对三个 `*.slnf` 的 `path` 仍指向 `osu.slnx`。
 
 ---
 
