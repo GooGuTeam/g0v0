@@ -1,6 +1,6 @@
 ﻿{
   "solution": {
-    "path": "osu.sln",
+    "path": "osu.slnx",
     "projects": [
       "osu.Android\\osu.Android.csproj",
       "osu.Game.Rulesets.Catch.Tests.Android\\osu.Game.Rulesets.Catch.Tests.Android.csproj",

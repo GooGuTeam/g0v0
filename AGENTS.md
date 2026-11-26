@@ -43,7 +43,8 @@ OSU_EXECUTION_MODE=SingleThread dotnet test osu.Game.Tests/bin/Debug/**/osu.Game
 注意：
 
 - `CheckSanity.sh` / `InspectCode.sh` 在 checkout 里**没有可执行位**，请用 `bash <script>`，或先 `chmod +x`（CI 就是这么做的）。
-- 方案过滤器：`osu.Desktop.slnf`（桌面 + 测试）、`osu.Android.slnf`、`osu.iOS.slnf`。不要直接构建 `osu.sln`。
+- 方案过滤器：`osu.Desktop.slnf`（桌面 + 测试）、`osu.Android.slnf`、`osu.iOS.slnf`，不要直接构建主方案 `osu.slnx`。
+- `osu.sln.DotSettings` **文件名刻意不改**：重命名该文件会在与上游改动同步时带来麻烦，并已验证本项目使用的工具链对 `.sln` 与 `.slnx` 后缀都识别。
 - 完整测试项目清单与矩阵见 `.github/workflows/ci.yml`：`osu.Game.Tests`、`osu.Game.Rulesets.{Osu,Taiko,Catch,Mania}.Tests`、`osu.Game.Tournament.Tests`、`Templates/**/*.Tests`，跑 Windows + Linux × `SingleThread`/`MultiThreaded` 两种线程模型。
 - `bin/`、`obj/` 已在 `.gitignore` 中，不要提交。
 
@@ -169,6 +170,10 @@ NUnit 4 + `osu.Framework` 的 `TestScene`：可视化测试放 `osu.Game.Tests/V
 3. 合并后检查 `.github/workflows/*.yml` 与 `.github/actions/*.sh` 中的 `dotnet-version` / `--framework`（例如 `net8.0-*` → `net10.0-*`）是否与 `global.json`、csproj 对齐 —— 不对齐会直接让 CI 构建失败（历史上发生过）。
 4. 确认主仓库 `G0V0ResourcesVersion` 指向的 `g0v0.osu.Game.Resources` 固定版本包已经在 nuget.org 上存在；它不必与本次发布 tag 的版本号相同。
 5. 同步**前**先打一个基线标签（如 `sync-baseline-YYYYMMDD`）再动手，方便 diff 与商标扫描；历史遗留的 `backup/*` 标签已在 2026-09 清理，`trademark-check` 会退回到 `git merge-base HEAD upstream/master`。
+6. 上游仍用 `osu.sln`（`upstream/master` 上最后一次改动是 2024-12-05，近年基本不动）。一旦某次合并**动到了 `osu.sln`**（典型场景：上游新增测试项目），必须进行以下处理：
+   - 把新增项目手动加进 `osu.slnx` 与 相关项目的 `.slnf` 文件；
+   - 删掉被合并回来的 `osu.sln`；
+   - 核对三个 `*.slnf` 的 `path` 仍指向 `osu.slnx`。
 
 ---
 
