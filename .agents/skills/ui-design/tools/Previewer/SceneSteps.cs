@@ -53,12 +53,16 @@ namespace Previewer
         /// <summary>
         /// Saves the area of the first present drawable of a type, with a margin.
         /// </summary>
+        /// <exception cref="InvalidOperationException">no such drawable exists.</exception>
         public static void CaptureOf(this TestScene scene, string name, string typeName, int wait = 3, float margin = 6)
-            => scene.capture(name, wait, () => scene.FindAll(typeName).FirstOrDefault()?.ScreenSpaceDrawQuad.AABBFloat.Inflate(margin));
+            => scene.capture(name, wait, () => (scene.FindAll(typeName).FirstOrDefault()
+                                                ?? throw new InvalidOperationException($"No {typeName} is present to capture as {name}."))
+                                              .ScreenSpaceDrawQuad.AABBFloat.Inflate(margin));
 
         /// <summary>
         /// Saves the area of every present drawable of a type, named by <paramref name="name"/>.
         /// </summary>
+        /// <exception cref="InvalidOperationException">none of the drawable satisfies the condition.</exception>
         public static void CaptureEach(this TestScene scene, string typeName, Func<Drawable, string> name, int wait = 3, float margin = 6)
         {
             if (wait > 0)
@@ -73,8 +77,12 @@ namespace Previewer
                     return false;
 
                 using var image = frame.GetAwaiter().GetResult();
+                var drawables = scene.FindAll(typeName).ToArray();
 
-                foreach (var drawable in scene.FindAll(typeName))
+                if (drawables.Length == 0)
+                    throw new InvalidOperationException($"No {typeName} is present to capture.");
+
+                foreach (var drawable in drawables)
                     scene.save(image, name(drawable), drawable.ScreenSpaceDrawQuad.AABBFloat.Inflate(margin));
 
                 return true;
@@ -84,11 +92,14 @@ namespace Previewer
         /// <summary>
         /// Saves the area of the visible popover that covers the most of the frame, with a margin.
         /// </summary>
+        /// <exception cref="InvalidOperationException">no popover is currently visible.</exception>
         public static void CapturePopover(this TestScene scene, string name, float margin = 8)
-            => scene.capture(name, 0, () => scene.ChildrenOfType<Popover>()
+            => scene.capture(name, 0, () => (scene.ChildrenOfType<Popover>()
                                                   .Where(p => p.State.Value == Visibility.Visible)
                                                   .OrderByDescending(p => p.ScreenSpaceDrawQuad.AABBFloat.Width * p.ScreenSpaceDrawQuad.AABBFloat.Height)
-                                                  .FirstOrDefault()?.ScreenSpaceDrawQuad.AABBFloat.Inflate(margin));
+                                                  .FirstOrDefault()
+                                             ?? throw new InvalidOperationException($"No popover is visible to capture as {name}."))
+                                           .ScreenSpaceDrawQuad.AABBFloat.Inflate(margin));
 
         private static void capture(this TestScene scene, string name, int wait, Func<RectangleF?> area)
         {

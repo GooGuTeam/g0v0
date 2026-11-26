@@ -235,7 +235,19 @@ namespace Previewer
                         Logger.Log($"No {type} is present to crop.", level: LogLevel.Important);
 
                     for (int i = 0; i < drawables.Length; i++)
-                        FrameCapture.Save(image, Path.Combine(options.Output, $"{name}-{type}{(i > 0 ? $"-{i + 1}" : string.Empty)}.png"), drawables[i].ScreenSpaceDrawQuad.AABBFloat.Inflate(6));
+                    {
+                        string cropName = $"{name}-{type}{(i > 0 ? $"-{i + 1}" : string.Empty)}";
+
+                        try
+                        {
+                            FrameCapture.Save(image, Path.Combine(options.Output, cropName + ".png"), drawables[i].ScreenSpaceDrawQuad.AABBFloat.Inflate(6));
+                        }
+                        catch (ArgumentException e)
+                        {
+                            // a drawable can be present yet drawn outside the frame; there is nothing to crop from it.
+                            Logger.Log($"Skipped {cropName}: {e.Message}", level: LogLevel.Important);
+                        }
+                    }
                 }
             }
 
