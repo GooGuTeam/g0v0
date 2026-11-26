@@ -474,6 +474,9 @@ namespace osu.Game.Overlays.FirstRunSetup
             public ImportLocatorLabelledTextBox(Bindable<ImportSource> source)
             {
                 this.source = source;
+
+                Label = ScreenImportStrings.LocateDirectoryLabel;
+                PlaceholderText = ScreenImportStrings.LocateDirectoryPlaceholder;
             }
 
             protected override void LoadComplete()
@@ -488,14 +491,6 @@ namespace osu.Game.Overlays.FirstRunSetup
 
             private void updateFromStorage()
             {
-                Label = source.Value == ImportSource.Stable
-                    ? FirstRunOverlayImportFromStableScreenStrings.LocateDirectoryLabel
-                    : ScreenImportStrings.LocateLazerDirectoryLabel;
-
-                PlaceholderText = source.Value == ImportSource.Stable
-                    ? FirstRunOverlayImportFromStableScreenStrings.LocateDirectoryPlaceholder
-                    : ScreenImportStrings.LocateLazerDirectoryPlaceholder;
-
                 string? fullPath = legacyImportManager.GetCurrentStoragePath(source.Value);
 
                 if (fullPath == null)

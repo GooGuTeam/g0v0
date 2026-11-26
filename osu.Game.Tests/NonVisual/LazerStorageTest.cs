@@ -79,7 +79,7 @@ namespace osu.Game.Tests.NonVisual
             var storage = new LazerStorage(directory);
             storage.Dispose();
 
-            Assert.That(() => storage.OpenRealm(), Throws.TypeOf<ObjectDisposedException>());
+            Assert.That(storage.OpenRealm, Throws.TypeOf<ObjectDisposedException>());
         }
 
         private void assertInstallationReadable(ulong schemaVersion)

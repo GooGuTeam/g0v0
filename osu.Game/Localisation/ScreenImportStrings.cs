@@ -30,14 +30,14 @@ namespace osu.Game.Localisation
         public static LocalisableString LazerDescription => new TranslatableString(getKey(@"lazer_description"), @"You can also migrate content from another g0v0! or lazer installation. Select its data folder (the one which contains ""client.realm"").");
 
         /// <summary>
-        /// "previous g0v0! or lazer installation"
+        /// "previous installation"
         /// </summary>
-        public static LocalisableString LocateLazerDirectoryLabel => new TranslatableString(getKey(@"locate_lazer_directory_label"), @"previous g0v0! or lazer installation");
+        public static LocalisableString LocateDirectoryLabel => new TranslatableString(getKey(@"locate_directory_label"), @"previous installation");
 
         /// <summary>
         /// "Click to locate a previous installation"
         /// </summary>
-        public static LocalisableString LocateLazerDirectoryPlaceholder => new TranslatableString(getKey(@"locate_lazer_directory_placeholder"), @"Click to locate a previous installation");
+        public static LocalisableString LocateDirectoryPlaceholder => new TranslatableString(getKey(@"locate_directory_placeholder"), @"Click to locate a previous installation");
 
         /// <summary>
         /// "A second copy of all files will be made during import. To avoid this, please make sure the g0v0! data folder is on the same drive as the installation you are importing from (and the file system supports hard links)."
