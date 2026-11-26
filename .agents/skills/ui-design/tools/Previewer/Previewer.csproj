@@ -13,8 +13,6 @@
     <GenerateTestingPlatformEntryPoint>false</GenerateTestingPlatformEntryPoint>
     <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
-    <!-- Must match the g0v0.Framework version pinned in osu.Game/osu.Game.csproj, or restore fails with NU1605 (downgrade). -->
-    <G0V0FrameworkVersion Condition="'$(G0V0FrameworkVersion)' == ''">2026.1111.1</G0V0FrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
     <RuntimeHostConfigurationOption Include="System.Runtime.TieredCompilation.CallCountingDelayMs" Value="0" />
@@ -31,13 +29,6 @@
     <ProjectReference Include="..\..\..\..\..\osu.Game.Rulesets.Taiko.Tests\osu.Game.Rulesets.Taiko.Tests.csproj" />
     <ProjectReference Include="..\..\..\..\..\osu.Game.Rulesets.Catch.Tests\osu.Game.Rulesets.Catch.Tests.csproj" />
     <ProjectReference Include="..\..\..\..\..\osu.Game.Rulesets.Mania.Tests\osu.Game.Rulesets.Mania.Tests.csproj" />
-  </ItemGroup>
-  <!-- The framework's source generator only reaches direct references, so reference the framework here as well, following the client's package/source switch. -->
-  <ItemGroup Condition="'$(G0V0SourceFramework)' == 'true'">
-    <ProjectReference Include="$(_G0V0FrameworkRoot)osu.Framework/osu.Framework.csproj" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(G0V0SourceFramework)' != 'true'">
-    <PackageReference Include="g0v0.Framework" Version="$(G0V0FrameworkVersion)" />
   </ItemGroup>
   <!-- Apple native frameworks from a source Veldrid build exceed the Windows path limit here and are not needed. -->
   <Target Name="DropAppleNativeContent" BeforeTargets="_CopyOutOfDateSourceItemsToOutputDirectory;_CopyOutOfDateSourceItemsToOutputDirectoryAlways">
