@@ -9,6 +9,14 @@
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <!-- Can be removed in .NET 11 (CoreCLR is the default) -->
     <UseMonoRuntime>false</UseMonoRuntime>
+    <!-- Do not trim. Release is the only configuration that enables PublishTrimmed by default, and the
+         desktop builds opt out explicitly (see "-p:PublishTrimmed=false" in .github/actions/*-build.sh);
+         Android was simply left relying on the default. With CoreCLR that default produces an APK which
+         dies on startup: the same build with -p:PublishTrimmed=false runs, the trimmed one crashes
+         immediately (verified on an arm64 device). The trimmer removes framework members that osu.Game
+         only reaches through reflection.
+         Costs roughly 32MB of APK size; revisit once trimming on Android+CoreCLR is trustworthy. -->
+    <PublishTrimmed>false</PublishTrimmed>
     <PublishReadyToRun>false</PublishReadyToRun>
     <!-- CoreCLR on Android is an experimental feature in .NET 10.
          This suppression can be removed after .NET 11, as the use of CoreCLR becomes the default in .NET 11 and above. -->
@@ -37,7 +45,15 @@
          Exclude the desktop native assets from Android builds so that only Android (bionic)
          libraries can be packaged. -->
     <PackageReference Include="ppy.osu.Framework.NativeLibs" Version="2026.1029.0" ExcludeAssets="native" />
-    <PackageReference Include="ppy.SDL2-CS" Version="1.0.741-alpha" ExcludeAssets="native" />
+
+    <!-- ppy.SDL2-CS additionally declares its app.config as a contentFile with buildAction="Content"
+         in its nuspec. NuGet surfaces that as a Content item, and the Android SDK refuses those:
+
+           warning XA0101: @(Content) build action is not supported
+
+         A Content item has no meaning for an APK, so drop the content files alongside the desktop
+         native assets instead of leaving a warning that fails -warnaserror builds. -->
+    <PackageReference Include="ppy.SDL2-CS" Version="1.0.741-alpha" ExcludeAssets="native;contentFiles" />
   </ItemGroup>
   <PropertyGroup>
     <!-- Fody does not handle Android build well, and warns when unchanged.
