@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -202,7 +202,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
                 // TODO: in the future this should allow the user to retry joining the room
                 //       once rejoining is in place
                 CurrentState.Value = ScreenQueue.MatchmakingScreenState.Idle;
-                notifications?.Post(new SimpleErrorNotification { Text = "Failed to join room." });
+                notifications?.Post(new SimpleErrorNotification { Text = NotificationsStrings.FailedToJoinRoom });
             }));
         });
 

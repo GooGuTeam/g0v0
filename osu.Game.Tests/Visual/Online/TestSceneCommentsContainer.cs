@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -199,20 +199,20 @@ namespace osu.Game.Tests.Visual.Online
         private void setUpCommentsResponse(CommentBundle commentBundle)
             => AddStep("set up response", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (!(request is GetCommentsRequest getCommentsRequest))
                         return false;
 
                     getCommentsRequest.TriggerSuccess(commentBundle);
                     return true;
-                };
+                });
             });
 
         private void setUpPostResponse(bool asOwner = false)
             => AddStep("set up response", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (!(request is CommentPostRequest req))
                         return false;
@@ -249,7 +249,7 @@ namespace osu.Game.Tests.Visual.Online
 
                     req.TriggerSuccess(bundle);
                     return true;
-                };
+                });
             });
 
         private static CommentBundle getExampleComments(bool withPinned = false)

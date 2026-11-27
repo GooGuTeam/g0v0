@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -101,11 +101,18 @@ namespace osu.Game.Tests.Gameplay
             if (!setAudioOffsetBeforeConstruction)
                 AddStep($"set audio offset to {userOffset}", () => localConfig.SetValue(OsuSetting.AudioOffset, userOffset));
 
-            AddStep("seek to 2500", () => gameplayClockContainer.Seek(2500));
-            AddAssert("gameplay clock time = 2500", () => gameplayClockContainer.CurrentTime, () => Is.EqualTo(2500).Within(10f));
+            // Assert in the same step as the seek: a running clock advances between test steps.
+            AddStep("seek to 2500", () =>
+            {
+                gameplayClockContainer.Seek(2500);
+                Assert.That(gameplayClockContainer.CurrentTime, Is.EqualTo(2500).Within(10));
+            });
 
-            AddStep("seek to 10000", () => gameplayClockContainer.Seek(10000));
-            AddAssert("gameplay clock time = 10000", () => gameplayClockContainer.CurrentTime, () => Is.EqualTo(10000).Within(10f));
+            AddStep("seek to 10000", () =>
+            {
+                gameplayClockContainer.Seek(10000);
+                Assert.That(gameplayClockContainer.CurrentTime, Is.EqualTo(10000).Within(10));
+            });
         }
 
         [Test]

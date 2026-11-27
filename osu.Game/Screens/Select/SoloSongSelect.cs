@@ -83,6 +83,9 @@ namespace osu.Game.Screens.Select
             foreach (var i in CreateCollectionMenuActions(beatmap))
                 yield return i;
 
+            if (beatmap.BeatmapSet != null)
+                yield return new OsuMenuItem(ThemeMusicStrings.UseAsThemeMusic, MenuItemType.Standard, () => UseAsThemeMusic(beatmap.BeatmapSet)) { Icon = FontAwesome.Solid.Music };
+
             if (beatmap.LastPlayed == null)
                 yield return new OsuMenuItem(SongSelectStrings.MarkAsPlayed, MenuItemType.Standard, () => beatmaps.MarkPlayed(beatmap)) { Icon = FontAwesome.Solid.TimesCircle };
             else

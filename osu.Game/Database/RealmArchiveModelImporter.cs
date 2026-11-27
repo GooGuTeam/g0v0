@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -7,14 +7,15 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Humanizer;
 using osu.Framework.Extensions;
 using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Logging;
+using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
 using osu.Game.Extensions;
 using osu.Game.IO.Archives;
+using osu.Game.Localisation;
 using osu.Game.Models;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Utils;
@@ -102,7 +103,7 @@ namespace osu.Game.Database
         {
             if (tasks.Length == 0)
             {
-                notification.CompletionText = $"No {HumanisedModelName}s were found to import!";
+                notification.CompletionText = NotificationsStrings.NoModelsFoundToImport(LocalisedModelName);
                 notification.State = ProgressNotificationState.Completed;
                 return Enumerable.Empty<RealmLive<TModel>>();
             }
@@ -115,7 +116,7 @@ namespace osu.Game.Database
 
             parameters.Batch |= tasks.Length >= minimum_items_considered_batch_import;
 
-            notification.Text = $"{HumanisedModelName.Humanize(LetterCasing.Title)} import is initialising...";
+            notification.Text = NotificationsStrings.ImportInitialising(LocalisedModelNameTitle);
             notification.State = ProgressNotificationState.Active;
 
             await pauseIfNecessaryAsync(parameters, notification, notification.CancellationToken).ConfigureAwait(false);
@@ -138,7 +139,7 @@ namespace osu.Game.Database
                                 imported.Add(model);
                             current++;
 
-                            notification.Text = $"Imported {current} of {tasks.Length} {HumanisedModelName}s";
+                            notification.Text = NotificationsStrings.ImportedXOfY(current, tasks.Length, LocalisedModelName);
                             notification.Progress = (float)current / tasks.Length;
                         }
                     }
@@ -167,22 +168,22 @@ namespace osu.Game.Database
                     }
                     else
                     {
-                        notification.Text = $"{HumanisedModelName.Humanize(LetterCasing.Title)} import failed! Check logs for more information.";
+                        notification.Text = NotificationsStrings.ImportFailed(LocalisedModelNameTitle);
                         notification.State = ProgressNotificationState.Cancelled;
                     }
                 }
                 else
                 {
                     if (tasks.Length > imported.Count)
-                        notification.CompletionText = $"Imported {imported.Count} of {tasks.Length} {HumanisedModelName}s.";
+                        notification.CompletionText = NotificationsStrings.ImportedXOfYCompleted(imported.Count, tasks.Length, LocalisedModelName);
                     else if (imported.Count > 1)
-                        notification.CompletionText = $"Imported {imported.Count} {HumanisedModelName}s!";
+                        notification.CompletionText = NotificationsStrings.ImportedCount(imported.Count, LocalisedModelName);
                     else
-                        notification.CompletionText = $"Imported {imported.First().GetDisplayString()}!";
+                        notification.CompletionText = NotificationsStrings.ImportedNamed(imported.First().GetDisplayString());
 
                     if (imported.Count > 0 && PresentImport != null)
                     {
-                        notification.CompletionText += " Click to view.";
+                        notification.CompletionText = NotificationsStrings.WithClickToView(notification.CompletionText);
                         notification.CompletionClickAction = () =>
                         {
                             PresentImport?.Invoke(imported);
@@ -639,7 +640,7 @@ namespace osu.Game.Database
 
             // A paused state could obviously be entered mid-import (during the `Task.WhenAll` below),
             // but in order to keep things simple let's focus on the most common scenario.
-            notification.Text = $"{HumanisedModelName.Humanize(LetterCasing.Title)} import is paused due to gameplay...";
+            notification.Text = NotificationsStrings.ImportPaused(LocalisedModelNameTitle);
             notification.State = ProgressNotificationState.Queued;
 
             while (PauseImports)
@@ -651,7 +652,7 @@ namespace osu.Game.Database
             cancellationToken.ThrowIfCancellationRequested();
             Logger.Log($@"{GetType().Name} is being resumed.");
 
-            notification.Text = $"{HumanisedModelName.Humanize(LetterCasing.Title)} import is resuming...";
+            notification.Text = NotificationsStrings.ImportResuming(LocalisedModelNameTitle);
             notification.State = ProgressNotificationState.Active;
         }
 
@@ -668,5 +669,15 @@ namespace osu.Game.Database
         }
 
         public virtual string HumanisedModelName => $"{typeof(TModel).Name.Replace(@"Info", "").ToLowerInvariant()}";
+
+        /// <summary>
+        /// A localisable version of <see cref="HumanisedModelName"/>, for use in localisable notification text.
+        /// </summary>
+        protected LocalisableString LocalisedModelName => NotificationsStrings.ModelName(HumanisedModelName);
+
+        /// <summary>
+        /// <see cref="LocalisedModelName"/> in title case, matching the previous <c>Humanize(LetterCasing.Title)</c> behaviour.
+        /// </summary>
+        protected LocalisableString LocalisedModelNameTitle => new LocalisableString(new CaseTransformableString(LocalisedModelName, Casing.TitleCase));
     }
 }

@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -19,7 +19,7 @@ namespace osu.Game.Tests.Online
         [Test]
         public void TestGenericRequestHandling()
         {
-            AddStep("register request handling", () => ((DummyAPIAccess)API).HandleRequest = req =>
+            AddStep("register request handling", () => ((DummyAPIAccess)API).AddHandler(req =>
             {
                 switch (req)
                 {
@@ -29,7 +29,7 @@ namespace osu.Game.Tests.Online
                 }
 
                 return false;
-            });
+            }));
 
             CommentVoteRequest request = null;
             CommentBundle response = null;
@@ -104,9 +104,107 @@ namespace osu.Game.Tests.Online
             AddAssert("response event fired", () => gotResponse);
         }
 
+        [Test]
+        public void TestHandlersAreComposed()
+        {
+            AddStep("register handler for one request type", () => ((DummyAPIAccess)API).AddHandler(req =>
+            {
+                if (req is LeaveChannelRequest leave)
+                {
+                    leave.TriggerSuccess();
+                    return true;
+                }
+
+                return false;
+            }));
+
+            AddStep("register handler for another request type", () => ((DummyAPIAccess)API).AddHandler(req =>
+            {
+                if (req is CommentVoteRequest vote)
+                {
+                    vote.TriggerSuccess(new CommentBundle());
+                    return true;
+                }
+
+                return false;
+            }));
+
+            LeaveChannelRequest leaveRequest = null;
+            CommentVoteRequest voteRequest = null;
+
+            AddStep("fire both requests", () =>
+            {
+                leaveRequest = new LeaveChannelRequest(new Channel());
+                API.Queue(leaveRequest);
+
+                voteRequest = new CommentVoteRequest(1, CommentVoteAction.Vote);
+                API.Queue(voteRequest);
+            });
+
+            AddUntilStep("both requests handled", () => leaveRequest.CompletionState == APIRequestCompletionState.Completed
+                                                        && voteRequest.CompletionState == APIRequestCompletionState.Completed);
+        }
+
+        [Test]
+        public void TestLastRegisteredHandlerTakesPrecedence()
+        {
+            bool firstHandlerRan = false;
+
+            AddStep("register first handler", () => ((DummyAPIAccess)API).AddHandler(req =>
+            {
+                if (req is LeaveChannelRequest leave)
+                {
+                    firstHandlerRan = true;
+                    leave.TriggerSuccess();
+                    return true;
+                }
+
+                return false;
+            }));
+
+            AddStep("register overriding handler", () => ((DummyAPIAccess)API).AddHandler(req =>
+            {
+                if (req is LeaveChannelRequest leave)
+                {
+                    leave.TriggerSuccess();
+                    return true;
+                }
+
+                return false;
+            }));
+
+            LeaveChannelRequest request = null;
+
+            AddStep("fire request", () =>
+            {
+                firstHandlerRan = false;
+                request = new LeaveChannelRequest(new Channel());
+                API.Queue(request);
+            });
+
+            AddUntilStep("request handled", () => request.CompletionState == APIRequestCompletionState.Completed);
+            AddAssert("overridden handler was not consulted", () => !firstHandlerRan);
+        }
+
+        [Test]
+        public void TestUnhandledRequestFails()
+        {
+            LeaveChannelRequest request = null;
+
+            AddStep("remove all handlers", () => ((DummyAPIAccess)API).ClearHandlers());
+
+            AddStep("fire request", () =>
+            {
+                request = new LeaveChannelRequest(new Channel());
+                API.Queue(request);
+            });
+
+            AddUntilStep("request failed", () => request.CompletionState == APIRequestCompletionState.Failed);
+        }
+
         private void registerHandler()
         {
-            AddStep("register request handling", () => ((DummyAPIAccess)API).HandleRequest = req =>
+            AddStep("register request handling", () => ((DummyAPIAccess)API).AddHandler(req =>
             {
                 switch (req)
                 {
@@ -116,7 +214,7 @@ namespace osu.Game.Tests.Online
                 }
 
                 return false;
-            });
+            }));
         }
     }
 }

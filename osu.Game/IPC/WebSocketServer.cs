@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Concurrent;
@@ -67,7 +67,6 @@ namespace osu.Game.IPC
         private readonly Logger logger;
 
         private HttpListener? listener;
-        private readonly ManualResetEventSlim contextResetEvent = new ManualResetEventSlim();
         private Task? handleRequestTask;
 
         private int channelCounter;
@@ -113,39 +112,19 @@ namespace osu.Game.IPC
 
             while (!runningTokenSource.IsCancellationRequested)
             {
-                HttpListenerContext? context = null;
+                HttpListenerContext context;
 
-                // `listener.GetContextAsync()` exists but is unusable here without ugly hacks.
-                // as per source inspection, it is a thin wrapper over `{Begin,End}GetContext()`.
-                // the problem with that is that the method is *hard-blocking* and *does not accept cancellation*.
-                // therefore, if it's called in a processing loop like this
-                // that we are expecting to be able to cut short at any moment's notice to shut things down,
-                // it's not going to yield and will keep waiting forever.
-                // a `listener.Stop()` from another thread does cut the call short, but also ends up in an unclean termination.
-                // what "unclean termination" means here depends on the OS we're running on
-                // (different exceptions are observed on macOS and Windows, at least).
-                // therefore use the old asynchronous paradigm with manual signalling when the context is available.
-                contextResetEvent.Reset();
-                listener.BeginGetContext(iar =>
+                try
                 {
-                    try
-                    {
-                        context = ((HttpListener)iar.AsyncState!).EndGetContext(iar);
-                        contextResetEvent.Set();
-                    }
-                    catch (HttpListenerException ex) when (ex.ErrorCode == 995)
-                    {
-                        // occurs on Windows when the listener is stopped.
-                    }
-                }, listener);
-                WaitHandle.WaitAny([contextResetEvent.WaitHandle, runningTokenSource.Token.WaitHandle]);
-
-                // either we have a context to use, or the cancellation fired.
-                // if it's the latter, terminate processing loop.
-                if (runningTokenSource.IsCancellationRequested)
+                    // `listener.Stop()`/`Dispose()` completes the outstanding accept with an exception, so the loop can
+                    // unwind without leaving an APM callback alive after the listener has been torn down.
+                    context = await listener.GetContextAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is ObjectDisposedException || ex is HttpListenerException)
+                {
+                    // the listener was stopped or disposed while waiting for an incoming request.
                     return;
-
-                Debug.Assert(context != null);
+                }
 
                 var request = context.Request;
                 var response = context.Response;
@@ -222,20 +201,21 @@ namespace osu.Game.IPC
 
             logger.Add(@"Stopping websocket server...");
 
-            // of note, ordering here is important - the token is supposed to be cancelled *before* the listener is stopped.
+            // of note, ordering here is important - the token is supposed to be cancelled *before* the channels are stopped.
             // see `readWriteTask()` and the treatment of early cancellation for answer why.
             await runningTokenSource.CancelAsync().ConfigureAwait(false);
 
-            if (handleRequestTask != null)
+            // channels have to be stopped before the listener. stopping the listener while a receive is still pending on
+            // an upgraded connection leaves an internal socket operation unobserved on the managed `HttpListener`
+            // implementation, which then surfaces as an unobserved `SocketException` (and aborts whatever test is running
+            // when the task is finalised). See https://github.com/dotnet/runtime/issues/126148.
+            try
             {
-                try
-                {
-                    await handleRequestTask.WaitAsync(stoppingToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    // has to be caught manually because outer task isn't accepting `stoppingToken`.
-                }
+                await Task.WhenAll(channels.Values.Select(ch => ch.StopAsync(stoppingToken)).ToArray()).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // has to be caught manually because outer task isn't accepting `stoppingToken`.
             }
 
             try
@@ -247,14 +227,9 @@ namespace osu.Game.IPC
                 // observed to intermittently fire on unices in unclear circumstances. tragic, but also irrelevant at this point. the point is to stop.
             }
 
-            try
-            {
-                await Task.WhenAll(channels.Values.Select(ch => ch.StopAsync(stoppingToken)).ToArray()).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                // has to be caught manually because outer task isn't accepting `stoppingToken`.
-            }
+            // the listener stop above completes any outstanding accept, so the request loop is always joined here.
+            if (handleRequestTask != null)
+                await handleRequestTask.ConfigureAwait(false);
 
             logger.Add(@"Websocket server stopped.");
         }, CancellationToken.None); // we always want this task to start running. passing `stoppingToken` here would mean potentially never even scheduling it for execution.
@@ -275,7 +250,6 @@ namespace osu.Game.IPC
                 channel.Dispose();
 
             runningTokenSource.Dispose();
-            contextResetEvent.Dispose();
         }
     }
 }

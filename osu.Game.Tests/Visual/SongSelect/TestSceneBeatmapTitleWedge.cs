@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -172,7 +172,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("set up request handler", () =>
             {
-                ((DummyAPIAccess)API).HandleRequest = request =>
+                ((DummyAPIAccess)API).AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -187,7 +187,7 @@ namespace osu.Game.Tests.Visual.SongSelect
                         default:
                             return false;
                     }
-                };
+                });
             });
 
             AddStep("online beatmapset", () => (Beatmap.Value, onlineLookupResult.Value) = createTestBeatmap());
@@ -221,7 +221,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("set up request handler to fail", () =>
             {
-                ((DummyAPIAccess)API).HandleRequest = request =>
+                ((DummyAPIAccess)API).AddHandler(request =>
                 {
                     switch (request)
                     {
@@ -236,7 +236,7 @@ namespace osu.Game.Tests.Visual.SongSelect
                         default:
                             return false;
                     }
-                };
+                });
             });
             AddStep("reset event", resetEvent.Reset);
             AddStep("click favourite button", () => this.ChildrenOfType<BeatmapTitleWedge.FavouriteButton>().Single().TriggerClick());

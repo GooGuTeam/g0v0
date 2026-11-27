@@ -72,6 +72,7 @@ namespace osu.Game.Screens.Ranking
         public bool ClosePopover()
         {
             var popoverContainer = this.FindClosestParent<PopoverContainer>();
+
             if (popoverContainer?.CurrentTarget == this)
             {
                 this.HidePopover();
@@ -112,6 +113,7 @@ namespace osu.Game.Screens.Ranking
                 };
 
                 int rank = 0;
+
                 foreach (var score in scoreList)
                 {
                     rank++;
@@ -217,7 +219,7 @@ namespace osu.Game.Screens.Ranking
                     {
                         AutoSizeAxes = Axes.Both,
                         Direction = FillDirection.Vertical,
-                        Children = new Drawable[]
+                        Children = new[]
                         {
                             // Header
                             new Container
@@ -300,6 +302,7 @@ namespace osu.Game.Screens.Ranking
             protected override void LoadComplete()
             {
                 base.LoadComplete();
+
                 if (selectedRow != null && scrollContainer != null)
                 {
                     ScheduleAfterChildren(() => scrollContainer.ScrollTo(selectedRow, false));
@@ -314,7 +317,7 @@ namespace osu.Game.Screens.Ranking
                 wasOpened = true;
                 onVisibilityChanged?.Invoke(true);
 
-                this.ClearTransforms();
+                ClearTransforms();
                 this.FadeIn(220, Easing.OutQuint);
 
                 Body.ScaleTo(0.96f)
@@ -328,7 +331,7 @@ namespace osu.Game.Screens.Ranking
                 if (wasOpened)
                     onVisibilityChanged?.Invoke(false);
 
-                this.ClearTransforms();
+                ClearTransforms();
                 this.FadeOut(180, Easing.OutQuint);
 
                 Body.ScaleTo(0.96f, 180, Easing.OutQuint);
@@ -349,7 +352,7 @@ namespace osu.Game.Screens.Ranking
                     return true;
 
                 if (score.TotalScore == current.TotalScore
-                    && score.User?.OnlineID == current.User?.OnlineID
+                    && score.User.OnlineID == current.User.OnlineID
                     && score.Date == current.Date)
                     return true;
 
@@ -384,7 +387,7 @@ namespace osu.Game.Screens.Ranking
             [BackgroundDependencyLoader]
             private void load()
             {
-                bool isOwnScore = score.User != null && api.LocalUser.Value != null && score.User.OnlineID == api.LocalUser.Value.Id;
+                bool isOwnScore = api.LocalUser.Value != null && score.User.OnlineID == api.LocalUser.Value.Id;
 
                 InternalChild = borderContainer = new Container
                 {
@@ -393,12 +396,14 @@ namespace osu.Game.Screens.Ranking
                     Masking = true,
                     BorderThickness = isSelected ? 2 : 0,
                     BorderColour = Colour4.FromHex("#7CF6FF"),
-                    EdgeEffect = isSelected ? new EdgeEffectParameters
-                    {
-                        Type = EdgeEffectType.Glow,
-                        Colour = Colour4.FromHex("#7CF6FF").Opacity(0.35f),
-                        Radius = 8,
-                    } : default,
+                    EdgeEffect = isSelected
+                        ? new EdgeEffectParameters
+                        {
+                            Type = EdgeEffectType.Glow,
+                            Colour = Colour4.FromHex("#7CF6FF").Opacity(0.35f),
+                            Radius = 8,
+                        }
+                        : default,
                     Children = new Drawable[]
                     {
                         new BeatmapLeaderboardScore(score, sheared: true)
@@ -447,6 +452,7 @@ namespace osu.Game.Screens.Ranking
                     borderContainer.BorderThickness = 1.5f;
                     borderContainer.BorderColour = Colour4.FromHex("#7CF6FF").Opacity(0.5f);
                 }
+
                 hoverOverlay.FadeTo(0.04f, 150, Easing.OutQuint);
                 return base.OnHover(e);
             }
@@ -458,6 +464,7 @@ namespace osu.Game.Screens.Ranking
                     borderContainer.BorderThickness = 0;
                     borderContainer.BorderColour = Colour4.Transparent;
                 }
+
                 hoverOverlay.FadeTo(0, 150, Easing.OutQuint);
                 base.OnHoverLost(e);
             }

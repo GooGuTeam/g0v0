@@ -1,6 +1,6 @@
 ﻿{
   "solution": {
-    "path": "osu.sln",
+    "path": "osu.slnx",
     "projects": [
       "osu.Game.Rulesets.Catch.Tests.iOS\\osu.Game.Rulesets.Catch.Tests.iOS.csproj",
       "osu.Game.Rulesets.Catch\\osu.Game.Rulesets.Catch.csproj",

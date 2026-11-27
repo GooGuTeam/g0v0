@@ -2,7 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
-using osu.Framework.Extensions.LocalisationExtensions;
+using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
@@ -14,28 +14,24 @@ namespace osu.Game.Overlays.Notifications
     /// <summary>
     /// A notification showing the current server information on startup.
     /// </summary>
-    public partial class ServerInfoNotification : SimpleNotification
+    public partial class ServerInfoNotification : HeadingNotification
     {
         private readonly string serverUrl;
 
         public ServerInfoNotification(string serverUrl)
+            : base(FontAwesome.Solid.Server)
         {
             this.serverUrl = serverUrl;
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour colours)
-        {
-            Icon = FontAwesome.Solid.Server;
-            IconContent.Colour = colours.BlueLight;
+        private void load(OsuColour colours) => IconContent.Colour = colours.BlueLight;
 
-            TextFlow.AddText(OnlineSettingsStrings.ServerInformation.ToUpper(), s =>
-            {
-                s.Font = OsuFont.Style.Caption2.With(weight: FontWeight.Bold);
-                s.Colour = colours.BlueLight;
-            });
-            TextFlow.AddParagraph(getServerDisplayText(serverUrl));
-        }
+        protected override LocalisableString Heading => OnlineSettingsStrings.ServerInformation;
+
+        protected override ColourInfo GetHeadingColour(OsuColour colours) => colours.BlueLight;
+
+        protected override void AddBody() => AddBodyParagraph(getServerDisplayText(serverUrl));
 
         private static LocalisableString getServerDisplayText(string serverUrl)
         {

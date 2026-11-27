@@ -13,7 +13,7 @@ namespace osu.Game.Overlays
             : base(rulesetInfo.Name, MenuItemType.Standard, state =>
             {
                 overlayRulesetSelector.Current.Value = state ? rulesetInfo : rulesetInfo.CreateNormalRuleset();
-                action?.Invoke();
+                action.Invoke();
             })
         {
             State.Value = overlayRulesetSelector.Current.Value.Equals(rulesetInfo);

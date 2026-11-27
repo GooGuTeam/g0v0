@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.IO;
 using osu.Framework.Extensions;
@@ -44,7 +44,7 @@ namespace osu.Game.Database
         /// <summary>
         /// Retrieve an archive reader from this task.
         /// </summary>
-        public ArchiveReader GetReader()
+        public virtual ArchiveReader GetReader()
         {
             if (Stream == null)
             {

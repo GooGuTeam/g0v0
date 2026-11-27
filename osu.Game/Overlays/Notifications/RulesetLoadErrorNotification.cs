@@ -4,20 +4,22 @@
 using System.Collections.Generic;
 using System.IO;
 using osu.Framework.Allocation;
-using osu.Framework.Extensions.LocalisationExtensions;
+using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Localisation;
 using osu.Game.Rulesets;
 
 namespace osu.Game.Overlays.Notifications
 {
-    public partial class RulesetLoadErrorNotification : SimpleNotification
+    public partial class RulesetLoadErrorNotification : HeadingNotification
     {
         private readonly List<string> causes = [];
         private readonly bool hasUnknownCauses;
 
         public RulesetLoadErrorNotification(IEnumerable<RulesetErrorEvent> causes)
+            : base(FontAwesome.Solid.PuzzlePiece)
         {
             foreach (var e in causes)
             {
@@ -55,36 +57,27 @@ namespace osu.Game.Overlays.Notifications
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour colours)
+        private void load(OsuColour colours) => IconContent.Colour = colours.YellowDark;
+
+        protected override LocalisableString Heading => NotificationsStrings.RulesetError;
+
+        protected override ColourInfo GetHeadingColour(OsuColour colours) => colours.Yellow;
+
+        protected override void AddBody()
         {
-            Icon = FontAwesome.Solid.PuzzlePiece;
-            IconContent.Colour = colours.YellowDark;
-
-            TextFlow.Clear();
-            TextFlow.AddText(NotificationsStrings.RulesetError.ToUpper(), s =>
-            {
-                s.Font = OsuFont.Style.Caption2.With(weight: FontWeight.Bold);
-                s.Colour = colours.Yellow;
-            });
-
-            TextFlow.AddParagraph(NotificationsStrings.RulesetUnableToLoad);
+            AddBodyParagraph(NotificationsStrings.RulesetUnableToLoad);
             TextFlow.NewParagraph();
 
             causes.ForEach(name =>
             {
                 TextFlow.NewLine();
-                TextFlow.AddText(name, cp);
+                TextFlow.AddText(name, s => s.Font = OsuFont.Style.Caption1);
             });
 
             if (hasUnknownCauses)
-            {
-                TextFlow.AddParagraph(NotificationsStrings.RulesetUnknownException, cp);
-            }
+                AddBodyParagraph(NotificationsStrings.RulesetUnknownException);
 
-            TextFlow.AddParagraph(NotificationsStrings.RulesetLoadSuggestion, cp);
-            return;
-
-            void cp(SpriteText s) => s.Font = OsuFont.Style.Caption1;
+            AddBodyParagraph(NotificationsStrings.RulesetLoadSuggestion);
         }
     }
 }

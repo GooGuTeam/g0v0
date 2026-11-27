@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -103,7 +103,7 @@ namespace osu.Game.Database
         /// 51   2025-07-22    Add ScoreInfo.Pauses.
         /// 52   2026-07-28    Add RealmOnlineAsset.
         /// </summary>
-        private const int schema_version = 52;
+        public const int SCHEMA_VERSION = 52;
 
         /// <summary>
         /// Lock object which is held during <see cref="BlockAllOperations"/> sections, blocking realm retrieval during blocking periods.
@@ -234,14 +234,14 @@ namespace osu.Game.Database
         {
             string originalFilename = filename;
 
-            filename = getVersionedFilename(schema_version);
+            filename = getVersionedFilename(SCHEMA_VERSION);
 
             // First check if the current realm version already exists...
             if (storage.Exists(filename))
                 return;
 
             // Check for a previous version we can use as a base database to migrate from...
-            for (int i = schema_version - 1; i >= 0; i--)
+            for (int i = SCHEMA_VERSION - 1; i >= 0; i--)
             {
                 string previousFilename = getVersionedFilename(i);
 
@@ -261,7 +261,7 @@ namespace osu.Game.Database
                 using (var previous = storage.GetStream(previousFilename))
                 using (var current = storage.CreateFileSafely(newFilename))
                 {
-                    Logger.Log(@$"Copying previous realm database {previousFilename} to {newFilename} for migration to schema version {schema_version}");
+                    Logger.Log(@$"Copying previous realm database {previousFilename} to {newFilename} for migration to schema version {SCHEMA_VERSION}");
                     previous.CopyTo(current);
                 }
             }
@@ -798,7 +798,22 @@ namespace osu.Game.Database
 
                 realm_instances_created.Value++;
 
-                return Realm.GetInstance(getConfiguration());
+                // Update-thread instances need their scheduler for subscriptions. Short-lived worker
+                // instances must not retain a caller's context after its lifetime (e.g. NUnit teardown).
+                if (ThreadSafety.IsUpdateThread)
+                    return Realm.GetInstance(getConfiguration());
+
+                var previousContext = SynchronizationContext.Current;
+                SynchronizationContext.SetSynchronizationContext(null);
+
+                try
+                {
+                    return Realm.GetInstance(getConfiguration());
+                }
+                finally
+                {
+                    SynchronizationContext.SetSynchronizationContext(previousContext);
+                }
             }
             finally
             {
@@ -820,7 +835,7 @@ namespace osu.Game.Database
 
             return new RealmConfiguration(storage.GetFullPath(filename ?? Filename, true))
             {
-                SchemaVersion = schema_version,
+                SchemaVersion = SCHEMA_VERSION,
                 MigrationCallback = onMigration,
                 FallbackPipePath = tempPathLocation,
             };
@@ -828,7 +843,7 @@ namespace osu.Game.Database
 
         private void onMigration(Migration migration, ulong lastSchemaVersion)
         {
-            for (ulong i = lastSchemaVersion + 1; i <= schema_version; i++)
+            for (ulong i = lastSchemaVersion + 1; i <= SCHEMA_VERSION; i++)
                 applyMigrationsForVersion(migration, i);
         }
 

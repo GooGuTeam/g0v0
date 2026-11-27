@@ -1,6 +1,6 @@
 ﻿{
   "solution": {
-    "path": "osu.sln",
+    "path": "osu.slnx",
     "projects": [
       "osu.Desktop\\osu.Desktop.csproj",
       "osu.Game.Benchmarks\\osu.Game.Benchmarks.csproj",

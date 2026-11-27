@@ -1,7 +1,8 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using osu.Framework.Bindables;
@@ -55,10 +56,43 @@ namespace osu.Game.Online.API
         public Exception? LastLoginError { get; private set; }
 
         /// <summary>
-        /// Provide handling logic for an arbitrary API request.
-        /// Should return true is a request was handled. If null or false return, the request will be failed with a <see cref="NotSupportedException"/>.
+        /// Registered request handlers, in registration order.
         /// </summary>
-        public Func<APIRequest, bool>? HandleRequest;
+        private readonly List<Func<APIRequest, bool>> requestHandlers = new List<Func<APIRequest, bool>>();
+
+        /// <summary>
+        /// Registers handling logic for an arbitrary API request.
+        /// </summary>
+        /// <remarks>
+        /// Handlers are consulted in reverse registration order, so the most recently added one takes precedence and
+        /// can override a handler installed by shared test infrastructure.
+        /// </remarks>
+        /// <param name="handler">The handler to add.</param>
+        public void AddHandler(Func<APIRequest, bool> handler) => requestHandlers.Add(handler);
+
+        /// <summary>
+        /// Removes a previously registered request handler.
+        /// </summary>
+        /// <param name="handler">The handler to remove.</param>
+        /// <returns>Whether the handler was registered and has been removed.</returns>
+        public bool RemoveHandler(Func<APIRequest, bool> handler) => requestHandlers.Remove(handler);
+
+        /// <summary>
+        /// Removes all registered request handlers.
+        /// </summary>
+        public void ClearHandlers() => requestHandlers.Clear();
+
+        private bool handleRequest(APIRequest request)
+        {
+            // a plain reverse loop rather than LINQ so a throwing handler surfaces as itself instead of being buried in an enumerator.
+            for (int i = requestHandlers.Count - 1; i >= 0; i--)
+            {
+                if (requestHandlers[i](request))
+                    return true;
+            }
+
+            return false;
+        }
 
         private readonly Bindable<APIState> state = new Bindable<APIState>(APIState.Online);
 
@@ -80,7 +114,7 @@ namespace osu.Game.Online.API
 
             Schedule(() =>
             {
-                if (HandleRequest?.Invoke(request) != true)
+                if (!handleRequest(request))
                 {
                     // Noisy so let's silently allow these to succeed.
                     if (request is ChatAckRequest ack)
@@ -99,13 +133,13 @@ namespace osu.Game.Online.API
         public void Perform(APIRequest request)
         {
             request.AttachAPI(this);
-            HandleRequest?.Invoke(request);
+            handleRequest(request);
         }
 
         public Task PerformAsync(APIRequest request)
         {
             request.AttachAPI(this);
-            HandleRequest?.Invoke(request);
+            handleRequest(request);
             return Task.CompletedTask;
         }
 
@@ -170,7 +204,7 @@ namespace osu.Game.Online.API
             request.AttachAPI(this);
 
             // if no handler installed / handler can't handle verification, just assume that the server would verify for simplicity.
-            if (HandleRequest?.Invoke(request) != true)
+            if (!handleRequest(request))
                 onSuccessfulLogin();
 
             // if a handler did handle this, make sure the verification actually passed.

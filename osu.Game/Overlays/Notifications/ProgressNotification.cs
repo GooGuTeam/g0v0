@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Threading;
@@ -16,6 +16,7 @@ using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Localisation;
 using osuTK;
 using osuTK.Graphics;
 
@@ -61,7 +62,7 @@ namespace osu.Game.Overlays.Notifications
             }
         }
 
-        public LocalisableString CompletionText { get; set; } = "Task has completed!";
+        public LocalisableString CompletionText { get; set; } = NotificationsStrings.TaskCompleted;
 
         private float progress;
 

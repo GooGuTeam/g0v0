@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Track;
@@ -71,9 +72,13 @@ namespace osu.Game.Tests.Visual
         /// <summary>
         /// Makes solo score submission token requests succeed, allowing gameplay to be entered through a <see cref="Screens.Play.PlayerLoader"/>.
         /// </summary>
+        /// <remarks>
+        /// This is registered as one handler in a chain, so test scenes can register their own handlers for other
+        /// request types without having to re-implement (or accidentally discard) this behaviour.
+        /// </remarks>
         protected void StubScoreSubmissionTokenRetrieval()
         {
-            ((DummyAPIAccess)API).HandleRequest = req =>
+            ((DummyAPIAccess)API).AddHandler(req =>
             {
                 if (req is CreateSoloScoreRequest soloScoreRequest)
                 {
@@ -82,8 +87,19 @@ namespace osu.Game.Tests.Visual
                 }
 
                 return false;
-            };
+            });
         }
+
+        /// <summary>
+        /// Drops request handlers registered by a previous test run.
+        /// </summary>
+        /// <remarks>
+        /// In interactive runs (i.e. the test browser) a single test scene instance is reused for every test of a
+        /// fixture, so handlers installed by one test would otherwise still be present - and still be claiming
+        /// requests - in the next one.
+        /// </remarks>
+        [SetUp]
+        public void ClearRequestHandlers() => dummyAPI?.ClearHandlers();
 
         /// <summary>
         /// Whether this test scene requires real-world API access.

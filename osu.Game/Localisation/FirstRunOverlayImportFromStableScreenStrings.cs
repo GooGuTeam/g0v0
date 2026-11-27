@@ -20,16 +20,6 @@ namespace osu.Game.Localisation
         public static LocalisableString Description => new TranslatableString(getKey(@"description"), @"If you have an existing stable installation, you can choose to migrate your existing content. Note that this will not affect your existing installation's files in any way.");
 
         /// <summary>
-        /// "previous stable installation"
-        /// </summary>
-        public static LocalisableString LocateDirectoryLabel => new TranslatableString(getKey(@"locate_directory_label"), @"previous stable installation");
-
-        /// <summary>
-        /// "Click to locate a previous stable installation"
-        /// </summary>
-        public static LocalisableString LocateDirectoryPlaceholder => new TranslatableString(getKey(@"locate_directory_placeholder"), @"Click to locate a previous stable installation");
-
-        /// <summary>
         /// "Import content from previous version"
         /// </summary>
         public static LocalisableString ImportButton => new TranslatableString(getKey(@"import_button"), @"Import content from previous version");

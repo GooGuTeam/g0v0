@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 #nullable disable
 
@@ -76,6 +76,7 @@ namespace osu.Game.Tests.Visual.Background
         {
             // reset API response in statics to avoid test crosstalk.
             statics.SetValue<APISeasonalBackgrounds>(Static.SeasonalBackgrounds, null);
+            config.SetValue(OsuSetting.PinnedSeasonalBackground, false);
             textureStore.PerformedLookups.Clear();
             dummyAPI.SetState(APIState.Online);
 
@@ -131,10 +132,41 @@ namespace osu.Game.Tests.Visual.Background
             assertNoBackgrounds();
         }
 
+        [Test]
+        public void TestPinnedBackgroundReplacesRotation()
+        {
+            registerBackgroundsResponse(DateTimeOffset.Now.AddDays(5));
+            setSeasonalBackgroundMode(SeasonalBackgroundMode.Always);
+            pinBackground(1);
+
+            createLoader();
+
+            SeasonalBackground loaded = null;
+
+            AddStep("load background", () => loaded = backgroundLoader.LoadNextBackground());
+            AddAssert("pinned background used", () => loaded.Url == seasonal_background_urls[1]);
+
+            AddStep("load another background", () => loaded = backgroundLoader.LoadNextBackground());
+            AddAssert("rotation did not advance", () => loaded.Url == seasonal_background_urls[1]);
+        }
+
+        [Test]
+        public void TestPinnedBackgroundIgnoredWhenSeasonalDisabled()
+        {
+            // a pin selects which seasonal background is shown, it does not opt back into showing one.
+            registerBackgroundsResponse(DateTimeOffset.Now.AddDays(5));
+            setSeasonalBackgroundMode(SeasonalBackgroundMode.Never);
+            pinBackground(1);
+
+            createLoader();
+
+            assertNoBackgrounds();
+        }
+
         private void registerBackgroundsResponse(DateTimeOffset endDate)
             => AddStep("setup request handler", () =>
             {
-                dummyAPI.HandleRequest = request =>
+                dummyAPI.AddHandler(request =>
                 {
                     if (dummyAPI.State.Value != APIState.Online || !(request is GetSeasonalBackgroundsRequest backgroundsRequest))
                         return false;
@@ -146,11 +178,18 @@ namespace osu.Game.Tests.Visual.Background
                     });
 
                     return true;
-                };
+                });
             });
 
         private void setSeasonalBackgroundMode(SeasonalBackgroundMode mode)
             => AddStep($"set seasonal mode to {mode}", () => config.SetValue(OsuSetting.SeasonalBackgroundMode, mode));
+
+        private void pinBackground(int index)
+            => AddStep($"pin background {index}", () =>
+            {
+                config.SetValue(OsuSetting.PinnedSeasonalBackgroundIndex, index);
+                config.SetValue(OsuSetting.PinnedSeasonalBackground, true);
+            });
 
         private void createLoader()
             => AddStep("create loader", () =>

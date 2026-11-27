@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -15,10 +15,12 @@ using osu.Framework.Development;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Logging;
+using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Extensions;
+using osu.Game.Localisation;
 using osu.Game.Online.API;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
@@ -177,7 +179,7 @@ namespace osu.Game.Database
 
             Logger.Log($"Found {beatmapIds.Count} beatmaps which require star rating reprocessing.");
 
-            var notification = showProgressNotification(beatmapIds.Count, "Reprocessing star rating for beatmaps", "beatmaps' star ratings have been updated");
+            var notification = showProgressNotification(beatmapIds.Count, NotificationsStrings.ReprocessingStarRatings, NotificationsStrings.StarRatingsUpdated);
 
             int processedCount = 0;
             int failedCount = 0;
@@ -260,7 +262,7 @@ namespace osu.Game.Database
 
             Logger.Log($"Found {beatmapSetIds.Count} beatmap sets which require online updates.");
 
-            var notification = showProgressNotification(beatmapSetIds.Count, "Updating online data for beatmaps", "beatmaps' online data have been updated");
+            var notification = showProgressNotification(beatmapSetIds.Count, NotificationsStrings.UpdatingOnlineData, NotificationsStrings.OnlineDataUpdated);
 
             int processedCount = 0;
             int failedCount = 0;
@@ -314,7 +316,7 @@ namespace osu.Game.Database
 
             Logger.Log($"Found {beatmapIds.Count} beatmaps which require statistics population.");
 
-            var notification = showProgressNotification(beatmapIds.Count, "Populating missing statistics for beatmaps", "beatmaps have been populated with missing statistics");
+            var notification = showProgressNotification(beatmapIds.Count, NotificationsStrings.PopulatingBeatmapStatistics, NotificationsStrings.BeatmapStatisticsPopulated);
 
             int processedCount = 0;
             int failedCount = 0;
@@ -375,7 +377,7 @@ namespace osu.Game.Database
 
             Logger.Log($"Found {scoreIds.Count} scores which require statistics population.");
 
-            var notification = showProgressNotification(scoreIds.Count, "Populating missing statistics for scores", "scores have been populated with missing statistics");
+            var notification = showProgressNotification(scoreIds.Count, NotificationsStrings.PopulatingScoreStatistics, NotificationsStrings.ScoreStatisticsPopulated);
 
             int processedCount = 0;
             int failedCount = 0;
@@ -443,7 +445,7 @@ namespace osu.Game.Database
             if (scoreIds.Count == 0)
                 return;
 
-            var notification = showProgressNotification(scoreIds.Count, "Upgrading scores to new mod multipliers", "scores have been upgraded to the new mod multipliers");
+            var notification = showProgressNotification(scoreIds.Count, NotificationsStrings.UpgradingModMultipliers, NotificationsStrings.ModMultipliersUpgraded);
 
             int processedCount = 0;
             int failedCount = 0;
@@ -509,7 +511,7 @@ namespace osu.Game.Database
             if (scoreIds.Count == 0)
                 return;
 
-            var notification = showProgressNotification(scoreIds.Count, "Upgrading scores to new scoring algorithm", "scores have been upgraded to the new scoring algorithm");
+            var notification = showProgressNotification(scoreIds.Count, NotificationsStrings.UpgradingScoringAlgorithm, NotificationsStrings.ScoringAlgorithmUpgraded);
 
             int processedCount = 0;
             int failedCount = 0;
@@ -569,7 +571,7 @@ namespace osu.Game.Database
             if (scoreIds.Count == 0)
                 return;
 
-            var notification = showProgressNotification(scoreIds.Count, "Adjusting ranks of scores", "scores now have more correct ranks.");
+            var notification = showProgressNotification(scoreIds.Count, NotificationsStrings.AdjustingScoreRanks, NotificationsStrings.ScoreRanksAdjusted);
 
             int processedCount = 0;
             int failedCount = 0;
@@ -652,7 +654,7 @@ namespace osu.Game.Database
 
             Logger.Log($"Found {beatmapSetIds.Count} beatmap sets with missing submission/rank date.");
 
-            var notification = showProgressNotification(beatmapSetIds.Count, "Populating missing submission and rank dates", "beatmap sets now have correct submission and rank dates.");
+            var notification = showProgressNotification(beatmapSetIds.Count, NotificationsStrings.PopulatingSubmissionDates, NotificationsStrings.SubmissionDatesPopulated);
 
             int processedCount = 0;
             int failedCount = 0;
@@ -752,8 +754,7 @@ namespace osu.Game.Database
 
             Logger.Log($@"Checking for tag updates for {beatmapIds.Count} beatmaps.");
 
-            var notification = showProgressNotification(beatmapIds.Count, @"Updating user tags",
-                @"beatmaps have had their tags updated. This runs once a month to allow searching user tags.");
+            var notification = showProgressNotification(beatmapIds.Count, NotificationsStrings.UpdatingUserTags, NotificationsStrings.UserTagsUpdated);
 
             int processedCount = 0;
             int updatedCount = 0;
@@ -860,7 +861,7 @@ namespace osu.Game.Database
             }
         }
 
-        private ProgressNotification? showProgressNotification(int totalCount, string running, string completed)
+        private ProgressNotification? showProgressNotification(int totalCount, LocalisableString running, LocalisableString completed)
         {
             if (notificationOverlay == null)
                 return null;

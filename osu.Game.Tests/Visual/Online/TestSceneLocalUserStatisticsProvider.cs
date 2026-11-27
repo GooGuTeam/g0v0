@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System.Collections.Generic;
 using NUnit.Framework;
@@ -37,7 +37,7 @@ namespace osu.Game.Tests.Visual.Online
             {
                 OsuTextFlowContainer text;
 
-                ((DummyAPIAccess)API).HandleRequest = r =>
+                ((DummyAPIAccess)API).AddHandler(r =>
                 {
                     switch (r)
                     {
@@ -56,7 +56,7 @@ namespace osu.Game.Tests.Visual.Online
                         default:
                             return false;
                     }
-                };
+                });
 
                 Clear();
                 Add(statisticsProvider = new LocalUserStatisticsProvider());

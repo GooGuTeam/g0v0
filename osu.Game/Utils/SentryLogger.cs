@@ -80,11 +80,13 @@ namespace osu.Game.Utils
             Logger.NewEntry += processLogEntry;
         }
 
-        private static string? getConfiguredDsn() => typeof(SentryLogger).Assembly
-            .GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(attribute => attribute.Key == sentry_dsn_assembly_metadata_key)?
-            .Value
-            ?.Trim();
+        private static string? getConfiguredDsn()
+        {
+            Assembly assembly = typeof(SentryLogger).Assembly;
+            AssemblyMetadataAttribute? metadata = assembly.GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(attribute => attribute.Key == sentry_dsn_assembly_metadata_key);
+
+            return metadata?.Value?.Trim();
+        }
 
         ~SentryLogger()
         {

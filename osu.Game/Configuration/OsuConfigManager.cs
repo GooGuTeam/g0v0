@@ -120,6 +120,10 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.MenuMusic, true);
             SetDefault(OsuSetting.MenuTips, true);
 
+            SetDefault(OsuSetting.UseCustomThemeMusic, false);
+            SetDefault(OsuSetting.ThemeMusicStartFromPreview, false);
+            SetDefault(OsuSetting.ThemeMusicBeatmapSetId, string.Empty);
+
             SetDefault(OsuSetting.AudioOffset, 0, -500.0, 500.0, 1);
 
             SetDefault(OsuSetting.AutomaticallyAdjustBeatmapOffset, false);
@@ -210,6 +214,8 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.MenuBackgroundSource, BackgroundSource.Skin);
             SetDefault(OsuSetting.SeasonalBackgroundMode, SeasonalBackgroundMode.Sometimes);
+            SetDefault(OsuSetting.PinnedSeasonalBackground, false);
+            SetDefault(OsuSetting.PinnedSeasonalBackgroundIndex, 0);
 
             SetDefault(OsuSetting.DiscordRichPresence, DiscordRichPresenceMode.Full);
 
@@ -536,5 +542,24 @@ namespace osu.Game.Configuration
         /// Scores which were already submitted are not recalculated.
         /// </summary>
         UseModSpecificCalculation,
+
+        UseCustomThemeMusic,
+        ThemeMusicStartFromPreview,
+
+        /// <summary>
+        /// The <see cref="osu.Game.Beatmaps.BeatmapSetInfo.ID"/> of the beatmap set used as custom theme music, stored as a string.
+        /// </summary>
+        ThemeMusicBeatmapSetId,
+
+        /// <summary>
+        /// Whether the seasonal background at <see cref="PinnedSeasonalBackgroundIndex"/> should be displayed in
+        /// place of the rotating ones. Only takes effect while seasonal backgrounds are enabled.
+        /// </summary>
+        PinnedSeasonalBackground,
+
+        /// <summary>
+        /// The index of the seasonal background pinned via <see cref="PinnedSeasonalBackground"/>.
+        /// </summary>
+        PinnedSeasonalBackgroundIndex,
     }
 }

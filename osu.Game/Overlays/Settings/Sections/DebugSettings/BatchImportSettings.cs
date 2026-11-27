@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Localisation;
@@ -30,7 +30,7 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
                     Action = () =>
                     {
                         importBeatmapsButton.Enabled.Value = false;
-                        legacyImportManager.ImportFromStableAsync(StableContent.Beatmaps).ContinueWith(_ => Schedule(() => importBeatmapsButton.Enabled.Value = true));
+                        legacyImportManager.ImportFromStableAsync(ImportContent.Beatmaps).ContinueWith(_ => Schedule(() => importBeatmapsButton.Enabled.Value = true));
                     }
                 },
                 importSkinsButton = new SettingsButtonV2
@@ -39,7 +39,7 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
                     Action = () =>
                     {
                         importSkinsButton.Enabled.Value = false;
-                        legacyImportManager.ImportFromStableAsync(StableContent.Skins).ContinueWith(_ => Schedule(() => importSkinsButton.Enabled.Value = true));
+                        legacyImportManager.ImportFromStableAsync(ImportContent.Skins).ContinueWith(_ => Schedule(() => importSkinsButton.Enabled.Value = true));
                     }
                 },
                 importCollectionsButton = new SettingsButtonV2
@@ -48,7 +48,7 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
                     Action = () =>
                     {
                         importCollectionsButton.Enabled.Value = false;
-                        legacyImportManager.ImportFromStableAsync(StableContent.Collections).ContinueWith(_ => Schedule(() => importCollectionsButton.Enabled.Value = true));
+                        legacyImportManager.ImportFromStableAsync(ImportContent.Collections).ContinueWith(_ => Schedule(() => importCollectionsButton.Enabled.Value = true));
                     }
                 },
                 importScoresButton = new SettingsButtonV2
@@ -57,7 +57,7 @@ namespace osu.Game.Overlays.Settings.Sections.DebugSettings
                     Action = () =>
                     {
                         importScoresButton.Enabled.Value = false;
-                        legacyImportManager.ImportFromStableAsync(StableContent.Scores).ContinueWith(_ => Schedule(() => importScoresButton.Enabled.Value = true));
+                        legacyImportManager.ImportFromStableAsync(ImportContent.Scores).ContinueWith(_ => Schedule(() => importScoresButton.Enabled.Value = true));
                     }
                 },
             });

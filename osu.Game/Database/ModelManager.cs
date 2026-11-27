@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -7,9 +7,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using osu.Framework.Extensions;
+using osu.Framework.Localisation;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
 using osu.Game.Extensions;
+using osu.Game.Localisation;
 using osu.Game.Models;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Utils;
@@ -115,15 +117,15 @@ namespace osu.Game.Database
             if (items.Count == 0)
             {
                 if (!silent)
-                    PostNotification?.Invoke(new ProgressCompletionNotification { Text = $"No {HumanisedModelName}s found to delete!" });
+                    PostNotification?.Invoke(new ProgressCompletionNotification { Text = NotificationsStrings.NoModelsFoundToDelete(LocalisedModelName) });
                 return;
             }
 
             var notification = new ProgressNotification
             {
                 Progress = 0,
-                Text = $"Preparing to delete all {HumanisedModelName}s...",
-                CompletionText = $"Deleted all {HumanisedModelName}s!",
+                Text = NotificationsStrings.PreparingToDeleteAll(LocalisedModelName),
+                CompletionText = NotificationsStrings.DeletedAll(LocalisedModelName),
                 State = ProgressNotificationState.Active,
             };
 
@@ -138,7 +140,7 @@ namespace osu.Game.Database
                     // user requested abort
                     return;
 
-                notification.Text = $"Deleting {HumanisedModelName}s ({++i} of {items.Count})";
+                notification.Text = NotificationsStrings.DeletingModels(LocalisedModelName, ++i, items.Count);
 
                 Delete(b);
 
@@ -157,13 +159,13 @@ namespace osu.Game.Database
             if (!items.Any())
             {
                 if (!silent)
-                    PostNotification?.Invoke(new ProgressCompletionNotification { Text = $"No {HumanisedModelName}s found to restore!" });
+                    PostNotification?.Invoke(new ProgressCompletionNotification { Text = NotificationsStrings.NoModelsFoundToRestore(LocalisedModelName) });
                 return;
             }
 
             var notification = new ProgressNotification
             {
-                CompletionText = "Restored all deleted items!",
+                CompletionText = NotificationsStrings.RestoredAllDeletedItems,
                 Progress = 0,
                 State = ProgressNotificationState.Active,
             };
@@ -179,7 +181,7 @@ namespace osu.Game.Database
                     // user requested abort
                     return;
 
-                notification.Text = $"Restoring ({++i} of {items.Count})";
+                notification.Text = NotificationsStrings.RestoringModels(++i, items.Count);
 
                 Undelete(item);
 
@@ -229,5 +231,10 @@ namespace osu.Game.Database
         public Action<Notification>? PostNotification { get; set; }
 
         public virtual string HumanisedModelName => $"{typeof(TModel).Name.Replace(@"Info", "").ToLowerInvariant()}";
+
+        /// <summary>
+        /// A localisable version of <see cref="HumanisedModelName"/>, for use in localisable notification text.
+        /// </summary>
+        protected LocalisableString LocalisedModelName => NotificationsStrings.ModelName(HumanisedModelName);
     }
 }

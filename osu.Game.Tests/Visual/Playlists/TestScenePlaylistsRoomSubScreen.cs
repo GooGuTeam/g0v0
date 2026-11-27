@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -717,7 +717,7 @@ namespace osu.Game.Tests.Visual.Playlists
             AddAssert("close button present", () => roomScreen.ChildrenOfType<DangerousRoundedButton>().Single().IsPresent);
             AddStep("click close button", () => roomScreen.ChildrenOfType<DangerousRoundedButton>().Single().TriggerClick());
 
-            AddStep("register request handling", () => ((DummyAPIAccess)API).HandleRequest = req =>
+            AddStep("register request handling", () => ((DummyAPIAccess)API).AddHandler(req =>
             {
                 switch (req)
                 {
@@ -727,7 +727,7 @@ namespace osu.Game.Tests.Visual.Playlists
                 }
 
                 return false;
-            });
+            }));
 
             AddStep("confirm dialog", () => InputManager.Key(Key.Enter));
             AddAssert("close button hidden", () => !roomScreen.ChildrenOfType<DangerousRoundedButton>().Single().IsPresent);
