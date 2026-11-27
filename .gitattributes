@@ -5,6 +5,7 @@
 
 # Check out with crlf (Windows) line endings
 *.sln text eol=crlf
+*.slnx text eol=crlf
 *.csproj text eol=crlf
 *.cs text diff=csharp eol=crlf
 *.resx text eol=crlf

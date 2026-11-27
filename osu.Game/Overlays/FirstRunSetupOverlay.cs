@@ -1,5 +1,5 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -39,8 +39,8 @@ namespace osu.Game.Overlays
             AddStep<ScreenWelcome>();
             AddStep<ScreenUIScale>();
             AddStep<ScreenBeatmaps>();
-            if (legacyImportManager?.SupportsImportFromStable == true)
-                AddStep<ScreenImportFromStable>();
+            if (legacyImportManager?.SupportsImportFromStable == true || legacyImportManager?.SupportsImportFromLazer == true)
+                AddStep<ScreenImport>();
             AddStep<ScreenBehaviour>();
 
             Header.Title = FirstRunSetupOverlayStrings.FirstRunSetupTitle;

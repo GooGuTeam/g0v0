@@ -1,0 +1,11 @@
+# IDE Configuration
+.vscode/
+.idea/
+.workbuddy/
+
+# Generated output and captures
+bin/
+obj/
+captures/
+
+*.lscache
