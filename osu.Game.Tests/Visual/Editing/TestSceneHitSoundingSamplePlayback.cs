@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using osu.Framework.Testing;
 using osu.Game.Audio;
@@ -181,7 +182,7 @@ namespace osu.Game.Tests.Visual.Editing
             AddStep("simulate stalled frame past end", () =>
             {
                 end = EditorClock.CurrentTime - 1;
-                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
                 typeof(HitSoundingSamplePlayback).GetField("setPreviewEndTime", flags)!.SetValue(playback, end);
                 typeof(HitSoundingSamplePlayback).GetField("lastPlaybackTime", flags)!.SetValue(playback, EditorClock.CurrentTime - 500);
             });
@@ -194,7 +195,7 @@ namespace osu.Game.Tests.Visual.Editing
         [Test]
         public void TestAuditionEqualityDistinguishesFileSamples()
         {
-            var method = typeof(HitSoundingSamplePlayback).GetMethod("samplesEqual", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+            var method = typeof(HitSoundingSamplePlayback).GetMethod("samplesEqual", BindingFlags.Static | BindingFlags.NonPublic)!;
             bool equal(HitSampleInfo left, HitSampleInfo right) => (bool)method.Invoke(null, new object[] { new ISampleInfo[] { left }, new ISampleInfo[] { right } })!;
 
             var first = new ConvertHitObjectParser.FileHitSampleInfo("first.wav", 100);

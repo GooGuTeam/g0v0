@@ -1012,9 +1012,9 @@ namespace osu.Game.Tests.Visual.Editing
             });
             AddUntilStep("both sets changed", () => model.Nodes.Take(2).All(n => n.SetIndex == 1));
             AddAssert("independent banks preserved", () => model.Nodes[0].GetBank(false) == HitSampleInfo.BANK_SOFT
-                                                            && model.Nodes[0].GetBank(true) == HitSampleInfo.BANK_DRUM
-                                                            && model.Nodes[1].GetBank(false) == HitSampleInfo.BANK_DRUM
-                                                            && model.Nodes[1].GetBank(true) == HitSampleInfo.BANK_SOFT);
+                                                           && model.Nodes[0].GetBank(true) == HitSampleInfo.BANK_DRUM
+                                                           && model.Nodes[1].GetBank(false) == HitSampleInfo.BANK_DRUM
+                                                           && model.Nodes[1].GetBank(true) == HitSampleInfo.BANK_SOFT);
             AddStep("undo set cycle", () => Editor.Undo());
             AddUntilStep("sets restored", () => model.Nodes.Take(2).All(n => n.SetIndex == 0));
         }

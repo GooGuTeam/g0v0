@@ -30,6 +30,7 @@ namespace osu.Game.Tests.Visual.Editing
 
         protected override bool UseFreshStoragePerRun => true;
         protected override bool IsolateSavingFromDatabase => false;
+
         protected override Ruleset CreateEditorRuleset() => new OsuRuleset();
 
         protected override WorkingBeatmap CreateWorkingBeatmap(IBeatmap beatmap, Storyboard? storyboard = null)
@@ -70,7 +71,7 @@ namespace osu.Game.Tests.Visual.Editing
         public void TestReferencedCanonicalSourcesSurviveReplacementAndSetRemoval()
         {
             string original = null!;
-            string preserved = null!;
+            string preserved;
             AddStep("import sample and create canonical source", () =>
             {
                 original = library.ImportFiles(Directory.GetFiles(directory)).Single();
@@ -123,9 +124,13 @@ namespace osu.Game.Tests.Visual.Editing
                     Child = restored
                 });
             });
-            AddUntilStep("references restored", () => this.ChildrenOfType<HitSoundingSampleLibrary>().Any(l => l != library && l.IsLoaded &&
-                l.GetAssignment(3, HitSampleInfo.BANK_DRUM, HitSampleInfo.HIT_CLAP) == library.GetAssignment(3, HitSampleInfo.BANK_DRUM, HitSampleInfo.HIT_CLAP) &&
-                l.GetAssignment(4, HitSampleInfo.BANK_SOFT, HitSampleInfo.HIT_CLAP) == library.GetAssignment(4, HitSampleInfo.BANK_SOFT, HitSampleInfo.HIT_CLAP) && !l.Sets.Contains(2)));
+            AddUntilStep("references restored",
+                () => this.ChildrenOfType<HitSoundingSampleLibrary>().Any(l =>
+                    l != library
+                    && l.IsLoaded
+                    && l.GetAssignment(3, HitSampleInfo.BANK_DRUM, HitSampleInfo.HIT_CLAP) == library.GetAssignment(3, HitSampleInfo.BANK_DRUM, HitSampleInfo.HIT_CLAP)
+                    && l.GetAssignment(4, HitSampleInfo.BANK_SOFT, HitSampleInfo.HIT_CLAP) == library.GetAssignment(4, HitSampleInfo.BANK_SOFT, HitSampleInfo.HIT_CLAP)
+                    && !l.Sets.Contains(2)));
         }
 
         public override void TearDownSteps()

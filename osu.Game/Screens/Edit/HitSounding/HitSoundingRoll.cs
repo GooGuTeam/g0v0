@@ -176,11 +176,14 @@ namespace osu.Game.Screens.Edit.HitSounding
                 },
                 volumeSection = new Container
                 {
-                    RelativeSizeAxes = Axes.X, Y = HitSoundingLayout.OBJECTS_HEIGHT, Height = HitSoundingLayout.VOLUME_HEIGHT,
+                    RelativeSizeAxes = Axes.X,
+                    Y = HitSoundingLayout.OBJECTS_HEIGHT,
+                    Height = HitSoundingLayout.VOLUME_HEIGHT,
                     Padding = new MarginPadding { Left = header_width + 1 },
                     Child = topLanes = new Container
                     {
-                        RelativeSizeAxes = Axes.Both, Masking = true,
+                        RelativeSizeAxes = Axes.Both,
+                        Masking = true,
                         Children = new Drawable[]
                         {
                             createBackground(0, 1).With(b => b.RelativeSizeAxes = Axes.Both),
@@ -192,17 +195,20 @@ namespace osu.Game.Screens.Edit.HitSounding
                 },
                 laneSection = new Container
                 {
-                    RelativeSizeAxes = Axes.X, Y = HitSoundingLayout.LANE_TOP,
+                    RelativeSizeAxes = Axes.X,
+                    Y = HitSoundingLayout.LANE_TOP,
                     Height = HitSoundingLayout.LANE_COUNT * HitSoundingLayout.LANE_HEIGHT,
                     Children = new Drawable[]
                     {
                         laneHeaders = new Container { Width = header_width, RelativeSizeAxes = Axes.Y },
                         new Container
                         {
-                            RelativeSizeAxes = Axes.Both, Padding = new MarginPadding { Left = header_width + 1 },
+                            RelativeSizeAxes = Axes.Both,
+                            Padding = new MarginPadding { Left = header_width + 1 },
                             Child = lanes = new Container
                             {
-                                RelativeSizeAxes = Axes.Both, Masking = true,
+                                RelativeSizeAxes = Axes.Both,
+                                Masking = true,
                                 Children = new Drawable[]
                                 {
                                     backgrounds = new Container { RelativeSizeAxes = Axes.Both },
@@ -218,8 +224,10 @@ namespace osu.Game.Screens.Edit.HitSounding
                 },
                 rangeContainer = new Container
                 {
-                    RelativeSizeAxes = Axes.X, Height = HitSoundingLayout.ROLL_HEIGHT,
-                    Padding = new MarginPadding { Left = header_width + 1 }, Masking = true,
+                    RelativeSizeAxes = Axes.X,
+                    Height = HitSoundingLayout.ROLL_HEIGHT,
+                    Padding = new MarginPadding { Left = header_width + 1 },
+                    Masking = true,
                     Child = previewRange = new Container
                     {
                         RelativeSizeAxes = Axes.Y,
@@ -306,10 +314,13 @@ namespace osu.Game.Screens.Edit.HitSounding
                 new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background5 },
                 new OsuSpriteText
                 {
-                    X = 10, Y = centred ? 0 : 10,
+                    X = 10,
+                    Y = centred ? 0 : 10,
                     Anchor = centred ? Anchor.CentreLeft : Anchor.TopLeft,
                     Origin = centred ? Anchor.CentreLeft : Anchor.TopLeft,
-                    Text = text.ToUpper(), Font = OsuFont.Default.With(size: 17, weight: FontWeight.Bold), Colour = colours.Light3
+                    Text = text.ToUpper(),
+                    Font = OsuFont.Default.With(size: 17, weight: FontWeight.Bold),
+                    Colour = colours.Light3
                 }
             }
         };
@@ -362,10 +373,12 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             startTime = visibleStart;
             updatePreviewRange();
+
             if (selectionStart != null)
             {
                 float mouseX = selectionEnd.X;
                 float amount = mouseX > lanes.DrawWidth - 40 ? mouseX - (lanes.DrawWidth - 40) : mouseX < 40 ? mouseX - 40 : 0;
+
                 if (amount == 0)
                     dragTimeAccumulated = 0;
                 else
@@ -379,6 +392,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
                 updateSelectionBox();
             }
+
             float playheadX = (float)((editorClock.CurrentTime - visibleStart) / visibleDuration * lanes.DrawWidth);
             topPlayhead.Anchor = samplePlayhead.Anchor = Anchor.TopLeft;
             topPlayhead.X = samplePlayhead.X = playheadX;
@@ -526,11 +540,11 @@ namespace osu.Game.Screens.Edit.HitSounding
                         flashes[i].Position = nodePoints[i].Position;
                         flashes[i].Width = nodePoints[i].Width + HitSoundingLayout.SAMPLE_WIDTH;
                     }
-
                 }
             }
 
             tails.Clear();
+
             foreach (var (node, nodePoints) in points)
             {
                 if (!node.IsBody && node.Time >= node.HitObject.GetEndTime())
@@ -985,7 +999,8 @@ namespace osu.Game.Screens.Edit.HitSounding
             {
                 double nodeStart = node.IsBody ? node.HitObject.StartTime : node.Time;
                 double nodeEnd = node.IsBody ? node.HitObject.GetEndTime() : node.Time;
-                if (nodeEnd >= minTime && nodeStart <= maxTime
+                if (nodeEnd >= minTime
+                    && nodeStart <= maxTime
                     && Enumerable.Range(0, HitSoundingLayout.LANE_COUNT).Any(i =>
                     {
                         float y = (i + 0.5f) * laneHeight - HitSoundingLayout.LANE_SPACING / 2;

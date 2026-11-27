@@ -88,7 +88,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             this.colours = colours;
 
-            InternalChildren = new Drawable[]
+            InternalChildren = new[]
             {
                 new Box { RelativeSizeAxes = Axes.Both, Colour = colours.Background4 },
                 createAudition(),

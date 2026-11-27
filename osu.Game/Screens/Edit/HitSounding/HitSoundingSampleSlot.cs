@@ -169,7 +169,6 @@ namespace osu.Game.Screens.Edit.HitSounding
         private readonly HitSoundingSampleGallery gallery;
 
         private OverlayColourProvider colours = null!;
-        private Container surface = null!;
         private Box background = null!;
         private TruncatingSpriteText aliasText = null!;
         private SpriteIcon slotIcon = null!;
@@ -234,7 +233,7 @@ namespace osu.Game.Screens.Edit.HitSounding
         {
             this.colours = colours;
 
-            InternalChild = surface = new Container
+            InternalChild = new Container
             {
                 RelativeSizeAxes = Axes.Both,
                 Masking = true,

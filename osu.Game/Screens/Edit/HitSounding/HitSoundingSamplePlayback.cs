@@ -340,6 +340,7 @@ namespace osu.Game.Screens.Edit.HitSounding
 
             // Starting first makes the seek authoritative: Start() rewinds a clock which previously played to the end.
             setPreviewCommandInProgress = true;
+
             try
             {
                 editorClock.Start();
