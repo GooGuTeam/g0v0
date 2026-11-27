@@ -11,8 +11,8 @@ A community project based on the osu!lazer codebase, originally developed by ppy
 
 Resources are distributed via the g0v0.osu.Game.Resources package.</Description>
     <Copyright>Copyright (c) 2026 ppy Pty Ltd, GooGuTeam</Copyright>
-    <PackageProjectUrl>https://github.com/GooGuTeam/g0v0</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/GooGuTeam/g0v0</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/g0v0-team/g0v0</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/g0v0-team/g0v0</RepositoryUrl>
     <PackageReleaseNotes>g0v0! is a community project based on the osu!lazer codebase.
 Original code from https://github.com/ppy/osu (Copyright (c) ppy Pty Ltd), modified by GooGuTeam.
 Full licence text: see LICENCE and LICENCE-OSU.</PackageReleaseNotes>
@@ -42,7 +42,7 @@ Full licence text: see LICENCE and LICENCE-OSU.</PackageReleaseNotes>
     </AssemblyAttribute>
   </ItemGroup>
   <ItemGroup Label="Package References">
-    <!-- Resources are released separately from GooGuTeam/g0v0-resources and must stay aligned with the game package version. -->
+    <!-- Resources are released separately from g0v0-team/g0v0-resources and must stay aligned with the game package version. -->
     <PackageReference Include="g0v0.osu.Game.Resources" Version="$(G0V0ResourcesVersion)" />
     <!-- Held back due to licencing change stupidness. Silenced vulnerability does not affect us. -->
     <PackageReference Include="AutoMapper" Version="13.0.1">

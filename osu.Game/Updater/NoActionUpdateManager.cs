@@ -38,7 +38,7 @@ namespace osu.Game.Updater
                 ReleaseStream stream = externalReleaseStream ?? ReleaseStream.Value;
                 bool includePrerelease = stream == Configuration.ReleaseStream.Robin;
 
-                OsuJsonWebRequest<GitHubRelease[]> releasesRequest = new OsuJsonWebRequest<GitHubRelease[]>("https://api.github.com/repos/GooGuTeam/g0v0/releases?per_page=10&page=1");
+                OsuJsonWebRequest<GitHubRelease[]> releasesRequest = new OsuJsonWebRequest<GitHubRelease[]>("https://api.github.com/repos/g0v0-team/g0v0/releases?per_page=10&page=1");
                 await releasesRequest.PerformAsync(cancellationToken).ConfigureAwait(false);
 
                 GitHubRelease[] releases = releasesRequest.ResponseObject;

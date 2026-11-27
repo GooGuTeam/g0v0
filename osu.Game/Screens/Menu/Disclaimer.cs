@@ -110,7 +110,7 @@ namespace osu.Game.Screens.Menu
 
             textFlow.AddText(DisclaimerStrings.ReportGitHubParagraph, formatRegular);
             textFlow.NewLine();
-            textFlow.AddText(@"https://github.com/GooGuTeam/g0v0", t =>
+            textFlow.AddText(@"https://github.com/g0v0-team/g0v0", t =>
             {
                 t.Font = t.Font.With(Typeface.MapleMono, 20, FontWeight.Bold);
                 t.Colour = colours.Blue;

@@ -19,7 +19,7 @@ namespace osu.Game.Rulesets
         public const string TAIKO_MODE_SHORTNAME = "taiko";
         public const string CATCH_MODE_SHORTNAME = "fruits";
 
-        // https://github.com/GooGuTeam/g0v0-server/blob/main/README.en.md#supported-rulesets
+        // https://github.com/g0v0-team/g0v0-server/blob/main/README.en.md#supported-rulesets
         public const string OSU_RELAX_MODE_SHORTNAME = "osurx";
         public const string OSU_AUTOPILOT_MODE_SHORTNAME = "osuap";
         public const string TAIKO_RELAX_MODE_SHORTNAME = "taikorx";
