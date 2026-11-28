@@ -1,0 +1,25 @@
+// Copyright (c) GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
+
+namespace osu.Game.Screens.Edit.HitSounding
+{
+    /// <summary>
+    /// Shared geometry for the five compact hitsounding lanes.
+    /// </summary>
+    public static class HitSoundingLayout
+    {
+        public const int LANE_COUNT = 5;
+        public const float LANE_HEIGHT = 56;
+        public const float SAMPLE_HEIGHT = 40;
+        public const float SAMPLE_WIDTH = 32;
+        public const float SAMPLE_CORNER_RADIUS = 5;
+        public const float SAMPLE_FONT_SIZE = 20;
+        public const float LANE_SPACING = 4;
+        public const float OBJECTS_HEIGHT = 80;
+        public const float VOLUME_HEIGHT = 80;
+        public const float LANE_TOP = OBJECTS_HEIGHT + VOLUME_HEIGHT + 5;
+        public const float ROLL_HEIGHT = LANE_TOP + LANE_COUNT * LANE_HEIGHT;
+        public const double PLAYBACK_FLASH_DURATION = 700;
+        public const float PLAYBACK_FLASH_OPACITY = 0.7f;
+    }
+}

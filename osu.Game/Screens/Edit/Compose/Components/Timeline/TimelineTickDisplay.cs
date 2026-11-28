@@ -1,5 +1,5 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -20,6 +20,8 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
     {
         public const float TICK_WIDTH = 3;
 
+        private readonly bool fullHeight;
+
         // With current implementation every tick in the sub-tree should be visible, no need to check whether they are masked away.
         public override bool UpdateSubTreeMasking() => false;
 
@@ -35,9 +37,10 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         [Resolved]
         private OsuColour colours { get; set; } = null!;
 
-        public TimelineTickDisplay()
+        public TimelineTickDisplay(bool fullHeight = false)
         {
             RelativeSizeAxes = Axes.Both;
+            this.fullHeight = fullHeight;
         }
 
         private readonly BindableBool showTimingChanges = new BindableBool(true);
@@ -82,23 +85,27 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         {
             base.Update();
 
-            if (timeline == null || DrawWidth <= 0) return;
+            if (DrawWidth <= 0) return;
 
-            (float, float) newRange = (
-                (ToLocalSpace(timeline.ScreenSpaceDrawQuad.TopLeft).X - PointVisualisation.MAX_WIDTH * 2) / DrawWidth * Content.RelativeChildSize.X,
-                (ToLocalSpace(timeline.ScreenSpaceDrawQuad.TopRight).X + PointVisualisation.MAX_WIDTH * 2) / DrawWidth * Content.RelativeChildSize.X);
-
-            if (visibleRange != newRange)
+            if (timeline != null)
             {
-                visibleRange = newRange;
-
-                // actual regeneration only needs to occur if we've passed one of the known next min/max tick boundaries.
-                if (nextMinTick == null || nextMaxTick == null || (visibleRange.min < nextMinTick || visibleRange.max > nextMaxTick))
-                    tickCache.Invalidate();
+                SetVisibleRange(
+                    (ToLocalSpace(timeline.ScreenSpaceDrawQuad.TopLeft).X - PointVisualisation.MAX_WIDTH * 2) / DrawWidth * Content.RelativeChildSize.X,
+                    (ToLocalSpace(timeline.ScreenSpaceDrawQuad.TopRight).X + PointVisualisation.MAX_WIDTH * 2) / DrawWidth * Content.RelativeChildSize.X);
             }
 
             if (!tickCache.IsValid)
                 createTicks();
+        }
+
+        internal void SetVisibleRange(float start, float end)
+        {
+            if (visibleRange == (start, end))
+                return;
+
+            visibleRange = (start, end);
+            if (nextMinTick == null || nextMaxTick == null || start < nextMinTick || end > nextMaxTick)
+                tickCache.Invalidate();
         }
 
         private void createTicks()
@@ -143,9 +150,10 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                         var line = getNextUsableLine();
                         line.X = xPos;
 
-                        line.Width = TICK_WIDTH * size.X;
-                        line.Height = size.Y;
+                        line.Width = TICK_WIDTH * size.X * (fullHeight ? 0.5f : 1);
+                        line.Height = fullHeight ? 1 : size.Y;
                         line.Colour = colour;
+                        line.Alpha = !fullHeight ? 1 : indexInBar == 0 ? 0.32f : divisor == 1 ? 0.23f : divisor == 2 ? 0.2f : 0.21f;
                     }
 
                     beat++;
@@ -180,7 +188,6 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                     point = Children[drawableIndex];
 
                 drawableIndex++;
-                point.Alpha = 1;
 
                 return point;
             }

@@ -1,12 +1,14 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE-OSU file in the repository root for full licence text.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh> & GooGuTeam. Licensed under the MIT Licence.
+// See the LICENCE & LICENCE-OSU file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Game.Input.Bindings;
 using osu.Game.Overlays;
 using osu.Game.Rulesets.Edit;
 using osuTK;
@@ -16,6 +18,8 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
     public partial class TimelineArea : CompositeDrawable
     {
         public Timeline Timeline = null!;
+
+        internal Func<GlobalAction, bool>? HandleBeatDivisorAction;
 
         private readonly Drawable userContent;
 
@@ -117,7 +121,7 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                                     }
                                 }
                             },
-                            new BeatDivisorControl { RelativeSizeAxes = Axes.Both }
+                            new BeatDivisorControl { RelativeSizeAxes = Axes.Both, HandleAction = action => HandleBeatDivisorAction?.Invoke(action) == true }
                         },
                     },
                 }
